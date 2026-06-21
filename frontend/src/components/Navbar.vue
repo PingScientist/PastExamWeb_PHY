@@ -16,13 +16,9 @@
           @click="handleTitleClick"
         >
           <img
-            :src="
-              isDarkTheme
-                ? '/favicon-dark/android-chrome-192x192.png'
-                : '/favicon-bright/android-chrome-192x192.png'
-            "
-            alt="favicon"
-            class="mr-2 inline-block align-middle w-[20px] h-[20px] md:w-[24px] md:h-[24px]"
+            src="/physics-mark.svg"
+            alt="物理系考古題系統"
+            class="brand-mark mr-2 inline-block align-middle"
           />
           物理系考古題系統
         </span>
@@ -620,8 +616,8 @@ export default {
 
       const systemInfo = this.getSystemInfo()
       const issueBody = this.formatIssueBody(description, contact, systemInfo, type)
-      const repoOwner = 'nctucsunion'
-      const repoName = 'pastexam'
+      const repoOwner = 'PingScientist'
+      const repoName = 'PastExamWeb_PHY'
       const githubUrl =
         `https://github.com/${repoOwner}/${repoName}/issues/new?` +
         `title=${encodeURIComponent(title)}&` +
@@ -908,7 +904,17 @@ export default {
   height: var(--navbar-height);
   display: flex;
   align-items: center;
-  background-color: var(--bg-primary);
+  background:
+    linear-gradient(90deg, rgba(86, 199, 189, 0.08), transparent 34%),
+    var(--bg-primary);
+  border-bottom: 1px solid rgba(100, 132, 122, 0.18);
+}
+
+.brand-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  box-shadow: 0 0 18px rgba(86, 199, 189, 0.22);
 }
 
 .user-name {

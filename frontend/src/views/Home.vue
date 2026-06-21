@@ -1,101 +1,86 @@
 <template>
-  <div
-    class="h-full flex flex-column align-items-center justify-content-center code-background relative"
-    :class="{ 'text-gray-100': isDarkTheme, 'text-gray-900': !isDarkTheme }"
-  >
-    <div
-      class="text-left px-4 w-full max-w-2xl relative z-1 flex-1 flex align-items-center justify-content-center"
-      style="margin-top: -10vh"
-    >
-      <div class="w-full">
-        <div class="title-container mb-4 w-full overflow-x-auto overflow-y-hidden text-center">
-          <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-wide">
-            <span class="code-comment text-gray-500">/*</span>
-            <span class="title-text px-2">物理系考古題系統</span>
-            <span class="code-comment text-gray-500">*/</span>
-          </h1>
-        </div>
-        <div class="code-container mt-5 flex align-items-start relative">
-          <template v-if="isLoading">
-            <div
-              class="w-full font-mono text-sm sm:text-base md:text-lg text-left p-4 border-round shadow-2 m-0"
-              :style="{ backgroundColor: 'var(--code-bg)', opacity: 0.8 }"
-            >
-              <div class="code-compilation">
-                <div class="compilation-line">> Initializing source...</div>
-                <div class="compilation-line">> Parsing syntax...</div>
-                <div class="compilation-line">
-                  > Compiling code<span class="compilation-cursor"></span>
-                </div>
-              </div>
-            </div>
-          </template>
-          <pre
-            v-else
-            class="font-mono text-sm sm:text-base md:text-lg whitespace-pre-wrap text-left p-4 border-round shadow-2 m-0 w-full overflow-hidden"
-            :style="{ backgroundColor: 'var(--code-bg)', opacity: 0.8 }"
-          ><code class="typewriter" v-html="highlightedCode"></code></pre>
-
-          <div
-            v-if="!isLoading"
-            class="language-badge absolute top-0 right-0 py-1 px-2 text-xs uppercase tracking-wider"
-            :style="{
-              backgroundColor: isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-              color: isDarkTheme ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.9)',
-              borderTopRightRadius: '0.5rem',
-              borderBottomLeftRadius: '0.5rem',
-              backdropFilter: 'blur(4px)',
-              border: isDarkTheme
-                ? '1px solid rgba(255, 255, 255, 0.2)'
-                : '1px solid rgba(0, 0, 0, 0.1)',
-            }"
-          >
-            {{ language }}
-          </div>
-        </div>
+  <main class="physics-home" :class="{ 'physics-home-dark': isDarkTheme }">
+    <div class="physics-board" aria-hidden="true">
+      <div class="building-accent">
+        <span class="roof"></span>
+        <span class="column column-one"></span>
+        <span class="column column-two"></span>
+        <span class="column column-three"></span>
+        <span class="walkway"></span>
+        <span class="vine vine-left"></span>
+        <span class="vine vine-top"></span>
+        <span class="vine vine-right"></span>
       </div>
+
+      <div class="equation-card tensor-card">
+        <span>R<sub>μν</sub> − 1/2 Rg<sub>μν</sub> = 8πGT<sub>μν</sub></span>
+      </div>
+      <div class="equation-card fourier-card">
+        <span>F(ω) = ∫ f(t)e<sup>−iωt</sup> dt</span>
+      </div>
+      <div class="equation-card schrodinger-card">
+        <span>iℏ ∂ψ/∂t = Ĥψ</span>
+      </div>
+
+      <svg class="feynman-diagram" viewBox="0 0 320 170">
+        <path class="fermion" d="M22 28 L136 82 L22 142" />
+        <path class="fermion" d="M298 28 L184 82 L298 142" />
+        <path
+          class="photon"
+          d="M136 82 C146 58 164 58 174 82 C184 106 202 106 212 82"
+        />
+        <circle class="vertex" cx="136" cy="82" r="5" />
+        <circle class="vertex" cx="212" cy="82" r="5" />
+      </svg>
+
+      <div class="orbit-hint orbit-a"></div>
+      <div class="orbit-hint orbit-b"></div>
     </div>
 
-    <div class="statistics-panel absolute bottom-4 left-4 right-4 z-2">
-      <div class="flex flex-wrap justify-content-center gap-3">
-        <div
-          v-for="(stat, index) in statistics"
-          :key="stat.key"
-          class="stat-card p-3 border-round shadow-3 backdrop-blur"
-          :style="{
-            backgroundColor: isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.4)',
-            border: isDarkTheme
-              ? '1px solid rgba(255, 255, 255, 0.2)'
-              : '1px solid rgba(0, 0, 0, 0.1)',
-            animationDelay: `${index * 0.1}s`,
-          }"
-          :class="{ 'animate-fade-in': statsLoaded }"
-        >
-          <div class="flex align-items-center gap-2">
-            <i :class="stat.icon" class="text-lg" :style="{ color: stat.color }"></i>
-            <div>
-              <div
-                class="font-bold text-sm"
-                :style="{
-                  color: isDarkTheme ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)',
-                }"
-              >
-                {{ stat.label }}
-              </div>
-              <div
-                class="text-xs opacity-70"
-                :style="{
-                  color: isDarkTheme ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
-                }"
-              >
-                {{ animatedValues[stat.key] }}
-              </div>
-            </div>
-          </div>
+    <section class="hero-shell">
+      <div class="hero-copy">
+        <p class="eyebrow">PHY Past Exam Archive</p>
+        <h1>物理系考古題系統</h1>
+        <p class="subtitle">
+          整理課程、考題、解答與討論，把期中期末前最需要的資料集中在一個安靜好找的地方。
+        </p>
+        <div class="hero-actions">
+          <Button
+            icon="pi pi-sign-in"
+            label="登入開始使用"
+            size="large"
+            @click="openLogin"
+          />
+          <Button
+            icon="pi pi-search"
+            label="查看資料庫狀態"
+            size="large"
+            severity="secondary"
+            outlined
+            @click="scrollToStats"
+          />
         </div>
       </div>
-    </div>
-  </div>
+    </section>
+
+    <section ref="statsSection" class="dashboard-strip">
+      <article
+        v-for="(stat, index) in statistics"
+        :key="stat.key"
+        class="stat-card"
+        :class="{ 'animate-fade-in': statsLoaded }"
+        :style="{ animationDelay: `${index * 0.08}s` }"
+      >
+        <div class="stat-icon">
+          <i :class="stat.icon"></i>
+        </div>
+        <div>
+          <p>{{ stat.label }}</p>
+          <strong>{{ animatedValues[stat.key] }}</strong>
+        </div>
+      </article>
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -103,20 +88,12 @@ defineOptions({
   name: 'HomeView',
 })
 
-import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/atom-one-dark.css'
+import { ref, onMounted, computed } from 'vue'
 import { useTheme } from '../utils/useTheme'
-import { getCodeBgSvg } from '../utils/svgBg'
-import { memeService, statisticsService } from '../api'
+import { statisticsService } from '../api'
 
 const { isDarkTheme } = useTheme()
-const displayedText = ref('')
-const highlightedCode = ref('')
-const selectedMeme = ref({ code: '', language: '' })
-const fullText = computed(() => selectedMeme.value.code)
-const language = computed(() => selectedMeme.value.language)
-const isLoading = ref(true)
+const statsSection = ref(null)
 
 const statisticsData = ref({
   totalUsers: 0,
@@ -140,116 +117,47 @@ const statsLoaded = ref(false)
 
 const statistics = computed(() => [
   {
-    key: 'totalUsers',
-    label: '總用戶數',
-    icon: 'pi pi-users',
-    color: '#4FC3F7',
-  },
-  {
-    key: 'totalDownloads',
-    label: '總下載次數',
-    icon: 'pi pi-download',
-    color: '#66BB6A',
-  },
-  {
-    key: 'onlineUsers',
-    label: '在線用戶',
-    icon: 'pi pi-circle-fill',
-    color: '#FFA726',
-  },
-  {
     key: 'totalArchives',
-    label: '考古題總數',
+    label: '考古題',
     icon: 'pi pi-file-pdf',
-    color: '#EF5350',
   },
   {
     key: 'totalCourses',
-    label: '課程總數',
+    label: '課程',
     icon: 'pi pi-book',
-    color: '#AB47BC',
+  },
+  {
+    key: 'totalDownloads',
+    label: '下載',
+    icon: 'pi pi-download',
+  },
+  {
+    key: 'totalUsers',
+    label: '使用者',
+    icon: 'pi pi-users',
   },
   {
     key: 'activeToday',
     label: '今日活躍',
     icon: 'pi pi-chart-line',
-    color: '#26A69A',
+  },
+  {
+    key: 'onlineUsers',
+    label: '在線',
+    icon: 'pi pi-circle-fill',
   },
 ])
 
-let charIndex = 0
-let typingInterval
-let statsInterval = null
-let animationIntervals = {}
-
 onMounted(async () => {
-  await fetchRandomMeme()
   await fetchStatistics()
-  setBg()
-  // startStatsUpdates()
 })
 
-onUnmounted(() => {
-  clearInterval(typingInterval)
-  clearInterval(statsInterval)
-  Object.values(animationIntervals).forEach(clearInterval)
-})
-
-watch(isDarkTheme, () => {
-  setBg()
-})
-
-async function fetchRandomMeme() {
-  isLoading.value = true
-  try {
-    const response = await memeService.getRandomMeme()
-
-    if (response.data && response.data.content && response.data.language) {
-      selectedMeme.value = {
-        code: response.data.content,
-        language: response.data.language,
-      }
-    } else {
-      console.error('Invalid API response format:', response.data)
-      throw new Error('Invalid API response format')
-    }
-
-    startTypewriter()
-  } catch (error) {
-    console.error('Error fetching meme:', error)
-    selectedMeme.value = {
-      code: "console.log('API connection failed');",
-      language: 'javascript',
-    }
-    startTypewriter()
-  } finally {
-    isLoading.value = false
-  }
+function openLogin() {
+  window.__pastexam?.openLoginModal?.()
 }
 
-function startTypewriter() {
-  clearInterval(typingInterval)
-  charIndex = 0
-  displayedText.value = ''
-  highlightedCode.value = ''
-
-  if (!fullText.value) {
-    console.error('fullText.value is undefined or empty')
-    return
-  }
-
-  typingInterval = setInterval(() => {
-    if (charIndex < fullText.value.length) {
-      displayedText.value += fullText.value.charAt(charIndex)
-      charIndex++
-
-      highlightedCode.value = hljs.highlight(displayedText.value, {
-        language: language.value || 'plaintext',
-      }).value
-    } else {
-      clearInterval(typingInterval)
-    }
-  }, 30)
+function scrollToStats() {
+  statsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 async function fetchStatistics() {
@@ -260,29 +168,19 @@ async function fetchStatistics() {
       statisticsData.value = response.data.data
       animateCounters()
       statsLoaded.value = true
-    } else {
-      console.error('Invalid API response format:', response.data)
-      throw new Error('Invalid API response format')
-    }
-  } catch (error) {
-    console.error('Error fetching statistics:', error)
-    const nanData = {
-      totalUsers: NaN,
-      totalDownloads: NaN,
-      onlineUsers: NaN,
-      totalArchives: NaN,
-      totalCourses: NaN,
-      activeToday: NaN,
+      return
     }
 
-    statisticsData.value = nanData
+    throw new Error('Invalid API response format')
+  } catch (error) {
+    console.error('Error fetching statistics:', error)
     animatedValues.value = {
-      totalUsers: 'NaN',
-      totalDownloads: 'NaN',
-      onlineUsers: 'NaN',
-      totalArchives: 'NaN',
-      totalCourses: 'NaN',
-      activeToday: 'NaN',
+      totalUsers: '--',
+      totalDownloads: '--',
+      onlineUsers: '--',
+      totalArchives: '--',
+      totalCourses: '--',
+      activeToday: '--',
     }
     statsLoaded.value = true
   }
@@ -290,246 +188,346 @@ async function fetchStatistics() {
 
 function animateCounters() {
   Object.keys(statisticsData.value).forEach((key) => {
-    const targetValue = statisticsData.value[key]
-
-    if (animationIntervals[key]) {
-      clearInterval(animationIntervals[key])
-    }
-
-    animatedValues.value[key] = formatNumber(targetValue)
+    animatedValues.value[key] = formatNumber(statisticsData.value[key])
   })
 }
 
 function formatNumber(num) {
-  if (isNaN(num) || num === null || num === undefined) {
-    return 'NaN'
+  if (Number.isNaN(num) || num === null || num === undefined) {
+    return '--'
   }
-  return num.toString()
-}
-
-// function startStatsUpdates() {
-//   statsInterval = setInterval(async () => {
-//     await fetchStatistics()
-//   }, 30000)
-// }
-
-function setBg() {
-  const el = document.querySelector('.code-background')
-  if (el) {
-    el.style.setProperty('background-image', getCodeBgSvg())
-  }
+  return Number(num).toLocaleString('zh-TW')
 }
 </script>
 
 <style scoped>
-.code-background {
+.physics-home {
   position: relative;
+  min-height: 100%;
+  overflow: hidden auto;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 20% 16%, rgba(82, 128, 86, 0.1), transparent 28rem),
+    linear-gradient(135deg, #f6faf5 0%, #eef4ef 58%, #f2f0e7 100%);
 }
 
-.code-background::before {
-  content: '';
+.physics-home-dark {
+  background:
+    radial-gradient(circle at 20% 16%, rgba(83, 150, 98, 0.12), transparent 34rem),
+    linear-gradient(135deg, #101610 0%, #13201a 58%, #171b15 100%);
+}
+
+.hero-shell {
+  min-height: calc(100vh - var(--navbar-height));
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: clamp(2rem, 7vh, 5rem) 0;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 54rem;
+  padding: clamp(1rem, 2vw, 1.5rem) 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.95rem;
+  color: #8fd8cb;
+  font-size: 0.86rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.physics-home-dark .eyebrow {
+  color: #9be0d4;
+}
+
+h1 {
+  margin: 0;
+  max-width: 54rem;
+  font-size: clamp(2.75rem, 3.6vw, 4rem);
+  font-weight: 560;
+  line-height: 1.13;
+  letter-spacing: 0;
+}
+
+.subtitle {
+  max-width: 36rem;
+  margin: 1.2rem 0 0;
+  color: var(--text-secondary);
+  font-size: clamp(0.98rem, 1.15vw, 1.08rem);
+  line-height: 1.78;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.physics-board {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-
-  animation: scrollBackground 120s linear infinite;
+  height: calc(100vh - var(--navbar-height));
+  min-height: 42rem;
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(236, 246, 232, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236, 246, 232, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 23% 26%, rgba(99, 150, 96, 0.1), transparent 18rem),
+    linear-gradient(135deg, rgba(16, 38, 30, 0.98), rgba(15, 27, 25, 0.96));
+  background-size:
+    34px 34px,
+    34px 34px,
+    auto,
+    auto,
+    auto;
   pointer-events: none;
   z-index: 0;
 }
 
-@keyframes scrollBackground {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 300% 300%;
-  }
-}
-
-.code-container {
-  height: 180px;
-}
-
-.typewriter::after {
+.physics-board::before {
   content: '';
-  border-right: 3px solid rgba(248, 248, 242, 0.7);
-  animation: blink 0.75s step-end infinite;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, transparent 0 42%, rgba(237, 242, 226, 0.035) 45%, transparent 49%),
+    radial-gradient(circle at 18% 86%, rgba(92, 139, 83, 0.1), transparent 13rem);
+  pointer-events: none;
 }
 
-.language-badge {
-  border-top-right-radius: 0.5rem;
-  border-bottom-left-radius: 0.5rem;
-  border-top-left-radius: 0;
-  border-bottom-right-radius: 0;
+.physics-board::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(10, 23, 16, 0.2) 0%, rgba(10, 23, 16, 0.62) 24%, rgba(10, 23, 16, 0.2) 58%, rgba(10, 23, 16, 0.04) 100%),
+    linear-gradient(0deg, rgba(10, 23, 16, 0.28), transparent 38%);
+  pointer-events: none;
 }
 
-:deep(.hljs) {
-  background-color: transparent !important;
-  padding: 0 !important;
-  color: var(--code-text) !important;
+.building-accent {
+  position: absolute;
+  right: clamp(3rem, 7vw, 7rem);
+  bottom: clamp(7rem, 13vh, 9.5rem);
+  width: min(15vw, 12.5rem);
+  height: min(12vw, 9.5rem);
+  opacity: 0.2;
 }
 
-:deep(.hljs-keyword),
-:deep(.hljs-selector-tag),
-:deep(.hljs-subst) {
-  color: var(--code-keyword) !important;
+.roof,
+.walkway,
+.column {
+  position: absolute;
+  display: block;
+  background: rgba(218, 216, 199, 0.36);
+  box-shadow: inset 0 -3px 0 rgba(114, 112, 98, 0.16);
 }
 
-:deep(.hljs-string),
-:deep(.hljs-doctag) {
-  color: var(--code-string) !important;
+.roof {
+  top: 0;
+  left: 4%;
+  width: 92%;
+  height: 16%;
+  border-radius: 0.35rem 0.35rem 0 0;
 }
 
-:deep(.hljs-title),
-:deep(.hljs-section),
-:deep(.hljs-selector-id) {
-  color: var(--code-title) !important;
-}
-
-:deep(.hljs-comment),
-:deep(.hljs-quote) {
-  color: var(--code-comment) !important;
-}
-
-:deep(.hljs-number),
-:deep(.hljs-literal) {
-  color: var(--code-number) !important;
-}
-
-:deep(.hljs-type),
-:deep(.hljs-class .hljs-title) {
-  color: var(--code-type) !important;
-}
-
-:deep(.hljs-attribute),
-:deep(.hljs-name),
-:deep(.hljs-regexp),
-:deep(.hljs-link) {
-  color: var(--code-attribute) !important;
-}
-
-:deep(.hljs-symbol),
-:deep(.hljs-bullet) {
-  color: var(--code-symbol) !important;
-}
-
-:deep(.hljs-built_in),
-:deep(.hljs-builtin-name) {
-  color: var(--code-builtin) !important;
-}
-
-:deep(.hljs-meta) {
-  color: var(--code-meta) !important;
-}
-
-:deep(.hljs-deletion) {
-  background: var(--code-deletion-bg) !important;
-}
-
-:deep(.hljs-addition) {
-  background: var(--code-addition-bg) !important;
-}
-
-:deep(.hljs-emphasis) {
-  font-style: italic !important;
-}
-
-:deep(.hljs-strong) {
-  font-weight: bold !important;
-}
-
-@keyframes blink {
-  from,
-  to {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.title-container {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.title-container::-webkit-scrollbar {
-  display: none;
-}
-
-.title-text {
-  background: linear-gradient(to right, var(--title-gradient-start), var(--title-gradient-end));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.code-compilation {
-  font-family: monospace;
-  text-align: left;
+.walkway {
+  left: 0;
+  bottom: 0;
   width: 100%;
-  color: var(--text-secondary);
+  height: 16%;
 }
 
-.compilation-line {
-  padding: 3px 0;
+.column {
+  top: 14%;
+  width: 12%;
+  height: 74%;
 }
 
-.compilation-line:last-child {
-  color: #e0e0e0;
+.column-one {
+  left: 12%;
 }
 
-.compilation-cursor {
-  display: inline-block;
-  height: 1.2em;
-  border-right: 3px solid rgba(248, 248, 242, 0.7);
-  animation: blink 0.75s step-end infinite;
-  vertical-align: text-bottom;
-  margin-left: 2px;
+.column-two {
+  left: 44%;
+}
+
+.column-three {
+  left: 76%;
+}
+
+.vine {
+  position: absolute;
+  display: block;
+  background: linear-gradient(180deg, rgba(99, 151, 74, 0.58), rgba(45, 101, 49, 0.58));
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.vine-left {
+  left: 7%;
+  top: 8%;
+  width: 7%;
+  height: 84%;
+}
+
+.vine-top {
+  left: 6%;
+  top: 2%;
+  width: 88%;
+  height: 9%;
+  background: linear-gradient(90deg, rgba(45, 101, 49, 0.58), rgba(99, 151, 74, 0.58));
+}
+
+.vine-right {
+  right: 9%;
+  top: 10%;
+  width: 6%;
+  height: 78%;
+}
+
+.equation-card {
+  position: absolute;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(221, 238, 205, 0.11);
+  border-radius: 0.35rem;
+  color: rgba(231, 239, 224, 0.5);
+  background: rgba(4, 16, 15, 0.1);
+  box-shadow: none;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(0.85rem, 1.05vw, 1rem);
+  white-space: nowrap;
+}
+
+.tensor-card {
+  top: 16%;
+  right: 21%;
+  transform: rotate(-3deg);
+}
+
+.fourier-card {
+  top: 34%;
+  right: 6%;
+  transform: rotate(2deg);
+}
+
+.schrodinger-card {
+  right: 31%;
+  bottom: 19%;
+  transform: rotate(-2deg);
+}
+
+.feynman-diagram {
+  position: absolute;
+  top: 47%;
+  right: 23%;
+  width: min(16vw, 13.5rem);
+  overflow: visible;
+  opacity: 0.48;
+}
+
+.fermion,
+.photon {
+  fill: none;
+  stroke: rgba(226, 238, 215, 0.46);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.photon {
+  stroke: rgba(196, 176, 113, 0.62);
+  stroke-dasharray: 10 10;
+}
+
+.vertex {
+  fill: rgba(196, 176, 113, 0.7);
+}
+
+.orbit-hint {
+  position: absolute;
+  border: 1px solid rgba(129, 194, 182, 0.12);
+  border-radius: 999px;
+}
+
+.orbit-a {
+  top: 8%;
+  right: -9%;
+  width: 30%;
+  height: 30%;
+  transform: rotate(-18deg);
+}
+
+.orbit-b {
+  left: 55%;
+  top: 28%;
+  width: 34%;
+  height: 16%;
+  transform: rotate(24deg);
+}
+
+.dashboard-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: min(1180px, calc(100% - 2rem));
+  margin: -5.5rem auto 2rem;
   position: relative;
-}
-
-/* Statistics Panel Styles */
-.statistics-panel {
-  z-index: 10;
+  z-index: 2;
 }
 
 .stat-card {
-  min-width: 140px;
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
-  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 5.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(127, 157, 145, 0.16);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: 0 12px 28px rgba(26, 38, 34, 0.05);
+  backdrop-filter: blur(14px);
   opacity: 0;
-  transform: translateY(-20px);
-  position: relative;
-  overflow: hidden;
+  transform: translateY(12px);
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transition: left 0.5s;
+.physics-home-dark .stat-card {
+  background: rgba(15, 24, 21, 0.74);
+  border-color: rgba(125, 174, 164, 0.16);
 }
 
-.stat-card:hover::before {
-  left: 100%;
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  color: #0f3734;
+  background: #c4eee8;
 }
 
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+.stat-card p {
+  margin: 0 0 0.2rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.stat-card strong {
+  font-size: 1.35rem;
 }
 
 .animate-fade-in {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp 0.45s ease forwards;
 }
 
 @keyframes fadeInUp {
@@ -539,61 +537,70 @@ function setBg() {
   }
 }
 
-.stat-card:has([class*='pi-circle-fill']) .pi-circle-fill {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-@media (max-width: 768px) {
-  .statistics-panel {
-    bottom: 2rem;
-    left: 1rem;
-    right: 1rem;
+@media (max-width: 920px) {
+  .hero-shell {
+    align-items: flex-start;
+    padding-top: clamp(2rem, 7vh, 5rem);
   }
 
-  .stat-card {
-    min-width: 120px;
-    padding: 0.75rem !important;
+  .physics-board {
+    min-height: 44rem;
   }
 
-  .stat-card .text-lg {
-    font-size: 1rem !important;
-  }
-
-  .stat-card .text-sm {
-    font-size: 0.75rem !important;
-  }
-
-  .stat-card .text-xs {
-    font-size: 0.625rem !important;
+  .dashboard-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0;
   }
 }
 
-@media (max-width: 480px) {
-  .statistics-panel {
-    bottom: 1rem;
-    left: 0.5rem;
-    right: 0.5rem;
+@media (max-width: 560px) {
+  .hero-shell {
+    width: min(100% - 1rem, 1180px);
   }
 
-  .stat-card {
-    min-width: 100px;
-    padding: 0.5rem !important;
+  .hero-actions :deep(.p-button) {
+    width: 100%;
   }
 
-  .stat-card .flex.gap-2 {
-    gap: 0.5rem !important;
+  .equation-card {
+    font-size: 0.9rem;
+  }
+
+  .tensor-card {
+    left: 7%;
+    right: auto;
+    top: 48%;
+  }
+
+  .fourier-card {
+    right: 5%;
+    top: 60%;
+  }
+
+  .schrodinger-card {
+    left: 9%;
+    right: auto;
+    bottom: 8%;
+  }
+
+  .feynman-diagram {
+    top: 68%;
+    right: 5%;
+    width: 42vw;
+    opacity: 0.28;
+  }
+
+  .building-accent {
+    right: 2%;
+    bottom: 10%;
+    width: 34vw;
+    height: 24vw;
+    opacity: 0.18;
+  }
+
+  .dashboard-strip {
+    grid-template-columns: 1fr;
+    width: min(100% - 1rem, 1180px);
   }
 }
 </style>

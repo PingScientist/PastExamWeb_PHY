@@ -2,16 +2,16 @@
 
 :root {
   /* Light theme variables */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --text-primary: #212529;
-  --text-secondary: #6c757d;
-  --border-color: #dee2e6;
-  --code-bg: #f8f9fa;
-  --code-text: #212529;
-  --title-gradient-start: #495057;
-  --title-gradient-end: #6c757d;
-  --code-bg-svg-fill: rgba(60, 60, 60, 0.16);
+  --bg-primary: #f7fbfb;
+  --bg-secondary: #eef6f2;
+  --text-primary: #172522;
+  --text-secondary: #5d6f6a;
+  --border-color: #cbdad4;
+  --code-bg: #eef6f2;
+  --code-text: #172522;
+  --title-gradient-start: #176f7b;
+  --title-gradient-end: #b9821d;
+  --code-bg-svg-fill: rgba(29, 116, 130, 0.16);
 
   /* Code highlighting - Light theme */
   --code-keyword: #d73a49;
@@ -30,16 +30,16 @@
 
 .dark {
   /* Dark theme variables */
-  --bg-primary: #1a1b1e;
-  --bg-secondary: #25272f;
-  --text-primary: #f8f8f2;
-  --text-secondary: #a0a0a0;
-  --border-color: #2d2f36;
-  --code-bg: #25272f;
-  --code-text: #f8f8f2;
-  --title-gradient-start: #a2a9b0;
-  --title-gradient-end: #d5d9e0;
-  --code-bg-svg-fill: rgba(255, 255, 255, 0.12);
+  --bg-primary: #101715;
+  --bg-secondary: #17221f;
+  --text-primary: #f3fbf8;
+  --text-secondary: #aabbb5;
+  --border-color: #2e443e;
+  --code-bg: #17221f;
+  --code-text: #f3fbf8;
+  --title-gradient-start: #6ee3dd;
+  --title-gradient-end: #ffe083;
+  --code-bg-svg-fill: rgba(110, 227, 221, 0.12);
 
   /* Code highlighting - Dark theme (brighter) */
   --code-keyword: #ff92df;
@@ -74,7 +74,7 @@ html.dark {
   backface-visibility: visible !important;
 }
 
-.code-background {
+.physics-background {
   position: relative;
   background-position: 0 0;
   animation: scrollBackground 120s linear infinite;

@@ -1,5 +1,5 @@
 <template>
-  <div class="not-found code-background h-full flex align-items-center justify-content-center">
+  <div class="not-found physics-background h-full flex align-items-center justify-content-center">
     <div class="text-center px-4 w-full max-w-md" :style="{ color: 'var(--text-secondary)' }">
       <Card class="border-round shadow-2" :style="{ backgroundColor: 'var(--bg-secondary)' }">
         <template #title>
@@ -21,7 +21,7 @@
 
 <script>
 import { useTheme } from '../utils/useTheme'
-import { getCodeBgSvg } from '../utils/svgBg'
+import { getFieldBgSvg } from '../utils/svgBg'
 
 export default {
   setup() {
@@ -33,9 +33,9 @@ export default {
       this.$router.push('/')
     },
     setBg() {
-      const el = document.querySelector('.code-background')
+      const el = document.querySelector('.physics-background')
       if (el) {
-        el.style.setProperty('background-image', getCodeBgSvg())
+        el.style.setProperty('background-image', getFieldBgSvg())
       }
     },
   },
@@ -51,11 +51,11 @@ export default {
 </script>
 
 <style scoped>
-.code-background {
+.physics-background {
   position: relative;
 }
 
-.code-background::before {
+.physics-background::before {
   content: '';
   position: absolute;
   top: 0;
@@ -76,7 +76,7 @@ export default {
   }
 }
 
-.code-background > div {
+.physics-background > div {
   position: relative;
   z-index: 1;
 }

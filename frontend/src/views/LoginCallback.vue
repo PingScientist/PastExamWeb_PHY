@@ -1,5 +1,5 @@
 <template>
-  <div class="login-callback code-background h-full flex align-items-center justify-content-center">
+  <div class="login-callback physics-background h-full flex align-items-center justify-content-center">
     <div class="text-center px-4 w-full max-w-md" :style="{ color: 'var(--text-secondary)' }">
       <div v-if="errorMessage">
         <Card class="border-round shadow-2" :style="{ backgroundColor: 'var(--bg-secondary)' }">
@@ -29,7 +29,7 @@
 
 <script>
 import { useTheme } from '../utils/useTheme'
-import { getCodeBgSvg } from '../utils/svgBg'
+import { getFieldBgSvg } from '../utils/svgBg'
 import { STORAGE_KEYS, setSessionItem } from '../utils/storage'
 
 export default {
@@ -49,9 +49,9 @@ export default {
       this.$router.push('/')
     },
     setBg() {
-      const el = document.querySelector('.code-background')
+      const el = document.querySelector('.physics-background')
       if (el) {
-        el.style.setProperty('background-image', getCodeBgSvg())
+        el.style.setProperty('background-image', getFieldBgSvg())
       }
     },
   },
@@ -81,11 +81,11 @@ export default {
 </script>
 
 <style scoped>
-.code-background {
+.physics-background {
   position: relative;
 }
 
-.code-background::before {
+.physics-background::before {
   content: '';
   position: absolute;
   top: 0;
@@ -107,7 +107,7 @@ export default {
   }
 }
 
-.code-background > div {
+.physics-background > div {
   position: relative;
   z-index: 1;
 }
