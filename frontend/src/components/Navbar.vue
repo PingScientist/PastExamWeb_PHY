@@ -2,33 +2,37 @@
   <div class="card">
     <Menubar :model="menuItems">
       <template #start>
-        <Button
-          v-if="$route.path === '/archive'"
-          :icon="'pi pi-bars'"
-          severity="secondary"
-          size="small"
-          outlined
-          class="mr-2"
-          @click="$emit('toggle-sidebar')"
-        />
-        <span
-          class="font-bold text-lg md:text-xl title-text clickable-title flex align-items-center"
-          @click="handleTitleClick"
-        >
-          <img
-            src="/physics-symbol.jpeg"
-            alt="清大物理考古系統"
-            class="brand-mark mr-2 inline-block align-middle"
+        <div class="nav-brand-cluster">
+          <Button
+            v-if="$route.path === '/archive'"
+            :icon="'pi pi-bars'"
+            severity="secondary"
+            size="small"
+            text
+            class="sidebar-toggle"
+            @click="$emit('toggle-sidebar')"
           />
-          <span class="brand-title-main">清大物理考古系統</span>
-        </span>
+          <button class="brand-lockup clickable-title" type="button" @click="handleTitleClick">
+            <span class="brand-mark-frame">
+              <img
+                src="/physics-symbol.jpeg"
+                alt="清大物理考古系統"
+                class="brand-mark"
+              />
+            </span>
+            <span class="brand-wordmark">
+              <span class="brand-title-main">清大物理考古系統</span>
+              <span class="brand-title-sub">Physics Archive · NTHU</span>
+            </span>
+          </button>
+        </div>
       </template>
       <template #end>
-        <div class="flex align-items-center gap-2">
-          <div class="hidden md:flex align-items-center gap-2">
+        <div class="nav-control-cluster">
+          <div class="hidden md:flex align-items-center gap-2 nav-action-group">
             <span
               v-if="isAuthenticated"
-              class="user-name flex align-items-center mr-2"
+              class="user-name flex align-items-center"
               :style="{ color: 'var(--text-secondary)' }"
               >{{ userData?.name || 'User' }}</span
             >
@@ -38,7 +42,7 @@
               label="功能列表"
               severity="secondary"
               size="small"
-              outlined
+              text
               @click="toggleMoreActions($event)"
               aria-label="More actions"
             />
@@ -49,7 +53,7 @@
               @click="handleLogout"
               severity="secondary"
               size="small"
-              outlined
+              text
               aria-label="Logout"
             />
             <Button
@@ -59,19 +63,19 @@
               @click="openLoginDialog"
               severity="secondary"
               size="small"
-              outlined
+              text
               aria-label="Login"
             />
           </div>
 
-          <div class="flex md:hidden align-items-center gap-2">
+          <div class="flex md:hidden align-items-center gap-2 nav-action-group">
             <Button
               v-if="moreActions.length"
               icon="pi pi-list"
               @click="toggleMoreActions($event)"
               severity="secondary"
               size="small"
-              outlined
+              text
               aria-label="More actions"
             />
             <Button
@@ -80,7 +84,7 @@
               @click="openLoginDialog"
               severity="secondary"
               size="small"
-              outlined
+              text
               aria-label="Login"
             />
           </div>
@@ -89,7 +93,8 @@
             :icon="isDarkTheme ? 'pi pi-sun' : 'pi pi-moon'"
             severity="secondary"
             size="small"
-            outlined
+            text
+            class="theme-toggle-button"
             @click="handleToggleTheme"
           />
         </div>
@@ -880,27 +885,19 @@ export default {
   padding: 1.5rem;
 }
 
-.title-text {
-  padding: 0 0.5rem;
-}
-
-.brand-title-main {
-  color: #edf7ed;
-  font-weight: 780;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 18px rgba(155, 224, 212, 0.15);
-}
-
 .clickable-title {
   cursor: pointer;
   transform: scale(1);
   transform-origin: center center;
   will-change: transform;
-  transition: transform 300ms ease-in-out !important;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease !important;
 }
 
 .clickable-title:hover {
-  transform: scale(1.02);
+  transform: translateY(-1px);
 }
 
 .card {
@@ -908,17 +905,99 @@ export default {
   display: flex;
   align-items: center;
   background:
-    linear-gradient(90deg, rgba(86, 199, 189, 0.08), transparent 34%),
-    var(--bg-primary);
-  border-bottom: 1px solid rgba(100, 132, 122, 0.18);
+    linear-gradient(90deg, rgba(199, 176, 107, 0.08), transparent 36%),
+    rgba(13, 15, 19, 0.88);
+  border-bottom: 1px solid rgba(199, 176, 107, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.nav-brand-cluster,
+.nav-control-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.8rem;
+  padding: 0.28rem 0.92rem 0.28rem 0.34rem;
+  border: 1px solid rgba(199, 176, 107, 0.22);
+  border-radius: 999px;
+  color: inherit;
+  background:
+    linear-gradient(90deg, rgba(199, 176, 107, 0.12), transparent 58%),
+    rgba(8, 18, 18, 0.66);
+  font: inherit;
+}
+
+.brand-lockup:hover {
+  border-color: rgba(199, 176, 107, 0.42);
+  background:
+    linear-gradient(90deg, rgba(199, 176, 107, 0.16), transparent 58%),
+    rgba(9, 22, 22, 0.76);
+}
+
+.brand-mark-frame {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 999px;
+  background: #ffffff;
 }
 
 .brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  box-shadow: 0 0 18px rgba(202, 179, 111, 0.16);
+}
+
+.brand-wordmark {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.brand-title-main {
+  color: #eef6ed;
+  font-size: clamp(1rem, 1.2vw, 1.18rem);
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(155, 224, 212, 0.12);
+}
+
+.brand-title-sub {
+  color: rgba(199, 176, 107, 0.82);
+  font-size: 0.58rem;
+  font-weight: 760;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.nav-control-cluster {
+  padding: 0.28rem;
+  border: 1px solid rgba(123, 145, 141, 0.22);
+  border-radius: 999px;
+  background: rgba(8, 12, 15, 0.55);
+}
+
+.nav-action-group {
+  padding-right: 0.22rem;
+  border-right: 1px solid rgba(123, 145, 141, 0.18);
+}
+
+.sidebar-toggle {
+  border-radius: 999px;
+}
+
+.theme-toggle-button {
+  border-radius: 999px;
 }
 
 .user-name {
@@ -936,7 +1015,19 @@ export default {
 
 :deep(.p-menubar) {
   width: 100%;
-  padding: 0.5rem 1rem;
+  padding: 0.42rem clamp(0.75rem, 1.6vw, 1.25rem);
+  border: 0;
+  background: transparent;
+}
+
+:deep(.p-button.p-button-text) {
+  color: rgba(229, 235, 226, 0.78);
+  border-radius: 999px;
+}
+
+:deep(.p-button.p-button-text:hover) {
+  color: #eef6ed;
+  background: rgba(199, 176, 107, 0.12);
 }
 
 :deep(.p-password) {
