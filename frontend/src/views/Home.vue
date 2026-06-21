@@ -51,7 +51,7 @@
           <p class="title-roman">Physics &amp; Archaeology System</p>
           <p class="title-campus"><span></span>NTHU<span></span></p>
         </div>
-        <p class="subtitle">整理課</p>
+        <p class="subtitle">書卷沒有，考古這有。</p>
         <div class="hero-actions">
           <Button icon="pi pi-sign-in" label="登入開始使用" size="large" @click="openLogin" />
           <Button
