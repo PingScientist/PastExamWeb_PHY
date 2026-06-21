@@ -430,6 +430,7 @@ h1 {
     );
   pointer-events: none;
   z-index: 3;
+  animation: fieldGlow 10s ease-in-out infinite alternate;
 }
 
 .physics-board::after {
@@ -446,6 +447,26 @@ h1 {
     linear-gradient(0deg, rgba(8, 18, 16, 0.32), transparent 40%);
   pointer-events: none;
   z-index: 4;
+  animation: gravityVignette 12s ease-in-out infinite alternate;
+}
+
+.formula-cloud::before {
+  content: '';
+  position: absolute;
+  top: -18%;
+  left: -24%;
+  width: 46%;
+  height: 145%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(172, 219, 205, 0.085),
+    rgba(202, 179, 111, 0.095),
+    transparent
+  );
+  filter: blur(16px);
+  transform: skewX(-16deg);
+  animation: spectralSweep 7.5s linear infinite;
 }
 
 .spacetime-mesh {
@@ -455,21 +476,26 @@ h1 {
   height: 100%;
   opacity: 0.68;
   z-index: 1;
+  transform-origin: 68% 46%;
+  animation: spacetimeDrift 9s ease-in-out infinite alternate;
 }
 
 .mesh-lines path {
   fill: none;
-  stroke: rgba(198, 223, 205, 0.18);
-  stroke-width: 1.2;
+  stroke: rgba(198, 223, 205, 0.23);
+  stroke-width: 1.35;
   vector-effect: non-scaling-stroke;
+  animation: meshBreathing 5.5s ease-in-out infinite alternate;
 }
 
 .geodesics path {
   fill: none;
-  stroke: rgba(202, 179, 111, 0.34);
-  stroke-width: 2.1;
+  stroke: rgba(202, 179, 111, 0.58);
+  stroke-width: 2.8;
   stroke-linecap: round;
+  stroke-dasharray: 22 18;
   vector-effect: non-scaling-stroke;
+  animation: geodesicFlow 5.5s linear infinite;
 }
 
 .mass-core {
@@ -477,12 +503,15 @@ h1 {
   stroke: rgba(221, 237, 210, 0.18);
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
+  transform-origin: 760px 380px;
+  animation: massPulse 4s ease-in-out infinite;
 }
 
 .formula-cloud {
   position: absolute;
   inset: 0;
   z-index: 2;
+  animation: formulaFieldDrift 9s ease-in-out infinite alternate;
 }
 
 .theory-card {
@@ -493,6 +522,8 @@ h1 {
   font-family: Georgia, 'Times New Roman', serif;
   transform: rotate(var(--tilt, 0deg));
   white-space: nowrap;
+  animation: var(--formula-motion, formulaOrbitA) var(--float-duration, 8s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
 }
 
 .formula-expression {
@@ -505,108 +536,162 @@ h1 {
   top: 12%;
   left: 52%;
   --tilt: -3deg;
+  --float-delay: -1s;
+  --float-duration: 7.5s;
+  --formula-motion: formulaOrbitA;
 }
 
 .formula-2 {
   top: 22%;
   left: 64%;
   --tilt: 2deg;
+  --float-delay: -7s;
+  --float-duration: 8.6s;
+  --formula-motion: formulaOrbitB;
 }
 
 .formula-3 {
   top: 34%;
   left: 55%;
   --tilt: -1deg;
+  --float-delay: -4s;
+  --float-duration: 9.2s;
+  --formula-motion: formulaOrbitC;
 }
 
 .formula-4 {
   top: 9%;
   right: 5%;
   --tilt: 3deg;
+  --float-delay: -10s;
+  --float-duration: 7.8s;
+  --formula-motion: formulaOrbitB;
 }
 
 .formula-5 {
   bottom: 20%;
   right: 13%;
   --tilt: -2deg;
+  --float-delay: -13s;
+  --float-duration: 8.2s;
+  --formula-motion: formulaOrbitA;
 }
 
 .formula-6 {
   top: 46%;
   right: 6%;
   --tilt: 2deg;
+  --float-delay: -5s;
+  --float-duration: 9.8s;
+  --formula-motion: formulaOrbitC;
 }
 
 .formula-7 {
   top: 19%;
   left: 6%;
   --tilt: -2deg;
+  --float-delay: -9s;
+  --float-duration: 8.4s;
+  --formula-motion: formulaOrbitC;
 }
 
 .formula-8 {
   bottom: 14%;
   right: 34%;
   --tilt: 3deg;
+  --float-delay: -2s;
+  --float-duration: 7.4s;
+  --formula-motion: formulaOrbitB;
 }
 
 .formula-9 {
   top: 60%;
   left: 57%;
   --tilt: -3deg;
+  --float-delay: -12s;
+  --float-duration: 9.4s;
+  --formula-motion: formulaOrbitA;
 }
 
 .formula-10 {
   bottom: 22%;
   right: 4%;
   --tilt: 2deg;
+  --float-delay: -6s;
+  --float-duration: 8.8s;
+  --formula-motion: formulaOrbitC;
 }
 
 .formula-11 {
   top: 15%;
   left: 32%;
   --tilt: 1deg;
+  --float-delay: -15s;
+  --float-duration: 7.9s;
+  --formula-motion: formulaOrbitA;
 }
 
 .formula-12 {
   bottom: 14%;
   left: 6%;
   --tilt: -2deg;
+  --float-delay: -3s;
+  --float-duration: 8.5s;
+  --formula-motion: formulaOrbitB;
 }
 
 .formula-13 {
   top: 30%;
   right: 18%;
   --tilt: -2deg;
+  --float-delay: -11s;
+  --float-duration: 9s;
+  --formula-motion: formulaOrbitC;
 }
 
 .formula-14 {
   bottom: 30%;
   left: 44%;
   --tilt: 2deg;
+  --float-delay: -8s;
+  --float-duration: 7.7s;
+  --formula-motion: formulaOrbitB;
 }
 
 .formula-15 {
   bottom: 7%;
   left: 43%;
   --tilt: -1deg;
+  --float-delay: -14s;
+  --float-duration: 8.9s;
+  --formula-motion: formulaOrbitA;
 }
 
 .formula-16 {
   bottom: 28%;
   left: 10%;
   --tilt: 2deg;
+  --float-delay: -4s;
+  --float-duration: 9.6s;
+  --formula-motion: formulaOrbitC;
 }
 
 .formula-17 {
   bottom: 18%;
   left: 23%;
   --tilt: -3deg;
+  --float-delay: -16s;
+  --float-duration: 7.6s;
+  --formula-motion: formulaOrbitB;
 }
 
 .formula-18 {
   top: 40%;
   left: 73%;
   --tilt: -1deg;
+  --float-delay: -7s;
+  --float-duration: 9.1s;
+  --formula-motion: formulaOrbitA;
 }
 
 .formula-19 {
@@ -614,12 +699,18 @@ h1 {
   left: 68%;
   color: rgba(242, 238, 216, 0.34);
   --tilt: -2deg;
+  --float-delay: -18s;
+  --float-duration: 8s;
+  --formula-motion: formulaOrbitC;
 }
 
 .formula-20 {
   bottom: 39%;
   right: 31%;
   --tilt: 3deg;
+  --float-delay: -5s;
+  --float-duration: 8.7s;
+  --formula-motion: formulaOrbitA;
 }
 
 .dashboard-strip {
@@ -696,6 +787,158 @@ h1 {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes spacetimeDrift {
+  from {
+    transform: translate3d(-3%, -1.2%, 0) scale(1.02) rotate(-0.55deg);
+  }
+
+  to {
+    transform: translate3d(3.2%, 1.4%, 0) scale(1.055) rotate(0.68deg);
+  }
+}
+
+@keyframes meshBreathing {
+  from {
+    opacity: 0.66;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes geodesicFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -460;
+  }
+}
+
+@keyframes massPulse {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.22);
+  }
+}
+
+@keyframes fieldGlow {
+  from {
+    opacity: 0.82;
+    transform: translate3d(-2%, 0.4%, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(2%, -1.1%, 0);
+  }
+}
+
+@keyframes gravityVignette {
+  from {
+    opacity: 0.85;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes formulaFieldDrift {
+  from {
+    transform: translate3d(-1.8%, 0.9%, 0);
+  }
+
+  to {
+    transform: translate3d(1.7%, -1%, 0);
+  }
+}
+
+@keyframes formulaOrbitA {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: rotate(var(--tilt, 0deg)) translate3d(0, 0, 0);
+  }
+
+  33% {
+    opacity: 0.36;
+    transform: rotate(var(--tilt, 0deg)) translate3d(1.25rem, -0.8rem, 0);
+  }
+
+  66% {
+    opacity: 0.26;
+    transform: rotate(var(--tilt, 0deg)) translate3d(-0.75rem, 0.9rem, 0);
+  }
+}
+
+@keyframes formulaOrbitB {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: rotate(var(--tilt, 0deg)) translate3d(0, 0, 0);
+  }
+
+  38% {
+    opacity: 0.34;
+    transform: rotate(var(--tilt, 0deg)) translate3d(-1.35rem, -0.65rem, 0);
+  }
+
+  72% {
+    opacity: 0.27;
+    transform: rotate(var(--tilt, 0deg)) translate3d(0.95rem, 1rem, 0);
+  }
+}
+
+@keyframes formulaOrbitC {
+  0%,
+  100% {
+    opacity: 0.17;
+    transform: rotate(var(--tilt, 0deg)) translate3d(0, 0, 0);
+  }
+
+  50% {
+    opacity: 0.38;
+    transform: rotate(var(--tilt, 0deg)) translate3d(0.4rem, -1.45rem, 0);
+  }
+
+  78% {
+    opacity: 0.24;
+    transform: rotate(var(--tilt, 0deg)) translate3d(-1.15rem, 0.4rem, 0);
+  }
+}
+
+@keyframes spectralSweep {
+  from {
+    transform: translateX(-25vw) skewX(-16deg);
+  }
+
+  to {
+    transform: translateX(150vw) skewX(-16deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .physics-board::before,
+  .physics-board::after,
+  .spacetime-mesh,
+  .mesh-lines path,
+  .geodesics path,
+  .mass-core,
+  .formula-cloud,
+  .theory-card {
+    animation: none !important;
   }
 }
 
