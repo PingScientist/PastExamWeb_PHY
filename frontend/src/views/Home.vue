@@ -466,7 +466,7 @@ h1 {
   );
   filter: blur(16px);
   transform: skewX(-16deg);
-  animation: spectralSweep 7.5s linear infinite;
+  animation: spectralSweep 5.2s linear infinite;
 }
 
 .spacetime-mesh {
@@ -477,7 +477,7 @@ h1 {
   opacity: 0.68;
   z-index: 1;
   transform-origin: 68% 46%;
-  animation: spacetimeDrift 9s ease-in-out infinite alternate;
+  animation: spacetimeDrift 6.8s ease-in-out infinite alternate;
 }
 
 .mesh-lines path {
@@ -495,7 +495,7 @@ h1 {
   stroke-linecap: round;
   stroke-dasharray: 22 18;
   vector-effect: non-scaling-stroke;
-  animation: geodesicFlow 5.5s linear infinite;
+  animation: geodesicFlow 3.8s linear infinite;
 }
 
 .mass-core {
@@ -504,14 +504,14 @@ h1 {
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
   transform-origin: 760px 380px;
-  animation: massPulse 4s ease-in-out infinite;
+  animation: massPulse 3.2s ease-in-out infinite;
 }
 
 .formula-cloud {
   position: absolute;
   inset: 0;
   z-index: 2;
-  animation: formulaFieldDrift 9s ease-in-out infinite alternate;
+  animation: formulaFieldDrift 6.6s ease-in-out infinite alternate;
 }
 
 .theory-card {
@@ -792,11 +792,11 @@ h1 {
 
 @keyframes spacetimeDrift {
   from {
-    transform: translate3d(-3%, -1.2%, 0) scale(1.02) rotate(-0.55deg);
+    transform: translate3d(-5%, -2.2%, 0) scale(1.03) rotate(-0.9deg);
   }
 
   to {
-    transform: translate3d(3.2%, 1.4%, 0) scale(1.055) rotate(0.68deg);
+    transform: translate3d(5.4%, 2.1%, 0) scale(1.085) rotate(1deg);
   }
 }
 
@@ -816,20 +816,20 @@ h1 {
   }
 
   to {
-    stroke-dashoffset: -460;
+    stroke-dashoffset: -720;
   }
 }
 
 @keyframes massPulse {
   0%,
   100% {
-    opacity: 0.58;
-    transform: scale(0.9);
+    opacity: 0.48;
+    transform: scale(0.82);
   }
 
   50% {
     opacity: 1;
-    transform: scale(1.22);
+    transform: scale(1.36);
   }
 }
 
@@ -857,11 +857,11 @@ h1 {
 
 @keyframes formulaFieldDrift {
   from {
-    transform: translate3d(-1.8%, 0.9%, 0);
+    transform: translate3d(-3.2%, 1.8%, 0);
   }
 
   to {
-    transform: translate3d(1.7%, -1%, 0);
+    transform: translate3d(3.1%, -1.9%, 0);
   }
 }
 
@@ -874,12 +874,12 @@ h1 {
 
   33% {
     opacity: 0.36;
-    transform: rotate(var(--tilt, 0deg)) translate3d(1.25rem, -0.8rem, 0);
+    transform: rotate(var(--tilt, 0deg)) translate3d(2.4rem, -1.45rem, 0);
   }
 
   66% {
     opacity: 0.26;
-    transform: rotate(var(--tilt, 0deg)) translate3d(-0.75rem, 0.9rem, 0);
+    transform: rotate(var(--tilt, 0deg)) translate3d(-1.7rem, 1.65rem, 0);
   }
 }
 
@@ -892,12 +892,12 @@ h1 {
 
   38% {
     opacity: 0.34;
-    transform: rotate(var(--tilt, 0deg)) translate3d(-1.35rem, -0.65rem, 0);
+    transform: rotate(var(--tilt, 0deg)) translate3d(-2.6rem, -1.25rem, 0);
   }
 
   72% {
     opacity: 0.27;
-    transform: rotate(var(--tilt, 0deg)) translate3d(0.95rem, 1rem, 0);
+    transform: rotate(var(--tilt, 0deg)) translate3d(1.9rem, 1.9rem, 0);
   }
 }
 
@@ -910,12 +910,12 @@ h1 {
 
   50% {
     opacity: 0.38;
-    transform: rotate(var(--tilt, 0deg)) translate3d(0.4rem, -1.45rem, 0);
+    transform: rotate(var(--tilt, 0deg)) translate3d(0.9rem, -2.6rem, 0);
   }
 
   78% {
     opacity: 0.24;
-    transform: rotate(var(--tilt, 0deg)) translate3d(-1.15rem, 0.4rem, 0);
+    transform: rotate(var(--tilt, 0deg)) translate3d(-2.2rem, 0.9rem, 0);
   }
 }
 
@@ -926,19 +926,6 @@ h1 {
 
   to {
     transform: translateX(150vw) skewX(-16deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .physics-board::before,
-  .physics-board::after,
-  .spacetime-mesh,
-  .mesh-lines path,
-  .geodesics path,
-  .mass-core,
-  .formula-cloud,
-  .theory-card {
-    animation: none !important;
   }
 }
 
