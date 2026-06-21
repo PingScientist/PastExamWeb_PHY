@@ -51,16 +51,9 @@
           <p class="title-roman">Physics &amp; Archaeology System</p>
           <p class="title-campus"><span></span>NTHU<span></span></p>
         </div>
-        <p class="subtitle">
-          整理課程、考題、解答與討論，把期中期末前最需要的資料集中在一個安靜好找的地方。
-        </p>
+        <p class="subtitle">整理課</p>
         <div class="hero-actions">
-          <Button
-            icon="pi pi-sign-in"
-            label="登入開始使用"
-            size="large"
-            @click="openLogin"
-          />
+          <Button icon="pi pi-sign-in" label="登入開始使用" size="large" @click="openLogin" />
           <Button
             icon="pi pi-search"
             label="查看資料庫狀態"
@@ -428,7 +421,13 @@ h1 {
   background:
     radial-gradient(circle at 70% 44%, rgba(218, 230, 205, 0.08), transparent 8rem),
     linear-gradient(115deg, transparent 0 42%, rgba(225, 236, 221, 0.028) 44%, transparent 48%),
-    linear-gradient(90deg, rgba(8, 18, 16, 0.1), rgba(8, 18, 16, 0.58) 26%, rgba(8, 18, 16, 0.12) 62%, rgba(8, 18, 16, 0.02));
+    linear-gradient(
+      90deg,
+      rgba(8, 18, 16, 0.1),
+      rgba(8, 18, 16, 0.58) 26%,
+      rgba(8, 18, 16, 0.12) 62%,
+      rgba(8, 18, 16, 0.02)
+    );
   pointer-events: none;
   z-index: 3;
 }
@@ -438,7 +437,12 @@ h1 {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 68% 46%, transparent 0 13rem, rgba(7, 16, 14, 0.1) 18rem, transparent 31rem),
+    radial-gradient(
+      circle at 68% 46%,
+      transparent 0 13rem,
+      rgba(7, 16, 14, 0.1) 18rem,
+      transparent 31rem
+    ),
     linear-gradient(0deg, rgba(8, 18, 16, 0.32), transparent 40%);
   pointer-events: none;
   z-index: 4;
@@ -650,8 +654,7 @@ h1 {
   border-left: 3px solid rgba(202, 179, 111, 0.62);
   border-radius: 0.3rem;
   background:
-    linear-gradient(90deg, rgba(202, 179, 111, 0.08), transparent 44%),
-    rgba(7, 18, 17, 0.62);
+    linear-gradient(90deg, rgba(202, 179, 111, 0.08), transparent 44%), rgba(7, 18, 17, 0.62);
   box-shadow: none;
   backdrop-filter: blur(16px);
   opacity: 0;
@@ -660,8 +663,7 @@ h1 {
 
 .physics-home-dark .stat-card {
   background:
-    linear-gradient(90deg, rgba(202, 179, 111, 0.08), transparent 44%),
-    rgba(7, 18, 17, 0.62);
+    linear-gradient(90deg, rgba(202, 179, 111, 0.08), transparent 44%), rgba(7, 18, 17, 0.62);
   border-color: rgba(125, 174, 164, 0.16);
   border-left-color: rgba(202, 179, 111, 0.62);
 }
