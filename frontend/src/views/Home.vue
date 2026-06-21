@@ -1,46 +1,56 @@
 <template>
   <main class="physics-home" :class="{ 'physics-home-dark': isDarkTheme }">
     <div class="physics-board" aria-hidden="true">
-      <div class="building-accent">
-        <span class="roof"></span>
-        <span class="column column-one"></span>
-        <span class="column column-two"></span>
-        <span class="column column-three"></span>
-        <span class="walkway"></span>
-        <span class="vine vine-left"></span>
-        <span class="vine vine-top"></span>
-        <span class="vine vine-right"></span>
-      </div>
-
-      <div class="equation-card tensor-card">
-        <span>R<sub>μν</sub> − 1/2 Rg<sub>μν</sub> = 8πGT<sub>μν</sub></span>
-      </div>
-      <div class="equation-card fourier-card">
-        <span>F(ω) = ∫ f(t)e<sup>−iωt</sup> dt</span>
-      </div>
-      <div class="equation-card schrodinger-card">
-        <span>iℏ ∂ψ/∂t = Ĥψ</span>
-      </div>
-
-      <svg class="feynman-diagram" viewBox="0 0 320 170">
-        <path class="fermion" d="M22 28 L136 82 L22 142" />
-        <path class="fermion" d="M298 28 L184 82 L298 142" />
-        <path
-          class="photon"
-          d="M136 82 C146 58 164 58 174 82 C184 106 202 106 212 82"
-        />
-        <circle class="vertex" cx="136" cy="82" r="5" />
-        <circle class="vertex" cx="212" cy="82" r="5" />
+      <svg class="spacetime-mesh" viewBox="0 0 1200 760" preserveAspectRatio="none">
+        <defs>
+          <radialGradient id="gravity-well" cx="70%" cy="44%" r="42%">
+            <stop offset="0%" stop-color="#aed1b8" stop-opacity="0.35" />
+            <stop offset="45%" stop-color="#588770" stop-opacity="0.12" />
+            <stop offset="100%" stop-color="#588770" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="1200" height="760" fill="url(#gravity-well)" />
+        <g class="mesh-lines">
+          <path d="M30 70 C260 115 470 140 650 110 C850 76 1015 70 1170 116" />
+          <path d="M10 160 C260 215 488 228 680 192 C864 158 1010 164 1190 230" />
+          <path d="M0 255 C260 315 510 322 710 272 C882 230 1026 254 1200 335" />
+          <path d="M0 360 C270 410 540 416 740 346 C910 288 1042 346 1200 442" />
+          <path d="M0 470 C260 510 540 520 735 448 C910 388 1060 468 1200 560" />
+          <path d="M20 590 C278 610 548 622 720 560 C900 496 1060 585 1180 690" />
+          <path d="M120 0 C170 180 190 330 160 500 C140 610 160 700 210 760" />
+          <path d="M275 0 C320 178 334 330 300 490 C274 612 302 702 365 760" />
+          <path d="M440 0 C482 180 492 328 452 482 C420 608 468 702 535 760" />
+          <path d="M615 0 C648 184 650 332 604 478 C564 606 618 700 695 760" />
+          <path d="M790 0 C812 185 800 330 748 475 C702 606 766 702 860 760" />
+          <path d="M960 0 C962 186 930 330 872 482 C824 608 900 704 1030 760" />
+        </g>
+        <g class="geodesics">
+          <path d="M220 680 C390 498 526 408 704 392 C872 376 1010 270 1130 78" />
+          <path d="M445 52 C584 202 642 332 622 456 C604 576 668 670 806 730" />
+        </g>
+        <circle class="mass-core" cx="760" cy="380" r="92" />
       </svg>
 
-      <div class="orbit-hint orbit-a"></div>
-      <div class="orbit-hint orbit-b"></div>
+      <div class="formula-cloud">
+        <div
+          v-for="(formula, index) in formulaCards"
+          :key="formula.name"
+          class="theory-card"
+          :class="`formula-${index + 1}`"
+        >
+          <span class="formula-expression">{{ formula.expression }}</span>
+        </div>
+      </div>
     </div>
 
     <section class="hero-shell">
       <div class="hero-copy">
         <p class="eyebrow">PHY Past Exam Archive</p>
-        <h1>物理系考古題系統</h1>
+        <div class="hero-title-lockup">
+          <h1>清大物理考古系統</h1>
+          <p class="title-roman">Physics &amp; Archaeology System</p>
+          <p class="title-campus"><span></span>NTHU<span></span></p>
+        </div>
         <p class="subtitle">
           整理課程、考題、解答與討論，把期中期末前最需要的資料集中在一個安靜好找的地方。
         </p>
@@ -148,6 +158,89 @@ const statistics = computed(() => [
   },
 ])
 
+const formulaCards = [
+  {
+    name: 'Euler-Lagrange',
+    expression: 'd/dt(∂L/∂q̇ᵢ) − ∂L/∂qᵢ = 0',
+  },
+  {
+    name: 'Hamilton',
+    expression: 'q̇ᵢ = ∂H/∂pᵢ,  ṗᵢ = −∂H/∂qᵢ',
+  },
+  {
+    name: 'Hamilton-Jacobi',
+    expression: 'H(q, ∂S/∂q, t) + ∂S/∂t = 0',
+  },
+  {
+    name: 'Noether',
+    expression: 'δS = 0 ⇒ ∂μjμ = 0',
+  },
+  {
+    name: 'Virial',
+    expression: '2⟨T⟩ = ⟨r · ∇V⟩',
+  },
+  {
+    name: 'Maxwell',
+    expression: '∂μFμν = μ₀Jν,  ∂[αFβγ] = 0',
+  },
+  {
+    name: 'Lorentz Force',
+    expression: 'dpμ/dτ = qFμνuν',
+  },
+  {
+    name: 'Lienard-Wiechert',
+    expression: 'φ = 1/4πϵ₀ [q/(R − R · β)]ret',
+  },
+  {
+    name: 'Poynting',
+    expression: '∂u/∂t + ∇ · S = −J · E',
+  },
+  {
+    name: 'Jefimenko',
+    expression: 'E(r,t) = ∫[ρ/R² + ρ̇/cR − J̇/c²R] d³r′',
+  },
+  {
+    name: 'TDSE',
+    expression: 'iℏ∂t|ψ⟩ = Ĥ|ψ⟩',
+  },
+  {
+    name: 'TISE',
+    expression: 'Ĥψn = Enψn',
+  },
+  {
+    name: 'Heisenberg',
+    expression: 'dA/dt = (i/ℏ)[H,A] + ∂A/∂t',
+  },
+  {
+    name: 'Ehrenfest',
+    expression: 'd⟨p⟩/dt = −⟨∇V⟩',
+  },
+  {
+    name: 'Lippmann-Schwinger',
+    expression: '|ψ±⟩ = |φ⟩ + G₀±V|ψ±⟩',
+  },
+  {
+    name: 'Boltzmann',
+    expression: '∂tf + v · ∇f + F · ∇pf = C[f]',
+  },
+  {
+    name: 'Fokker-Planck',
+    expression: '∂tP = −∂i(AiP) + 1/2∂i∂j(BijP)',
+  },
+  {
+    name: 'Langevin',
+    expression: 'mẍ + γẋ + ∇V = ξ(t)',
+  },
+  {
+    name: 'Einstein Field',
+    expression: 'Gμν + Λgμν = 8πG/c⁴ Tμν',
+  },
+  {
+    name: 'Dirac',
+    expression: '(iγμ∂μ − m)ψ = 0',
+  },
+]
+
 onMounted(async () => {
   await fetchStatistics()
 })
@@ -231,7 +324,7 @@ function formatNumber(num) {
 .hero-copy {
   position: relative;
   z-index: 1;
-  max-width: 54rem;
+  max-width: 42rem;
   padding: clamp(1rem, 2vw, 1.5rem) 0;
 }
 
@@ -250,11 +343,51 @@ function formatNumber(num) {
 
 h1 {
   margin: 0;
-  max-width: 54rem;
-  font-size: clamp(2.75rem, 3.6vw, 4rem);
-  font-weight: 560;
-  line-height: 1.13;
-  letter-spacing: 0;
+  color: #edf7ed;
+  font-size: clamp(3rem, 4.2vw, 4.7rem);
+  font-weight: 780;
+  line-height: 1.04;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.22);
+}
+
+.hero-title-lockup {
+  display: inline-grid;
+  gap: 0.62rem;
+}
+
+.title-roman {
+  margin: 0;
+  color: rgba(202, 179, 111, 0.94);
+  font-size: clamp(0.88rem, 1.25vw, 1.08rem);
+  font-weight: 760;
+  letter-spacing: 0.34em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.title-campus {
+  display: grid;
+  grid-template-columns: minmax(2.5rem, 1fr) auto minmax(2.5rem, 1fr);
+  align-items: center;
+  gap: 1rem;
+  width: min(100%, 38rem);
+  margin: 0;
+  color: rgba(202, 179, 111, 0.98);
+  font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+  font-weight: 760;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+}
+
+.title-campus span {
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(202, 179, 111, 0.8));
+}
+
+.title-campus span:last-child {
+  background: linear-gradient(90deg, rgba(202, 179, 111, 0.8), transparent);
 }
 
 .subtitle {
@@ -281,16 +414,9 @@ h1 {
   min-height: 42rem;
   overflow: hidden;
   background:
-    linear-gradient(rgba(236, 246, 232, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(236, 246, 232, 0.035) 1px, transparent 1px),
-    radial-gradient(circle at 23% 26%, rgba(99, 150, 96, 0.1), transparent 18rem),
-    linear-gradient(135deg, rgba(16, 38, 30, 0.98), rgba(15, 27, 25, 0.96));
-  background-size:
-    34px 34px,
-    34px 34px,
-    auto,
-    auto,
-    auto;
+    radial-gradient(circle at 68% 46%, rgba(140, 180, 147, 0.18), transparent 20rem),
+    radial-gradient(circle at 24% 20%, rgba(72, 123, 103, 0.1), transparent 20rem),
+    linear-gradient(135deg, rgba(12, 28, 25, 0.98), rgba(13, 20, 21, 0.98));
   pointer-events: none;
   z-index: 0;
 }
@@ -300,9 +426,11 @@ h1 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(120deg, transparent 0 42%, rgba(237, 242, 226, 0.035) 45%, transparent 49%),
-    radial-gradient(circle at 18% 86%, rgba(92, 139, 83, 0.1), transparent 13rem);
+    radial-gradient(circle at 70% 44%, rgba(218, 230, 205, 0.08), transparent 8rem),
+    linear-gradient(115deg, transparent 0 42%, rgba(225, 236, 221, 0.028) 44%, transparent 48%),
+    linear-gradient(90deg, rgba(8, 18, 16, 0.1), rgba(8, 18, 16, 0.58) 26%, rgba(8, 18, 16, 0.12) 62%, rgba(8, 18, 16, 0.02));
   pointer-events: none;
+  z-index: 3;
 }
 
 .physics-board::after {
@@ -310,210 +438,242 @@ h1 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(10, 23, 16, 0.2) 0%, rgba(10, 23, 16, 0.62) 24%, rgba(10, 23, 16, 0.2) 58%, rgba(10, 23, 16, 0.04) 100%),
-    linear-gradient(0deg, rgba(10, 23, 16, 0.28), transparent 38%);
+    radial-gradient(circle at 68% 46%, transparent 0 13rem, rgba(7, 16, 14, 0.1) 18rem, transparent 31rem),
+    linear-gradient(0deg, rgba(8, 18, 16, 0.32), transparent 40%);
   pointer-events: none;
+  z-index: 4;
 }
 
-.building-accent {
+.spacetime-mesh {
   position: absolute;
-  right: clamp(3rem, 7vw, 7rem);
-  bottom: clamp(7rem, 13vh, 9.5rem);
-  width: min(15vw, 12.5rem);
-  height: min(12vw, 9.5rem);
-  opacity: 0.2;
-}
-
-.roof,
-.walkway,
-.column {
-  position: absolute;
-  display: block;
-  background: rgba(218, 216, 199, 0.36);
-  box-shadow: inset 0 -3px 0 rgba(114, 112, 98, 0.16);
-}
-
-.roof {
-  top: 0;
-  left: 4%;
-  width: 92%;
-  height: 16%;
-  border-radius: 0.35rem 0.35rem 0 0;
-}
-
-.walkway {
-  left: 0;
-  bottom: 0;
+  inset: -4% -3% -2% -2%;
   width: 100%;
-  height: 16%;
+  height: 100%;
+  opacity: 0.68;
+  z-index: 1;
 }
 
-.column {
-  top: 14%;
-  width: 12%;
-  height: 74%;
+.mesh-lines path {
+  fill: none;
+  stroke: rgba(198, 223, 205, 0.18);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
 }
 
-.column-one {
-  left: 12%;
+.geodesics path {
+  fill: none;
+  stroke: rgba(202, 179, 111, 0.34);
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
 }
 
-.column-two {
-  left: 44%;
+.mass-core {
+  fill: rgba(232, 238, 218, 0.09);
+  stroke: rgba(221, 237, 210, 0.18);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
 }
 
-.column-three {
-  left: 76%;
+.formula-cloud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
 }
 
-.vine {
+.theory-card {
   position: absolute;
   display: block;
-  background: linear-gradient(180deg, rgba(99, 151, 74, 0.58), rgba(45, 101, 49, 0.58));
-  border-radius: 999px;
-  box-shadow: none;
-}
-
-.vine-left {
-  left: 7%;
-  top: 8%;
-  width: 7%;
-  height: 84%;
-}
-
-.vine-top {
-  left: 6%;
-  top: 2%;
-  width: 88%;
-  height: 9%;
-  background: linear-gradient(90deg, rgba(45, 101, 49, 0.58), rgba(99, 151, 74, 0.58));
-}
-
-.vine-right {
-  right: 9%;
-  top: 10%;
-  width: 6%;
-  height: 78%;
-}
-
-.equation-card {
-  position: absolute;
-  padding: 0.65rem 0.9rem;
-  border: 1px solid rgba(221, 238, 205, 0.11);
-  border-radius: 0.35rem;
-  color: rgba(231, 239, 224, 0.5);
-  background: rgba(4, 16, 15, 0.1);
-  box-shadow: none;
+  max-width: min(24rem, 28vw);
+  color: rgba(232, 240, 226, 0.25);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(0.85rem, 1.05vw, 1rem);
+  transform: rotate(var(--tilt, 0deg));
   white-space: nowrap;
 }
 
-.tensor-card {
-  top: 16%;
-  right: 21%;
-  transform: rotate(-3deg);
+.formula-expression {
+  font-size: clamp(0.9rem, 1.05vw, 1.15rem);
+  line-height: 1.2;
+  text-shadow: 0 0 1rem rgba(168, 204, 181, 0.1);
 }
 
-.fourier-card {
+.formula-1 {
+  top: 12%;
+  left: 52%;
+  --tilt: -3deg;
+}
+
+.formula-2 {
+  top: 22%;
+  left: 64%;
+  --tilt: 2deg;
+}
+
+.formula-3 {
   top: 34%;
-  right: 6%;
-  transform: rotate(2deg);
-}
-
-.schrodinger-card {
-  right: 31%;
-  bottom: 19%;
-  transform: rotate(-2deg);
-}
-
-.feynman-diagram {
-  position: absolute;
-  top: 47%;
-  right: 23%;
-  width: min(16vw, 13.5rem);
-  overflow: visible;
-  opacity: 0.48;
-}
-
-.fermion,
-.photon {
-  fill: none;
-  stroke: rgba(226, 238, 215, 0.46);
-  stroke-width: 3.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.photon {
-  stroke: rgba(196, 176, 113, 0.62);
-  stroke-dasharray: 10 10;
-}
-
-.vertex {
-  fill: rgba(196, 176, 113, 0.7);
-}
-
-.orbit-hint {
-  position: absolute;
-  border: 1px solid rgba(129, 194, 182, 0.12);
-  border-radius: 999px;
-}
-
-.orbit-a {
-  top: 8%;
-  right: -9%;
-  width: 30%;
-  height: 30%;
-  transform: rotate(-18deg);
-}
-
-.orbit-b {
   left: 55%;
-  top: 28%;
-  width: 34%;
-  height: 16%;
-  transform: rotate(24deg);
+  --tilt: -1deg;
+}
+
+.formula-4 {
+  top: 9%;
+  right: 5%;
+  --tilt: 3deg;
+}
+
+.formula-5 {
+  bottom: 20%;
+  right: 13%;
+  --tilt: -2deg;
+}
+
+.formula-6 {
+  top: 46%;
+  right: 6%;
+  --tilt: 2deg;
+}
+
+.formula-7 {
+  top: 19%;
+  left: 6%;
+  --tilt: -2deg;
+}
+
+.formula-8 {
+  bottom: 14%;
+  right: 34%;
+  --tilt: 3deg;
+}
+
+.formula-9 {
+  top: 60%;
+  left: 57%;
+  --tilt: -3deg;
+}
+
+.formula-10 {
+  bottom: 22%;
+  right: 4%;
+  --tilt: 2deg;
+}
+
+.formula-11 {
+  top: 15%;
+  left: 32%;
+  --tilt: 1deg;
+}
+
+.formula-12 {
+  bottom: 14%;
+  left: 6%;
+  --tilt: -2deg;
+}
+
+.formula-13 {
+  top: 30%;
+  right: 18%;
+  --tilt: -2deg;
+}
+
+.formula-14 {
+  bottom: 30%;
+  left: 44%;
+  --tilt: 2deg;
+}
+
+.formula-15 {
+  bottom: 7%;
+  left: 43%;
+  --tilt: -1deg;
+}
+
+.formula-16 {
+  bottom: 28%;
+  left: 10%;
+  --tilt: 2deg;
+}
+
+.formula-17 {
+  bottom: 18%;
+  left: 23%;
+  --tilt: -3deg;
+}
+
+.formula-18 {
+  top: 40%;
+  left: 73%;
+  --tilt: -1deg;
+}
+
+.formula-19 {
+  top: 7%;
+  left: 68%;
+  color: rgba(242, 238, 216, 0.34);
+  --tilt: -2deg;
+}
+
+.formula-20 {
+  bottom: 39%;
+  right: 31%;
+  --tilt: 3deg;
 }
 
 .dashboard-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.75rem;
-  width: min(1180px, calc(100% - 2rem));
-  margin: -5.5rem auto 2rem;
-  position: relative;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  width: min(17.5rem, calc(100% - 2rem));
+  margin: 0;
+  position: absolute;
+  top: clamp(8.5rem, 20vh, 14rem);
+  right: max(1rem, calc((100% - 1180px) / 2));
   z-index: 2;
+}
+
+.dashboard-strip::before {
+  content: 'Archive Metrics';
+  color: rgba(202, 179, 111, 0.72);
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.26em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  min-height: 5.75rem;
-  padding: 1rem;
-  border: 1px solid rgba(127, 157, 145, 0.16);
-  border-radius: 0.4rem;
-  background: rgba(255, 255, 255, 0.66);
-  box-shadow: 0 12px 28px rgba(26, 38, 34, 0.05);
-  backdrop-filter: blur(14px);
+  min-height: 4.4rem;
+  padding: 0.78rem 0.9rem;
+  border: 1px solid rgba(128, 166, 151, 0.14);
+  border-left: 3px solid rgba(202, 179, 111, 0.62);
+  border-radius: 0.3rem;
+  background:
+    linear-gradient(90deg, rgba(202, 179, 111, 0.08), transparent 44%),
+    rgba(7, 18, 17, 0.62);
+  box-shadow: none;
+  backdrop-filter: blur(16px);
   opacity: 0;
   transform: translateY(12px);
 }
 
 .physics-home-dark .stat-card {
-  background: rgba(15, 24, 21, 0.74);
+  background:
+    linear-gradient(90deg, rgba(202, 179, 111, 0.08), transparent 44%),
+    rgba(7, 18, 17, 0.62);
   border-color: rgba(125, 174, 164, 0.16);
+  border-left-color: rgba(202, 179, 111, 0.62);
 }
 
 .stat-icon {
   display: grid;
   place-items: center;
-  width: 2.25rem;
+  width: 2rem;
   aspect-ratio: 1;
-  border-radius: 999px;
-  color: #0f3734;
-  background: #c4eee8;
+  border-radius: 0.25rem;
+  color: #c7b06b;
+  background: rgba(196, 238, 232, 0.08);
 }
 
 .stat-card p {
@@ -523,7 +683,7 @@ h1 {
 }
 
 .stat-card strong {
-  font-size: 1.35rem;
+  font-size: 1.3rem;
 }
 
 .animate-fade-in {
@@ -537,6 +697,21 @@ h1 {
   }
 }
 
+@media (max-width: 1100px) {
+  .dashboard-strip {
+    position: relative;
+    top: auto;
+    right: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(1180px, calc(100% - 2rem));
+    margin: -5.5rem auto 2rem;
+  }
+
+  .dashboard-strip::before {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 920px) {
   .hero-shell {
     align-items: flex-start;
@@ -545,6 +720,19 @@ h1 {
 
   .physics-board {
     min-height: 44rem;
+  }
+
+  .theory-card {
+    max-width: 42vw;
+  }
+
+  .formula-7,
+  .formula-10,
+  .formula-12,
+  .formula-15,
+  .formula-17,
+  .formula-18 {
+    display: none;
   }
 
   .dashboard-strip {
@@ -562,40 +750,55 @@ h1 {
     width: 100%;
   }
 
-  .equation-card {
-    font-size: 0.9rem;
+  .spacetime-mesh {
+    inset: 4% -35% 0 -22%;
+    width: 150%;
+    opacity: 0.52;
   }
 
-  .tensor-card {
-    left: 7%;
-    right: auto;
-    top: 48%;
+  .theory-card {
+    display: none;
+    max-width: 72vw;
+    padding: 0.5rem 0.62rem;
   }
 
-  .fourier-card {
+  .formula-expression {
+    font-size: 0.82rem;
+  }
+
+  .formula-1,
+  .formula-6,
+  .formula-11,
+  .formula-19,
+  .formula-20 {
+    display: grid;
+  }
+
+  .formula-1 {
+    top: 54%;
     right: 5%;
-    top: 60%;
+    left: auto;
   }
 
-  .schrodinger-card {
+  .formula-6 {
+    top: 66%;
+    left: 8%;
+    right: auto;
+  }
+
+  .formula-11 {
+    top: 78%;
+    left: 14%;
+  }
+
+  .formula-19 {
+    top: 44%;
     left: 9%;
-    right: auto;
-    bottom: 8%;
   }
 
-  .feynman-diagram {
-    top: 68%;
-    right: 5%;
-    width: 42vw;
-    opacity: 0.28;
-  }
-
-  .building-accent {
-    right: 2%;
-    bottom: 10%;
-    width: 34vw;
-    height: 24vw;
-    opacity: 0.18;
+  .formula-20 {
+    bottom: 7%;
+    right: 6%;
   }
 
   .dashboard-strip {

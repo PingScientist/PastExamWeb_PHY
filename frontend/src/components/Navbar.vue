@@ -16,11 +16,11 @@
           @click="handleTitleClick"
         >
           <img
-            src="/physics-mark.svg"
-            alt="物理系考古題系統"
+            src="/physics-symbol.jpeg"
+            alt="清大物理考古系統"
             class="brand-mark mr-2 inline-block align-middle"
           />
-          物理系考古題系統
+          <span class="brand-title-main">清大物理考古系統</span>
         </span>
       </template>
       <template #end>
@@ -881,11 +881,14 @@ export default {
 }
 
 .title-text {
-  background: linear-gradient(to right, var(--title-gradient-start), var(--title-gradient-end));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
   padding: 0 0.5rem;
+}
+
+.brand-title-main {
+  color: #edf7ed;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 18px rgba(155, 224, 212, 0.15);
 }
 
 .clickable-title {
@@ -911,10 +914,11 @@ export default {
 }
 
 .brand-mark {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  box-shadow: 0 0 18px rgba(86, 199, 189, 0.22);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 0 18px rgba(202, 179, 111, 0.16);
 }
 
 .user-name {
