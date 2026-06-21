@@ -1,227 +1,72 @@
 courses:
+  - name: "普通物理(一)"
+    category: FRESHMAN
+  - name: "普通物理(二)"
+    category: FRESHMAN
+  - name: "普通物理實驗(一)"
+    category: FRESHMAN
+  - name: "普通物理實驗(二)"
+    category: FRESHMAN
   - name: "微積分(一)"
     category: FRESHMAN
   - name: "微積分(二)"
     category: FRESHMAN
-  - name: "物理(一)"
-    category: FRESHMAN
-  - name: "物理(二)"
-    category: FRESHMAN
-  - name: "化學(一)"
-    category: FRESHMAN
-  - name: "化學(二)"
-    category: FRESHMAN
   - name: "線性代數"
     category: FRESHMAN
-  - name: "計算機概論與程式設計"
-    category: FRESHMAN
-  - name: "資料結構與物件導向程式設計"
-    category: FRESHMAN
-  - name: "離散數學"
-    category: FRESHMAN
-  - name: "數位電路設計"
-    category: FRESHMAN
-  - name: "MATLAB 程式語言"
-    category: FRESHMAN
-  - name: "機率"
+  - name: "應用數學(一)"
     category: SOPHOMORE
-  - name: "演算法概論"
+  - name: "應用數學(二)"
     category: SOPHOMORE
-  - name: "計算機組織"
+  - name: "力學(一)"
     category: SOPHOMORE
-  - name: "資料庫系統概論"
+  - name: "力學(二)"
     category: SOPHOMORE
-  - name: "人工智慧概論"
+  - name: "電磁學(一)"
     category: SOPHOMORE
-  - name: "計算機網路概論"
+  - name: "電磁學(二)"
     category: SOPHOMORE
-  - name: "密碼學概論"
+  - name: "近代物理"
     category: SOPHOMORE
-  - name: "數值方法"
+  - name: "電子學"
     category: SOPHOMORE
-  - name: "通訊原理與無線網路"
-    category: SOPHOMORE
-  - name: "數位電路實驗"
-    category: SOPHOMORE
-  - name: "正規語言概論"
-    category: SOPHOMORE
-  - name: "組合數學"
-    category: SOPHOMORE
-  - name: "訊號與系統"
-    category: SOPHOMORE
-  - name: "數位訊號處理概論"
-    category: SOPHOMORE
-  - name: "數位系統設計"
-    category: SOPHOMORE
-  - name: "圖形理論導論"
-    category: SOPHOMORE
-  - name: "作業系統概論"
+  - name: "熱物理"
     category: JUNIOR
-  - name: "機器學習概論"
+  - name: "量子物理(一)"
     category: JUNIOR
-  - name: "人工智慧總整與實作"
+  - name: "量子物理(二)"
     category: JUNIOR
-  - name: "網路程式設計概論"
+  - name: "統計物理"
     category: JUNIOR
-  - name: "電腦安全總整與實作"
+  - name: "實驗物理(一)"
     category: JUNIOR
-  - name: "計算機圖學概論"
+  - name: "實驗物理(二)"
     category: JUNIOR
-  - name: "影像處理概論"
-    category: JUNIOR
-  - name: "網路系統總整與實作"
-    category: JUNIOR
-  - name: "編譯器設計概論"
-    category: JUNIOR
-  - name: "微處理機系統原理與實作"
-    category: JUNIOR
-  - name: "微處理機系統實驗"
-    category: JUNIOR
-  - name: "嵌入式系統總整與實作"
-    category: JUNIOR
-  - name: "企業網路安全"
-    category: JUNIOR
-  - name: "多媒體資訊系統概論"
-    category: JUNIOR
-  - name: "軟體工程概論"
-    category: JUNIOR
-  - name: "網路規劃與管理實務"
-    category: JUNIOR
-  - name: "多媒體與人機互動總整與實作"
+  - name: "固態物理導論"
     category: SENIOR
-  - name: "計算機系統管理"
+  - name: "光學"
     category: SENIOR
-  - name: "計算機網路管理"
+  - name: "專題研究"
     category: SENIOR
-  - name: "作業系統總整與實作"
-    category: SENIOR
-  - name: "密碼工程"
+  - name: "高等量子力學"
     category: GRADUATE
-  - name: "高等 UNIX 程式設計"
+  - name: "高等電磁學"
     category: GRADUATE
-  - name: "計算機網路(研)"
+  - name: "高等統計物理"
     category: GRADUATE
-  - name: "演算法(研)"
+  - name: "凝態物理"
     category: GRADUATE
-  - name: "網路程式設計(研)"
+  - name: "粒子物理"
     category: GRADUATE
-  - name: "網路安全"
-    category: GRADUATE
-  - name: "演化計算"
-    category: GRADUATE
-  - name: "視訊壓縮"
-    category: GRADUATE
-  - name: "圖形理論"
-    category: GRADUATE
-  - name: "計算機架構"
-    category: GRADUATE
-  - name: "分散式演算法"
-    category: GRADUATE
-  - name: "圖形識別"
-    category: GRADUATE
-  - name: "資料探勘"
-    category: GRADUATE
-  - name: "作業系統"
-    category: GRADUATE
-  - name: "編譯器設計"
-    category: GRADUATE
-  - name: "影像處理"
-    category: GRADUATE
-  - name: "計算機圖學"
-    category: GRADUATE
-  - name: "正規語言"
-    category: GRADUATE
-  - name: "軟體測試"
-    category: GRADUATE
-  - name: "無線網路"
-    category: GRADUATE
-  - name: "容錯計算"
-    category: GRADUATE
-  - name: "網路安全實務-攻擊與防禦"
-    category: GRADUATE
-  - name: "深度學習與實務"
-    category: GRADUATE
-  - name: "賽局理論及應用"
-    category: GRADUATE
-  - name: "電腦對局理論"
-    category: GRADUATE
-  - name: "生醫資料探勘"
-    category: GRADUATE
-  - name: "嵌入式即時系統"
-    category: GRADUATE
-  - name: "計算機系統安全"
-    category: GRADUATE
-  - name: "計算機網路安全"
-    category: GRADUATE
-  - name: "軟體工程"
-    category: GRADUATE
-  - name: "軟體架構"
-    category: GRADUATE
-  - name: "組合語言與系統程式"
-    category: GRADUATE
-  - name: "電腦安全概論"
-    category: GRADUATE
-  - name: "物聯網概論"
-    category: GRADUATE
-  - name: "嵌入式系統設計(研)"
-    category: GRADUATE
-  - name: "電子學(一)"
+  - name: "天文物理"
     category: INTERDISCIPLINARY
-  - name: "電路與電子學(一)"
+  - name: "生物物理"
     category: INTERDISCIPLINARY
-  - name: "電路與電子學(二)"
+  - name: "材料物理"
     category: INTERDISCIPLINARY
-  - name: "分析導論(一)"
-    category: INTERDISCIPLINARY
-  - name: "微分方程"
-    category: INTERDISCIPLINARY
-  - name: "有機化學(二)"
-    category: INTERDISCIPLINARY
-  - name: "基礎圖論"
-    category: INTERDISCIPLINARY
-  - name: "音樂理論導論"
-    category: GENERAL
-  - name: "統計學"
-    category: GENERAL
-  - name: "經濟學概論"
-    category: GENERAL
-  - name: "全球化與兩岸關係"
-    category: GENERAL
   - name: "地球科學概論"
     category: GENERAL
-  - name: "日本文化論"
+  - name: "科學史"
     category: GENERAL
-  - name: "營建管理"
-    category: GENERAL
-  - name: "法學緒論"
-    category: GENERAL
-  - name: "財務管理"
-    category: GENERAL
-  - name: "伊斯蘭文明"
-    category: GENERAL
-  - name: "投資學"
-    category: GENERAL
-  - name: "會計學(一)"
-    category: GENERAL
-  - name: "會計學(二)"
-    category: GENERAL
-  - name: "財務工程導論"
-    category: GENERAL
-  - name: "普通心理學"
-    category: GENERAL
-  - name: "統計學(一)"
-    category: GENERAL
-  - name: "統計學(二)"
-    category: GENERAL
-  - name: "邏輯學"
-    category: GENERAL
-  - name: "日文(二)"
-    category: GENERAL
-  - name: "期貨與選擇權"
-    category: GENERAL
-  - name: "公司法"
-    category: GENERAL
-
 memes:
   - content: |-
       #!/bin/bash

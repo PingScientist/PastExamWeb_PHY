@@ -537,21 +537,21 @@ const expandedMenuItems = ref({})
 const shouldResetPanels = ref(true)
 
 const CATEGORIES = {
-  freshman: { name: '大一課程', icon: 'pi pi-fw pi-book', tag: '大一' },
-  sophomore: { name: '大二課程', icon: 'pi pi-fw pi-book', tag: '大二' },
-  junior: { name: '大三課程', icon: 'pi pi-fw pi-book', tag: '大三' },
-  senior: { name: '大四課程', icon: 'pi pi-fw pi-book', tag: '大四' },
+  freshman: { name: '基礎必修', icon: 'pi pi-fw pi-book', tag: '基礎' },
+  sophomore: { name: '核心物理', icon: 'pi pi-fw pi-book', tag: '核心' },
+  junior: { name: '進階物理', icon: 'pi pi-fw pi-book', tag: '進階' },
+  senior: { name: '專題與選修', icon: 'pi pi-fw pi-book', tag: '專題' },
   graduate: {
     name: '研究所課程',
     icon: 'pi pi-fw pi-graduation-cap',
     tag: '研究所',
   },
   interdisciplinary: {
-    name: '跨領域課程',
+    name: '跨域應用',
     icon: 'pi pi-fw pi-globe',
-    tag: '跨領域',
+    tag: '跨域',
   },
-  general: { name: '通識課程', icon: 'pi pi-fw pi-lightbulb', tag: '通識' },
+  general: { name: '通識與科學素養', icon: 'pi pi-fw pi-lightbulb', tag: '通識' },
 }
 
 const coursesList = ref({

@@ -12,12 +12,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    OAUTH_CLIENT_ID: str
-    OAUTH_CLIENT_SECRET: str
-    OAUTH_AUTHORIZE_URL: str
-    OAUTH_TOKEN_URL: str
-    OAUTH_REDIRECT_URI: str
-    OAUTH_USERINFO_URL: str
+    OAUTH_CLIENT_ID: str = ""
+    OAUTH_CLIENT_SECRET: str = ""
+    OAUTH_AUTHORIZE_URL: str = ""
+    OAUTH_TOKEN_URL: str = ""
+    OAUTH_REDIRECT_URI: str = ""
+    OAUTH_USERINFO_URL: str = ""
     FRONTEND_URL: str
 
     MINIO_ENDPOINT: str

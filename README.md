@@ -4,7 +4,7 @@
     <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/6125c7f1-5e26-4cfc-93dc-67a77720011d">
     <img alt="Pastexam banner" src="https://github.com/user-attachments/assets/6125c7f1-5e26-4cfc-93dc-67a77720011d">
   </picture>
-  <h3>交大資工考古題系統</h3>
+  <h3>物理系考古題系統</h3>
   <a href="https://github.com/NCTUCSUnion/pastexam/actions/workflows/main.yml"><img alt="CI/CD Pipeline" src="https://img.shields.io/github/actions/workflow/status/NCTUCSUnion/pastexam/main.yml?label=CI%2FCD%20Pipeline"></a>
   <a href="https://github.com/NCTUCSUnion/pastexam/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/NCTUCSUnion/pastexam?label=Release&color=mediumseagreen"></a>
   <img alt="Users" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fpastexam.nctucsunion.me%2Fapi%2Fstatistics&query=%24.data.totalUsers&label=Users">
@@ -15,7 +15,7 @@
 
 ## 簡介
 <p>
-  交大資工考古題系統由交大資工系學會開發與維護，旨在彙整並整理課程相關的歷年考試資料（題目、解答與參考內容），協助同學更有效率地進行考試準備。因應使用人數成長與功能擴充需求，本系統重新設計並優化整體架構與使用體驗，使資料搜尋、線上預覽與討論交流更加直覺、流暢。
+  物理系考古題系統旨在彙整並整理物理系課程相關的歷年考試資料（題目、解答與參考內容），協助同學更有效率地進行考試準備。本試作版移除校務 OAuth 依賴，先以一般帳密登入作為主要登入方式，方便本地開發與後續部署調整。
 </p>
 
 <p align="center">

@@ -150,7 +150,7 @@
                 <Column field="is_local" header="帳號類型" sortable style="width: 15%">
                   <template #body="{ data }">
                     <Tag :severity="data.is_local ? 'info' : 'warning'" class="text-sm">
-                      {{ data.is_local ? '本地帳號' : 'OAuth 帳號' }}
+                      {{ data.is_local ? '本地帳號' : '外部帳號' }}
                     </Tag>
                   </template>
                 </Column>
@@ -657,13 +657,13 @@ const getInitialTab = () => {
 const currentTab = ref(getInitialTab())
 
 const categoryOptions = [
-  { name: '大一課程', value: 'freshman' },
-  { name: '大二課程', value: 'sophomore' },
-  { name: '大三課程', value: 'junior' },
-  { name: '大四課程', value: 'senior' },
+  { name: '基礎必修', value: 'freshman' },
+  { name: '核心物理', value: 'sophomore' },
+  { name: '進階物理', value: 'junior' },
+  { name: '專題與選修', value: 'senior' },
   { name: '研究所課程', value: 'graduate' },
-  { name: '跨領域課程', value: 'interdisciplinary' },
-  { name: '通識課程', value: 'general' },
+  { name: '跨域應用', value: 'interdisciplinary' },
+  { name: '通識與科學素養', value: 'general' },
 ]
 
 const userTypeFilterOptions = [
@@ -673,13 +673,13 @@ const userTypeFilterOptions = [
 
 const getCategoryName = (category) => {
   const categoryMap = {
-    freshman: '大一課程',
-    sophomore: '大二課程',
-    junior: '大三課程',
-    senior: '大四課程',
+    freshman: '基礎必修',
+    sophomore: '核心物理',
+    junior: '進階物理',
+    senior: '專題與選修',
     graduate: '研究所課程',
-    interdisciplinary: '跨領域課程',
-    general: '通識課程',
+    interdisciplinary: '跨域應用',
+    general: '通識與科學素養',
   }
   return categoryMap[category] || category
 }

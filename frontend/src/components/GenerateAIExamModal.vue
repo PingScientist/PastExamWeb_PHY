@@ -425,13 +425,13 @@ const form = ref({
 })
 
 const categoryOptions = [
-  { name: '大一課程', value: 'freshman' },
-  { name: '大二課程', value: 'sophomore' },
-  { name: '大三課程', value: 'junior' },
-  { name: '大四課程', value: 'senior' },
+  { name: '基礎必修', value: 'freshman' },
+  { name: '核心物理', value: 'sophomore' },
+  { name: '進階物理', value: 'junior' },
+  { name: '專題與選修', value: 'senior' },
   { name: '研究所課程', value: 'graduate' },
-  { name: '跨領域課程', value: 'interdisciplinary' },
-  { name: '通識課程', value: 'general' },
+  { name: '跨域應用', value: 'interdisciplinary' },
+  { name: '通識與科學素養', value: 'general' },
 ]
 
 const headerMetaItems = computed(() => {

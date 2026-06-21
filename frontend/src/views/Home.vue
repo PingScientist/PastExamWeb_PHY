@@ -11,7 +11,7 @@
         <div class="title-container mb-4 w-full overflow-x-auto overflow-y-hidden text-center">
           <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-wide">
             <span class="code-comment text-gray-500">/*</span>
-            <span class="title-text px-2">交大資工考古題系統</span>
+            <span class="title-text px-2">物理系考古題系統</span>
             <span class="code-comment text-gray-500">*/</span>
           </h1>
         </div>

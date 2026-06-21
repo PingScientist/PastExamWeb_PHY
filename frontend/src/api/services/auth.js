@@ -1,10 +1,8 @@
 import { api } from './client'
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-
 export const authService = {
   login() {
-    window.location.href = `${apiBaseUrl}/auth/oauth/login`
+    window.__pastexam?.openLoginModal?.()
   },
 
   async localLogin(username, password) {

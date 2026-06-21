@@ -1,10 +1,7 @@
-import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import delete, select
-from urllib.parse import urlparse, parse_qs
+from sqlalchemy import select
 
 from fastapi import HTTPException
 
@@ -42,159 +39,19 @@ async def test_local_login_failure(client):
 
 
 @pytest.mark.asyncio
-async def test_oauth_login_and_callback_creates_user(
-    client,
-    monkeypatch,
-    session_maker,
-):
+async def test_oauth_endpoints_are_not_available(client):
     login_response = await client.get(
         "/auth/oauth/login",
         follow_redirects=False,
     )
-    assert login_response.status_code in {302, 307}
-
-    location = login_response.headers["location"]
-    parsed = urlparse(location)
-    query = parse_qs(parsed.query)
-    state = query["state"][0]
-
-    async def fake_oauth_callback(code, state_param, stored_state):
-        assert code == "dummy-code"
-        assert state_param == state
-        assert stored_state == state
-        return {
-            "provider": "nycu",
-            "sub": "oauth-subject",
-            "email": "oauthuser@example.com",
-            "name": "OAuth User",
-        }
-
-    monkeypatch.setattr(
-        "app.api.services.auth.oauth_callback",
-        fake_oauth_callback,
-    )
+    assert login_response.status_code == 404
 
     callback_response = await client.get(
         "/auth/oauth/callback",
-        params={"code": "dummy-code", "state": state},
+        params={"code": "dummy-code", "state": "dummy-state"},
         follow_redirects=False,
     )
-    assert callback_response.status_code in {302, 307}
-    redirect_url = callback_response.headers["location"]
-    assert "/login/callback" in redirect_url
-    assert "token=" in redirect_url
-
-    async with session_maker() as session:
-        result = await session.execute(
-            select(User).where(User.email == "oauthuser@example.com")
-        )
-        created_user = result.scalar_one_or_none()
-        assert created_user is not None
-        assert created_user.oauth_provider == "nycu"
-        assert created_user.oauth_sub == "oauth-subject"
-        await session.execute(
-            delete(User).where(User.email == "oauthuser@example.com")
-        )
-        await session.commit()
-
-
-@pytest.mark.asyncio
-async def test_oauth_callback_invalid_response_returns_400(
-    client,
-    monkeypatch,
-):
-    login_response = await client.get(
-        "/auth/oauth/login",
-        follow_redirects=False,
-    )
-    location = login_response.headers["location"]
-    state = parse_qs(urlparse(location).query)["state"][0]
-
-    async def fake_invalid_callback(code, state_param, stored_state):
-        assert state_param == state
-        return {}
-
-    monkeypatch.setattr(
-        "app.api.services.auth.oauth_callback",
-        fake_invalid_callback,
-    )
-
-    callback_response = await client.get(
-        "/auth/oauth/callback",
-        params={"code": "bad-code", "state": state},
-        follow_redirects=False,
-    )
-    assert callback_response.status_code == 400
-    assert callback_response.json()["detail"] == "Invalid OAuth response"
-
-
-@pytest.mark.asyncio
-async def test_oauth_callback_updates_existing_user(
-    client,
-    monkeypatch,
-    session_maker,
-):
-    async def trigger_callback(return_info):
-        login_response = await client.get(
-            "/auth/oauth/login",
-            follow_redirects=False,
-        )
-        assert login_response.status_code in {302, 307}
-        location = login_response.headers["location"]
-        state = parse_qs(urlparse(location).query)["state"][0]
-
-        async def fake_oauth_callback(code, state_param, stored_state):
-            assert state_param == state == stored_state
-            return return_info
-
-        monkeypatch.setattr(
-            "app.api.services.auth.oauth_callback",
-            fake_oauth_callback,
-        )
-
-        return await client.get(
-            "/auth/oauth/callback",
-            params={"code": "dummy", "state": state},
-            follow_redirects=False,
-        )
-
-    unique_email = f"{uuid.uuid4().hex}@example.com"
-    info = {
-        "provider": "nycu",
-        "sub": "existing-sub",
-        "email": unique_email,
-        "name": "Existing User",
-    }
-
-    async with session_maker() as session:
-        await session.execute(delete(User).where(User.email == unique_email))
-        await session.commit()
-    create_response = await trigger_callback(info)
-    assert create_response.status_code in {302, 307}
-
-    async with session_maker() as session:
-        result = await session.execute(
-            select(User).where(User.email == info["email"])
-        )
-        user = result.scalar_one()
-        first_login = user.last_login
-        user_id = user.id
-
-    update_info = {
-        "provider": "nycu",
-        "sub": "existing-sub",
-        "email": unique_email,
-        "name": "Existing User",
-    }
-    update_response = await trigger_callback(update_info)
-    assert update_response.status_code in {302, 307}
-
-    async with session_maker() as session:
-        refreshed = await session.get(User, user_id)
-        assert refreshed.last_login is not None
-        assert refreshed.last_login >= first_login
-        await session.delete(refreshed)
-        await session.commit()
+    assert callback_response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -281,46 +138,6 @@ async def test_login_direct_rejects_unknown_user(session_maker):
                 db=session,
             )
         assert exc.value.status_code == 401
-
-
-@pytest.mark.asyncio
-async def test_auth_callback_direct_creates_user(monkeypatch, session_maker):
-    state = "csrf-token"
-    fake_request = SimpleNamespace(session={"csrf_token": state})
-    monkeypatch.setattr(
-        "app.api.services.auth.oauth_callback",
-        AsyncMock(
-            return_value={
-                "provider": "nycu",
-                "sub": "direct-sub",
-                "email": "direct@example.com",
-                "name": "Direct User",
-            }
-        ),
-    )
-    monkeypatch.setattr(
-        "app.api.services.auth.jwt.encode",
-        lambda payload, key, algorithm: "direct-token",
-    )
-
-    async with session_maker() as session:
-        response = await auth_service.auth_callback_endpoint(
-            request=fake_request,
-            code="code-1",
-            state=state,
-            db=session,
-        )
-        assert response.status_code in {302, 307}
-        assert "direct-token" in response.headers["location"]
-
-    async with session_maker() as session:
-        created = await session.execute(
-            select(User).where(User.email == "direct@example.com")
-        )
-        user = created.scalar_one_or_none()
-        assert user is not None
-        await session.delete(user)
-        await session.commit()
 
 
 @pytest.mark.asyncio

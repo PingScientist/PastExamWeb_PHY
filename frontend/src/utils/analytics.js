@@ -38,7 +38,6 @@ export const EVENTS = {
   // Auth events
   LOGIN: 'login',
   LOGOUT: 'logout',
-  LOGIN_OAUTH: 'login-oauth',
   LOGIN_LOCAL: 'login-local',
 
   // Navigation events
