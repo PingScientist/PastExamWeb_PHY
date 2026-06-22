@@ -483,9 +483,9 @@ h1 {
 
 .spacetime-mesh {
   position: absolute;
-  inset: -4% -3% -2% -2%;
-  width: 100%;
-  height: 100%;
+  inset: -10% -14% -10% -14%;
+  width: 128%;
+  height: 120%;
   opacity: 0.68;
   z-index: 1;
   transform-origin: 68% 46%;
@@ -521,7 +521,7 @@ h1 {
 
 .formula-cloud {
   position: absolute;
-  inset: 0;
+  inset: -8% -12%;
   z-index: 2;
   animation: formulaFieldDrift 6.6s ease-in-out infinite alternate;
 }
