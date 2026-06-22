@@ -259,12 +259,6 @@
         </div>
       </div>
     </Dialog>
-
-    <GenerateAIExamModal
-      :visible="aiExamDialogVisible"
-      @update:visible="aiExamDialogVisible = $event"
-      :coursesList="coursesList"
-    />
   </div>
 </template>
 
@@ -275,8 +269,6 @@ import { authService } from '../api'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { trackEvent, EVENTS } from '../utils/analytics'
-import GenerateAIExamModal from './GenerateAIExamModal.vue'
-import { isUnauthorizedError } from '../utils/http'
 import { useNotifications } from '../utils/useNotifications'
 import NotificationModal from './NotificationModal.vue'
 import NotificationCenterModal from './NotificationCenterModal.vue'
@@ -292,7 +284,6 @@ import {
 export default {
   name: 'AppNavbar',
   components: {
-    GenerateAIExamModal,
     NotificationModal,
     NotificationCenterModal,
   },
@@ -319,8 +310,6 @@ export default {
         { label: 'UI/UX 問題', value: 'ui-ux' },
         { label: '其他問題', value: 'question' },
       ],
-      aiExamDialogVisible: false,
-      coursesList: null,
     }
   },
   setup() {
@@ -541,7 +530,6 @@ export default {
       removeSessionItem(STORAGE_KEYS.session.AUTH_TOKEN)
       removeLocalItem(STORAGE_KEYS.local.SELECTED_SUBJECT)
       removeLocalItem(STORAGE_KEYS.local.ADMIN_CURRENT_TAB)
-      removeLocalItem(STORAGE_KEYS.local.AI_EXAM_CURRENT_TASK)
       this.isAuthenticated = false
       this.userData = null
 
@@ -572,28 +560,6 @@ export default {
         title: '',
         description: '',
         contact: '',
-      }
-    },
-
-    async openAIExamDialog() {
-      this.aiExamDialogVisible = true
-      if (!this.coursesList) {
-        try {
-          const { courseService } = await import('../api')
-          const { data } = await courseService.listCourses()
-          this.coursesList = data
-        } catch (error) {
-          console.error('Failed to load courses:', error)
-          if (isUnauthorizedError(error)) {
-            return
-          }
-          this.toast.add({
-            severity: 'error',
-            summary: '載入失敗',
-            detail: '無法載入課程列表',
-            life: 3000,
-          })
-        }
       }
     },
 
@@ -836,11 +802,6 @@ export default {
       }
 
       const items = [
-        {
-          label: 'AI 模擬試題',
-          icon: 'pi pi-sparkles',
-          command: () => this.invokeMenuAction(() => this.openAIExamDialog()),
-        },
         {
           label: '公告中心',
           icon: 'pi pi-bell',

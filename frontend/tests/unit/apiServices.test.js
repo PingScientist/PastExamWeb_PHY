@@ -3,7 +3,6 @@ import { courseService } from '@/api/services/courses.js'
 import { archiveService } from '@/api/services/archives.js'
 import { notificationService } from '@/api/services/notifications.js'
 import { authService } from '@/api/services/auth.js'
-import { aiExamService } from '@/api/services/aiExam.js'
 import { memeService } from '@/api/services/meme.js'
 import { statisticsService } from '@/api/services/statistics.js'
 import { discussionService } from '@/api/services/discussion.js'
@@ -130,40 +129,6 @@ describe('API service wrappers', () => {
 
     authService.logout()
     expect(postMock).toHaveBeenCalledWith('/auth/logout')
-  })
-
-  it('ai exam service proxies', async () => {
-    const params = { archive_ids: ['a1'], prompt: 'test', temperature: 0.9 }
-    const taskId = 'task-1'
-    const originalWebSocket = globalThis.WebSocket
-    const webSocketMock = vi.fn(function WebSocket(url) {
-      return { url }
-    })
-    globalThis.WebSocket = webSocketMock
-
-    aiExamService.generateMockExam(params)
-    expect(postMock).toHaveBeenCalledWith('/ai-exam/generate', {
-      archive_ids: params.archive_ids,
-      prompt: params.prompt,
-      temperature: params.temperature,
-    })
-
-    aiExamService.deleteTask(taskId)
-    expect(deleteMock).toHaveBeenCalledWith(`/ai-exam/task/${taskId}`)
-
-    const ws = aiExamService.openTaskStatusWebSocket(taskId)
-    expect(webSocketMock).toHaveBeenCalledWith(
-      expect.stringContaining(`/ai-exam/ws/task/${taskId}`)
-    )
-    expect(ws.url).toContain(`/ai-exam/ws/task/${taskId}`)
-
-    aiExamService.getApiKeyStatus()
-    expect(getMock).toHaveBeenCalledWith('/ai-exam/api-key')
-
-    aiExamService.updateApiKey('secret')
-    expect(putMock).toHaveBeenCalledWith('/ai-exam/api-key', { gemini_api_key: 'secret' })
-
-    globalThis.WebSocket = originalWebSocket
   })
 
   it('meme service proxies', () => {

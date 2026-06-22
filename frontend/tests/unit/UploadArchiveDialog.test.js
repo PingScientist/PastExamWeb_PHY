@@ -98,7 +98,6 @@ const sampleCourses = {
   senior: [],
   graduate: [],
   interdisciplinary: [],
-  general: [],
 }
 
 const stubComponent = { template: '<div><slot /></div>' }
@@ -222,7 +221,7 @@ describe('UploadArchiveDialog', () => {
     const wrapper = mountDialog()
     const vm = wrapper.vm
 
-    expect(vm.getCategoryName('freshman')).toBe('大一課程')
+    expect(vm.getCategoryName('freshman')).toBe('基礎必修')
     expect(vm.getCategoryName('unknown')).toBe('unknown')
     expect(vm.getTypeName('final')).toBe('期末考')
     expect(vm.formatFileSize(0)).toBe('0 Bytes')

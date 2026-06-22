@@ -40,7 +40,6 @@ const sampleCourses = {
   senior: [],
   graduate: [],
   interdisciplinary: [],
-  general: [],
 }
 
 const baseArchives = [
@@ -161,7 +160,7 @@ describe('ArchiveView', () => {
   beforeEach(() => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers()
-    localStorage.clear()
+    globalThis.localStorage?.clear?.()
     sessionStorage.clear()
     trackEventMock.mockReset()
     isUnauthorizedErrorMock.mockReturnValue(false)
@@ -321,7 +320,7 @@ describe('ArchiveView', () => {
     await vm.handleUploadSuccess()
     expect(listCoursesMock.mock.calls.length).toBeGreaterThanOrEqual(3)
 
-    expect(vm.getCategoryTag('大一課程')).toBe('大一')
+    expect(vm.getCategoryTag('基礎必修')).toBe('基礎')
     expect(vm.formatDownloadCount(0)).toBe('0')
     expect(vm.formatDownloadCount(12)).toBe('12')
 

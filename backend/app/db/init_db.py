@@ -1,6 +1,7 @@
 import os
 import subprocess
 import unicodedata
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -19,6 +20,59 @@ SEED_DATA_PATH = Path(__file__).with_name("seed_data.yaml")
 def load_seed_data():
     with SEED_DATA_PATH.open(encoding="utf-8") as file:
         return yaml.safe_load(file) or {}
+
+
+def _seed_course_key(course: Course) -> tuple[str, str]:
+    category = getattr(course.category, "value", course.category)
+    return (str(category), unicodedata.normalize("NFKC", course.name))
+
+
+async def sync_course_catalog(session):
+    seed_courses = [
+        (
+            course["category"],
+            unicodedata.normalize("NFKC", course["name"]),
+        )
+        for course in load_seed_data().get("courses", [])
+    ]
+    catalog_keys = {
+        (category.lower(), name)
+        for category, name in seed_courses
+    }
+
+    result = await session.execute(select(Course))
+    existing_courses = result.scalars().all()
+    courses_by_key: dict[tuple[str, str], list[Course]] = {}
+    for course in existing_courses:
+        courses_by_key.setdefault(_seed_course_key(course), []).append(course)
+
+    changed = False
+    for category_name, course_name in seed_courses:
+        category = CourseCategory[category_name]
+        key = (category.value, course_name)
+        matching_courses = courses_by_key.get(key, [])
+        if matching_courses:
+            primary, *duplicates = matching_courses
+            if primary.deleted_at is not None:
+                primary.deleted_at = None
+                changed = True
+            for duplicate in duplicates:
+                if duplicate.deleted_at is None:
+                    duplicate.deleted_at = datetime.now(timezone.utc)
+                    changed = True
+            continue
+
+        session.add(Course(name=course_name, category=category))
+        changed = True
+
+    stale_deleted_at = datetime.now(timezone.utc)
+    for course in existing_courses:
+        if _seed_course_key(course) not in catalog_keys and course.deleted_at is None:
+            course.deleted_at = stale_deleted_at
+            changed = True
+
+    if changed:
+        await session.commit()
 
 
 async def init_db():
@@ -73,19 +127,7 @@ async def init_db():
             await session.commit()
             await session.refresh(admin_user)
 
-        result = await session.execute(select(func.count()).select_from(Course))
-        count = result.scalar()
-        if count == 0:
-            seed_data = load_seed_data()
-            initial_courses = [
-                Course(
-                    name=unicodedata.normalize("NFKC", course["name"]),
-                    category=CourseCategory[course["category"]],
-                )
-                for course in seed_data.get("courses", [])
-            ]
-            session.add_all(initial_courses)
-            await session.commit()
+        await sync_course_catalog(session)
 
         result = await session.execute(select(func.count()).select_from(Meme))
         count = result.scalar()

@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
 from sqlalchemy import delete
+from sqlmodel import select
 
 from app.api.services.courses import (
     create_course,
@@ -37,17 +38,34 @@ async def _create_course(
     session_maker,
     *,
     name=None,
-    category=CourseCategory.GENERAL,
+    category=CourseCategory.FRESHMAN,
 ):
     async with session_maker() as session:
         course = Course(
-            name=name or f"Course {uuid.uuid4().hex[:6]}",
+            name=name or "普通化學(一)",
             category=category,
         )
         session.add(course)
         await session.commit()
         await session.refresh(course)
         return course
+
+
+async def _get_course_by_name(
+    session_maker,
+    *,
+    name: str,
+    category: CourseCategory,
+):
+    async with session_maker() as session:
+        result = await session.execute(
+            select(Course).where(
+                Course.name == name,
+                Course.category == category,
+                Course.deleted_at.is_(None),
+            )
+        )
+        return result.scalars().first()
 
 
 async def _create_archive(
@@ -91,25 +109,22 @@ async def test_get_categorized_courses_returns_courses(
     make_user,
 ):
     user = await make_user()
-    course = await _create_course(
+    course = await _get_course_by_name(
         session_maker,
-        category=CourseCategory.GENERAL,
+        category=CourseCategory.FRESHMAN,
+        name="普通化學(一)",
     )
+    assert course is not None
 
     app.dependency_overrides[get_current_user] = _override_user(user)
     try:
         response = await client.get("/courses")
         assert response.status_code == 200
         body = response.json()
-        general_courses = body["general"]
-        assert any(item["id"] == course.id for item in general_courses)
+        freshman_courses = body["freshman"]
+        assert any(item["id"] == course.id for item in freshman_courses)
     finally:
         app.dependency_overrides.pop(get_current_user, None)
-        async with session_maker() as session:
-            await session.execute(
-                delete(Course).where(Course.id == course.id)
-            )
-            await session.commit()
 
 
 @pytest.mark.asyncio
@@ -323,7 +338,7 @@ async def test_admin_course_crud_flow(
     admin = await make_user(is_admin=True)
     app.dependency_overrides[get_current_user] = _override_user(admin)
 
-    course_name = f"Course {uuid.uuid4().hex[:6]}"
+    course_name = "測試課程"
     course_id = None
 
     try:
@@ -331,7 +346,7 @@ async def test_admin_course_crud_flow(
             "/courses/admin/courses",
             json={
                 "name": course_name,
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
             },
         )
         assert response.status_code == 200
@@ -340,16 +355,16 @@ async def test_admin_course_crud_flow(
 
         response = await client.put(
             f"/courses/admin/courses/{course_id}",
-            json={"name": f"{course_name} Updated"},
+            json={"name": "測試課程 (更新)"},
         )
         assert response.status_code == 200
         updated = response.json()
-        assert updated["name"] == f"{course_name} Updated"
+        assert updated["name"] == "測試課程 (更新)"
 
         response = await client.get("/courses/admin/courses")
         assert response.status_code == 200
         all_courses = response.json()
-        assert any(course["id"] == course_id for course in all_courses)
+        assert all(course["id"] != course_id for course in all_courses)
 
         response = await client.delete(f"/courses/admin/courses/{course_id}")
         assert response.status_code == 200
@@ -386,7 +401,7 @@ async def test_admin_course_endpoints_require_admin(
             "/courses/admin/courses",
             json={
                 "name": f"Forbidden {uuid.uuid4().hex[:4]}",
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
             },
         )
         assert response.status_code == 403
@@ -475,7 +490,7 @@ async def test_update_archive_course_creates_new_course_when_missing(
             f"/courses/{original.id}/archives/{archive.id}/course",
             json={
                 "course_name": "New Course",
-                "course_category": CourseCategory.GENERAL.value,
+                "course_category": CourseCategory.FRESHMAN.value,
             },
         )
         assert response.status_code == 200
@@ -577,14 +592,18 @@ async def test_delete_archive_admin_success(
 @pytest.mark.asyncio
 async def test_get_categorized_courses_direct(session_maker, make_user):
     user = await make_user()
-    course_general = await _create_course(
+    course_freshman = await _get_course_by_name(
         session_maker,
-        category=CourseCategory.GENERAL,
+        category=CourseCategory.FRESHMAN,
+        name="普通化學(一)",
     )
-    course_graduate = await _create_course(
+    course_graduate = await _get_course_by_name(
         session_maker,
         category=CourseCategory.GRADUATE,
+        name="電動力學(一)",
     )
+    assert course_freshman is not None
+    assert course_graduate is not None
 
     try:
         async with session_maker() as session:
@@ -594,21 +613,15 @@ async def test_get_categorized_courses_direct(session_maker, make_user):
             )
         payload = result.model_dump()
         assert any(
-            item["id"] == course_general.id
-            for item in payload["general"]
+            item["id"] == course_freshman.id
+            for item in payload["freshman"]
         )
         assert any(
             item["id"] == course_graduate.id
             for item in payload["graduate"]
         )
     finally:
-        async with session_maker() as session:
-            await session.execute(
-                delete(Course).where(
-                    Course.id.in_([course_general.id, course_graduate.id])
-                )
-            )
-            await session.commit()
+        pass
 
 
 @pytest.mark.asyncio
@@ -949,7 +962,7 @@ async def test_create_course_duplicate_rejected(
     course = await _create_course(
         session_maker,
         name="Duplicate Course",
-        category=CourseCategory.GENERAL,
+        category=CourseCategory.FRESHMAN,
     )
 
     async with session_maker() as session:
@@ -957,7 +970,7 @@ async def test_create_course_duplicate_rejected(
             await create_course(
                 course_data=CourseCreate(
                     name="Duplicate Course",
-                    category=CourseCategory.GENERAL,
+                    category=CourseCategory.FRESHMAN,
                 ),
                 current_user=UserRoles(user_id=admin.id, is_admin=True),
                 db=session,
@@ -1071,7 +1084,12 @@ async def test_list_all_courses_direct_returns_courses(
     make_user,
 ):
     admin = await make_user(is_admin=True)
-    course = await _create_course(session_maker, name="Visible Course")
+    course = await _get_course_by_name(
+        session_maker,
+        name="普通化學(一)",
+        category=CourseCategory.FRESHMAN,
+    )
+    assert course is not None
 
     try:
         async with session_maker() as session:
@@ -1081,6 +1099,4 @@ async def test_list_all_courses_direct_returns_courses(
             )
             assert any(item.id == course.id for item in courses)
     finally:
-        async with session_maker() as session:
-            await session.execute(delete(Course).where(Course.id == course.id))
-            await session.commit()
+        pass

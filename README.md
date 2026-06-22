@@ -31,7 +31,6 @@
 - **條件搜尋與篩選**：可依課程名稱、授課教師、年度等條件進行查詢。
 - **線上文件預覽**：支援 PDF 與圖片格式，無需下載即可瀏覽。
 - **討論區功能**：針對特定課程或考古題進行集中討論與經驗交流。
-- **AI 模擬試題**：可選取考古題內容生成模擬試題（後端整合 `google-genai`）。
 
 ## 介面預覽
 
@@ -45,12 +44,6 @@
 
 <p align="center">
   <img src="docs/screenshots/preview-forum.webp" width="100%" />
-</p>
-
-### AI 模擬試題
-
-<p align="center">
-  <img src="docs/screenshots/ai-exam.webp" width="100%" />
 </p>
 
 ## 使用技術

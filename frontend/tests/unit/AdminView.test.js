@@ -141,7 +141,16 @@ describe('AdminView', () => {
     confirmRequireMock.mockClear()
     isUnauthorizedErrorMock.mockReturnValue(false)
 
-    localStorage.clear()
+    if (!globalThis.localStorage) {
+      const store = new Map()
+      globalThis.localStorage = {
+        getItem: vi.fn((key) => store.get(key) ?? null),
+        setItem: vi.fn((key, value) => store.set(key, String(value))),
+        removeItem: vi.fn((key) => store.delete(key)),
+        clear: vi.fn(() => store.clear()),
+      }
+    }
+    globalThis.localStorage?.clear?.()
   })
 
   afterEach(() => {
@@ -232,7 +241,7 @@ describe('AdminView', () => {
     expect(notificationRemoveMock).toHaveBeenCalledWith(sampleNotifications[0].id)
     expect(notificationGetAllMock).toHaveBeenCalled()
 
-    expect(wrapper.vm.getCategoryName('freshman')).toBe('大一課程')
+    expect(wrapper.vm.getCategoryName('freshman')).toBe('基礎必修')
     expect(wrapper.vm.getCategorySeverity('graduate')).toBe('contrast')
     expect(wrapper.vm.getNotificationSeverity('danger')).toBe('danger')
     expect(wrapper.vm.getNotificationSeverityLabel('info')).toBe('一般')

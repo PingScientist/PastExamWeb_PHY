@@ -658,12 +658,11 @@ const currentTab = ref(getInitialTab())
 
 const categoryOptions = [
   { name: '基礎必修', value: 'freshman' },
-  { name: '核心物理', value: 'sophomore' },
-  { name: '進階物理', value: 'junior' },
-  { name: '專題與選修', value: 'senior' },
-  { name: '研究所課程', value: 'graduate' },
-  { name: '跨域應用', value: 'interdisciplinary' },
-  { name: '通識與科學素養', value: 'general' },
+  { name: '專業必修', value: 'sophomore' },
+  { name: '實驗課程', value: 'junior' },
+  { name: '專業選修', value: 'senior' },
+  { name: '研究所', value: 'graduate' },
+  { name: '戳戳數學系', value: 'interdisciplinary' },
 ]
 
 const userTypeFilterOptions = [
@@ -674,12 +673,11 @@ const userTypeFilterOptions = [
 const getCategoryName = (category) => {
   const categoryMap = {
     freshman: '基礎必修',
-    sophomore: '核心物理',
-    junior: '進階物理',
-    senior: '專題與選修',
-    graduate: '研究所課程',
-    interdisciplinary: '跨域應用',
-    general: '通識與科學素養',
+    sophomore: '專業必修',
+    junior: '實驗課程',
+    senior: '專業選修',
+    graduate: '研究所',
+    interdisciplinary: '戳戳數學系',
   }
   return categoryMap[category] || category
 }

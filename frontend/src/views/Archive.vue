@@ -538,20 +538,19 @@ const shouldResetPanels = ref(true)
 
 const CATEGORIES = {
   freshman: { name: '基礎必修', icon: 'pi pi-fw pi-book', tag: '基礎' },
-  sophomore: { name: '核心物理', icon: 'pi pi-fw pi-book', tag: '核心' },
-  junior: { name: '進階物理', icon: 'pi pi-fw pi-book', tag: '進階' },
-  senior: { name: '專題與選修', icon: 'pi pi-fw pi-book', tag: '專題' },
+  sophomore: { name: '專業必修', icon: 'pi pi-fw pi-compass', tag: '必修' },
+  junior: { name: '實驗課程', icon: 'pi pi-fw pi-sparkles', tag: '實驗' },
+  senior: { name: '專業選修', icon: 'pi pi-fw pi-book', tag: '選修' },
   graduate: {
-    name: '研究所課程',
+    name: '研究所',
     icon: 'pi pi-fw pi-graduation-cap',
     tag: '研究所',
   },
   interdisciplinary: {
-    name: '跨域應用',
-    icon: 'pi pi-fw pi-globe',
-    tag: '跨域',
+    name: '戳戳數學系',
+    icon: 'pi pi-fw pi-calculator',
+    tag: '數學',
   },
-  general: { name: '通識與科學素養', icon: 'pi pi-fw pi-lightbulb', tag: '通識' },
 }
 
 const coursesList = ref({
@@ -561,7 +560,6 @@ const coursesList = ref({
   senior: [],
   graduate: [],
   interdisciplinary: [],
-  general: [],
 })
 
 const archiveTypeConfig = {
@@ -673,7 +671,6 @@ const menuItems = computed(() => {
         label: course.name,
         command: () => filterBySubject({ label: course.name, id: course.id }),
       }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
   }))
 })
 
@@ -705,7 +702,6 @@ const filteredCategories = computed(() => {
               id: course?.id,
             }
           })
-          .sort((a, b) => a.label.localeCompare(b.label)),
       })
     }
   })

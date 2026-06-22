@@ -73,7 +73,6 @@ async def make_user(session_maker):
             "password_hash": get_password_hash(password),
             "is_local": True,
             "is_admin": False,
-            "gemini_api_key": None,
         }
 
         if "password_hash" in overrides:

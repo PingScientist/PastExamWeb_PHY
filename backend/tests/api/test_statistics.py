@@ -60,7 +60,7 @@ async def statistics_records(session_maker, statistics_now):
             )
             course = Course(
                 name=f"Stats Course {unique}",
-                category=CourseCategory.GENERAL,
+                category=CourseCategory.FRESHMAN,
             )
             session.add_all([online_user, offline_user, course])
             await session.commit()

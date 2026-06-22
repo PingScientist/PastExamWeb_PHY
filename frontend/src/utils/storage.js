@@ -4,7 +4,6 @@ export const STORAGE_KEYS = {
     NOTIFICATION_LAST_SEEN: 'notification-last-seen',
     SELECTED_SUBJECT: 'selected-subject',
     ADMIN_CURRENT_TAB: 'admin-current-tab',
-    AI_EXAM_CURRENT_TASK: 'ai-exam-current-task',
     AUTH_TOKEN: 'auth-token',
     DISCUSSION_DESKTOP_DEFAULT_OPEN: 'discussion-desktop-default-open',
   },
@@ -19,7 +18,6 @@ const LEGACY_KEYS = {
     [STORAGE_KEYS.local.NOTIFICATION_LAST_SEEN]: ['notification_last_seen'],
     [STORAGE_KEYS.local.SELECTED_SUBJECT]: ['selectedSubject'],
     [STORAGE_KEYS.local.ADMIN_CURRENT_TAB]: ['adminCurrentTab'],
-    [STORAGE_KEYS.local.AI_EXAM_CURRENT_TASK]: ['aiExamCurrentTask'],
     [STORAGE_KEYS.local.AUTH_TOKEN]: ['authToken'],
   },
   session: {

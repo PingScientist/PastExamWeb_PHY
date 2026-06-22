@@ -15,6 +15,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.db.init_db import load_seed_data
 from app.db.session import get_session
 from app.models.models import (
     Archive,
@@ -43,6 +44,49 @@ _discussion_connections_by_archive: dict[int, set[WebSocket]] = {}
 DISCUSSION_MESSAGE_MAX_LENGTH = 200
 
 
+def _catalog_order() -> dict[tuple[str, str], int]:
+    return {
+        (course["category"].lower(), course["name"]): index
+        for index, course in enumerate(load_seed_data().get("courses", []))
+    }
+
+
+def _catalog_category_names() -> dict[str, set[str]]:
+    catalog: dict[str, set[str]] = {}
+    for course in load_seed_data().get("courses", []):
+        catalog.setdefault(course["category"].lower(), set()).add(course["name"])
+    return catalog
+
+
+def _course_category_value(course: Course) -> str:
+    return getattr(course.category, "value", course.category)
+
+
+def _is_catalog_course(course: Course) -> bool:
+    category = _course_category_value(course)
+    return course.name in _catalog_category_names().get(category, set())
+
+
+def _catalog_sort_key(course: Course) -> int:
+    category = _course_category_value(course)
+    return _catalog_order().get((category, course.name), 10_000)
+
+
+def _catalog_courses(courses: list[Course]) -> list[Course]:
+    seen: set[tuple[str, str]] = set()
+    selected: list[Course] = []
+    for course in sorted(
+        (course for course in courses if _is_catalog_course(course)),
+        key=_catalog_sort_key,
+    ):
+        key = (_course_category_value(course), course.name)
+        if key in seen:
+            continue
+        seen.add(key)
+        selected.append(course)
+    return selected
+
+
 def _discussion_public_display_name(
     *, user_id: int, nickname: str | None, name: str | None
 ) -> str:
@@ -63,12 +107,12 @@ async def get_categorized_courses(
     """
     query = select(Course).where(Course.deleted_at.is_(None))
     result = await db.execute(query)
-    courses = result.scalars().all()
+    courses = _catalog_courses(result.scalars().all())
 
     categorized_courses = CoursesByCategory()
     for course in courses:
         course_info = CourseInfo(id=course.id, name=course.name)
-        getattr(categorized_courses, course.category).append(course_info)
+        getattr(categorized_courses, _course_category_value(course)).append(course_info)
 
     return categorized_courses
 
@@ -88,7 +132,7 @@ async def get_course_archives(
     result = await db.execute(course_query)
     course = result.scalar_one_or_none()
 
-    if not course:
+    if not course or not _is_catalog_course(course):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course with id {course_id} not found",
@@ -779,12 +823,8 @@ async def list_all_courses(
             detail="Only admins can access all courses",
         )
 
-    query = (
-        select(Course)
-        .where(Course.deleted_at.is_(None))
-        .order_by(Course.category, Course.name)
-    )
+    query = select(Course).where(Course.deleted_at.is_(None))
     result = await db.execute(query)
-    courses = result.scalars().all()
+    courses = _catalog_courses(result.scalars().all())
 
     return courses

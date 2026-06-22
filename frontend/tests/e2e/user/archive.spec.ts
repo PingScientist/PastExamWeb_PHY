@@ -7,15 +7,14 @@ test.describe('User › Archive browsing', () => {
   test('restricts admin area and supports archive browsing', async ({ page }) => {
     const coursesResponse = {
       freshman: [
-        { id: 101, name: '資料結構' },
-        { id: 102, name: '離散數學' },
+        { id: 101, name: '普通物理(一)' },
+        { id: 102, name: '微積分(一)' },
       ],
       sophomore: [],
       junior: [],
       senior: [],
       graduate: [],
       interdisciplinary: [],
-      general: [],
     }
 
     let archiveDownloadCount = 3
@@ -188,9 +187,9 @@ test.describe('User › Archive browsing', () => {
     await expect(uploadButton).toBeVisible()
 
     const searchInput = page.getByPlaceholder('搜尋課程')
-    await searchInput.fill('資料')
+    await searchInput.fill('普通物理')
 
-    await clickWhenVisible(page.getByRole('button', { name: '資料結構' }).first())
+    await clickWhenVisible(page.getByRole('button', { name: '普通物理(一)' }).first())
 
     await expect(page.locator('.p-datatable')).toBeVisible()
     await expect(page.getByRole('row', { name: /期末考/ })).toBeVisible()

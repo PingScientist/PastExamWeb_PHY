@@ -4,7 +4,7 @@ import { clickWhenVisible } from '../support/ui'
 
 const COURSES_FIXTURE = {
   freshman: [
-    { id: 101, name: '資料結構與物件導向程式設計' },
+    { id: 101, name: '普通物理(一)' },
     { id: 102, name: '離散數學' },
   ],
   sophomore: [],
@@ -12,7 +12,6 @@ const COURSES_FIXTURE = {
   senior: [],
   graduate: [],
   interdisciplinary: [],
-  general: [],
 }
 
 const ACTIVE_NOTIFICATION = {

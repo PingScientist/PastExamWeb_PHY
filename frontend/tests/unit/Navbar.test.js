@@ -11,8 +11,6 @@ const setTokenMock = vi.hoisted(() => vi.fn())
 const getCurrentUserMock = vi.hoisted(() => vi.fn())
 const isAuthenticatedMock = vi.hoisted(() => vi.fn())
 const toastAddMock = vi.hoisted(() => vi.fn())
-const courseServiceListMock = vi.hoisted(() => vi.fn())
-const isUnauthorizedErrorMock = vi.hoisted(() => vi.fn(() => false))
 const notificationStoreMock = vi.hoisted(() => ({
   state: {
     modalVisible: false,
@@ -35,9 +33,6 @@ vi.mock('@/api', () => ({
     localLogin: localLoginMock,
     logout: logoutMock,
     login: loginRedirectMock,
-  },
-  courseService: {
-    listCourses: courseServiceListMock,
   },
 }))
 
@@ -89,16 +84,6 @@ vi.mock('@/utils/useNotifications', () => ({
   useNotifications: () => notificationStoreMock,
 }))
 
-vi.mock('@/utils/http', () => ({
-  isUnauthorizedError: isUnauthorizedErrorMock,
-}))
-
-vi.mock('@/components/GenerateAIExamModal.vue', () => ({
-  default: {
-    name: 'GenerateAIExamModal',
-    template: '<div class="ai-exam-modal"></div>',
-  },
-}))
 vi.mock('@/components/NotificationModal.vue', () => ({
   default: {
     name: 'NotificationModal',
@@ -135,10 +120,8 @@ describe('Navbar methods', () => {
     getCurrentUserMock.mockReset()
     isAuthenticatedMock.mockReset()
     setTokenMock.mockReset()
-    courseServiceListMock.mockReset()
-    isUnauthorizedErrorMock.mockReturnValue(false)
     sessionStorage.clear()
-    localStorage.clear()
+    globalThis.localStorage?.clear?.()
   })
 
   afterEach(() => {
@@ -229,13 +212,11 @@ describe('Navbar methods', () => {
       userData: { name: 'Alice' },
     }
     sessionStorage.setItem('auth-token', 'abc')
-    localStorage.setItem('selected-subject', 'xyz')
 
     await Navbar.methods.handleLogout.call(ctx)
     expect(logoutMock).toHaveBeenCalled()
     expect(trackEventMock).toHaveBeenCalledWith('logout', { success: true })
     expect(sessionStorage.getItem('auth-token')).toBeNull()
-    expect(localStorage.getItem('selected-subject')).toBeNull()
     expect(routerPush).toHaveBeenCalledWith('/')
   })
 
@@ -406,63 +387,6 @@ describe('Navbar methods', () => {
     expect(routerPush).not.toHaveBeenCalled()
   })
 
-  it('handles OAuth login shortcut', () => {
-    const ctx = {
-      loginVisible: true,
-    }
-    Navbar.methods.handleOAuthLogin.call(ctx)
-    expect(loginRedirectMock).toHaveBeenCalled()
-    expect(ctx.loginVisible).toBe(false)
-  })
-
-  it('opens AI exam dialog and handles loading outcomes', async () => {
-    const ctx = {
-      aiExamDialogVisible: false,
-      coursesList: null,
-      toast: { add: toastAddMock },
-    }
-
-    courseServiceListMock.mockResolvedValueOnce({ data: { freshman: [] } })
-    await Navbar.methods.openAIExamDialog.call(ctx)
-    expect(ctx.aiExamDialogVisible).toBe(true)
-    expect(courseServiceListMock).toHaveBeenCalled()
-    expect(ctx.coursesList).toEqual({ freshman: [] })
-
-    const errorCtx = {
-      aiExamDialogVisible: false,
-      coursesList: null,
-      toast: { add: toastAddMock },
-    }
-    toastAddMock.mockClear()
-    courseServiceListMock.mockRejectedValueOnce(new Error('failed'))
-    await Navbar.methods.openAIExamDialog.call(errorCtx)
-    expect(toastAddMock).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'error', summary: '載入失敗' })
-    )
-
-    const unauthorizedCtx = {
-      aiExamDialogVisible: false,
-      coursesList: null,
-      toast: { add: toastAddMock },
-    }
-    toastAddMock.mockClear()
-    isUnauthorizedErrorMock.mockReturnValueOnce(true)
-    courseServiceListMock.mockRejectedValueOnce(new Error('unauthorized'))
-    await Navbar.methods.openAIExamDialog.call(unauthorizedCtx)
-    expect(toastAddMock).not.toHaveBeenCalled()
-
-    const cachedCtx = {
-      aiExamDialogVisible: false,
-      coursesList: { freshman: [{ id: 1, name: 'Calc' }] },
-      toast: { add: toastAddMock },
-    }
-    toastAddMock.mockClear()
-    courseServiceListMock.mockClear()
-    await Navbar.methods.openAIExamDialog.call(cachedCtx)
-    expect(courseServiceListMock).not.toHaveBeenCalled()
-    expect(cachedCtx.aiExamDialogVisible).toBe(true)
-  })
-
   it('formats issue body with system information', () => {
     const ctx = {
       getBrowserInfo: vi.fn(() => 'Chrome 120'),
@@ -477,13 +401,13 @@ describe('Navbar methods', () => {
       route: { path: '/archive', name: 'ArchiveView', fullPath: '/archive?course=1' },
       pageContext: {
         archiveContext: {
-          course: { id: 101, name: '資料結構' },
+          course: { id: 101, name: '普通物理(一)' },
           filters: {
             year: '2024',
             professor: '王教授',
             type: 'final',
             hasAnswers: true,
-            searchQuery: '資',
+            searchQuery: '普通物理',
           },
           preview: { open: true, archiveId: 201, name: '期末考' },
         },
@@ -501,7 +425,7 @@ describe('Navbar methods', () => {
     expect(ctx.getBrowserInfo).toHaveBeenCalledWith('chrome ua')
     expect(bodyWithContact).toContain('contact@example.com')
     expect(bodyWithContact).toContain('## 頁面資訊')
-    expect(bodyWithContact).toContain('資料結構')
+    expect(bodyWithContact).toContain('普通物理(一)')
     expect(bodyWithContact).toContain('year=2024')
     expect(bodyWithContact).toContain('archiveId=201')
 
@@ -543,7 +467,7 @@ describe('Navbar methods', () => {
       'pastexam-issue-context',
       JSON.stringify({
         page: 'archive',
-        course: { id: 101, name: '資料結構' },
+        course: { id: 101, name: '普通物理(一)' },
         filters: {
           year: '2024',
           professor: null,
@@ -618,33 +542,31 @@ describe('Navbar methods', () => {
       userData: { is_admin: true },
       isDesktopView: true,
       invokeMenuAction: vi.fn((handler) => handler()),
-      openAIExamDialog: vi.fn(),
       openNotificationCenter: vi.fn(),
       openIssueReportDialog: vi.fn(),
       handleNavigateAdmin: vi.fn(),
       handleLogout: vi.fn(),
     }
     const actionsDesktop = Navbar.computed.moreActions.call(actionsCtxDesktop)
-    expect(actionsDesktop).toHaveLength(4)
+    expect(actionsDesktop).toHaveLength(3)
     actionsDesktop[0].command()
     expect(actionsCtxDesktop.invokeMenuAction).toHaveBeenCalled()
-    expect(actionsCtxDesktop.openAIExamDialog).toHaveBeenCalled()
+    expect(actionsCtxDesktop.openNotificationCenter).toHaveBeenCalledWith('navbar-menu')
 
     const actionsCtxMobile = {
       isAuthenticated: true,
       userData: { is_admin: true },
       isDesktopView: false,
       invokeMenuAction: vi.fn((handler) => handler()),
-      openAIExamDialog: vi.fn(),
       openNotificationCenter: vi.fn(),
       openIssueReportDialog: vi.fn(),
       handleNavigateAdmin: vi.fn(),
       handleLogout: vi.fn(),
     }
     const actionsMobile = Navbar.computed.moreActions.call(actionsCtxMobile)
-    expect(actionsMobile).toHaveLength(6)
-    expect(actionsMobile[4]).toHaveProperty('separator')
-    expect(actionsMobile[5].label).toBe('登出')
+    expect(actionsMobile).toHaveLength(5)
+    expect(actionsMobile[3]).toHaveProperty('separator')
+    expect(actionsMobile[4].label).toBe('登出')
 
     const canSubmitCtx = {
       issueForm: { type: 'bug', title: 'Title', description: 'Desc' },
@@ -715,7 +637,6 @@ describe('Navbar methods', () => {
         },
         NotificationModal: false,
         NotificationCenterModal: false,
-        GenerateAIExamModal: false,
         Select: { name: 'SelectStub', template: '<select><slot /></select>' },
         InputText: { name: 'InputTextStub', template: '<input />' },
         Textarea: { name: 'TextareaStub', template: '<textarea></textarea>' },

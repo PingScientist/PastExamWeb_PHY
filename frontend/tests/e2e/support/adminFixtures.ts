@@ -45,14 +45,11 @@ export const buildCoursesCatalog = (courses: Course[]): Catalog => ({
   interdisciplinary: courses
     .filter((course) => course.category === 'interdisciplinary')
     .map(({ id, name }) => ({ id, name })),
-  general: courses
-    .filter((course) => course.category === 'general')
-    .map(({ id, name }) => ({ id, name })),
 })
 
 export const defaultCourses: Course[] = [
-  { id: 1, name: '資料結構', category: 'freshman' },
-  { id: 2, name: '演算法', category: 'junior' },
+  { id: 1, name: '普通物理(一)', category: 'freshman' },
+  { id: 2, name: '電磁學(一)', category: 'sophomore' },
 ]
 
 export const defaultUsers: User[] = [

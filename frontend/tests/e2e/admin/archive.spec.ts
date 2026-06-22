@@ -4,15 +4,14 @@ import { clickWhenVisible } from '../support/ui'
 
 const COURSES_FIXTURE = {
   freshman: [
-    { id: 101, name: '資料結構與物件導向程式設計' },
-    { id: 102, name: '演算法概論' },
+    { id: 101, name: '普通物理(一)' },
+    { id: 102, name: '電磁學(一)' },
   ],
   sophomore: [],
   junior: [],
   senior: [],
   graduate: [],
   interdisciplinary: [],
-  general: [],
 }
 
 const ARCHIVES_FIXTURE: Record<number, Array<Record<string, unknown>>> = {
@@ -95,9 +94,9 @@ test.describe('Admin › Archive management', () => {
 
     const searchInput = page.getByPlaceholder('搜尋課程')
     await expect(searchInput).toBeVisible({ timeout: 15000 })
-    await searchInput.fill('資料結構')
+    await searchInput.fill('普通物理')
 
-    const courseButton = page.getByRole('button', { name: '資料結構與物件導向程式設計' }).first()
+    const courseButton = page.getByRole('button', { name: '普通物理(一)' }).first()
     await expect(courseButton).toBeVisible({ timeout: 15000 })
     await Promise.all([
       page.waitForResponse((response) => {
@@ -111,7 +110,7 @@ test.describe('Admin › Archive management', () => {
     ])
 
     const selectedSubject = page.locator('span.font-medium', {
-      hasText: '資料結構與物件導向程式設計',
+      hasText: '普通物理(一)',
     })
     await expect(selectedSubject).toBeVisible({ timeout: 15000 })
 
@@ -127,9 +126,9 @@ test.describe('Admin › Archive management', () => {
     await page.goto('/archive')
 
     const searchInput = page.getByPlaceholder('搜尋課程')
-    await searchInput.fill('演算法概論')
+    await searchInput.fill('電磁學')
 
-    const courseButton = page.getByRole('button', { name: '演算法概論' }).first()
+    const courseButton = page.getByRole('button', { name: '電磁學(一)' }).first()
     await Promise.all([
       page.waitForResponse((response) => {
         return (
@@ -141,7 +140,7 @@ test.describe('Admin › Archive management', () => {
       clickWhenVisible(courseButton),
     ])
 
-    const selectionTag = page.locator('span.font-medium', { hasText: '演算法概論' })
+    const selectionTag = page.locator('span.font-medium', { hasText: '電磁學(一)' })
     await expect(selectionTag).toBeVisible({ timeout: 15000 })
 
     await page.reload()

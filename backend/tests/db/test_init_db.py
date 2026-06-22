@@ -17,9 +17,15 @@ class FakeScalarResult:
     def scalar(self):
         return self._value
 
+    def scalars(self):
+        return self
+
+    def all(self):
+        return self._value
+
 
 class FakeSession:
-    def __init__(self, admin_exists=False, course_count=0, meme_count=0):
+    def __init__(self, admin_exists=False, courses=None, meme_count=0):
         self.admin = (
             User(
                 name=settings.DEFAULT_ADMIN_NAME,
@@ -28,7 +34,7 @@ class FakeSession:
             if admin_exists
             else None
         )
-        self.course_count = course_count
+        self.courses = courses or []
         self.meme_count = meme_count
         self.added_courses: list[Course] = []
         self.added_memes: list[Meme] = []
@@ -47,7 +53,7 @@ class FakeSession:
             return FakeScalarResult(self.admin)
         if self.execute_step == 1:
             self.execute_step += 1
-            return FakeScalarResult(self.course_count)
+            return FakeScalarResult(self.courses)
         if self.execute_step == 2:
             self.execute_step += 1
             return FakeScalarResult(self.meme_count)
@@ -56,6 +62,8 @@ class FakeSession:
     def add(self, obj):
         if isinstance(obj, User):
             self.admin = obj
+        elif isinstance(obj, Course):
+            self.added_courses.append(obj)
 
     def add_all(self, objs):
         for obj in objs:
@@ -80,7 +88,7 @@ async def test_init_db_creates_admin_and_seeds(monkeypatch):
         "courses": [
             {
                 "name": "Seed Course A",
-                "category": CourseCategory.GENERAL.name,
+                "category": CourseCategory.FRESHMAN.name,
             },
             {
                 "name": "Seed Course B",
@@ -147,7 +155,11 @@ async def test_init_db_fallback_when_migration_fails(monkeypatch):
         stdout = ""
         stderr = "boom"
 
-    fake_session = FakeSession(admin_exists=True, course_count=1, meme_count=1)
+    fake_session = FakeSession(
+        admin_exists=True,
+        courses=[Course(name="Seed Course A", category=CourseCategory.FRESHMAN)],
+        meme_count=1,
+    )
 
     @asynccontextmanager
     async def fake_session_factory():

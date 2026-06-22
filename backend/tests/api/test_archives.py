@@ -47,7 +47,7 @@ async def test_upload_archive_creates_course_and_archive(
             files={"file": ("sample.pdf", fake_pdf, "application/pdf")},
             data={
                 "subject": unique_course,
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
                 "professor": "Prof. Test",
                 "archive_type": "final",
                 "has_answers": "true",
@@ -108,7 +108,7 @@ async def test_upload_archive_returns_404_when_user_missing(
             },
             data={
                 "subject": "Missing User Course",
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
                 "professor": "Prof. Missing",
                 "archive_type": "midterm",
                 "has_answers": "false",
@@ -133,7 +133,7 @@ async def test_upload_archive_reuses_existing_course(
     subject = "Existing Course"
 
     async with session_maker() as session:
-        course = Course(name=subject, category=CourseCategory.GENERAL)
+        course = Course(name=subject, category=CourseCategory.FRESHMAN)
         session.add(course)
         await session.commit()
         await session.refresh(course)
@@ -164,7 +164,7 @@ async def test_upload_archive_reuses_existing_course(
             },
             data={
                 "subject": subject,
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
                 "professor": "Prof. Existing",
                 "archive_type": "quiz",
                 "has_answers": "false",
@@ -225,7 +225,7 @@ async def test_upload_archive_rejects_large_file(
             },
             data={
                 "subject": "Oversized Course",
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
                 "professor": "Prof. Big",
                 "archive_type": "midterm",
                 "has_answers": "true",
@@ -279,7 +279,7 @@ async def test_upload_archive_handles_storage_failure(
             },
             data={
                 "subject": "Fail Course",
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
                 "professor": "Prof. Fail",
                 "archive_type": "final",
                 "has_answers": "false",
@@ -334,7 +334,7 @@ async def test_upload_archive_function_covers_creation_and_reuse(
             return await upload_archive(
                 file=upload,
                 subject=subject,
-                category=CourseCategory.GENERAL,
+                category=CourseCategory.FRESHMAN,
                 professor="Prof. Direct",
                 archive_type="final",
                 has_answers=True,
@@ -391,7 +391,7 @@ async def test_upload_archive_requires_pdf(
             files={"file": ("sample.txt", io.BytesIO(b"text"), "text/plain")},
             data={
                 "subject": "Non PDF Course",
-                "category": CourseCategory.GENERAL.value,
+                "category": CourseCategory.FRESHMAN.value,
                 "professor": "Prof. Fake",
                 "archive_type": "midterm",
                 "has_answers": "false",
@@ -426,7 +426,7 @@ async def test_upload_archive_function_user_missing(
             await upload_archive(
                 file=upload,
                 subject="Missing Subject",
-                category=CourseCategory.GENERAL,
+                category=CourseCategory.FRESHMAN,
                 professor="Prof. Missing",
                 archive_type="midterm",
                 has_answers=False,
@@ -451,7 +451,7 @@ async def test_upload_archive_function_rejects_non_pdf(
             await upload_archive(
                 file=upload,
                 subject="Bad File",
-                category=CourseCategory.GENERAL,
+                category=CourseCategory.FRESHMAN,
                 professor="Prof. Text",
                 archive_type="midterm",
                 has_answers=False,
@@ -487,7 +487,7 @@ async def test_upload_archive_function_handles_storage_error(
             await upload_archive(
                 file=upload,
                 subject="Failure",
-                category=CourseCategory.GENERAL,
+                category=CourseCategory.FRESHMAN,
                 professor="Prof. Fail",
                 archive_type="final",
                 has_answers=False,
