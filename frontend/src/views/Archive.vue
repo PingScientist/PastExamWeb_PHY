@@ -776,19 +776,7 @@ async function fetchCourses() {
     // Only update coursesList if the data has actually changed to prevent unnecessary re-renders
     const newData = response.data
     const currentData = coursesList.value
-
-    // Simple comparison - if structure looks the same, don't update
-    let hasChanged = false
-    if (!currentData || Object.keys(currentData).length === 0) {
-      hasChanged = true
-    } else {
-      for (const category of Object.keys(newData)) {
-        if (!currentData[category] || currentData[category].length !== newData[category].length) {
-          hasChanged = true
-          break
-        }
-      }
-    }
+    const hasChanged = JSON.stringify(currentData) !== JSON.stringify(newData)
 
     if (hasChanged) {
       coursesList.value = newData
