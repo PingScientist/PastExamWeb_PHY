@@ -2,6 +2,7 @@ import os
 import subprocess
 import unicodedata
 from datetime import datetime, timezone
+from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 
@@ -35,10 +36,6 @@ async def sync_course_catalog(session):
         )
         for course in load_seed_data().get("courses", [])
     ]
-    catalog_keys = {
-        (category.lower(), name)
-        for category, name in seed_courses
-    }
 
     result = await session.execute(select(Course))
     existing_courses = result.scalars().all()
@@ -47,6 +44,24 @@ async def sync_course_catalog(session):
         courses_by_key.setdefault(_seed_course_key(course), []).append(course)
 
     changed = False
+    seed_order_by_key = {}
+    category_positions = defaultdict(int)
+    for category_name, course_name in seed_courses:
+        category = CourseCategory[category_name]
+        seed_order_by_key[(category.value, course_name)] = category_positions[category.value]
+        category_positions[category.value] += 1
+
+    active_courses_by_category = defaultdict(list)
+    for course in existing_courses:
+        if course.deleted_at is None:
+            category = getattr(course.category, "value", course.category)
+            active_courses_by_category[category].append(course)
+
+    should_initialize_order = {
+        category: all(course.order_index == 0 for course in courses)
+        for category, courses in active_courses_by_category.items()
+    }
+
     for category_name, course_name in seed_courses:
         category = CourseCategory[category_name]
         key = (category.value, course_name)
@@ -56,20 +71,25 @@ async def sync_course_catalog(session):
             if primary.deleted_at is not None:
                 primary.deleted_at = None
                 changed = True
+            if should_initialize_order.get(category.value, True):
+                expected_order = seed_order_by_key[key]
+                if primary.order_index != expected_order:
+                    primary.order_index = expected_order
+                    changed = True
             for duplicate in duplicates:
                 if duplicate.deleted_at is None:
                     duplicate.deleted_at = datetime.now(timezone.utc)
                     changed = True
             continue
 
-        session.add(Course(name=course_name, category=category))
+        session.add(
+            Course(
+                name=course_name,
+                category=category,
+                order_index=seed_order_by_key[key],
+            )
+        )
         changed = True
-
-    stale_deleted_at = datetime.now(timezone.utc)
-    for course in existing_courses:
-        if _seed_course_key(course) not in catalog_keys and course.deleted_at is None:
-            course.deleted_at = stale_deleted_at
-            changed = True
 
     if changed:
         await session.commit()

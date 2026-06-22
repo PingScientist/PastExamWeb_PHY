@@ -51,12 +51,38 @@
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
-                :multiSortMeta="courseSortMeta"
-                sortMode="multiple"
-                removableSort
               >
-                <Column field="name" header="課程名稱" sortable style="width: 35%"></Column>
-                <Column field="category" header="分類" sortable style="width: 25%">
+                <Column header="順序" style="width: 18%">
+                  <template #body="{ data }">
+                    <div class="flex align-items-center gap-2">
+                      <span class="text-sm text-500 w-2rem">
+                        {{ getCoursePosition(data) + 1 }}
+                      </span>
+                      <Button
+                        icon="pi pi-arrow-up"
+                        severity="secondary"
+                        text
+                        rounded
+                        size="small"
+                        aria-label="上移"
+                        :disabled="!canMoveCourse(data, -1) || courseOrderLoading"
+                        @click="moveCourse(data, -1)"
+                      />
+                      <Button
+                        icon="pi pi-arrow-down"
+                        severity="secondary"
+                        text
+                        rounded
+                        size="small"
+                        aria-label="下移"
+                        :disabled="!canMoveCourse(data, 1) || courseOrderLoading"
+                        @click="moveCourse(data, 1)"
+                      />
+                    </div>
+                  </template>
+                </Column>
+                <Column field="name" header="課程名稱" style="width: 32%"></Column>
+                <Column field="category" header="分類" style="width: 22%">
                   <template #body="{ data }">
                     <Tag :severity="getCategorySeverity(data.category)" class="text-sm">
                       {{ getCategoryName(data.category) }}
@@ -551,6 +577,7 @@ import {
   getCourses,
   createCourse,
   updateCourse,
+  reorderCourses,
   deleteCourse,
   getUsers,
   createUser,
@@ -568,11 +595,7 @@ const courses = ref([])
 const coursesLoading = ref(false)
 const searchQuery = ref('')
 const filterCategory = ref(null)
-
-const courseSortMeta = ref([
-  { field: 'category', order: 1 },
-  { field: 'name', order: 1 },
-])
+const courseOrderLoading = ref(false)
 
 const showCourseDialog = ref(false)
 const editingCourse = ref(null)
@@ -694,6 +717,21 @@ const getCategorySeverity = (category) => {
   return severityMap[category] || 'secondary'
 }
 
+const categoryOrder = categoryOptions.reduce((acc, category, index) => {
+  acc[category.value] = index
+  return acc
+}, {})
+
+const sortCourses = (courseList) => {
+  return [...courseList].sort((a, b) => {
+    const categoryDiff = (categoryOrder[a.category] ?? 999) - (categoryOrder[b.category] ?? 999)
+    if (categoryDiff !== 0) return categoryDiff
+    const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0)
+    if (orderDiff !== 0) return orderDiff
+    return (a.id ?? 0) - (b.id ?? 0)
+  })
+}
+
 const getNotificationSeverity = (severity) => {
   const map = {
     info: 'info',
@@ -762,7 +800,7 @@ const toDate = (value) => {
 }
 
 const filteredCourses = computed(() => {
-  let filtered = courses.value
+  let filtered = sortCourses(courses.value)
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
@@ -775,6 +813,60 @@ const filteredCourses = computed(() => {
 
   return filtered
 })
+
+const getCategoryCourses = (category) => {
+  return sortCourses(courses.value.filter((course) => course.category === category))
+}
+
+const getCoursePosition = (course) => {
+  return getCategoryCourses(course.category).findIndex((item) => item.id === course.id)
+}
+
+const canMoveCourse = (course, direction) => {
+  const position = getCoursePosition(course)
+  if (position < 0) return false
+  const categoryCourses = getCategoryCourses(course.category)
+  const nextPosition = position + direction
+  return nextPosition >= 0 && nextPosition < categoryCourses.length
+}
+
+const moveCourse = async (course, direction) => {
+  if (!canMoveCourse(course, direction)) return
+
+  const categoryCourses = getCategoryCourses(course.category)
+  const currentIndex = categoryCourses.findIndex((item) => item.id === course.id)
+  const nextIndex = currentIndex + direction
+  const reordered = [...categoryCourses]
+  const [movedCourse] = reordered.splice(currentIndex, 1)
+  reordered.splice(nextIndex, 0, movedCourse)
+
+  courseOrderLoading.value = true
+  try {
+    await reorderCourses(
+      course.category,
+      reordered.map((item) => item.id)
+    )
+    trackEvent(EVENTS.UPDATE_COURSE, {
+      action: 'reorder',
+      courseName: course.name,
+      category: course.category,
+    })
+    await loadCourses()
+  } catch (error) {
+    console.error('更新課程順序失敗:', error)
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: '課程順序更新失敗',
+      life: 3000,
+    })
+  } finally {
+    courseOrderLoading.value = false
+  }
+}
 
 const filteredUsers = computed(() => {
   let filtered = users.value

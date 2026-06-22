@@ -33,7 +33,6 @@
             <span
               v-if="isAuthenticated"
               class="user-name flex align-items-center"
-              :style="{ color: 'var(--text-secondary)' }"
               >{{ userData?.name || 'User' }}</span
             >
             <Button
@@ -966,6 +965,7 @@ export default {
   align-items: center;
   line-height: 1;
   margin: auto 0;
+  color: rgba(229, 235, 226, 0.84);
 }
 
 :deep(.p-menubar-end) > div {

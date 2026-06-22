@@ -386,9 +386,21 @@ h1 {
 .subtitle {
   max-width: 36rem;
   margin: 1.2rem 0 0;
-  color: var(--text-secondary);
+  color: rgba(222, 232, 224, 0.78);
   font-size: clamp(0.98rem, 1.15vw, 1.08rem);
   line-height: 1.78;
+}
+
+.hero-actions :deep(.p-button.p-button-secondary.p-button-outlined) {
+  color: rgba(232, 240, 226, 0.86);
+  border-color: rgba(214, 230, 223, 0.62);
+  background: rgba(10, 20, 18, 0.18);
+}
+
+.hero-actions :deep(.p-button.p-button-secondary.p-button-outlined:hover) {
+  color: #f5fbf6;
+  border-color: rgba(238, 246, 239, 0.82);
+  background: rgba(214, 230, 223, 0.1);
 }
 
 .hero-actions {
@@ -771,11 +783,12 @@ h1 {
 
 .stat-card p {
   margin: 0 0 0.2rem;
-  color: var(--text-secondary);
+  color: rgba(229, 238, 229, 0.74);
   font-size: 0.85rem;
 }
 
 .stat-card strong {
+  color: #f4fbf4;
   font-size: 1.3rem;
 }
 

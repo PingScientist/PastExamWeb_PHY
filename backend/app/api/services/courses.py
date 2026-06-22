@@ -12,10 +12,10 @@ from fastapi import (
     status,
 )
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.db.init_db import load_seed_data
 from app.db.session import get_session
 from app.models.models import (
     Archive,
@@ -28,6 +28,7 @@ from app.models.models import (
     CourseCreate,
     CourseInfo,
     CourseRead,
+    CourseReorder,
     CoursesByCategory,
     CourseUpdate,
     User,
@@ -42,49 +43,53 @@ router = APIRouter()
 # In-memory connection registry (single-process broadcast).
 _discussion_connections_by_archive: dict[int, set[WebSocket]] = {}
 DISCUSSION_MESSAGE_MAX_LENGTH = 200
-
-
-def _catalog_order() -> dict[tuple[str, str], int]:
-    return {
-        (course["category"].lower(), course["name"]): index
-        for index, course in enumerate(load_seed_data().get("courses", []))
-    }
-
-
-def _catalog_category_names() -> dict[str, set[str]]:
-    catalog: dict[str, set[str]] = {}
-    for course in load_seed_data().get("courses", []):
-        catalog.setdefault(course["category"].lower(), set()).add(course["name"])
-    return catalog
+CATEGORY_ORDER = {
+    "freshman": 0,
+    "sophomore": 1,
+    "junior": 2,
+    "senior": 3,
+    "graduate": 4,
+    "interdisciplinary": 5,
+}
 
 
 def _course_category_value(course: Course) -> str:
     return getattr(course.category, "value", course.category)
 
 
-def _is_catalog_course(course: Course) -> bool:
+def _course_sort_key(course: Course) -> tuple[int, int, int]:
     category = _course_category_value(course)
-    return course.name in _catalog_category_names().get(category, set())
+    return (
+        CATEGORY_ORDER.get(category, 999),
+        course.order_index,
+        course.id or 0,
+    )
 
 
-def _catalog_sort_key(course: Course) -> int:
-    category = _course_category_value(course)
-    return _catalog_order().get((category, course.name), 10_000)
-
-
-def _catalog_courses(courses: list[Course]) -> list[Course]:
+def _visible_courses(courses: list[Course]) -> list[Course]:
     seen: set[tuple[str, str]] = set()
     selected: list[Course] = []
-    for course in sorted(
-        (course for course in courses if _is_catalog_course(course)),
-        key=_catalog_sort_key,
-    ):
-        key = (_course_category_value(course), course.name)
+    for course in sorted(courses, key=_course_sort_key):
+        category = _course_category_value(course)
+        if category not in CATEGORY_ORDER:
+            continue
+        key = (category, course.name)
         if key in seen:
             continue
         seen.add(key)
         selected.append(course)
     return selected
+
+
+async def _next_order_index(db: AsyncSession, category) -> int:
+    result = await db.execute(
+        select(func.max(Course.order_index)).where(
+            Course.category == category,
+            Course.deleted_at.is_(None),
+        )
+    )
+    current_max = result.scalar()
+    return 0 if current_max is None else int(current_max) + 1
 
 
 def _discussion_public_display_name(
@@ -107,11 +112,15 @@ async def get_categorized_courses(
     """
     query = select(Course).where(Course.deleted_at.is_(None))
     result = await db.execute(query)
-    courses = _catalog_courses(result.scalars().all())
+    courses = _visible_courses(result.scalars().all())
 
     categorized_courses = CoursesByCategory()
     for course in courses:
-        course_info = CourseInfo(id=course.id, name=course.name)
+        course_info = CourseInfo(
+            id=course.id,
+            name=course.name,
+            order_index=course.order_index,
+        )
         getattr(categorized_courses, _course_category_value(course)).append(course_info)
 
     return categorized_courses
@@ -132,7 +141,7 @@ async def get_course_archives(
     result = await db.execute(course_query)
     course = result.scalar_one_or_none()
 
-    if not course or not _is_catalog_course(course):
+    if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course with id {course_id} not found",
@@ -691,7 +700,15 @@ async def create_course(
             detail="Course with this name and category already exists",
         )
 
-    course = Course(name=course_data.name, category=course_data.category)
+    order_index = course_data.order_index
+    if order_index is None:
+        order_index = await _next_order_index(db, course_data.category)
+
+    course = Course(
+        name=course_data.name,
+        category=course_data.category,
+        order_index=order_index,
+    )
 
     db.add(course)
     await db.commit()
@@ -725,6 +742,8 @@ async def update_course(
             status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
         )
 
+    original_category = course.category
+
     if course_data.name is not None or course_data.category is not None:
         new_name = course_data.name if course_data.name is not None else course.name
         new_category = (
@@ -753,11 +772,68 @@ async def update_course(
         course.name = course_data.name
     if course_data.category is not None:
         course.category = course_data.category
+        if course_data.category != original_category and course_data.order_index is None:
+            course.order_index = await _next_order_index(db, course_data.category)
+    if course_data.order_index is not None:
+        course.order_index = course_data.order_index
 
     await db.commit()
     await db.refresh(course)
 
     return course
+
+
+@router.post("/admin/courses/reorder", response_model=List[CourseRead])
+async def reorder_courses(
+    reorder_data: CourseReorder,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Update course order within one category. Only admins can reorder courses.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can reorder courses",
+        )
+
+    result = await db.execute(
+        select(Course).where(
+            Course.category == reorder_data.category,
+            Course.deleted_at.is_(None),
+        )
+    )
+    courses = result.scalars().all()
+    courses_by_id = {course.id: course for course in courses}
+
+    requested_ids = list(dict.fromkeys(reorder_data.course_ids))
+    missing_ids = [course_id for course_id in requested_ids if course_id not in courses_by_id]
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Course order includes courses outside the selected category",
+        )
+
+    ordered_courses = [courses_by_id[course_id] for course_id in requested_ids]
+    ordered_id_set = set(requested_ids)
+    remaining_courses = sorted(
+        (course for course in courses if course.id not in ordered_id_set),
+        key=_course_sort_key,
+    )
+
+    for index, course in enumerate([*ordered_courses, *remaining_courses]):
+        course.order_index = index
+
+    await db.commit()
+
+    result = await db.execute(
+        select(Course).where(
+            Course.category == reorder_data.category,
+            Course.deleted_at.is_(None),
+        )
+    )
+    return _visible_courses(result.scalars().all())
 
 
 @router.delete("/admin/courses/{course_id}")
@@ -825,6 +901,6 @@ async def list_all_courses(
 
     query = select(Course).where(Course.deleted_at.is_(None))
     result = await db.execute(query)
-    courses = _catalog_courses(result.scalars().all())
+    courses = _visible_courses(result.scalars().all())
 
     return courses

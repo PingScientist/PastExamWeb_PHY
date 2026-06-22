@@ -58,6 +58,7 @@ class Course(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     category: CourseCategory
+    order_index: int = Field(default=0, index=True)
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
@@ -242,6 +243,7 @@ class NotificationRead(NotificationBase):
 class CourseInfo(BaseModel):
     id: int
     name: str
+    order_index: int = 0
 
     class Config:
         from_attributes = True
@@ -289,17 +291,25 @@ class ArchiveDiscussionMessageRead(BaseModel):
 class CourseCreate(BaseModel):
     name: str
     category: CourseCategory
+    order_index: Optional[int] = None
 
 
 class CourseUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[CourseCategory] = None
+    order_index: Optional[int] = None
+
+
+class CourseReorder(BaseModel):
+    category: CourseCategory
+    course_ids: List[int]
 
 
 class CourseRead(BaseModel):
     id: int
     name: str
     category: CourseCategory
+    order_index: int = 0
 
     class Config:
         from_attributes = True

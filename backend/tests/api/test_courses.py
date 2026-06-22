@@ -364,7 +364,12 @@ async def test_admin_course_crud_flow(
         response = await client.get("/courses/admin/courses")
         assert response.status_code == 200
         all_courses = response.json()
-        assert all(course["id"] != course_id for course in all_courses)
+        assert any(course["id"] == course_id for course in all_courses)
+
+        response = await client.get("/courses")
+        assert response.status_code == 200
+        freshman_courses = response.json()["freshman"]
+        assert any(course["id"] == course_id for course in freshman_courses)
 
         response = await client.delete(f"/courses/admin/courses/{course_id}")
         assert response.status_code == 200

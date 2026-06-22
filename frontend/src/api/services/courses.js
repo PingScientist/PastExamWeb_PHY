@@ -21,6 +21,13 @@ export const courseService = {
     return api.put(`/courses/admin/courses/${courseId}`, courseData)
   },
 
+  reorderCourses(category, courseIds) {
+    return api.post('/courses/admin/courses/reorder', {
+      category,
+      course_ids: courseIds,
+    })
+  },
+
   deleteCourse(courseId) {
     return api.delete(`/courses/admin/courses/${courseId}`)
   },
