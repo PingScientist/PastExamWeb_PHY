@@ -31,4 +31,24 @@ export const courseService = {
   deleteCourse(courseId) {
     return api.delete(`/courses/admin/courses/${courseId}`)
   },
+
+  requestCourse(courseData) {
+    return api.post('/courses/requests', courseData)
+  },
+
+  listMyRequests() {
+    return api.get('/courses/requests/me')
+  },
+
+  listAdminRequests() {
+    return api.get('/courses/admin/requests')
+  },
+
+  approveRequest(requestId, note = '') {
+    return api.post(`/courses/admin/requests/${requestId}/approve`, { note })
+  },
+
+  rejectRequest(requestId, note = '') {
+    return api.post(`/courses/admin/requests/${requestId}/reject`, { note })
+  },
 }

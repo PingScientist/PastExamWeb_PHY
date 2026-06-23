@@ -6,6 +6,7 @@
           <Tab value="0">課程管理</Tab>
           <Tab value="1">使用者管理</Tab>
           <Tab value="2">公告管理</Tab>
+          <Tab value="3">審核中心</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="0">
@@ -328,6 +329,97 @@
               </DataTable>
             </div>
           </TabPanel>
+
+          <TabPanel value="3">
+            <div class="p-2 md:p-4 review-center">
+              <div class="review-section">
+                <div class="review-section-header">
+                  <h3>課程申請</h3>
+                  <Button icon="pi pi-refresh" label="重新整理" size="small" outlined @click="loadReviewItems" />
+                </div>
+                <DataTable :value="courseRequests" :loading="reviewLoading" tableStyle="min-width: 48rem">
+                  <Column field="name" header="課程名稱" />
+                  <Column field="category" header="分類">
+                    <template #body="{ data }">{{ getCategoryName(data.category) }}</template>
+                  </Column>
+                  <Column field="status" header="狀態">
+                    <template #body="{ data }">
+                      <Tag :severity="getSubmissionSeverity(data.status)">
+                        {{ getSubmissionLabel(data.status) }}
+                      </Tag>
+                    </template>
+                  </Column>
+                  <Column header="操作">
+                    <template #body="{ data }">
+                      <div class="flex gap-2">
+                        <Button
+                          label="通過"
+                          icon="pi pi-check"
+                          size="small"
+                          severity="success"
+                          :disabled="!isPending(data.status)"
+                          @click="reviewCourseRequest(data.id, 'approve')"
+                        />
+                        <Button
+                          label="退回"
+                          icon="pi pi-times"
+                          size="small"
+                          severity="danger"
+                          outlined
+                          :disabled="!isPending(data.status)"
+                          @click="reviewCourseRequest(data.id, 'reject')"
+                        />
+                      </div>
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <div class="review-section mt-5">
+                <div class="review-section-header">
+                  <h3>考古題投稿</h3>
+                </div>
+                <DataTable :value="archiveRequests" :loading="reviewLoading" tableStyle="min-width: 60rem">
+                  <Column field="subject" header="課程" />
+                  <Column field="name" header="考試名稱" />
+                  <Column field="professor" header="授課教師" />
+                  <Column field="academic_year" header="學期">
+                    <template #body="{ data }">{{ formatAcademicTerm(data.academic_year) }}</template>
+                  </Column>
+                  <Column field="status" header="狀態">
+                    <template #body="{ data }">
+                      <Tag :severity="getSubmissionSeverity(data.status)">
+                        {{ getSubmissionLabel(data.status) }}
+                      </Tag>
+                    </template>
+                  </Column>
+                  <Column header="操作">
+                    <template #body="{ data }">
+                      <div class="flex gap-2">
+                        <Button
+                          label="通過"
+                          icon="pi pi-check"
+                          size="small"
+                          severity="success"
+                          :disabled="!isPending(data.status)"
+                          @click="reviewArchiveSubmission(data.id, 'approve')"
+                        />
+                        <Button
+                          label="退回"
+                          icon="pi pi-times"
+                          size="small"
+                          severity="danger"
+                          outlined
+                          :disabled="!isPending(data.status)"
+                          @click="reviewArchiveSubmission(data.id, 'reject')"
+                        />
+                      </div>
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+            </div>
+          </TabPanel>
         </TabPanels>
       </Tabs>
 
@@ -584,6 +676,8 @@ import {
   updateUser,
   deleteUser,
   notificationService,
+  courseService,
+  archiveService,
 } from '../api'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
@@ -660,6 +754,9 @@ const notificationForm = ref({
   ends_at: null,
 })
 const notificationFormErrors = ref({})
+const reviewLoading = ref(false)
+const courseRequests = ref([])
+const archiveRequests = ref([])
 
 const currentUserId = computed(() => getCurrentUser()?.id)
 
@@ -668,7 +765,7 @@ const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
 const getInitialTab = () => {
   try {
     const savedTab = getLocalItem(TAB_STORAGE_KEY)
-    if (savedTab && ['0', '1', '2'].includes(savedTab)) {
+    if (savedTab && ['0', '1', '2', '3'].includes(savedTab)) {
       return savedTab
     }
   } catch (e) {
@@ -778,6 +875,38 @@ const isNotificationEffective = (notification) => {
 
 const formatNotificationDate = (value) => {
   return formatRelativeTime(value)
+}
+
+const isPending = (status) => String(status || '').toLowerCase() === 'pending'
+
+const getSubmissionLabel = (status) => {
+  const labels = {
+    pending: '待審核',
+    approved: '已通過',
+    rejected: '未通過',
+    PENDING: '待審核',
+    APPROVED: '已通過',
+    REJECTED: '未通過',
+  }
+  return labels[status] || status
+}
+
+const getSubmissionSeverity = (status) => {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'approved') return 'success'
+  if (normalized === 'rejected') return 'danger'
+  return 'warning'
+}
+
+const formatAcademicTerm = (value) => {
+  const numericValue = Number(value)
+  if (!numericValue) return ''
+  if (numericValue >= 1000 && numericValue < 2000) {
+    const year = Math.floor(numericValue / 10)
+    const semester = numericValue % 10
+    return `${year}${semester === 1 ? '上' : '下'}學期`
+  }
+  return `${numericValue} 年`
 }
 
 const resetNotificationForm = () => {
@@ -972,6 +1101,74 @@ const loadNotifications = async () => {
     })
   } finally {
     notificationsLoading.value = false
+  }
+}
+
+const loadReviewItems = async () => {
+  reviewLoading.value = true
+  try {
+    const [courseResponse, archiveResponse] = await Promise.all([
+      courseService.listAdminRequests(),
+      archiveService.listAdminSubmissions(),
+    ])
+    courseRequests.value = Array.isArray(courseResponse.data) ? courseResponse.data : []
+    archiveRequests.value = Array.isArray(archiveResponse.data) ? archiveResponse.data : []
+  } catch (error) {
+    console.error('載入審核資料失敗:', error)
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: '載入審核資料失敗',
+      life: 3000,
+    })
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+const reviewCourseRequest = async (requestId, action) => {
+  try {
+    if (action === 'approve') {
+      await courseService.approveRequest(requestId)
+      await loadCourses()
+    } else {
+      await courseService.rejectRequest(requestId)
+    }
+    toast.add({
+      severity: 'success',
+      summary: '完成',
+      detail: action === 'approve' ? '課程申請已通過' : '課程申請已退回',
+      life: 3000,
+    })
+    await loadReviewItems()
+  } catch (error) {
+    console.error('審核課程申請失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '審核課程申請失敗', life: 3000 })
+  }
+}
+
+const reviewArchiveSubmission = async (submissionId, action) => {
+  try {
+    if (action === 'approve') {
+      await archiveService.approveSubmission(submissionId)
+    } else {
+      await archiveService.rejectSubmission(submissionId)
+    }
+    toast.add({
+      severity: 'success',
+      summary: '完成',
+      detail: action === 'approve' ? '考古題投稿已通過' : '考古題投稿已退回',
+      life: 3000,
+    })
+    await loadReviewItems()
+  } catch (error) {
+    console.error('審核考古題投稿失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '審核考古題投稿失敗', life: 3000 })
   }
 }
 
@@ -1446,6 +1643,11 @@ const loadTabData = async (value) => {
 
   if (tab === '2') {
     await loadNotifications()
+    return
+  }
+
+  if (tab === '3') {
+    await loadReviewItems()
   }
 }
 
@@ -1458,6 +1660,7 @@ const handleTabChange = (value) => {
     0: 'courses',
     1: 'users',
     2: 'notifications',
+    3: 'reviews',
   }
 
   trackEvent(EVENTS.SWITCH_TAB, {

@@ -29,8 +29,13 @@ from app.models.models import (
     CourseInfo,
     CourseRead,
     CourseReorder,
+    CourseSubmission,
+    CourseSubmissionCreate,
+    CourseSubmissionRead,
     CoursesByCategory,
     CourseUpdate,
+    SubmissionDecision,
+    SubmissionStatus,
     User,
     UserRoles,
 )
@@ -124,6 +129,173 @@ async def get_categorized_courses(
         getattr(categorized_courses, _course_category_value(course)).append(course_info)
 
     return categorized_courses
+
+
+@router.post("/requests", response_model=CourseSubmissionRead)
+async def create_course_request(
+    course_data: CourseSubmissionCreate,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    existing_course = (
+        await db.execute(
+            select(Course).where(
+                Course.name == course_data.name,
+                Course.category == course_data.category,
+                Course.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_course:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Course already exists",
+        )
+
+    existing_pending = (
+        await db.execute(
+            select(CourseSubmission).where(
+                CourseSubmission.name == course_data.name,
+                CourseSubmission.category == course_data.category,
+                CourseSubmission.status == SubmissionStatus.PENDING,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_pending:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Course request already pending",
+        )
+
+    if current_user.is_admin:
+        course = Course(
+            name=course_data.name,
+            category=course_data.category,
+            order_index=await _next_order_index(db, course_data.category),
+        )
+        db.add(course)
+        await db.commit()
+        await db.refresh(course)
+        submission = CourseSubmission(
+            name=course.name,
+            category=course.category,
+            requester_id=current_user.user_id,
+            reviewer_id=current_user.user_id,
+            status=SubmissionStatus.APPROVED,
+            created_course_id=course.id,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+    else:
+        submission = CourseSubmission(
+            name=course_data.name,
+            category=course_data.category,
+            requester_id=current_user.user_id,
+        )
+
+    db.add(submission)
+    await db.commit()
+    await db.refresh(submission)
+    return submission
+
+
+@router.get("/requests/me", response_model=List[CourseSubmissionRead])
+async def list_my_course_requests(
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    result = await db.execute(
+        select(CourseSubmission)
+        .where(CourseSubmission.requester_id == current_user.user_id)
+        .order_by(CourseSubmission.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.get("/admin/requests", response_model=List[CourseSubmissionRead])
+async def list_course_requests_for_admin(
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    result = await db.execute(
+        select(CourseSubmission).order_by(
+            CourseSubmission.status.asc(),
+            CourseSubmission.created_at.desc(),
+        )
+    )
+    return result.scalars().all()
+
+
+@router.post("/admin/requests/{request_id}/approve", response_model=CourseSubmissionRead)
+async def approve_course_request(
+    request_id: int,
+    decision: SubmissionDecision | None = None,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(CourseSubmission, request_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+    if submission.status != SubmissionStatus.PENDING:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request already reviewed")
+
+    course = (
+        await db.execute(
+            select(Course).where(
+                Course.name == submission.name,
+                Course.category == submission.category,
+                Course.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not course:
+        course = Course(
+            name=submission.name,
+            category=submission.category,
+            order_index=await _next_order_index(db, submission.category),
+        )
+        db.add(course)
+        await db.commit()
+        await db.refresh(course)
+
+    submission.status = SubmissionStatus.APPROVED
+    submission.reviewer_id = current_user.user_id
+    submission.review_note = decision.note if decision else None
+    submission.created_course_id = course.id
+    submission.reviewed_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(submission)
+    return submission
+
+
+@router.post("/admin/requests/{request_id}/reject", response_model=CourseSubmissionRead)
+async def reject_course_request(
+    request_id: int,
+    decision: SubmissionDecision | None = None,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(CourseSubmission, request_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+    if submission.status != SubmissionStatus.PENDING:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request already reviewed")
+
+    submission.status = SubmissionStatus.REJECTED
+    submission.reviewer_id = current_user.user_id
+    submission.review_note = decision.note if decision else None
+    submission.reviewed_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(submission)
+    return submission
 
 
 @router.get("/{course_id}/archives", response_model=List[ArchiveRead])

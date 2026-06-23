@@ -1,5 +1,5 @@
 <template>
-  <div class="card">
+  <div class="card" :class="{ 'navbar-dark': isDarkTheme }">
     <Menubar :model="menuItems">
       <template #start>
         <div class="nav-brand-cluster">
@@ -864,11 +864,14 @@ export default {
   height: var(--navbar-height);
   display: flex;
   align-items: center;
-  background:
-    linear-gradient(90deg, rgba(199, 176, 107, 0.08), transparent 36%),
-    rgba(13, 15, 19, 0.88);
-  border-bottom: 1px solid rgba(199, 176, 107, 0.18);
-  backdrop-filter: blur(18px);
+  background: #e4eee9;
+  border-bottom: 1px solid #c7d8d0;
+  backdrop-filter: none;
+}
+
+.card.navbar-dark {
+  background: #101614;
+  border-bottom-color: #24342f;
 }
 
 .nav-brand-cluster,
@@ -882,32 +885,27 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-height: 2.8rem;
-  padding: 0.28rem 0.92rem 0.28rem 0.34rem;
-  border: 1px solid rgba(199, 176, 107, 0.22);
-  border-radius: 999px;
+  min-height: 3rem;
+  padding: 0.2rem 0.45rem 0.2rem 0;
+  border: 0;
+  border-radius: 0;
   color: inherit;
-  background:
-    linear-gradient(90deg, rgba(199, 176, 107, 0.12), transparent 58%),
-    rgba(8, 18, 18, 0.66);
+  background: transparent;
   font: inherit;
 }
 
 .brand-lockup:hover {
-  border-color: rgba(199, 176, 107, 0.42);
-  background:
-    linear-gradient(90deg, rgba(199, 176, 107, 0.16), transparent 58%),
-    rgba(9, 22, 22, 0.76);
+  background: transparent;
 }
 
 .brand-mark-frame {
   display: grid;
   place-items: center;
-  width: 2.25rem;
+  width: 2.4rem;
   aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
   background: #ffffff;
 }
 
@@ -923,12 +921,16 @@ export default {
 }
 
 .brand-title-main {
-  color: #eef6ed;
+  color: #172522;
   font-size: clamp(1rem, 1.2vw, 1.18rem);
   font-weight: 780;
   letter-spacing: 0.08em;
   line-height: 1;
-  text-shadow: 0 0 18px rgba(155, 224, 212, 0.12);
+  text-shadow: none;
+}
+
+.navbar-dark .brand-title-main {
+  color: #eef6ed;
 }
 
 .brand-title-sub {
@@ -941,15 +943,19 @@ export default {
 }
 
 .nav-control-cluster {
-  padding: 0.28rem;
-  border: 1px solid rgba(123, 145, 141, 0.22);
-  border-radius: 999px;
-  background: rgba(8, 12, 15, 0.55);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .nav-action-group {
-  padding-right: 0.22rem;
-  border-right: 1px solid rgba(123, 145, 141, 0.18);
+  padding-right: 0.55rem;
+  border-right: 1px solid rgba(23, 37, 34, 0.22);
+}
+
+.navbar-dark .nav-action-group {
+  border-right-color: rgba(229, 235, 226, 0.22);
 }
 
 .sidebar-toggle {
@@ -965,6 +971,10 @@ export default {
   align-items: center;
   line-height: 1;
   margin: auto 0;
+  color: rgba(23, 37, 34, 0.78);
+}
+
+.navbar-dark .user-name {
   color: rgba(229, 235, 226, 0.84);
 }
 
@@ -982,13 +992,22 @@ export default {
 }
 
 :deep(.p-button.p-button-text) {
-  color: rgba(229, 235, 226, 0.78);
-  border-radius: 999px;
+  color: rgba(23, 37, 34, 0.72);
+  border-radius: 7px;
 }
 
 :deep(.p-button.p-button-text:hover) {
+  color: #172522;
+  background: rgba(23, 37, 34, 0.08);
+}
+
+.navbar-dark :deep(.p-button.p-button-text) {
+  color: rgba(229, 235, 226, 0.78);
+}
+
+.navbar-dark :deep(.p-button.p-button-text:hover) {
   color: #eef6ed;
-  background: rgba(199, 176, 107, 0.12);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 :deep(.p-password) {

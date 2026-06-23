@@ -41,4 +41,20 @@ export const archiveService = {
       course_category: courseCategory,
     })
   },
+
+  listMySubmissions() {
+    return api.get('/archives/submissions/me')
+  },
+
+  listAdminSubmissions() {
+    return api.get('/archives/admin/submissions')
+  },
+
+  approveSubmission(submissionId, note = '') {
+    return api.post(`/archives/admin/submissions/${submissionId}/approve`, { note })
+  },
+
+  rejectSubmission(submissionId, note = '') {
+    return api.post(`/archives/admin/submissions/${submissionId}/reject`, { note })
+  },
 }

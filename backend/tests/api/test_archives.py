@@ -9,7 +9,15 @@ from starlette.datastructures import UploadFile
 
 from app.api.services.archives import upload_archive
 from app.main import app
-from app.models.models import Archive, Course, CourseCategory, User, UserRoles
+from app.models.models import (
+    Archive,
+    ArchiveSubmission,
+    Course,
+    CourseCategory,
+    SubmissionStatus,
+    User,
+    UserRoles,
+)
 from app.utils.auth import get_current_user
 
 
@@ -58,26 +66,32 @@ async def test_upload_archive_creates_course_and_archive(
         assert response.status_code == 200
         body = response.json()
         assert body["success"] is True
-        archive_data = body["archive"]
-        assert archive_data["name"] == f"Final Exam {unique}"
-        assert archive_data["professor"] == "Prof. Test"
+        submission_data = body["submission"]
+        assert submission_data["name"] == f"Final Exam {unique}"
+        assert submission_data["professor"] == "Prof. Test"
+        assert submission_data["status"] == SubmissionStatus.PENDING.value
 
         async with session_maker() as session:
             result = await session.execute(
                 select(Course).where(Course.name == unique_course)
             )
             course = result.scalar_one_or_none()
-            assert course is not None
+            assert course is None
 
             result = await session.execute(
-                select(Archive).where(Archive.id == archive_data["id"])
+                select(ArchiveSubmission).where(ArchiveSubmission.id == submission_data["id"])
             )
-            archive = result.scalar_one_or_none()
-            assert archive is not None
-            assert archive.course_id == course.id
-            assert archive.uploader_id == user_id
+            submission = result.scalar_one_or_none()
+            assert submission is not None
+            assert submission.subject == unique_course
+            assert submission.requester_id == user_id
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(ArchiveSubmission).where(ArchiveSubmission.requester_id == user_id)
+            )
+            await session.commit()
 
 
 @pytest.mark.asyncio
@@ -175,6 +189,9 @@ async def test_upload_archive_reuses_existing_course(
         assert response.status_code == 200
 
         async with session_maker() as session:
+            await session.execute(
+                delete(ArchiveSubmission).where(ArchiveSubmission.requester_id == user.id)
+            )
             count = await session.execute(
                 select(func.count()).where(Course.name == subject)
             )
@@ -182,6 +199,9 @@ async def test_upload_archive_reuses_existing_course(
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         async with session_maker() as session:
+            await session.execute(
+                delete(ArchiveSubmission).where(ArchiveSubmission.requester_id == user.id)
+            )
             await session.execute(
                 delete(Archive).where(Archive.uploader_id == user.id)
             )
@@ -323,7 +343,7 @@ async def test_upload_archive_function_covers_creation_and_reuse(
     )
 
     async with session_maker() as session:
-        uploader = UserRoles(user_id=user.id, is_admin=False)
+        uploader = UserRoles(user_id=user.id, is_admin=True)
 
         async def _call(subject, filename):
             upload = UploadFile(

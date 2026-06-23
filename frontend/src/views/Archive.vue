@@ -1,9 +1,14 @@
 <template>
-  <div class="h-full" ref="archiveView" @toggle-sidebar="toggleSidebar">
+  <div
+    class="h-full archive-screen"
+    :class="{ 'archive-dark': isDarkTheme }"
+    ref="archiveView"
+    @toggle-sidebar="toggleSidebar"
+  >
     <div class="flex h-full relative">
       <!-- Desktop/Tablet Sidebar -->
       <div class="sidebar hidden md:block" :class="{ collapsed: !sidebarVisible }">
-        <div class="flex flex-column h-full">
+        <div class="sidebar-shell">
           <!-- Fixed search section -->
           <div class="search-section p-3">
             <div class="relative w-full">
@@ -13,7 +18,7 @@
           </div>
 
           <!-- Scrollable content section -->
-          <div class="flex-1 overflow-auto p-3 pt-0">
+          <div class="course-list-section p-3 pt-0">
             <div v-if="searchQuery" class="search-results">
               <div v-if="filteredCategories.length === 0" class="p-3 text-center text-500">
                 <i class="pi pi-search text-2xl mb-2"></i>
@@ -46,14 +51,34 @@
 
           <!-- Fixed upload section for desktop -->
           <div v-if="isAuthenticatedRef" class="upload-section p-3">
-            <Button
-              icon="pi pi-cloud-upload"
-              label="上傳考古題"
-              severity="success"
-              @click="showUploadDialog = true"
-              class="w-full"
-              size="small"
-            />
+            <div class="upload-actions">
+              <Button
+                icon="pi pi-cloud-upload"
+                label="上傳考古題"
+                severity="success"
+                @click="showUploadDialog = true"
+                class="w-full"
+                size="small"
+              />
+              <Button
+                icon="pi pi-book"
+                label="新增課程申請"
+                severity="secondary"
+                outlined
+                @click="showCourseRequestDialog = true"
+                class="w-full"
+                size="small"
+              />
+              <Button
+                icon="pi pi-list-check"
+                label="我的投稿狀態"
+                severity="secondary"
+                outlined
+                @click="openSubmissionStatus"
+                class="w-full"
+                size="small"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -117,15 +142,18 @@
 
       <div class="main-content flex-1 h-full overflow-auto">
         <div class="card h-full flex flex-col">
-          <div v-if="selectedSubject" class="p-3 subject-header">
-            <div class="flex align-items-center gap-2">
-              <Tag severity="secondary" class="text-sm">
+          <div v-if="selectedSubject" class="subject-header">
+            <div class="subject-title-block">
+              <Tag severity="secondary" class="subject-tag">
                 {{ getCategoryTag(getCategoryName(getCurrentCategory)) }}
               </Tag>
-              <span class="text-xl font-medium">{{ selectedSubject }}</span>
+              <div>
+                <div class="subject-title">{{ selectedSubject }}</div>
+                <div class="subject-subtitle">Physics Archive Records</div>
+              </div>
             </div>
           </div>
-          <Toolbar v-if="selectedSubject" class="m-3">
+          <Toolbar v-if="selectedSubject" class="archive-filter-bar m-3">
             <template #start>
               <div class="flex flex-wrap gap-3 w-full">
                 <Select
@@ -133,8 +161,8 @@
                   :options="years"
                   optionLabel="name"
                   optionValue="code"
-                  placeholder="選擇年份"
-                  class="w-full md:w-14rem"
+                  placeholder="選擇學期"
+                  class="w-full md:w-12rem"
                   showClear
                   filter
                 />
@@ -144,7 +172,7 @@
                   optionLabel="name"
                   optionValue="code"
                   placeholder="選擇教授"
-                  class="w-full md:w-14rem"
+                  class="w-full md:w-12rem"
                   showClear
                   filter
                 />
@@ -154,7 +182,7 @@
                   optionLabel="name"
                   optionValue="code"
                   placeholder="選擇類型"
-                  class="w-full md:w-14rem"
+                  class="w-full md:w-12rem"
                   showClear
                 />
                 <div class="flex align-items-center">
@@ -183,68 +211,71 @@
                   :key="group.year"
                   :value="group.year.toString()"
                 >
-                  <AccordionHeader>{{ group.year }} 年</AccordionHeader>
+                  <AccordionHeader>{{ formatAcademicTerm(group.year) }}</AccordionHeader>
                   <AccordionContent>
-                    <DataTable :value="group.list">
-                      <Column header="教授" field="professor" style="width: 10%"></Column>
-                      <Column header="類型" style="width: 10%">
-                        <template #body="{ data }">
-                          <Tag :severity="archiveTypeConfig[data.type]?.severity || 'secondary'">
-                            {{ archiveTypeConfig[data.type]?.name || data.type }}
-                          </Tag>
-                        </template>
-                      </Column>
-                      <Column header="考試名稱" field="name" style="width: 15%"></Column>
-                      <Column header="解答" style="width: 10%">
-                        <template #body="{ data }">
-                          <Tag :severity="data.hasAnswers ? 'info' : 'secondary'">
-                            {{ data.hasAnswers ? '附解答' : '僅題目' }}
-                          </Tag>
-                        </template>
-                      </Column>
-                      <Column header="下載次數" style="width: 10%">
-                        <template #body="{ data }">
-                          <span>{{ formatDownloadCount(data.downloadCount) }}</span>
-                        </template>
-                      </Column>
-                      <Column header="操作" style="width: 35%">
-                        <template #body="{ data }">
-                          <div class="flex gap-2.5">
-                            <Button
-                              icon="pi pi-eye"
-                              @click="previewArchive(data)"
-                              size="small"
-                              severity="secondary"
-                              label="預覽"
-                            />
-                            <Button
-                              icon="pi pi-download"
-                              @click="downloadArchive(data)"
-                              size="small"
-                              severity="success"
-                              label="下載"
-                              :loading="downloadingId === data.id"
-                            />
-                            <Button
-                              v-if="canEditArchive(data)"
-                              icon="pi pi-pencil"
-                              @click="openEditDialog(data)"
-                              size="small"
-                              severity="warning"
-                              label="編輯"
-                            />
-                            <Button
-                              v-if="canDeleteArchive(data)"
-                              icon="pi pi-trash"
-                              @click="confirmDelete(data)"
-                              size="small"
-                              severity="danger"
-                              label="刪除"
-                            />
+                    <div class="archive-card-grid">
+                      <article v-for="data in group.list" :key="data.id" class="archive-record-card">
+                        <div class="archive-record-main">
+                          <div class="archive-record-kicker">
+                            <Tag :severity="archiveTypeConfig[data.type]?.severity || 'secondary'">
+                              {{ archiveTypeConfig[data.type]?.name || data.type }}
+                            </Tag>
+                            <Tag :severity="data.hasAnswers ? 'info' : 'secondary'">
+                              {{ data.hasAnswers ? '附解答' : '僅題目' }}
+                            </Tag>
                           </div>
-                        </template>
-                      </Column>
-                    </DataTable>
+                          <h3>{{ data.name }}</h3>
+                          <div class="archive-record-detail-row">
+                            <div class="archive-record-teacher">
+                              <span>授課教師</span>
+                              <strong>{{ data.professor }}</strong>
+                            </div>
+                            <div class="archive-record-meta">
+                              <span>
+                                <i class="pi pi-download"></i>
+                                {{ formatDownloadCount(data.downloadCount) }} 次下載
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="archive-record-actions">
+                          <Button
+                            icon="pi pi-eye"
+                            @click="previewArchive(data)"
+                            size="small"
+                            severity="secondary"
+                            label="預覽"
+                            outlined
+                          />
+                          <Button
+                            icon="pi pi-download"
+                            @click="downloadArchive(data)"
+                            size="small"
+                            severity="success"
+                            label="下載"
+                            :loading="downloadingId === data.id"
+                          />
+                          <Button
+                            v-if="canEditArchive(data)"
+                            icon="pi pi-pencil"
+                            @click="openEditDialog(data)"
+                            size="small"
+                            severity="warning"
+                            label="編輯"
+                            outlined
+                          />
+                          <Button
+                            v-if="canDeleteArchive(data)"
+                            icon="pi pi-trash"
+                            @click="confirmDelete(data)"
+                            size="small"
+                            severity="danger"
+                            label="刪除"
+                            outlined
+                          />
+                        </div>
+                      </article>
+                    </div>
                   </AccordionContent>
                 </AccordionPanel>
               </Accordion>
@@ -287,6 +318,77 @@
             :coursesList="coursesList"
             @upload-success="handleUploadSuccess"
           />
+
+          <Dialog
+            v-model:visible="showCourseRequestDialog"
+            header="新增課程申請"
+            modal
+            :draggable="false"
+            :style="{ width: '460px', maxWidth: '92vw' }"
+          >
+            <div class="flex flex-column gap-3">
+              <div class="flex flex-column gap-2">
+                <label>課程名稱</label>
+                <InputText v-model="courseRequestForm.name" placeholder="輸入課程名稱" />
+              </div>
+              <div class="flex flex-column gap-2">
+                <label>分類</label>
+                <Select
+                  v-model="courseRequestForm.category"
+                  :options="categoryOptions"
+                  optionLabel="name"
+                  optionValue="value"
+                  placeholder="選擇分類"
+                  class="w-full"
+                />
+              </div>
+              <p class="submission-hint">送出後會由管理者審核，通過後才會出現在課程列表。</p>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+              <Button label="取消" severity="secondary" outlined @click="showCourseRequestDialog = false" />
+              <Button label="送出審核" icon="pi pi-send" :loading="courseRequestLoading" @click="submitCourseRequest" />
+            </div>
+          </Dialog>
+
+          <Dialog
+            v-model:visible="showSubmissionStatusDialog"
+            header="我的投稿狀態"
+            modal
+            :draggable="false"
+            :style="{ width: '760px', maxWidth: '94vw' }"
+          >
+            <ProgressSpinner v-if="submissionStatusLoading" class="w-full flex justify-content-center my-4" />
+            <div v-else class="submission-status-list">
+              <section>
+                <h3>考古題投稿</h3>
+                <div v-if="archiveSubmissions.length === 0" class="submission-empty">目前沒有考古題投稿</div>
+                <article v-for="item in archiveSubmissions" :key="`archive-${item.id}`" class="submission-status-card">
+                  <div>
+                    <Tag :severity="getSubmissionSeverity(item.status)">
+                      {{ getSubmissionLabel(item.status) }}
+                    </Tag>
+                    <strong>{{ item.subject }} / {{ item.name }}</strong>
+                    <span>{{ formatAcademicTerm(item.academic_year) }} · {{ item.professor }}</span>
+                    <small v-if="item.review_note">{{ item.review_note }}</small>
+                  </div>
+                </article>
+              </section>
+              <section>
+                <h3>課程申請</h3>
+                <div v-if="courseSubmissions.length === 0" class="submission-empty">目前沒有課程申請</div>
+                <article v-for="item in courseSubmissions" :key="`course-${item.id}`" class="submission-status-card">
+                  <div>
+                    <Tag :severity="getSubmissionSeverity(item.status)">
+                      {{ getSubmissionLabel(item.status) }}
+                    </Tag>
+                    <strong>{{ item.name }}</strong>
+                    <span>{{ getCategoryName(item.category) }}</span>
+                    <small v-if="item.review_note">{{ item.review_note }}</small>
+                  </div>
+                </article>
+              </section>
+            </div>
+          </Dialog>
 
           <Dialog
             :visible="showEditDialog"
@@ -531,6 +633,16 @@ const selectedArchive = ref(null)
 const selectedSubject = ref(null)
 const selectedCourse = ref(null)
 const showUploadDialog = ref(false)
+const showCourseRequestDialog = ref(false)
+const showSubmissionStatusDialog = ref(false)
+const courseRequestLoading = ref(false)
+const submissionStatusLoading = ref(false)
+const courseSubmissions = ref([])
+const archiveSubmissions = ref([])
+const courseRequestForm = ref({
+  name: '',
+  category: null,
+})
 const uploadFormProfessors = ref([])
 const expandedPanels = ref([])
 const expandedMenuItems = ref({})
@@ -768,6 +880,17 @@ const groupedArchives = computed(() => {
   return Object.values(groups).sort((a, b) => b.year - a.year)
 })
 
+function formatAcademicTerm(value) {
+  const numericValue = Number(value)
+  if (!numericValue) return ''
+  if (numericValue >= 1000 && numericValue < 2000) {
+    const year = Math.floor(numericValue / 10)
+    const semester = numericValue % 10
+    return `${year}${semester === 1 ? '上' : '下'}學期`
+  }
+  return `${numericValue} 年`
+}
+
 async function fetchCourses() {
   try {
     loading.value = true
@@ -794,6 +917,94 @@ async function fetchCourses() {
     })
   } finally {
     loading.value = false
+  }
+}
+
+function getSubmissionLabel(status) {
+  const labels = {
+    pending: '待審核',
+    approved: '已通過',
+    rejected: '未通過',
+    PENDING: '待審核',
+    APPROVED: '已通過',
+    REJECTED: '未通過',
+  }
+  return labels[status] || status
+}
+
+function getSubmissionSeverity(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'approved') return 'success'
+  if (normalized === 'rejected') return 'danger'
+  return 'warning'
+}
+
+async function loadSubmissionStatus() {
+  submissionStatusLoading.value = true
+  try {
+    const [archiveResponse, courseResponse] = await Promise.all([
+      archiveService.listMySubmissions(),
+      courseService.listMyRequests(),
+    ])
+    archiveSubmissions.value = Array.isArray(archiveResponse.data) ? archiveResponse.data : []
+    courseSubmissions.value = Array.isArray(courseResponse.data) ? courseResponse.data : []
+  } catch (error) {
+    console.error('Load submission status error:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '載入失敗',
+      detail: '無法載入投稿狀態',
+      life: 3000,
+    })
+  } finally {
+    submissionStatusLoading.value = false
+  }
+}
+
+async function openSubmissionStatus() {
+  showSubmissionStatusDialog.value = true
+  await loadSubmissionStatus()
+}
+
+async function submitCourseRequest() {
+  const name = courseRequestForm.value.name.trim()
+  if (!name || !courseRequestForm.value.category) {
+    toast.add({
+      severity: 'warn',
+      summary: '資料不足',
+      detail: '請填寫課程名稱並選擇分類',
+      life: 3000,
+    })
+    return
+  }
+
+  courseRequestLoading.value = true
+  try {
+    await courseService.requestCourse({
+      name,
+      category: courseRequestForm.value.category,
+    })
+    toast.add({
+      severity: 'success',
+      summary: '已送出審核',
+      detail: '課程申請已送至管理者審核',
+      life: 3000,
+    })
+    courseRequestForm.value = { name: '', category: null }
+    showCourseRequestDialog.value = false
+    await loadSubmissionStatus()
+  } catch (error) {
+    console.error('Submit course request error:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '送出失敗',
+      detail: error?.response?.data?.detail || '無法送出課程申請',
+      life: 3000,
+    })
+  } finally {
+    courseRequestLoading.value = false
   }
 }
 
@@ -851,7 +1062,7 @@ async function fetchArchives() {
     years.value = Array.from(uniqueYears)
       .sort((a, b) => b - a)
       .map((year) => ({
-        name: year,
+        name: formatAcademicTerm(year),
         code: year,
       }))
 
@@ -1341,6 +1552,7 @@ async function handleUploadSuccess() {
   })
 
   await fetchCourses()
+  await loadSubmissionStatus()
   shouldResetPanels.value = true
   if (selectedCourse.value) {
     await fetchArchives()
@@ -1548,7 +1760,7 @@ const mobileMenuItems = computed(() => {
 .card {
   position: relative;
   z-index: 1;
-  background-color: var(--bg-primary);
+  background: var(--bg-primary);
 }
 
 :deep(.p-sidebar) {
@@ -1599,10 +1811,11 @@ const mobileMenuItems = computed(() => {
 }
 
 .sidebar {
-  width: 300px;
+  width: 318px;
   min-width: 0;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  background: #e4eee9;
+  border: 0;
+  border-right: 1px solid #c7d8d0;
   transition: width 0.2s ease-in-out;
   overflow: hidden;
   position: relative;
@@ -1615,12 +1828,29 @@ const mobileMenuItems = computed(() => {
   box-shadow: none;
 }
 
-.upload-section {
-  flex-shrink: 0;
-  border-top: 1px solid var(--border-color);
+.archive-dark .sidebar {
+  background: #0e1b18;
+  border-right-color: #22342f;
 }
 
-.sidebar .flex-column {
+.upload-section {
+  flex-shrink: 0;
+  border-top: 1px solid #c7d8d0;
+  background: #d8e8e0;
+}
+
+.upload-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.archive-dark .upload-section {
+  background: #0b1714;
+  border-top-color: #22342f;
+}
+
+.sidebar-shell {
   width: 100%;
   opacity: 1;
   white-space: nowrap;
@@ -1628,10 +1858,18 @@ const mobileMenuItems = computed(() => {
   transition: opacity 0.2s ease-in-out;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .sidebar .search-section {
   flex-shrink: 0;
+}
+
+.course-list-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .sidebar.collapsed {
@@ -1643,7 +1881,7 @@ const mobileMenuItems = computed(() => {
   border-right: none;
 }
 
-.sidebar.collapsed .flex-column {
+.sidebar.collapsed .sidebar-shell {
   opacity: 0;
   pointer-events: none;
 }
@@ -1651,7 +1889,7 @@ const mobileMenuItems = computed(() => {
 .main-content {
   flex: 1 1 0%;
   min-width: 0;
-  background: var(--bg-primary);
+  background: transparent;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1659,9 +1897,43 @@ const mobileMenuItems = computed(() => {
 
 .subject-header {
   border-bottom: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   position: relative;
   z-index: 1;
+  padding: 1rem 1.35rem;
+}
+
+.subject-title-block {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.subject-tag {
+  flex: 0 0 auto;
+}
+
+.subject-title {
+  color: var(--text-primary);
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.12;
+}
+
+.subject-subtitle {
+  margin-top: 0.2rem;
+  color: rgba(202, 179, 111, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.archive-filter-bar {
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  background: var(--bg-secondary) !important;
+  box-shadow: none;
 }
 
 .ellipsis {
@@ -1679,6 +1951,153 @@ const mobileMenuItems = computed(() => {
   text-align: left;
   padding: 0.5rem;
   border-radius: 4px;
+}
+
+:deep(.p-panelmenu) {
+  display: grid;
+  gap: 0.7rem;
+}
+
+:deep(.p-panelmenu-panel) {
+  overflow: hidden;
+  border: 1px solid #cadbd4;
+  border-radius: 8px;
+  background: #f8fbfa;
+}
+
+.archive-dark :deep(.p-panelmenu-panel) {
+  border-color: #22342f;
+  background: #121b18;
+}
+
+:deep(.p-panelmenu-header-content),
+:deep(.p-panelmenu-content) {
+  border: 0;
+  background: transparent;
+}
+
+:deep(.p-panelmenu-header-link) {
+  padding: 0.95rem 1rem;
+}
+
+:deep(.p-panelmenu-item-link) {
+  border-radius: 7px;
+  margin: 0.15rem 0.45rem;
+}
+
+:deep(.p-accordion) {
+  display: grid;
+  gap: 1rem;
+}
+
+:deep(.p-accordionpanel) {
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+:deep(.p-accordionheader) {
+  padding: 1rem 1.25rem;
+  border: 0;
+  background: transparent;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+:deep(.p-accordioncontent-content) {
+  padding: 0 1rem 1rem;
+  background: transparent;
+}
+
+.archive-card-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.archive-record-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid #1fb985;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.archive-dark .archive-record-card {
+  background: #0d1a17;
+  border-color: #22342f;
+  border-left-color: #35d39a;
+}
+
+.archive-record-kicker,
+.archive-record-meta,
+.archive-record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.archive-record-card h3 {
+  margin: 0.55rem 0;
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.archive-record-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.archive-record-teacher {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 10rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cadbd4;
+  border-radius: 7px;
+  background: #eef6f2;
+}
+
+.archive-dark .archive-record-teacher {
+  border-color: #29443b;
+  background: #14241f;
+}
+
+.archive-record-teacher span {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.archive-record-teacher strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.archive-record-meta {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  padding: 0.5rem 0;
+}
+
+.archive-record-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.archive-record-actions {
+  justify-content: flex-end;
+  min-width: 20rem;
 }
 
 .search-results .text-sm {
@@ -1740,6 +2159,23 @@ const mobileMenuItems = computed(() => {
 @media (max-width: 768px) {
   .main-content {
     width: 100%;
+  }
+
+  .subject-header {
+    padding: 0.85rem 1rem;
+  }
+
+  .archive-record-card {
+    grid-template-columns: 1fr;
+  }
+
+  .archive-record-actions {
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .archive-record-actions :deep(.p-button) {
+    flex: 1 1 8rem;
   }
 
   /* Dialog font size adjustments for mobile */

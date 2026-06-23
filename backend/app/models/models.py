@@ -29,6 +29,12 @@ class NotificationSeverity(str, PyEnum):
     DANGER = "danger"
 
 
+class SubmissionStatus(str, PyEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class User(SQLModel, table=True):
     __tablename__ = "users"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -100,6 +106,56 @@ class Archive(SQLModel, table=True):
         )
     )
     deleted_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+
+class CourseSubmission(SQLModel, table=True):
+    __tablename__ = "course_submissions"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    category: CourseCategory
+    status: SubmissionStatus = Field(default=SubmissionStatus.PENDING, index=True)
+    requester_id: int = Field(foreign_key="users.id", index=True)
+    reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    review_note: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    created_course_id: Optional[int] = Field(default=None, foreign_key="courses.id")
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    reviewed_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+
+class ArchiveSubmission(SQLModel, table=True):
+    __tablename__ = "archive_submissions"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    subject: str = Field(index=True)
+    category: CourseCategory
+    name: str
+    academic_year: int
+    archive_type: ArchiveType
+    professor: str = Field(index=True)
+    has_answers: bool = False
+    object_name: str
+    status: SubmissionStatus = Field(default=SubmissionStatus.PENDING, index=True)
+    requester_id: int = Field(foreign_key="users.id", index=True)
+    reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    review_note: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    created_archive_id: Optional[int] = Field(default=None, foreign_key="archives.id")
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    reviewed_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
@@ -319,3 +375,49 @@ class ArchiveUpdateCourse(BaseModel):
     course_id: Optional[int] = None
     course_name: Optional[str] = None
     course_category: Optional[CourseCategory] = None
+
+
+class CourseSubmissionCreate(BaseModel):
+    name: str
+    category: CourseCategory
+
+
+class SubmissionDecision(BaseModel):
+    note: Optional[str] = None
+
+
+class CourseSubmissionRead(BaseModel):
+    id: int
+    name: str
+    category: CourseCategory
+    status: SubmissionStatus
+    requester_id: int
+    reviewer_id: Optional[int] = None
+    review_note: Optional[str] = None
+    created_course_id: Optional[int] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ArchiveSubmissionRead(BaseModel):
+    id: int
+    subject: str
+    category: CourseCategory
+    name: str
+    academic_year: int
+    archive_type: ArchiveType
+    professor: str
+    has_answers: bool
+    status: SubmissionStatus
+    requester_id: int
+    reviewer_id: Optional[int] = None
+    review_note: Optional[str] = None
+    created_archive_id: Optional[int] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
