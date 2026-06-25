@@ -48,6 +48,10 @@ export const courseService = {
     return api.put(`/courses/admin/categories/${categoryId}`, categoryData)
   },
 
+  setCategoryActive(categoryId, isActive) {
+    return api.put(`/courses/admin/categories/${categoryId}`, { is_active: isActive })
+  },
+
   reorderCategories(categoryIds) {
     return api.post('/courses/admin/categories/reorder', {
       category_ids: categoryIds,

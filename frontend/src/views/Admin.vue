@@ -58,11 +58,33 @@
                     </template>
                   </Column>
                   <Column field="key" header="Key" />
-                  <Column header="操作" style="width: 12rem">
+                  <Column field="is_active" header="狀態" style="width: 8rem">
                     <template #body="{ data }">
-                      <div class="flex gap-2">
+                      <Tag :severity="data.is_active ? 'success' : 'secondary'">
+                        {{ data.is_active ? '啟用中' : '已停用' }}
+                      </Tag>
+                    </template>
+                  </Column>
+                  <Column header="操作" style="width: 20rem">
+                    <template #body="{ data }">
+                      <div class="flex gap-2 flex-wrap">
                         <Button icon="pi pi-pencil" label="編輯" size="small" outlined @click="openEditCategoryDialog(data)" />
-                        <Button icon="pi pi-trash" label="停用" size="small" severity="danger" outlined @click="confirmDeleteCategory(data)" />
+                        <Button
+                          :icon="data.is_active ? 'pi pi-eye-slash' : 'pi pi-check'"
+                          :label="data.is_active ? '停用' : '啟用'"
+                          size="small"
+                          :severity="data.is_active ? 'warn' : 'success'"
+                          outlined
+                          @click="confirmToggleCategory(data)"
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          label="刪除"
+                          size="small"
+                          severity="danger"
+                          outlined
+                          @click="confirmDeleteCategory(data)"
+                        />
                       </div>
                     </template>
                   </Column>
@@ -392,61 +414,18 @@
             <div class="p-2 md:p-4 review-center">
               <div class="review-section">
                 <div class="review-section-header">
-                  <h3>課程申請</h3>
+                  <h3>新課程 / 新分類考古申請</h3>
                   <Button icon="pi pi-refresh" label="重新整理" size="small" outlined @click="loadReviewItems" />
                 </div>
-                <DataTable :value="courseRequests" :loading="reviewLoading" tableStyle="min-width: 48rem">
-                  <Column field="name" header="課程名稱" />
-                  <Column field="category" header="分類">
-                    <template #body="{ data }">{{ getCategoryName(data.category) }}</template>
-                  </Column>
-                  <Column field="status" header="狀態">
+                <DataTable :value="newCourseArchiveRequests" :loading="reviewLoading" tableStyle="min-width: 60rem">
+                  <Column field="subject" header="課程" />
+                  <Column header="投稿類型">
                     <template #body="{ data }">
-                      <Tag :severity="getSubmissionSeverity(data.status)">
-                        {{ getSubmissionLabel(data.status) }}
+                      <Tag :severity="getArchiveSubmissionKindSeverity(data)">
+                        {{ getArchiveSubmissionKind(data) }}
                       </Tag>
                     </template>
                   </Column>
-                  <Column header="操作">
-                    <template #body="{ data }">
-	                      <div class="flex gap-2">
-	                        <Button
-	                          label="查看/編輯"
-	                          icon="pi pi-search"
-	                          size="small"
-	                          severity="secondary"
-	                          outlined
-	                          @click="openCourseRequestDialog(data)"
-	                        />
-	                        <Button
-	                          label="通過"
-                          icon="pi pi-check"
-                          size="small"
-                          severity="success"
-                          :disabled="!isPending(data.status)"
-                          @click="reviewCourseRequest(data.id, 'approve')"
-                        />
-                        <Button
-                          label="退回"
-                          icon="pi pi-times"
-                          size="small"
-                          severity="danger"
-                          outlined
-                          :disabled="!isPending(data.status)"
-                          @click="reviewCourseRequest(data.id, 'reject')"
-                        />
-                      </div>
-                    </template>
-                  </Column>
-                </DataTable>
-              </div>
-
-              <div class="review-section mt-5">
-                <div class="review-section-header">
-                  <h3>考古題投稿</h3>
-                </div>
-                <DataTable :value="archiveRequests" :loading="reviewLoading" tableStyle="min-width: 60rem">
-                  <Column field="subject" header="課程" />
                   <Column field="name" header="考試名稱" />
                   <Column field="professor" header="授課教師" />
                   <Column field="academic_year" header="學期">
@@ -475,7 +454,6 @@
                           icon="pi pi-check"
                           size="small"
                           severity="success"
-                          :disabled="!isPending(data.status)"
                           @click="reviewArchiveSubmission(data.id, 'approve')"
                         />
                         <Button
@@ -484,8 +462,73 @@
                           size="small"
                           severity="danger"
                           outlined
-                          :disabled="!isPending(data.status)"
                           @click="reviewArchiveSubmission(data.id, 'reject')"
+                        />
+                        <Button
+                          label="刪除"
+                          icon="pi pi-trash"
+                          size="small"
+                          severity="danger"
+                          text
+                          @click="confirmDeleteArchiveSubmission(data)"
+                        />
+                      </div>
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
+
+              <div class="review-section mt-5">
+                <div class="review-section-header">
+                  <h3>既有課程考古申請</h3>
+                </div>
+                <DataTable :value="existingCourseArchiveRequests" :loading="reviewLoading" tableStyle="min-width: 60rem">
+                  <Column field="subject" header="課程" />
+                  <Column field="name" header="考試名稱" />
+                  <Column field="professor" header="授課教師" />
+                  <Column field="academic_year" header="學期">
+                    <template #body="{ data }">{{ formatAcademicTerm(data.academic_year) }}</template>
+                  </Column>
+                  <Column field="status" header="狀態">
+                    <template #body="{ data }">
+                      <Tag :severity="getSubmissionSeverity(data.status)">
+                        {{ getSubmissionLabel(data.status) }}
+                      </Tag>
+                    </template>
+                  </Column>
+                  <Column header="操作">
+                    <template #body="{ data }">
+                      <div class="flex gap-2">
+                        <Button
+                          label="查看/編輯"
+                          icon="pi pi-search"
+                          size="small"
+                          severity="secondary"
+                          outlined
+                          @click="openArchiveRequestDialog(data)"
+                        />
+                        <Button
+                          label="通過"
+                          icon="pi pi-check"
+                          size="small"
+                          severity="success"
+                          @click="reviewArchiveSubmission(data.id, 'approve')"
+                        />
+                        <Button
+                          label="退回"
+                          icon="pi pi-times"
+                          size="small"
+                          severity="danger"
+                          outlined
+                          @click="reviewArchiveSubmission(data.id, 'reject')"
+                        />
+                        <Button
+                          label="刪除"
+                          icon="pi pi-trash"
+                          size="small"
+                          severity="danger"
+                          text
+                          @click="confirmDeleteArchiveSubmission(data)"
                         />
                       </div>
                     </template>
@@ -603,86 +646,49 @@
       </Dialog>
 
       <Dialog
-        v-model:visible="showCourseRequestDialog"
-        header="課程申請詳情"
-        modal
-        :draggable="false"
-        :style="{ width: '520px', maxWidth: '94vw' }"
-      >
-        <div class="flex flex-column gap-4">
-          <div class="flex flex-column gap-2">
-            <label>課程名稱</label>
-            <InputText v-model="courseRequestEditForm.name" :disabled="!canEditSelectedCourseRequest" />
-          </div>
-          <div class="flex flex-column gap-2">
-            <label>分類</label>
-            <Select
-              v-model="courseRequestEditForm.category"
-              :options="categoryOptions"
-              optionLabel="name"
-              optionValue="value"
-              :disabled="!canEditSelectedCourseRequest"
-            />
-          </div>
-          <div class="text-sm text-500">
-            投稿者 ID：{{ selectedCourseRequest?.requester_id || '-' }}，
-            狀態：{{ getSubmissionLabel(selectedCourseRequest?.status) }}
-          </div>
-          <div class="review-history">
-            <h4 class="mb-2">此帳號投稿紀錄</h4>
-            <div v-if="getRequesterHistory(selectedCourseRequest?.requester_id).length === 0" class="text-sm text-500">
-              尚無其他投稿紀錄
-            </div>
-            <div
-              v-for="item in getRequesterHistory(selectedCourseRequest?.requester_id)"
-              :key="`${item.kind}-${item.id}`"
-              class="review-history-row"
-            >
-              <span>{{ item.title }}</span>
-              <Tag :severity="getSubmissionSeverity(item.status)">{{ getSubmissionLabel(item.status) }}</Tag>
-            </div>
-          </div>
-        </div>
-        <div class="flex justify-end gap-2 mt-4">
-          <Button label="關閉" severity="secondary" outlined @click="showCourseRequestDialog = false" />
-          <Button
-            label="儲存修改"
-            icon="pi pi-save"
-            :disabled="!canEditSelectedCourseRequest"
-            :loading="reviewEditLoading"
-            @click="saveCourseRequestEdit"
-          />
-          <Button
-            label="通過"
-            icon="pi pi-check"
-            severity="success"
-            :disabled="!canEditSelectedCourseRequest"
-            @click="reviewCourseRequest(selectedCourseRequest.id, 'approve')"
-          />
-          <Button
-            label="退回"
-            icon="pi pi-times"
-            severity="danger"
-            outlined
-            :disabled="!canEditSelectedCourseRequest"
-            @click="reviewCourseRequest(selectedCourseRequest.id, 'reject')"
-          />
-        </div>
-      </Dialog>
-
-      <Dialog
         v-model:visible="showArchiveRequestDialog"
         header="考古題投稿詳情"
         modal
         :draggable="false"
         :style="{ width: '760px', maxWidth: '96vw' }"
       >
+        <div class="request-summary mb-4">
+          <Tag :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)">
+            {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
+          </Tag>
+          <span v-if="selectedArchiveRequest?.requested_course_name">
+            這筆投稿通過後會建立或使用新課程「{{ selectedArchiveRequest.requested_course_name }}」。
+          </span>
+          <span v-else>這筆投稿會掛到既有課程。</span>
+        </div>
         <div class="grid">
+          <template v-if="archiveRequestEditForm.requested_category_key">
+            <div class="col-12 md:col-6 flex flex-column gap-2">
+              <label>申請分類 Key</label>
+              <InputText v-model="archiveRequestEditForm.requested_category_key" :disabled="!canEditSelectedArchiveRequest" />
+            </div>
+            <div class="col-12 md:col-6 flex flex-column gap-2">
+              <label>申請分類名稱</label>
+              <InputText v-model="archiveRequestEditForm.requested_category_name" :disabled="!canEditSelectedArchiveRequest" />
+            </div>
+            <div class="col-12 md:col-6 flex flex-column gap-2">
+              <label>科目旁小標籤</label>
+              <InputText v-model="archiveRequestEditForm.requested_category_label" :disabled="!canEditSelectedArchiveRequest" />
+            </div>
+          </template>
+          <div v-if="archiveRequestEditForm.requested_course_name" class="col-12 md:col-6 flex flex-column gap-2">
+            <label>申請課程名稱</label>
+            <InputText v-model="archiveRequestEditForm.requested_course_name" :disabled="!canEditSelectedArchiveRequest" />
+          </div>
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>課程</label>
             <InputText v-model="archiveRequestEditForm.subject" :disabled="!canEditSelectedArchiveRequest" />
           </div>
-          <div class="col-12 md:col-6 flex flex-column gap-2">
+          <div v-if="archiveRequestEditForm.requested_category_key" class="col-12 md:col-6 flex flex-column gap-2">
+            <label>分類 Key</label>
+            <InputText v-model="archiveRequestEditForm.category" :disabled="!canEditSelectedArchiveRequest" />
+          </div>
+          <div v-else class="col-12 md:col-6 flex flex-column gap-2">
             <label>分類</label>
             <Select
               v-model="archiveRequestEditForm.category"
@@ -735,11 +741,27 @@
             <Column field="has_answers" header="解答">
               <template #body="{ data }">{{ data.has_answers ? '有' : '無' }}</template>
             </Column>
+            <Column header="操作" style="width: 10rem">
+              <template #body="{ data }">
+                <Button
+                  label="並排預覽"
+                  icon="pi pi-columns"
+                  size="small"
+                  outlined
+                  :loading="comparePreviewLoading && comparePreviewArchive?.id === data.id"
+                  @click="openComparePreview(data)"
+                />
+              </template>
+            </Column>
           </DataTable>
         </div>
 
         <div class="mt-4 review-history">
           <h4 class="mb-2">此帳號投稿紀錄</h4>
+          <div class="review-requester mb-2">
+            <span class="text-sm text-500">投稿帳號</span>
+            <strong>{{ getRequesterDisplay(selectedArchiveRequest) }}</strong>
+          </div>
           <div v-if="getRequesterHistory(selectedArchiveRequest?.requester_id).length === 0" class="text-sm text-500">
             尚無其他投稿紀錄
           </div>
@@ -748,13 +770,24 @@
             :key="`${item.kind}-${item.id}`"
             class="review-history-row"
           >
-            <span>{{ item.title }}</span>
+            <span class="review-history-title">
+              {{ item.title }}
+              <small>投稿：{{ item.requester }}</small>
+            </span>
             <Tag :severity="getSubmissionSeverity(item.status)">{{ getSubmissionLabel(item.status) }}</Tag>
           </div>
         </div>
 
         <div class="flex justify-end gap-2 mt-4">
           <Button label="關閉" severity="secondary" outlined @click="showArchiveRequestDialog = false" />
+          <Button
+            label="預覽 PDF"
+            icon="pi pi-eye"
+            severity="secondary"
+            outlined
+            :loading="archiveRequestPreviewLoading"
+            @click="previewArchiveRequestFile"
+          />
           <Button
             label="儲存修改"
             icon="pi pi-save"
@@ -777,6 +810,73 @@
             :disabled="!canEditSelectedArchiveRequest"
             @click="reviewArchiveSubmission(selectedArchiveRequest.id, 'reject')"
           />
+          <Button
+            label="刪除"
+            icon="pi pi-trash"
+            severity="danger"
+            text
+            :disabled="!selectedArchiveRequest"
+            @click="confirmDeleteArchiveSubmission(selectedArchiveRequest)"
+          />
+        </div>
+      </Dialog>
+
+      <PdfPreviewModal
+        :visible="showArchiveRequestPreview"
+        @update:visible="showArchiveRequestPreview = $event"
+        :previewUrl="archiveRequestPreviewUrl"
+        :title="selectedArchiveRequest?.name || ''"
+        :academicYear="formatAcademicTerm(selectedArchiveRequest?.academic_year)"
+        :archiveType="selectedArchiveRequest?.archive_type || ''"
+        :courseName="selectedArchiveRequest?.subject || ''"
+        :professorName="selectedArchiveRequest?.professor || ''"
+        :loading="archiveRequestPreviewLoading"
+        :error="archiveRequestPreviewError"
+        :showDownload="false"
+        :showDiscussion="false"
+        @hide="closeArchiveRequestPreview"
+        @error="handleArchiveRequestPreviewError"
+      />
+
+      <Dialog
+        v-model:visible="showComparePreview"
+        modal
+        maximizable
+        :draggable="false"
+        :style="{ width: 'min(1500px, 96vw)', height: 'min(92vh, 92dvh)' }"
+        :contentStyle="{ height: '100%', display: 'flex', flexDirection: 'column' }"
+        header="申請考卷與既有考卷比對"
+        @hide="closeComparePreview"
+      >
+        <div v-if="comparePreviewError" class="compare-preview-error">
+          <i class="pi pi-exclamation-circle"></i>
+          無法載入比對 PDF，請稍後再試。
+        </div>
+        <div v-else class="compare-preview-grid">
+          <section class="compare-preview-pane">
+            <header>
+              <span>申請考卷</span>
+              <strong>{{ selectedArchiveRequest?.name }}</strong>
+            </header>
+            <iframe
+              v-if="compareRequestPreviewUrl"
+              :src="compareRequestPreviewUrl"
+              title="申請考卷 PDF 預覽"
+            ></iframe>
+            <ProgressSpinner v-else strokeWidth="4" />
+          </section>
+          <section class="compare-preview-pane">
+            <header>
+              <span>既有考卷</span>
+              <strong>{{ comparePreviewArchive?.name }}</strong>
+            </header>
+            <iframe
+              v-if="compareArchivePreviewUrl"
+              :src="compareArchivePreviewUrl"
+              title="既有考卷 PDF 預覽"
+            ></iframe>
+            <ProgressSpinner v-else strokeWidth="4" />
+          </section>
         </div>
       </Dialog>
 
@@ -963,7 +1063,7 @@ defineOptions({
   name: 'AdminView',
 })
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { getCurrentUser } from '../utils/auth'
@@ -985,6 +1085,7 @@ import {
 } from '../api'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
+import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 
 const confirm = useConfirm()
 const toast = useToast()
@@ -1070,20 +1171,23 @@ const notificationForm = ref({
 })
 const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
-const courseRequests = ref([])
 const archiveRequests = ref([])
 const courseCategories = ref([])
 const reviewEditLoading = ref(false)
-const showCourseRequestDialog = ref(false)
 const showArchiveRequestDialog = ref(false)
-const selectedCourseRequest = ref(null)
 const selectedArchiveRequest = ref(null)
 const comparisonArchives = ref([])
 const comparisonLoading = ref(false)
-const courseRequestEditForm = ref({
-  name: '',
-  category: '',
-})
+const showArchiveRequestPreview = ref(false)
+const archiveRequestPreviewUrl = ref('')
+const archiveRequestPreviewLoading = ref(false)
+const archiveRequestPreviewError = ref(false)
+const showComparePreview = ref(false)
+const comparePreviewArchive = ref(null)
+const compareRequestPreviewUrl = ref('')
+const compareArchivePreviewUrl = ref('')
+const comparePreviewLoading = ref(false)
+const comparePreviewError = ref(false)
 const archiveRequestEditForm = ref({
   subject: '',
   category: '',
@@ -1092,6 +1196,11 @@ const archiveRequestEditForm = ref({
   archive_type: '',
   professor: '',
   has_answers: false,
+  requested_course_name: '',
+  requested_category_key: '',
+  requested_category_name: '',
+  requested_category_label: '',
+  requested_category_icon: '',
 })
 const archiveTypeOptions = [
   { name: '期中考', value: 'midterm' },
@@ -1101,8 +1210,13 @@ const archiveTypeOptions = [
 ]
 
 const currentUserId = computed(() => getCurrentUser()?.id)
-const canEditSelectedCourseRequest = computed(() => isPending(selectedCourseRequest.value?.status))
-const canEditSelectedArchiveRequest = computed(() => isPending(selectedArchiveRequest.value?.status))
+const canEditSelectedArchiveRequest = computed(() => Boolean(selectedArchiveRequest.value))
+const newCourseArchiveRequests = computed(() =>
+  archiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key)
+)
+const existingCourseArchiveRequests = computed(() =>
+  archiveRequests.value.filter((item) => !item.requested_course_name && !item.requested_category_key)
+)
 
 const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
 
@@ -1121,7 +1235,7 @@ const getInitialTab = () => {
 const currentTab = ref(getInitialTab())
 
 const categoryOptions = computed(() =>
-  courseCategories.value.map((category) => ({
+  courseCategories.value.filter((category) => category.is_active).map((category) => ({
     name: category.name,
     value: category.key,
     label: category.label,
@@ -1139,11 +1253,16 @@ const getCategoryName = (category) => {
 
 const getCategorySeverity = (category) => {
   const severityMap = {
+    fundamental: 'info',
+    required: 'success',
+    experience: 'warning',
+    optional: 'danger',
+    graduate: 'contrast',
+    'math-department': 'secondary',
     freshman: 'info',
     sophomore: 'success',
     junior: 'warning',
     senior: 'danger',
-    graduate: 'contrast',
     interdisciplinary: 'secondary',
   }
   return severityMap[category] || 'secondary'
@@ -1214,8 +1333,6 @@ const formatNotificationDate = (value) => {
   return formatRelativeTime(value)
 }
 
-const isPending = (status) => String(status || '').toLowerCase() === 'pending'
-
 const getSubmissionLabel = (status) => {
   const labels = {
     pending: '待審核',
@@ -1233,6 +1350,18 @@ const getSubmissionSeverity = (status) => {
   if (normalized === 'approved') return 'success'
   if (normalized === 'rejected') return 'danger'
   return 'warning'
+}
+
+const getArchiveSubmissionKind = (item) => {
+  if (item?.requested_category_key) return '新分類 + 新課程'
+  if (item?.requested_course_name) return '新課程'
+  return '既有課程'
+}
+
+const getArchiveSubmissionKindSeverity = (item) => {
+  if (item?.requested_category_key) return 'warning'
+  if (item?.requested_course_name) return 'info'
+  return 'secondary'
 }
 
 const formatAcademicTerm = (value) => {
@@ -1498,15 +1627,13 @@ const loadNotifications = async () => {
 const loadReviewItems = async () => {
   reviewLoading.value = true
   try {
-    const [categoryResponse, allCoursesResponse, courseResponse, archiveResponse] = await Promise.all([
+    const [categoryResponse, allCoursesResponse, archiveResponse] = await Promise.all([
       courseService.listAdminCategories(),
       getCourses(),
-      courseService.listAdminRequests(),
       archiveService.listAdminSubmissions(),
     ])
     courseCategories.value = Array.isArray(categoryResponse.data) ? categoryResponse.data : []
     courses.value = Array.isArray(allCoursesResponse.data) ? allCoursesResponse.data : []
-    courseRequests.value = Array.isArray(courseResponse.data) ? courseResponse.data : []
     archiveRequests.value = Array.isArray(archiveResponse.data) ? archiveResponse.data : []
   } catch (error) {
     console.error('載入審核資料失敗:', error)
@@ -1524,15 +1651,6 @@ const loadReviewItems = async () => {
   }
 }
 
-const openCourseRequestDialog = (request) => {
-  selectedCourseRequest.value = request
-  courseRequestEditForm.value = {
-    name: request.name,
-    category: request.category,
-  }
-  showCourseRequestDialog.value = true
-}
-
 const openArchiveRequestDialog = async (request) => {
   selectedArchiveRequest.value = request
   archiveRequestEditForm.value = {
@@ -1543,26 +1661,14 @@ const openArchiveRequestDialog = async (request) => {
     archive_type: request.archive_type,
     professor: request.professor,
     has_answers: Boolean(request.has_answers),
+    requested_course_name: request.requested_course_name || '',
+    requested_category_key: request.requested_category_key || '',
+    requested_category_name: request.requested_category_name || '',
+    requested_category_label: request.requested_category_label || '',
+    requested_category_icon: request.requested_category_icon || 'pi pi-fw pi-book',
   }
   showArchiveRequestDialog.value = true
   await loadArchiveComparison(request)
-}
-
-const saveCourseRequestEdit = async () => {
-  if (!selectedCourseRequest.value) return
-  reviewEditLoading.value = true
-  try {
-    const { data } = await courseService.updateRequest(selectedCourseRequest.value.id, courseRequestEditForm.value)
-    selectedCourseRequest.value = data
-    toast.add({ severity: 'success', summary: '成功', detail: '課程申請已更新', life: 3000 })
-    await loadReviewItems()
-  } catch (error) {
-    console.error('更新課程申請失敗:', error)
-    if (isUnauthorizedError(error)) return
-    toast.add({ severity: 'error', summary: '錯誤', detail: '課程申請更新失敗', life: 3000 })
-  } finally {
-    reviewEditLoading.value = false
-  }
 }
 
 const saveArchiveRequestEdit = async () => {
@@ -1586,6 +1692,91 @@ const saveArchiveRequestEdit = async () => {
   }
 }
 
+const previewArchiveRequestFile = async () => {
+  if (!selectedArchiveRequest.value?.id) return
+  archiveRequestPreviewLoading.value = true
+  archiveRequestPreviewError.value = false
+  try {
+    if (archiveRequestPreviewUrl.value) {
+      URL.revokeObjectURL(archiveRequestPreviewUrl.value)
+      archiveRequestPreviewUrl.value = ''
+    }
+    const { data } = await archiveService.getSubmissionPreviewFile(selectedArchiveRequest.value.id)
+    archiveRequestPreviewUrl.value = URL.createObjectURL(
+      new Blob([data], { type: 'application/pdf' })
+    )
+    showArchiveRequestPreview.value = true
+  } catch (error) {
+    console.error('預覽投稿 PDF 失敗:', error)
+    archiveRequestPreviewError.value = true
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '預覽失敗', detail: '無法載入投稿 PDF', life: 3000 })
+  } finally {
+    archiveRequestPreviewLoading.value = false
+  }
+}
+
+const closeArchiveRequestPreview = () => {
+  showArchiveRequestPreview.value = false
+  archiveRequestPreviewError.value = false
+  if (archiveRequestPreviewUrl.value) {
+    URL.revokeObjectURL(archiveRequestPreviewUrl.value)
+    archiveRequestPreviewUrl.value = ''
+  }
+}
+
+const handleArchiveRequestPreviewError = () => {
+  archiveRequestPreviewError.value = true
+}
+
+const revokeComparePreviewUrls = () => {
+  if (compareRequestPreviewUrl.value) {
+    URL.revokeObjectURL(compareRequestPreviewUrl.value)
+    compareRequestPreviewUrl.value = ''
+  }
+  if (compareArchivePreviewUrl.value) {
+    URL.revokeObjectURL(compareArchivePreviewUrl.value)
+    compareArchivePreviewUrl.value = ''
+  }
+}
+
+const openComparePreview = async (archive) => {
+  if (!selectedArchiveRequest.value?.id || !archive?.id || !archive?.course_id) return
+  comparePreviewArchive.value = archive
+  comparePreviewLoading.value = true
+  comparePreviewError.value = false
+  revokeComparePreviewUrls()
+  showComparePreview.value = true
+
+  try {
+    const [requestResponse, archiveResponse] = await Promise.all([
+      archiveService.getSubmissionPreviewFile(selectedArchiveRequest.value.id),
+      archiveService.getArchivePreviewFile(archive.course_id, archive.id),
+    ])
+    compareRequestPreviewUrl.value = URL.createObjectURL(
+      new Blob([requestResponse.data], { type: 'application/pdf' })
+    )
+    compareArchivePreviewUrl.value = URL.createObjectURL(
+      new Blob([archiveResponse.data], { type: 'application/pdf' })
+    )
+  } catch (error) {
+    console.error('載入比對 PDF 失敗:', error)
+    comparePreviewError.value = true
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '預覽失敗', detail: '無法載入比對 PDF', life: 3000 })
+  } finally {
+    comparePreviewLoading.value = false
+  }
+}
+
+const closeComparePreview = () => {
+  showComparePreview.value = false
+  comparePreviewArchive.value = null
+  comparePreviewError.value = false
+  comparePreviewLoading.value = false
+  revokeComparePreviewUrls()
+}
+
 const loadArchiveComparison = async (request) => {
   comparisonArchives.value = []
   if (!request?.subject || !request?.category) return
@@ -1598,12 +1789,17 @@ const loadArchiveComparison = async (request) => {
     if (!matchingCourse) return
 
     const { data } = await courseService.getCourseArchives(matchingCourse.id)
-    comparisonArchives.value = (Array.isArray(data) ? data : []).filter(
-      (archive) =>
-        Number(archive.academic_year) === Number(request.academic_year) &&
-        archive.archive_type === request.archive_type &&
-        archive.name === request.name
-    )
+    comparisonArchives.value = (Array.isArray(data) ? data : [])
+      .filter(
+        (archive) =>
+          Number(archive.academic_year) === Number(request.academic_year) &&
+          archive.archive_type === request.archive_type &&
+          archive.name === request.name
+      )
+      .map((archive) => ({
+        ...archive,
+        course_id: matchingCourse.id,
+      }))
   } catch (error) {
     console.error('載入比對資料失敗:', error)
     if (isUnauthorizedError(error)) return
@@ -1615,46 +1811,21 @@ const loadArchiveComparison = async (request) => {
 
 const getRequesterHistory = (requesterId) => {
   if (!requesterId) return []
-  const courseHistory = courseRequests.value
-    .filter((item) => item.requester_id === requesterId)
-    .map((item) => ({
-      kind: 'course',
-      id: item.id,
-      title: `課程申請：${item.name}`,
-      status: item.status,
-    }))
   const archiveHistory = archiveRequests.value
     .filter((item) => item.requester_id === requesterId)
     .map((item) => ({
       kind: 'archive',
       id: item.id,
       title: `考古題：${item.subject} / ${item.name}`,
+      requester: getRequesterDisplay(item),
       status: item.status,
     }))
-  return [...courseHistory, ...archiveHistory]
+  return archiveHistory
 }
 
-const reviewCourseRequest = async (requestId, action) => {
-  try {
-    if (action === 'approve') {
-      await courseService.approveRequest(requestId)
-      await loadCourses()
-    } else {
-      await courseService.rejectRequest(requestId)
-    }
-    toast.add({
-      severity: 'success',
-      summary: '完成',
-      detail: action === 'approve' ? '課程申請已通過' : '課程申請已退回',
-      life: 3000,
-    })
-    await loadReviewItems()
-    showCourseRequestDialog.value = false
-  } catch (error) {
-    console.error('審核課程申請失敗:', error)
-    if (isUnauthorizedError(error)) return
-    toast.add({ severity: 'error', summary: '錯誤', detail: '審核課程申請失敗', life: 3000 })
-  }
+const getRequesterDisplay = (request) => {
+  if (!request) return '未知帳號'
+  return request.requester_name || request.requester_email || `使用者 #${request.requester_id}`
 }
 
 const reviewArchiveSubmission = async (submissionId, action) => {
@@ -1676,6 +1847,37 @@ const reviewArchiveSubmission = async (submissionId, action) => {
     console.error('審核考古題投稿失敗:', error)
     if (isUnauthorizedError(error)) return
     toast.add({ severity: 'error', summary: '錯誤', detail: '審核考古題投稿失敗', life: 3000 })
+  }
+}
+
+const confirmDeleteArchiveSubmission = (submission) => {
+  if (!submission?.id) return
+  confirm.require({
+    message: `確定要刪除「${submission.subject} / ${submission.name}」這筆投稿紀錄嗎？`,
+    header: '確認刪除投稿紀錄',
+    icon: 'pi pi-exclamation-triangle',
+    accept: () => deleteArchiveSubmissionAction(submission),
+  })
+}
+
+const deleteArchiveSubmissionAction = async (submission) => {
+  try {
+    await archiveService.deleteSubmission(submission.id)
+    toast.add({
+      severity: 'success',
+      summary: '已刪除',
+      detail: '投稿紀錄已刪除',
+      life: 3000,
+    })
+    if (selectedArchiveRequest.value?.id === submission.id) {
+      showArchiveRequestDialog.value = false
+      selectedArchiveRequest.value = null
+    }
+    await loadReviewItems()
+  } catch (error) {
+    console.error('刪除考古題投稿失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '投稿紀錄刪除失敗', life: 3000 })
   }
 }
 
@@ -1900,15 +2102,51 @@ const saveCategory = async () => {
   }
 }
 
+const confirmToggleCategory = (category) => {
+  const nextActive = !category.is_active
+  confirm.require({
+    message: `確定要${nextActive ? '啟用' : '停用'}分類「${category.name}」嗎？`,
+    header: `${nextActive ? '啟用' : '停用'}分類`,
+    icon: 'pi pi-exclamation-triangle',
+    rejectClass: 'p-button-secondary p-button-outlined',
+    acceptClass: nextActive ? 'p-button-success' : 'p-button-warning',
+    rejectLabel: '取消',
+    acceptLabel: nextActive ? '啟用' : '停用',
+    accept: () => toggleCategoryActive(category, nextActive),
+  })
+}
+
+const toggleCategoryActive = async (category, isActive) => {
+  try {
+    await courseService.setCategoryActive(category.id, isActive)
+    toast.add({
+      severity: 'success',
+      summary: '成功',
+      detail: `分類已${isActive ? '啟用' : '停用'}`,
+      life: 3000,
+    })
+    await loadCourses()
+  } catch (error) {
+    console.error('更新分類狀態失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: error?.response?.data?.detail || '分類狀態更新失敗',
+      life: 3000,
+    })
+  }
+}
+
 const confirmDeleteCategory = (category) => {
   confirm.require({
-    message: `確定要停用分類「${category.name}」嗎？如果分類下還有課程，系統會拒絕停用。`,
-    header: '停用分類',
+    message: `確定要永久刪除分類「${category.name}」嗎？只有完全沒有課程或投稿引用的分類才能刪除。`,
+    header: '刪除分類',
     icon: 'pi pi-exclamation-triangle',
     rejectClass: 'p-button-secondary p-button-outlined',
     acceptClass: 'p-button-danger',
     rejectLabel: '取消',
-    acceptLabel: '停用',
+    acceptLabel: '刪除',
     accept: () => deleteCategoryAction(category),
   })
 }
@@ -1916,15 +2154,15 @@ const confirmDeleteCategory = (category) => {
 const deleteCategoryAction = async (category) => {
   try {
     await courseService.deleteCategory(category.id)
-    toast.add({ severity: 'success', summary: '成功', detail: '分類已停用', life: 3000 })
+    toast.add({ severity: 'success', summary: '成功', detail: '分類已刪除', life: 3000 })
     await loadCourses()
   } catch (error) {
-    console.error('停用分類失敗:', error)
+    console.error('刪除分類失敗:', error)
     if (isUnauthorizedError(error)) return
     toast.add({
       severity: 'error',
       summary: '錯誤',
-      detail: error?.response?.data?.detail || '分類停用失敗',
+      detail: error?.response?.data?.detail || '分類刪除失敗',
       life: 3000,
     })
   }
@@ -2296,6 +2534,11 @@ watch(
   },
   { immediate: true }
 )
+
+onBeforeUnmount(() => {
+  closeArchiveRequestPreview()
+  closeComparePreview()
+})
 </script>
 
 <style scoped>
@@ -2385,6 +2628,72 @@ watch(
   border-top: 0;
 }
 
+.review-requester {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.review-history-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.review-history-title small {
+  color: var(--text-secondary);
+}
+
+.compare-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.compare-preview-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.compare-preview-pane header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.compare-preview-pane header span {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.compare-preview-pane iframe {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #52585b;
+}
+
+.compare-preview-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 20rem;
+  color: var(--text-secondary);
+}
+
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   :deep(.p-dialog .p-dialog-content) {
@@ -2439,6 +2748,10 @@ watch(
 
   :deep(.p-paginator) {
     font-size: 0.875rem;
+  }
+
+  .compare-preview-grid {
+    grid-template-columns: 1fr;
   }
 }
 

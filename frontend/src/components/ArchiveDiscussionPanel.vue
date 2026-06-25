@@ -26,13 +26,27 @@
         還沒有人發起討論，來當第一個吧！
       </div>
 
-      <div v-for="msg in messages" :key="msg.id" class="message p-2.5">
+      <div v-for="msg in sortedMessages" :key="msg.id" class="message p-2.5" :class="{ 'is-pinned': msg.is_pinned }">
         <div class="flex align-items-center justify-content-between gap-3">
-          <div class="text-sm font-semibold">{{ msg.user_name }}</div>
+          <div class="flex align-items-center gap-2 min-w-0">
+            <Tag v-if="msg.is_pinned" value="置頂" severity="warning" class="discussion-pin-tag" />
+            <div class="text-sm font-semibold">{{ msg.user_name }}</div>
+          </div>
           <div class="flex align-items-center gap-2">
             <div class="text-xs" style="color: var(--text-secondary)">
               {{ formatTime(msg.created_at) }}
             </div>
+            <Button
+              v-if="canPin"
+              :icon="msg.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+              severity="warning"
+              text
+              size="small"
+              rounded
+              :aria-label="msg.is_pinned ? '取消置頂' : '置頂'"
+              class="discussion-pin-btn"
+              @click="togglePin(msg)"
+            />
             <Button
               v-if="canDelete(msg)"
               icon="pi pi-trash"
@@ -199,6 +213,7 @@ let connectSeq = 0
 
 const currentUser = computed(() => getCurrentUser())
 const canSend = computed(() => props.enabled && connected.value && Boolean(currentUser.value))
+const canPin = computed(() => Boolean(currentUser.value?.is_admin))
 const messagesRef = ref(null)
 
 const profile = ref({ nickname: '', name: '' })
@@ -213,6 +228,15 @@ const WS_RECONNECT_MAX_ATTEMPTS = 6
 
 const expandedById = ref({})
 const reconnectAttempts = ref(0)
+
+const sortedMessages = computed(() => {
+  return [...messages.value].sort((a, b) => {
+    if (Boolean(a.is_pinned) !== Boolean(b.is_pinned)) {
+      return a.is_pinned ? -1 : 1
+    }
+    return Number(a.id || 0) - Number(b.id || 0)
+  })
+})
 
 const nicknameHint = computed(() => {
   const trimmed = (nicknameDraft.value || '').trim()
@@ -378,6 +402,11 @@ async function connect() {
       if (data.type === 'delete' && data.message_id) {
         messages.value = messages.value.filter((m) => m.id !== data.message_id)
       }
+      if (data.type === 'pin' && data.message_id) {
+        messages.value = messages.value.map((m) =>
+          m.id === data.message_id ? { ...m, is_pinned: Boolean(data.is_pinned) } : m
+        )
+      }
     } catch {
       // ignore
     } finally {
@@ -449,6 +478,33 @@ async function deleteMessage(msg) {
       severity: 'error',
       summary: '刪除失敗',
       detail: '無法刪除訊息，請稍後再試',
+      life: 3000,
+    })
+  }
+}
+
+async function togglePin(msg) {
+  if (!canPin.value) return
+  const courseId = normalizeId(props.courseId)
+  const archiveId = normalizeId(props.archiveId)
+  if (!courseId || !archiveId) return
+  const nextPinned = !msg.is_pinned
+
+  messages.value = messages.value.map((m) =>
+    m.id === msg.id ? { ...m, is_pinned: nextPinned } : m
+  )
+
+  try {
+    await discussionService.pinArchiveMessage(courseId, archiveId, msg.id, nextPinned)
+  } catch (error) {
+    console.error('Pin message error:', error)
+    messages.value = messages.value.map((m) =>
+      m.id === msg.id ? { ...m, is_pinned: !nextPinned } : m
+    )
+    toast?.add?.({
+      severity: 'error',
+      summary: '置頂失敗',
+      detail: '無法更新留言置頂狀態，請稍後再試',
       life: 3000,
     })
   }
@@ -581,6 +637,29 @@ function handleDesktopDefaultOpenChange() {
   border-radius: 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
+}
+
+.message.is-pinned {
+  border-color: color-mix(in srgb, var(--brand-gold) 58%, var(--border-color));
+  background: color-mix(in srgb, var(--brand-gold) 10%, var(--bg-secondary));
+}
+
+:deep(.discussion-pin-tag.p-tag) {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  line-height: 1rem;
+}
+
+:deep(.discussion-pin-btn.p-button) {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  min-width: 1.25rem;
+  flex: 0 0 auto;
+}
+
+:deep(.discussion-pin-btn.p-button .p-button-icon) {
+  font-size: 0.75rem;
 }
 
 :deep(.discussion-delete-btn.p-button) {

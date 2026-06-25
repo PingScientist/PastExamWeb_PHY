@@ -16,12 +16,12 @@ from app.utils.auth import get_password_hash
 
 SEED_DATA_PATH = Path(__file__).with_name("seed_data.yaml")
 DEFAULT_CATEGORY_CONFIGS = [
-    ("freshman", "基礎必修", "基礎", "pi pi-fw pi-book"),
-    ("sophomore", "專業必修", "必修", "pi pi-fw pi-compass"),
-    ("junior", "實驗課程", "實驗", "pi pi-fw pi-sparkles"),
-    ("senior", "專業選修", "選修", "pi pi-fw pi-book"),
+    ("fundamental", "基礎必修", "基礎", "pi pi-fw pi-book"),
+    ("required", "專業必修", "必修", "pi pi-fw pi-compass"),
+    ("experience", "實驗課程", "實驗", "pi pi-fw pi-sparkles"),
+    ("optional", "專業選修", "選修", "pi pi-fw pi-book"),
     ("graduate", "研究所", "研究所", "pi pi-fw pi-graduation-cap"),
-    ("interdisciplinary", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
+    ("math-department", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
 ]
 
 

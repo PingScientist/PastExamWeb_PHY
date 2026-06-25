@@ -27,6 +27,50 @@
         <StepPanels>
           <StepPanel v-slot="{ activateCallback }" value="1">
             <div class="flex flex-column gap-4">
+              <div class="request-mode-panel">
+                <div class="flex align-items-start gap-2">
+                  <Checkbox v-model="form.requestNewCourse" :binary="true" inputId="request-new-course" />
+                  <div>
+                    <label for="request-new-course" class="font-semibold">申請新增課程</label>
+                    <div class="text-sm text-500 mt-1">
+                      勾選後，這份考古會先進入審核；管理者通過後才建立新課程並公開考古題。
+                    </div>
+                  </div>
+                </div>
+                <div class="flex align-items-start gap-2 mt-3">
+                  <Checkbox v-model="form.requestNewCategory" :binary="true" inputId="request-new-category" />
+                  <div>
+                    <label for="request-new-category" class="font-semibold">同時申請新增課程分類</label>
+                    <div class="text-sm text-500 mt-1">
+                      適合現有分類都不合用的課程；勾選後會自動視為新增課程申請。
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="form.requestNewCategory" class="new-category-grid">
+                <div class="flex flex-column gap-2">
+                  <label>新分類 Key</label>
+                  <InputText
+                    v-model="form.requestedCategoryKey"
+                    placeholder="例如 astrophysics"
+                    class="w-full"
+                    :class="{ 'p-invalid': form.requestedCategoryKey && !isCategoryKeyValid }"
+                  />
+                  <small :class="form.requestedCategoryKey && !isCategoryKeyValid ? 'p-error' : 'text-gray-500'">
+                    請使用小寫英文字母、數字或連字號，2 到 40 字。
+                  </small>
+                </div>
+                <div class="flex flex-column gap-2">
+                  <label>新分類名稱</label>
+                  <InputText v-model="form.requestedCategoryName" placeholder="例如 天文物理" class="w-full" />
+                </div>
+                <div class="flex flex-column gap-2">
+                  <label>科目旁小標籤</label>
+                  <InputText v-model="form.requestedCategoryLabel" placeholder="例如 天文" class="w-full" />
+                </div>
+              </div>
+
               <div class="flex flex-column gap-2">
                 <label>課程類別</label>
                 <Select
@@ -36,33 +80,40 @@
                   optionValue="value"
                   placeholder="選擇課程類別"
                   class="w-full"
+                  :disabled="form.requestNewCategory"
+                />
+                <small v-if="form.requestNewCategory" class="text-gray-500">
+                  已改為申請新分類，這份考古會歸到上方的新分類。
+                </small>
+              </div>
+
+              <div v-if="form.requestNewCourse" class="flex flex-column gap-2">
+                <label>新課程名稱</label>
+                <InputText
+                  v-model="form.requestedCourseName"
+                  placeholder="輸入要申請的課程名稱"
+                  class="w-full"
                 />
               </div>
 
-              <div class="flex flex-column gap-2">
-                <label>課程名稱</label>
-                <AutoComplete
-                  v-model="form.subject"
-                  :suggestions="availableSubjects"
-                  @complete="searchSubject"
-                  @item-select="onSubjectSelect"
-                  @focus="() => searchSubject({ query: '' })"
-                  @click="() => searchSubject({ query: '' })"
-                  optionLabel="name"
-                  placeholder="搜尋或輸入課程名稱"
-                  class="w-full"
-                  :disabled="!form.category"
-                  dropdown
-                  completeOnFocus
-                  :minLength="0"
-                  autoHighlight="true"
-                >
-                  <template #item="{ item }">
-                    <div>{{ item.name }}</div>
-                  </template>
-                </AutoComplete>
-                <small class="text-gray-500">如果課程名稱不在列表上，可自行輸入新增</small>
-              </div>
+	              <div v-else class="flex flex-column gap-2">
+	                <label>課程名稱</label>
+	                <Select
+	                  v-model="form.subject"
+	                  :options="subjectOptions"
+	                  optionLabel="name"
+	                  placeholder="選擇課程名稱"
+	                  class="w-full"
+	                  :disabled="!form.category"
+	                  filter
+	                  showClear
+	                >
+	                  <template #item="{ item }">
+	                    <div>{{ item.name }}</div>
+	                  </template>
+	                </Select>
+	                <small class="text-gray-500">若課程不在列表上，請勾選「申請新增課程」。</small>
+	              </div>
 
               <div class="flex flex-column gap-2">
                 <label>授課教授</label>
@@ -77,7 +128,7 @@
                   optionLabel="name"
                   placeholder="搜尋或輸入授課教授"
                   class="w-full"
-                  :disabled="!form.subject"
+                  :disabled="!effectiveSubject"
                   dropdown
                   completeOnFocus
                   :minLength="0"
@@ -308,12 +359,20 @@
             <div class="flex flex-column gap-4">
               <div class="flex flex-column gap-2 p-3 surface-ground border-round">
                 <div>
+                  <strong>投稿類型：</strong>
+                  {{ submissionKindLabel }}
+                </div>
+                <div v-if="form.requestNewCategory">
+                  <strong>申請分類：</strong>
+                  {{ form.requestedCategoryName }}（{{ form.requestedCategoryKey }}）
+                </div>
+                <div>
                   <strong>課程類別：</strong>
-                  {{ getCategoryName(form.category) }}
+                  {{ effectiveCategoryName }}
                 </div>
                 <div>
                   <strong>課程名稱：</strong>
-                  {{ form.subject || '' }}
+                  {{ effectiveSubject || '' }}
                 </div>
                 <div><strong>授課教授：</strong> {{ form.professor }}</div>
                 <div>
@@ -367,7 +426,7 @@
       :title="form.file ? form.file.name : ''"
       :academicYear="formatSemester(form.academicYear)"
       :archiveType="form.type || ''"
-      :courseName="typeof form.subject === 'string' ? form.subject : form.subject?.name || ''"
+      :courseName="effectiveSubject || ''"
       :professorName="
         typeof form.professor === 'string' ? form.professor : form.professor?.name || ''
       "
@@ -412,6 +471,12 @@ const form = ref({
   category: null,
   subject: null,
   subjectId: null,
+  requestNewCourse: false,
+  requestedCourseName: '',
+  requestNewCategory: false,
+  requestedCategoryKey: '',
+  requestedCategoryName: '',
+  requestedCategoryLabel: '',
   professor: null,
   filename: '',
   examNumber: null,
@@ -433,7 +498,6 @@ const uploadPreviewUrl = ref('')
 const uploadPreviewLoading = ref(false)
 const uploadPreviewError = ref(false)
 
-const availableSubjects = ref([])
 const availableProfessors = ref([])
 
 const categoryOptions = computed(() =>
@@ -443,7 +507,16 @@ const categoryOptions = computed(() =>
   }))
 )
 
-const examNumberOptions = Array.from({ length: 10 }, (_, index) => ({
+const subjectOptions = computed(() =>
+  (props.coursesList[form.value.category] || [])
+    .map((course) => ({
+      name: course.name,
+      code: course.id,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+)
+
+const examNumberOptions = Array.from({ length: 20 }, (_, index) => ({
   name: `第 ${index + 1} 次`,
   value: index + 1,
 }))
@@ -481,6 +554,32 @@ const semesterGroups = computed(() => {
 
 const requiresExamNumber = computed(() => ['midterm', 'quiz'].includes(form.value.type))
 
+const isCategoryKeyValid = computed(() =>
+  /^[a-z0-9-]{2,40}$/.test((form.value.requestedCategoryKey || '').trim())
+)
+
+const effectiveSubject = computed(() => {
+  if (form.value.requestNewCourse) return (form.value.requestedCourseName || '').trim()
+  if (typeof form.value.subject === 'string') return form.value.subject.trim()
+  return form.value.subject?.name?.trim?.() || ''
+})
+
+const effectiveCategory = computed(() => {
+  if (form.value.requestNewCategory) return (form.value.requestedCategoryKey || '').trim().toLowerCase()
+  return form.value.category
+})
+
+const effectiveCategoryName = computed(() => {
+  if (form.value.requestNewCategory) return (form.value.requestedCategoryName || '').trim()
+  return getCategoryName(form.value.category)
+})
+
+const submissionKindLabel = computed(() => {
+  if (form.value.requestNewCategory) return '新分類與新課程申請'
+  if (form.value.requestNewCourse) return '新課程申請'
+  return '既有課程投稿'
+})
+
 const generatedFilename = computed(() => {
   if (form.value.type === 'midterm' && form.value.examNumber) {
     return `midterm${form.value.examNumber}`
@@ -494,7 +593,10 @@ const generatedFilename = computed(() => {
 })
 
 const canGoToStep2 = computed(() => {
-  return form.value.category && form.value.subject && form.value.professor
+  const hasCategory = form.value.requestNewCategory
+    ? isCategoryKeyValid.value && form.value.requestedCategoryName.trim()
+    : form.value.category
+  return hasCategory && effectiveSubject.value && form.value.professor
 })
 
 const canGoToStep3 = computed(() => {
@@ -504,8 +606,8 @@ const canGoToStep3 = computed(() => {
 const canUpload = computed(() => {
   return (
     form.value.file &&
-    form.value.category &&
-    form.value.subject &&
+    effectiveCategory.value &&
+    effectiveSubject.value &&
     form.value.professor &&
     form.value.academicYear &&
     form.value.type &&
@@ -600,13 +702,27 @@ const handleUpload = async () => {
 
     const formData = new FormData()
     formData.append('file', cleanFileWithName)
-    formData.append('subject', form.value.subject)
-    formData.append('category', form.value.category)
+    formData.append('subject', effectiveSubject.value)
+    formData.append('category', effectiveCategory.value)
     formData.append('professor', form.value.professor)
     formData.append('archive_type', form.value.type)
     formData.append('has_answers', form.value.hasAnswers)
     formData.append('filename', generatedFilename.value)
     formData.append('academic_year', form.value.academicYear)
+    formData.append('request_new_course', form.value.requestNewCourse)
+    formData.append('request_new_category', form.value.requestNewCategory)
+    if (form.value.requestNewCourse) {
+      formData.append('requested_course_name', effectiveSubject.value)
+    }
+    if (form.value.requestNewCategory) {
+      formData.append('requested_category_key', effectiveCategory.value)
+      formData.append('requested_category_name', form.value.requestedCategoryName.trim())
+      formData.append(
+        'requested_category_label',
+        (form.value.requestedCategoryLabel || form.value.requestedCategoryName).trim()
+      )
+      formData.append('requested_category_icon', 'pi pi-fw pi-book')
+    }
 
     await archiveService.uploadArchive(formData)
 
@@ -700,20 +816,6 @@ function closeUploadPreview() {
   uploadPreviewError.value = false
 }
 
-const searchSubject = (event) => {
-  const query = event?.query?.toLowerCase() || ''
-  const subjects = props.coursesList[form.value.category] || []
-  const filteredSubjects = subjects
-    .map((course) => ({
-      name: course.name,
-      code: course.id,
-    }))
-    .filter((subject) => subject.name.toLowerCase().includes(query))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  availableSubjects.value = filteredSubjects
-}
-
 const searchProfessor = (event) => {
   const query = event?.query?.toLowerCase() || ''
   const filteredProfessors = uploadFormProfessors.value
@@ -721,11 +823,6 @@ const searchProfessor = (event) => {
     .sort((a, b) => a.name.localeCompare(b.name))
 
   availableProfessors.value = filteredProfessors
-}
-
-const onSubjectSelect = (event) => {
-  form.value.subject = event.value.name
-  form.value.subjectId = event.value.code
 }
 
 const onProfessorSelect = (event) => {
@@ -737,6 +834,7 @@ const onProfessorSelect = (event) => {
 watch(
   () => form.value.category,
   () => {
+    if (form.value.requestNewCategory) return
     form.value.subject = null
     form.value.subjectId = null
     form.value.professor = null
@@ -745,13 +843,50 @@ watch(
 
 watch(
   () => form.value.subject,
+  (subject) => {
+    form.value.subjectId = subject && typeof subject === 'object' ? subject.code : null
+  }
+)
+
+watch(
+  () => effectiveSubject.value,
   (newSubject) => {
     form.value.professor = null
-    if (newSubject) {
+    if (newSubject && !form.value.requestNewCourse) {
       fetchProfessorsForSubject(form.value.subjectId)
     } else {
       uploadFormProfessors.value = []
     }
+  }
+)
+
+watch(
+  () => form.value.requestNewCategory,
+  (enabled) => {
+    if (enabled) {
+      form.value.requestNewCourse = true
+      form.value.category = null
+      form.value.subject = null
+      form.value.subjectId = null
+    } else {
+      form.value.requestedCategoryKey = ''
+      form.value.requestedCategoryName = ''
+      form.value.requestedCategoryLabel = ''
+    }
+  }
+)
+
+watch(
+  () => form.value.requestNewCourse,
+  (enabled) => {
+    if (!enabled && form.value.requestNewCategory) {
+      form.value.requestNewCourse = true
+      return
+    }
+    form.value.subject = null
+    form.value.subjectId = null
+    form.value.requestedCourseName = ''
+    form.value.professor = null
   }
 )
 
@@ -788,6 +923,12 @@ function resetForm() {
     category: null,
     subject: null,
     subjectId: null,
+    requestNewCourse: false,
+    requestedCourseName: '',
+    requestNewCategory: false,
+    requestedCategoryKey: '',
+    requestedCategoryName: '',
+    requestedCategoryLabel: '',
     professor: null,
     filename: '',
     examNumber: null,
@@ -799,7 +940,6 @@ function resetForm() {
   }
   uploadStep.value = '1'
   isFilenameValid.value = false
-  availableSubjects.value = []
   availableProfessors.value = []
   uploadFormProfessors.value = []
 
@@ -823,6 +963,30 @@ function resetForm() {
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
+}
+
+.request-mode-panel,
+.new-category-grid {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 8px;
+  padding: 0.9rem;
+  background: color-mix(in srgb, var(--p-content-background) 92%, var(--p-primary-color) 8%);
+}
+
+.new-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.new-category-grid > :first-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .new-category-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .semester-picker {

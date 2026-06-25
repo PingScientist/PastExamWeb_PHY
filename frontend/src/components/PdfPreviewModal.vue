@@ -68,24 +68,20 @@
             <div class="text-sm text-gray-600">請嘗試下載檔案查看</div>
           </div>
 
-          <div
-            v-else-if="loading || pdfLoading"
-            class="flex-1 flex align-items-center justify-content-center"
-          >
-            <ProgressSpinner strokeWidth="4" />
-          </div>
-
-          <div v-else-if="pdf && renderPdf" class="flex-1 pdf-container" ref="pdfContainerRef">
-            <div class="pdf-pages">
-              <VuePDF
-                v-for="page in pages"
-                :key="`${page}-${resizeKey}`"
-                :pdf="pdf"
-                :page="page"
-                :fitParent="true"
-                class="pdf-page"
-                @loaded="handlePdfLoaded"
-              />
+          <div v-else-if="currentPdf && renderPdf" class="flex-1 pdf-container">
+            <iframe
+              :key="currentPdf"
+              :src="currentPdf"
+              class="pdf-frame"
+              title="PDF 預覽"
+              @load="handlePdfLoaded"
+              @error="handlePdfError"
+            ></iframe>
+            <div
+              v-if="loading || pdfLoading"
+              class="pdf-loading-overlay flex align-items-center justify-content-center"
+            >
+              <ProgressSpinner strokeWidth="4" />
             </div>
           </div>
 
@@ -176,8 +172,6 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { VuePDF, usePDF } from '@tato30/vue-pdf'
-import '@tato30/vue-pdf/style.css'
 import { useUnauthorizedEvent } from '../utils/useUnauthorizedEvent'
 import ArchiveDiscussionPanel from './ArchiveDiscussionPanel.vue'
 import { getBooleanPreference } from '../utils/usePreferences'
@@ -294,18 +288,9 @@ const metaTextItems = computed(() => {
 const downloading = ref(false)
 const pdfLoading = ref(false)
 const pdfError = ref(false)
-let activeLoadId = 0
 const renderPdf = ref(false)
-let resizeObserver = null
-let resizeDebounceTimer = null
-const ResizeObserverCtor = typeof ResizeObserver !== 'undefined' ? ResizeObserver : null
-const pdfContainerRef = ref(null)
-const resizeKey = ref(0)
 
 const currentPdf = computed(() => props.previewUrl || '')
-const { pdf, pages } = usePDF(currentPdf, {
-  onError: handlePdfError,
-})
 
 watch(
   currentPdf,
@@ -322,99 +307,12 @@ watch(
     renderPdf.value = false
     if (!visible) return
 
-    // PrimeVue Dialog teleports + transitions; defer mounting the PDF renderer until the
-    // content is actually attached to the DOM to avoid null `parentNode` errors.
+    // PrimeVue Dialog teleports + transitions; defer mounting until the
+    // content is attached to the DOM so native PDF viewers get stable sizing.
     await nextTick()
     requestAnimationFrame(() => {
       if (props.visible) renderPdf.value = true
     })
-  },
-  { immediate: true }
-)
-
-watch(
-  pdfContainerRef,
-  (el) => {
-    if (resizeObserver) {
-      resizeObserver.disconnect()
-      resizeObserver = null
-    }
-    if (resizeDebounceTimer) {
-      clearTimeout(resizeDebounceTimer)
-      resizeDebounceTimer = null
-    }
-    if (!ResizeObserverCtor) return
-    if (!el) return
-
-    const scheduleResizeKeyUpdate = (nextWidth) => {
-      if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer)
-      resizeDebounceTimer = setTimeout(() => {
-        if (!renderPdf.value) return
-        if (!el.isConnected) return
-        if (resizeKey.value === nextWidth) return
-        resizeKey.value = nextWidth
-      }, 80)
-    }
-
-    resizeObserver = new ResizeObserverCtor((entries) => {
-      const entry = entries[0]
-      if (!entry) return
-      if (!renderPdf.value) return
-      if (!el.isConnected) return
-
-      const nextWidth = Math.round(entry.contentRect.width)
-      if (!nextWidth) return
-      scheduleResizeKeyUpdate(nextWidth)
-    })
-    resizeObserver.observe(el)
-
-    // PrimeVue Dialog transitions can delay layout; capture a stable initial width.
-    requestAnimationFrame(() => {
-      if (!renderPdf.value) return
-      if (!el.isConnected) return
-      const nextWidth = Math.round(el.getBoundingClientRect().width)
-      if (!nextWidth) return
-      scheduleResizeKeyUpdate(nextWidth)
-    })
-  },
-  { immediate: true }
-)
-
-onBeforeUnmount(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect()
-    resizeObserver = null
-  }
-  if (resizeDebounceTimer) {
-    clearTimeout(resizeDebounceTimer)
-    resizeDebounceTimer = null
-  }
-})
-
-watch(
-  pdf,
-  async (task) => {
-    if (!task) {
-      pdfLoading.value = false
-      return
-    }
-
-    const loadId = ++activeLoadId
-    pdfLoading.value = true
-    pdfError.value = false
-
-    try {
-      if (task.promise) {
-        await task.promise
-      }
-      if (loadId === activeLoadId) {
-        pdfLoading.value = false
-      }
-    } catch (err) {
-      if (loadId === activeLoadId) {
-        handlePdfError(err)
-      }
-    }
   },
   { immediate: true }
 )
@@ -516,26 +414,33 @@ function handleDownload() {
 
 <style scoped>
 .pdf-container {
+  position: relative;
   width: 100%;
   height: 100%;
-  overflow: auto;
+  min-height: 300px;
+  overflow: hidden;
   scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
   background-color: #525659;
+  border-radius: 6px;
 }
 
-.pdf-pages {
+.pdf-frame {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  height: 100%;
+  min-height: 65vh;
+  flex: 1 1 auto;
+  border: 0;
+  background: white;
+  border-radius: 6px;
 }
 
-.pdf-page {
-  width: 100%;
-  max-width: 100%;
+.pdf-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--p-content-background) 72%, transparent);
 }
 
 .discussion-wrapper {

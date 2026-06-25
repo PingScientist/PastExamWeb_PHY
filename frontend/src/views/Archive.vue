@@ -61,15 +61,6 @@
                 size="small"
               />
               <Button
-                icon="pi pi-book"
-                label="新增課程申請"
-                severity="secondary"
-                outlined
-                @click="showCourseRequestDialog = true"
-                class="w-full"
-                size="small"
-              />
-              <Button
                 icon="pi pi-list-check"
                 label="我的投稿狀態"
                 severity="secondary"
@@ -321,37 +312,6 @@
           />
 
           <Dialog
-            v-model:visible="showCourseRequestDialog"
-            header="新增課程申請"
-            modal
-            :draggable="false"
-            :style="{ width: '460px', maxWidth: '92vw' }"
-          >
-            <div class="flex flex-column gap-3">
-              <div class="flex flex-column gap-2">
-                <label>課程名稱</label>
-                <InputText v-model="courseRequestForm.name" placeholder="輸入課程名稱" />
-              </div>
-              <div class="flex flex-column gap-2">
-                <label>分類</label>
-                <Select
-                  v-model="courseRequestForm.category"
-                  :options="categoryOptions"
-                  optionLabel="name"
-                  optionValue="value"
-                  placeholder="選擇分類"
-                  class="w-full"
-                />
-              </div>
-              <p class="submission-hint">送出後會由管理者審核，通過後才會出現在課程列表。</p>
-            </div>
-            <div class="flex justify-end gap-2 mt-4">
-              <Button label="取消" severity="secondary" outlined @click="showCourseRequestDialog = false" />
-              <Button label="送出審核" icon="pi pi-send" :loading="courseRequestLoading" @click="submitCourseRequest" />
-            </div>
-          </Dialog>
-
-          <Dialog
             v-model:visible="showSubmissionStatusDialog"
             header="我的投稿狀態"
             modal
@@ -364,27 +324,28 @@
                 <h3>考古題投稿</h3>
                 <div v-if="archiveSubmissions.length === 0" class="submission-empty">目前沒有考古題投稿</div>
                 <article v-for="item in archiveSubmissions" :key="`archive-${item.id}`" class="submission-status-card">
-                  <div>
+                  <div class="submission-status-head">
                     <Tag :severity="getSubmissionSeverity(item.status)">
                       {{ getSubmissionLabel(item.status) }}
                     </Tag>
-                    <strong>{{ item.subject }} / {{ item.name }}</strong>
-                    <span>{{ formatAcademicTerm(item.academic_year) }} · {{ item.professor }}</span>
-                    <small v-if="item.review_note">{{ item.review_note }}</small>
+                    <div class="submission-status-title">
+                      <strong>{{ item.subject }}</strong>
+                      <span>{{ item.name }}</span>
+                    </div>
                   </div>
-                </article>
-              </section>
-              <section>
-                <h3>課程申請</h3>
-                <div v-if="courseSubmissions.length === 0" class="submission-empty">目前沒有課程申請</div>
-                <article v-for="item in courseSubmissions" :key="`course-${item.id}`" class="submission-status-card">
-                  <div>
-                    <Tag :severity="getSubmissionSeverity(item.status)">
-                      {{ getSubmissionLabel(item.status) }}
-                    </Tag>
-                    <strong>{{ item.name }}</strong>
-                    <span>{{ getCategoryName(item.category) }}</span>
-                    <small v-if="item.review_note">{{ item.review_note }}</small>
+                  <div class="submission-status-meta">
+                    <span><i class="pi pi-send"></i>{{ getArchiveSubmissionKind(item) }}</span>
+                    <span><i class="pi pi-calendar"></i>{{ formatAcademicTerm(item.academic_year) }}</span>
+                    <span><i class="pi pi-user"></i>{{ item.professor }}</span>
+                  </div>
+                  <div v-if="item.requested_category_name" class="submission-status-note">
+                    <span>新分類</span>
+                    <strong>{{ item.requested_category_name }}</strong>
+                    <small>{{ item.requested_category_key }}</small>
+                  </div>
+                  <div v-if="item.review_note" class="submission-status-note is-review">
+                    <span>審核備註</span>
+                    <strong>{{ item.review_note }}</strong>
                   </div>
                 </article>
               </section>
@@ -634,16 +595,9 @@ const selectedArchive = ref(null)
 const selectedSubject = ref(null)
 const selectedCourse = ref(null)
 const showUploadDialog = ref(false)
-const showCourseRequestDialog = ref(false)
 const showSubmissionStatusDialog = ref(false)
-const courseRequestLoading = ref(false)
 const submissionStatusLoading = ref(false)
-const courseSubmissions = ref([])
 const archiveSubmissions = ref([])
-const courseRequestForm = ref({
-  name: '',
-  category: null,
-})
 const uploadFormProfessors = ref([])
 const expandedPanels = ref([])
 const expandedMenuItems = ref({})
@@ -946,15 +900,17 @@ function getSubmissionSeverity(status) {
   return 'warning'
 }
 
+function getArchiveSubmissionKind(item) {
+  if (item?.requested_category_key) return '新分類與新課程申請'
+  if (item?.requested_course_name) return '新課程申請'
+  return '既有課程投稿'
+}
+
 async function loadSubmissionStatus() {
   submissionStatusLoading.value = true
   try {
-    const [archiveResponse, courseResponse] = await Promise.all([
-      archiveService.listMySubmissions(),
-      courseService.listMyRequests(),
-    ])
+    const archiveResponse = await archiveService.listMySubmissions()
     archiveSubmissions.value = Array.isArray(archiveResponse.data) ? archiveResponse.data : []
-    courseSubmissions.value = Array.isArray(courseResponse.data) ? courseResponse.data : []
   } catch (error) {
     console.error('Load submission status error:', error)
     if (isUnauthorizedError(error)) return
@@ -972,47 +928,6 @@ async function loadSubmissionStatus() {
 async function openSubmissionStatus() {
   showSubmissionStatusDialog.value = true
   await loadSubmissionStatus()
-}
-
-async function submitCourseRequest() {
-  const name = courseRequestForm.value.name.trim()
-  if (!name || !courseRequestForm.value.category) {
-    toast.add({
-      severity: 'warn',
-      summary: '資料不足',
-      detail: '請填寫課程名稱並選擇分類',
-      life: 3000,
-    })
-    return
-  }
-
-  courseRequestLoading.value = true
-  try {
-    await courseService.requestCourse({
-      name,
-      category: courseRequestForm.value.category,
-    })
-    toast.add({
-      severity: 'success',
-      summary: '已送出審核',
-      detail: '課程申請已送至管理者審核',
-      life: 3000,
-    })
-    courseRequestForm.value = { name: '', category: null }
-    showCourseRequestDialog.value = false
-    await loadSubmissionStatus()
-  } catch (error) {
-    console.error('Submit course request error:', error)
-    if (isUnauthorizedError(error)) return
-    toast.add({
-      severity: 'error',
-      summary: '送出失敗',
-      detail: error?.response?.data?.detail || '無法送出課程申請',
-      life: 3000,
-    })
-  } finally {
-    courseRequestLoading.value = false
-  }
 }
 
 function filterBySubject(course) {
@@ -1220,11 +1135,12 @@ async function previewArchive(archive) {
     previewError.value = false
     showPreview.value = true
 
-    const { data } = await archiveService.getArchivePreviewUrl(selectedCourse.value, archive.id)
+    const { data } = await archiveService.getArchivePreviewFile(selectedCourse.value, archive.id)
+    const previewUrl = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
 
     selectedArchive.value = {
       ...archive,
-      previewUrl: data.url,
+      previewUrl,
     }
 
     trackEvent(EVENTS.PREVIEW_ARCHIVE, {
@@ -1256,6 +1172,9 @@ function handlePreviewError() {
 }
 
 function closePreview() {
+  if (selectedArchive.value?.previewUrl?.startsWith('blob:')) {
+    URL.revokeObjectURL(selectedArchive.value.previewUrl)
+  }
   showPreview.value = false
   selectedArchive.value = null
   previewError.value = false
@@ -2364,5 +2283,90 @@ const mobileMenuItems = computed(() => {
 
 .admin-section {
   flex-shrink: 0;
+}
+
+.submission-status-list h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.submission-empty {
+  color: var(--text-secondary);
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.submission-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.submission-status-card + .submission-status-card {
+  margin-top: 0.75rem;
+}
+
+.submission-status-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.submission-status-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.submission-status-title strong {
+  font-size: 1rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.submission-status-title span {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.submission-status-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.submission-status-meta span,
+.submission-status-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--bg-primary) 82%, var(--border-color));
+  border: 1px solid var(--border-color);
+}
+
+.submission-status-note {
+  align-self: flex-start;
+}
+
+.submission-status-note span {
+  color: var(--text-secondary);
+}
+
+.submission-status-note small {
+  color: var(--text-secondary);
+}
+
+.submission-status-note.is-review {
+  align-items: flex-start;
+  flex-direction: column;
 }
 </style>

@@ -8,12 +8,12 @@ from sqlmodel import Field, Relationship, SQLModel
 
 
 class CourseCategory(str, PyEnum):
-    FRESHMAN = "freshman"
-    SOPHOMORE = "sophomore"
-    JUNIOR = "junior"
-    SENIOR = "senior"
+    FRESHMAN = "fundamental"
+    SOPHOMORE = "required"
+    JUNIOR = "experience"
+    SENIOR = "optional"
     GRADUATE = "graduate"
-    INTERDISCIPLINARY = "interdisciplinary"
+    INTERDISCIPLINARY = "math-department"
     GENERAL = "general"
 
 
@@ -168,6 +168,11 @@ class ArchiveSubmission(SQLModel, table=True):
     professor: str = Field(index=True)
     has_answers: bool = False
     object_name: str
+    requested_course_name: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    requested_category_key: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    requested_category_name: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    requested_category_label: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
+    requested_category_icon: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING, index=True)
     requester_id: int = Field(foreign_key="users.id", index=True)
     reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
@@ -191,6 +196,7 @@ class ArchiveDiscussionMessage(SQLModel, table=True):
     archive_id: int = Field(foreign_key="archives.id", index=True)
     user_id: int = Field(foreign_key="users.id", index=True)
     content: str = Field(sa_column=Column(Text, nullable=False))
+    is_pinned: bool = Field(default=False, index=True)
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -358,6 +364,7 @@ class ArchiveDiscussionMessageRead(BaseModel):
     user_id: int
     user_name: str
     content: str
+    is_pinned: bool = False
     created_at: datetime
 
     class Config:
@@ -465,8 +472,15 @@ class ArchiveSubmissionRead(BaseModel):
     archive_type: ArchiveType
     professor: str
     has_answers: bool
+    requested_course_name: Optional[str] = None
+    requested_category_key: Optional[str] = None
+    requested_category_name: Optional[str] = None
+    requested_category_label: Optional[str] = None
+    requested_category_icon: Optional[str] = None
     status: SubmissionStatus
     requester_id: int
+    requester_name: Optional[str] = None
+    requester_email: Optional[str] = None
     reviewer_id: Optional[int] = None
     review_note: Optional[str] = None
     created_archive_id: Optional[int] = None
@@ -490,3 +504,8 @@ class ArchiveSubmissionUpdate(BaseModel):
     archive_type: Optional[ArchiveType] = None
     professor: Optional[str] = None
     has_answers: Optional[bool] = None
+    requested_course_name: Optional[str] = None
+    requested_category_key: Optional[str] = None
+    requested_category_name: Optional[str] = None
+    requested_category_label: Optional[str] = None
+    requested_category_icon: Optional[str] = None

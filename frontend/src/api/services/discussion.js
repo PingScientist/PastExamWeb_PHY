@@ -15,6 +15,12 @@ export const discussionService = {
     return api.delete(`/courses/${courseId}/archives/${archiveId}/discussion/${messageId}`)
   },
 
+  pinArchiveMessage(courseId, archiveId, messageId, pinned) {
+    const formData = new FormData()
+    formData.append('pinned', pinned)
+    return api.patch(`/courses/${courseId}/archives/${archiveId}/discussion/${messageId}/pin`, formData)
+  },
+
   openArchiveDiscussionWebSocket(courseId, archiveId, { token } = {}) {
     const authToken =
       token ??

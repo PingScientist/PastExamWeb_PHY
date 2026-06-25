@@ -1,9 +1,12 @@
 import io
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -40,6 +43,56 @@ async def _ensure_category(db: AsyncSession, category_key: str) -> None:
         )
 
 
+def _normalize_category_key(value: str) -> str:
+    key = (value or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9-]{2,40}", key):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category key must use lowercase letters, numbers, or hyphens",
+        )
+    return key
+
+
+def _unwrap_form_default(value, default=None):
+    if hasattr(value, "default"):
+        return default if value.default is Ellipsis else value.default
+    return value
+
+
+async def _ensure_or_create_requested_category(
+    db: AsyncSession,
+    key: str,
+    name: str | None,
+    label: str | None,
+    icon: str | None,
+) -> CourseCategoryConfig:
+    category_key = _normalize_category_key(key)
+    result = await db.execute(
+        select(CourseCategoryConfig).where(CourseCategoryConfig.key == category_key)
+    )
+    category = result.scalar_one_or_none()
+    if category:
+        if not category.is_active:
+            category.is_active = True
+        return category
+
+    max_order = (
+        await db.execute(select(func.max(CourseCategoryConfig.order_index)))
+    ).scalar_one_or_none()
+    category = CourseCategoryConfig(
+        key=category_key,
+        name=(name or category_key).strip(),
+        label=(label or name or category_key).strip(),
+        icon=(icon or "pi pi-fw pi-book").strip(),
+        order_index=(max_order or 0) + 1,
+        is_active=True,
+    )
+    db.add(category)
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+
 @router.post("/upload")
 async def upload_archive(
     file: UploadFile,
@@ -50,6 +103,13 @@ async def upload_archive(
     has_answers: bool = Form(False),
     filename: str = Form(...),
     academic_year: int = Form(...),
+    request_new_course: bool = Form(False),
+    request_new_category: bool = Form(False),
+    requested_course_name: str | None = Form(None),
+    requested_category_key: str | None = Form(None),
+    requested_category_name: str | None = Form(None),
+    requested_category_label: str | None = Form(None),
+    requested_category_icon: str | None = Form(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
@@ -67,10 +127,55 @@ async def upload_archive(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    await _ensure_category(db, category)
+    request_new_course = bool(_unwrap_form_default(request_new_course, False))
+    request_new_category = bool(_unwrap_form_default(request_new_category, False))
+    requested_course_name = _unwrap_form_default(requested_course_name)
+    requested_category_key = _unwrap_form_default(requested_category_key)
+    requested_category_name = _unwrap_form_default(requested_category_name)
+    requested_category_label = _unwrap_form_default(requested_category_label)
+    requested_category_icon = _unwrap_form_default(requested_category_icon)
+
+    subject = subject.strip()
+    category = category.strip()
+    professor = professor.strip()
+    requested_course_name = (requested_course_name or "").strip() or None
+    requested_category_key = (requested_category_key or "").strip() or None
+    requested_category_name = (requested_category_name or "").strip() or None
+    requested_category_label = (requested_category_label or "").strip() or None
+    requested_category_icon = (requested_category_icon or "").strip() or None
+
+    if request_new_category:
+        if not requested_category_key or not requested_category_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New category key and name are required",
+            )
+        category = _normalize_category_key(requested_category_key)
+        requested_category_key = category
+        if not requested_course_name:
+            requested_course_name = subject
+        request_new_course = True
+    else:
+        await _ensure_category(db, category)
+
+    if request_new_course:
+        if not requested_course_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New course name is required",
+            )
+        subject = requested_course_name
 
     course = None
     if current_user.is_admin:
+        if request_new_category:
+            await _ensure_or_create_requested_category(
+                db,
+                requested_category_key,
+                requested_category_name,
+                requested_category_label,
+                requested_category_icon,
+            )
         query = select(Course).where(
             Course.name == subject,
             Course.category == category,
@@ -129,6 +234,11 @@ async def upload_archive(
                 has_answers=has_answers,
                 object_name=object_name,
                 academic_year=academic_year,
+                requested_course_name=requested_course_name if request_new_course else None,
+                requested_category_key=requested_category_key if request_new_category else None,
+                requested_category_name=requested_category_name if request_new_category else None,
+                requested_category_label=requested_category_label if request_new_category else None,
+                requested_category_icon=requested_category_icon if request_new_category else None,
                 requester_id=current_user.user_id,
             )
             db.add(submission)
@@ -209,12 +319,59 @@ async def list_archive_submissions_for_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     result = await db.execute(
-        select(ArchiveSubmission).order_by(
+        select(ArchiveSubmission, User.name, User.email)
+        .join(User, User.id == ArchiveSubmission.requester_id, isouter=True)
+        .order_by(
             ArchiveSubmission.status.asc(),
             ArchiveSubmission.created_at.desc(),
         )
     )
-    return result.scalars().all()
+    return [
+        ArchiveSubmissionRead.model_validate(submission).model_copy(
+            update={
+                "requester_name": requester_name,
+                "requester_email": requester_email,
+            }
+        )
+        for submission, requester_name, requester_email in result.all()
+    ]
+
+
+@router.get("/admin/submissions/{submission_id}/preview-file")
+async def get_archive_submission_preview_file(
+    submission_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+
+    try:
+        response = get_minio_client().get_object(
+            settings.MINIO_BUCKET_NAME,
+            submission.object_name,
+        )
+        data = response.read()
+        response.close()
+        response.release_conn()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load submission preview file: {exc}",
+        )
+
+    return StreamingResponse(
+        iter([data]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{submission.name}.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.put("/admin/submissions/{submission_id}", response_model=ArchiveSubmissionRead)
@@ -230,13 +387,12 @@ async def update_archive_submission_for_admin(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-    if submission.status != SubmissionStatus.PENDING:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Submission already reviewed")
 
     if submission_data.subject is not None:
         submission.subject = submission_data.subject
     if submission_data.category is not None:
-        await _ensure_category(db, submission_data.category)
+        if not (submission_data.requested_category_key or submission.requested_category_key):
+            await _ensure_category(db, submission_data.category)
         submission.category = submission_data.category
     if submission_data.name is not None:
         submission.name = submission_data.name
@@ -248,9 +404,62 @@ async def update_archive_submission_for_admin(
         submission.professor = submission_data.professor
     if submission_data.has_answers is not None:
         submission.has_answers = submission_data.has_answers
+    if submission_data.requested_course_name is not None:
+        submission.requested_course_name = submission_data.requested_course_name.strip() or None
+    if submission_data.requested_category_key is not None:
+        key = submission_data.requested_category_key.strip()
+        submission.requested_category_key = _normalize_category_key(key) if key else None
+    if submission_data.requested_category_name is not None:
+        submission.requested_category_name = submission_data.requested_category_name.strip() or None
+    if submission_data.requested_category_label is not None:
+        submission.requested_category_label = submission_data.requested_category_label.strip() or None
+    if submission_data.requested_category_icon is not None:
+        submission.requested_category_icon = submission_data.requested_category_icon.strip() or None
 
     await db.commit()
     await db.refresh(submission)
+
+    if submission.created_archive_id:
+        course_name = submission.requested_course_name or submission.subject
+        category_key = submission.requested_category_key or submission.category
+        if submission.requested_category_key:
+            await _ensure_or_create_requested_category(
+                db,
+                submission.requested_category_key,
+                submission.requested_category_name,
+                submission.requested_category_label,
+                submission.requested_category_icon,
+            )
+        else:
+            await _ensure_category(db, category_key)
+
+        course = (
+            await db.execute(
+                select(Course).where(
+                    Course.name == course_name,
+                    Course.category == category_key,
+                    Course.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if not course:
+            course = Course(name=course_name, category=category_key)
+            db.add(course)
+            await db.commit()
+            await db.refresh(course)
+
+        archive = await db.get(Archive, submission.created_archive_id)
+        if archive:
+            archive.course_id = course.id
+            archive.name = submission.name
+            archive.academic_year = submission.academic_year
+            archive.archive_type = submission.archive_type
+            archive.professor = submission.professor
+            archive.has_answers = submission.has_answers
+            archive.updated_at = datetime.now(timezone.utc)
+            db.add(archive)
+            await db.commit()
+
     return submission
 
 
@@ -267,35 +476,60 @@ async def approve_archive_submission(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-    if submission.status != SubmissionStatus.PENDING:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Submission already reviewed")
+
+    course_name = submission.requested_course_name or submission.subject
+    category_key = submission.requested_category_key or submission.category
+
+    if submission.requested_category_key:
+        await _ensure_or_create_requested_category(
+            db,
+            submission.requested_category_key,
+            submission.requested_category_name,
+            submission.requested_category_label,
+            submission.requested_category_icon,
+        )
+    else:
+        await _ensure_category(db, category_key)
 
     course = (
         await db.execute(
             select(Course).where(
-                Course.name == submission.subject,
-                Course.category == submission.category,
+                Course.name == course_name,
+                Course.category == category_key,
                 Course.deleted_at.is_(None),
             )
         )
     ).scalar_one_or_none()
 
     if not course:
-        course = Course(name=submission.subject, category=submission.category)
+        course = Course(name=course_name, category=category_key)
         db.add(course)
         await db.commit()
         await db.refresh(course)
 
-    archive = Archive(
-        course_id=course.id,
-        name=submission.name,
-        academic_year=submission.academic_year,
-        archive_type=submission.archive_type,
-        professor=submission.professor,
-        has_answers=submission.has_answers,
-        object_name=submission.object_name,
-        uploader_id=submission.requester_id,
-    )
+    archive = await db.get(Archive, submission.created_archive_id) if submission.created_archive_id else None
+    if archive:
+        archive.course_id = course.id
+        archive.name = submission.name
+        archive.academic_year = submission.academic_year
+        archive.archive_type = submission.archive_type
+        archive.professor = submission.professor
+        archive.has_answers = submission.has_answers
+        archive.object_name = submission.object_name
+        archive.uploader_id = submission.requester_id
+        archive.deleted_at = None
+        archive.updated_at = datetime.now(timezone.utc)
+    else:
+        archive = Archive(
+            course_id=course.id,
+            name=submission.name,
+            academic_year=submission.academic_year,
+            archive_type=submission.archive_type,
+            professor=submission.professor,
+            has_answers=submission.has_answers,
+            object_name=submission.object_name,
+            uploader_id=submission.requester_id,
+        )
     db.add(archive)
     await db.commit()
     await db.refresh(archive)
@@ -323,13 +557,34 @@ async def reject_archive_submission(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-    if submission.status != SubmissionStatus.PENDING:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Submission already reviewed")
 
     submission.status = SubmissionStatus.REJECTED
     submission.reviewer_id = current_user.user_id
     submission.review_note = decision.note if decision else None
     submission.reviewed_at = datetime.now(timezone.utc)
+    if submission.created_archive_id:
+        archive = await db.get(Archive, submission.created_archive_id)
+        if archive and archive.deleted_at is None:
+            archive.deleted_at = datetime.now(timezone.utc)
+            db.add(archive)
     await db.commit()
     await db.refresh(submission)
     return submission
+
+
+@router.delete("/admin/submissions/{submission_id}")
+async def delete_archive_submission_for_admin(
+    submission_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+
+    await db.delete(submission)
+    await db.commit()
+    return {"success": True}

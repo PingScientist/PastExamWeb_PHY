@@ -13,6 +13,16 @@ export const archiveService = {
     return api.get(`/courses/${courseId}/archives/${archiveId}/preview`)
   },
 
+  getArchivePreviewFileUrl(courseId, archiveId) {
+    return `/api/courses/${courseId}/archives/${archiveId}/preview-file`
+  },
+
+  getArchivePreviewFile(courseId, archiveId) {
+    return api.get(`/courses/${courseId}/archives/${archiveId}/preview-file`, {
+      responseType: 'blob',
+    })
+  },
+
   getArchiveDownloadUrl(courseId, archiveId) {
     return api.get(`/courses/${courseId}/archives/${archiveId}/download`)
   },
@@ -60,5 +70,15 @@ export const archiveService = {
 
   updateSubmission(submissionId, submissionData) {
     return api.put(`/archives/admin/submissions/${submissionId}`, submissionData)
+  },
+
+  deleteSubmission(submissionId) {
+    return api.delete(`/archives/admin/submissions/${submissionId}`)
+  },
+
+  getSubmissionPreviewFile(submissionId) {
+    return api.get(`/archives/admin/submissions/${submissionId}/preview-file`, {
+      responseType: 'blob',
+    })
   },
 }

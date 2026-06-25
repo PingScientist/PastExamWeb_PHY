@@ -12,6 +12,7 @@ from fastapi import (
     status,
 )
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -47,7 +48,8 @@ from app.models.models import (
 )
 from app.utils.auth import get_current_user
 from app.utils.auth_ws import get_ws_token_payload
-from app.utils.storage import presigned_get_url
+from app.utils.storage import get_minio_client, presigned_get_url
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -55,14 +57,21 @@ router = APIRouter()
 _discussion_connections_by_archive: dict[int, set[WebSocket]] = {}
 DISCUSSION_MESSAGE_MAX_LENGTH = 200
 DEFAULT_CATEGORIES = [
-    ("freshman", "基礎必修", "基礎", "pi pi-fw pi-book"),
-    ("sophomore", "專業必修", "必修", "pi pi-fw pi-compass"),
-    ("junior", "實驗課程", "實驗", "pi pi-fw pi-sparkles"),
-    ("senior", "專業選修", "選修", "pi pi-fw pi-book"),
+    ("fundamental", "基礎必修", "基礎", "pi pi-fw pi-book"),
+    ("required", "專業必修", "必修", "pi pi-fw pi-compass"),
+    ("experience", "實驗課程", "實驗", "pi pi-fw pi-sparkles"),
+    ("optional", "專業選修", "選修", "pi pi-fw pi-book"),
     ("graduate", "研究所", "研究所", "pi pi-fw pi-graduation-cap"),
-    ("interdisciplinary", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
+    ("math-department", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
 ]
 DEFAULT_CATEGORY_ORDER = {item[0]: index for index, item in enumerate(DEFAULT_CATEGORIES)}
+LEGACY_CATEGORY_ALIASES = {
+    "freshman": "fundamental",
+    "sophomore": "required",
+    "junior": "experience",
+    "senior": "optional",
+    "interdisciplinary": "math-department",
+}
 
 
 class CategorizedCourses(dict):
@@ -207,6 +216,10 @@ async def get_categorized_courses(
             order_index=course.order_index,
         )
         categorized_courses.setdefault(_course_category_value(course), []).append(course_info)
+
+    for legacy_key, canonical_key in LEGACY_CATEGORY_ALIASES.items():
+        if canonical_key in categorized_courses:
+            categorized_courses[legacy_key] = categorized_courses[canonical_key]
 
     return categorized_courses
 
@@ -467,6 +480,54 @@ async def get_archive_preview_url(
     }
 
 
+@router.get("/{course_id}/archives/{archive_id}/preview-file")
+async def get_archive_preview_file(
+    course_id: int,
+    archive_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Stream PDF through the API origin for browser preview. This avoids MinIO/CORS
+    edge cases in PDF.js while keeping the normal download endpoint unchanged.
+    """
+    query = select(Archive).where(
+        Archive.course_id == course_id,
+        Archive.id == archive_id,
+        Archive.deleted_at.is_(None),
+    )
+    result = await db.execute(query)
+    archive = result.scalar_one_or_none()
+
+    if not archive:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Archive not found"
+        )
+
+    try:
+        response = get_minio_client().get_object(
+            settings.MINIO_BUCKET_NAME,
+            archive.object_name,
+        )
+        data = response.read()
+        response.close()
+        response.release_conn()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load preview file: {exc}",
+        )
+
+    return StreamingResponse(
+        iter([data]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{archive.name}.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @router.get("/{course_id}/archives/{archive_id}/download")
 async def get_archive_download_url(
     course_id: int,
@@ -551,14 +612,16 @@ async def _fetch_archive_discussion_messages(
             ArchiveDiscussionMessage.archive_id == archive_id,
             ArchiveDiscussionMessage.deleted_at.is_(None),
         )
-        .order_by(ArchiveDiscussionMessage.id.desc())
+        .order_by(
+            ArchiveDiscussionMessage.is_pinned.desc(),
+            ArchiveDiscussionMessage.id.asc(),
+        )
         .limit(safe_limit)
     )
     if before_id is not None:
         stmt = stmt.where(ArchiveDiscussionMessage.id < before_id)
 
     rows = (await db.execute(stmt)).all()
-    rows = list(reversed(rows))
 
     return [
         ArchiveDiscussionMessageRead(
@@ -569,6 +632,7 @@ async def _fetch_archive_discussion_messages(
                 user_id=msg.user_id, nickname=nickname, name=user_name
             ),
             content=msg.content,
+            is_pinned=msg.is_pinned,
             created_at=msg.created_at,
         )
         for (msg, nickname, user_name) in rows
@@ -709,6 +773,7 @@ async def archive_discussion_ws(
                             user_id=user.id, nickname=user.nickname, name=user.name
                         ),
                         content=message.content,
+                        is_pinned=message.is_pinned,
                         created_at=message.created_at,
                     ),
                 }
@@ -759,6 +824,51 @@ async def delete_archive_discussion_message(
         archive_id, jsonable_encoder({"type": "delete", "message_id": message_id})
     )
     return {"success": True}
+
+
+@router.patch("/{course_id}/archives/{archive_id}/discussion/{message_id}/pin")
+async def pin_archive_discussion_message(
+    course_id: int,
+    archive_id: int,
+    message_id: int,
+    pinned: bool = Form(...),
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    await _ensure_archive_exists_for_discussion(course_id, archive_id, db)
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    message = (
+        await db.execute(
+            select(ArchiveDiscussionMessage).where(
+                ArchiveDiscussionMessage.id == message_id,
+                ArchiveDiscussionMessage.archive_id == archive_id,
+                ArchiveDiscussionMessage.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Message not found"
+        )
+
+    message.is_pinned = pinned
+    db.add(message)
+    await db.commit()
+    await db.refresh(message)
+
+    await _broadcast_discussion(
+        archive_id,
+        jsonable_encoder(
+            {
+                "type": "pin",
+                "message_id": message_id,
+                "is_pinned": message.is_pinned,
+            }
+        ),
+    )
+    return {"success": True, "is_pinned": message.is_pinned}
 
 
 @router.patch("/{course_id}/archives/{archive_id}")
@@ -1353,15 +1463,26 @@ async def delete_course_category(
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
-    active_course = (
+    related_course = (
+        await db.execute(select(Course).where(Course.category == category.key))
+    ).scalar_one_or_none()
+    related_course_submission = (
+        await db.execute(select(CourseSubmission).where(CourseSubmission.category == category.key))
+    ).scalar_one_or_none()
+    related_archive_submission = (
         await db.execute(
-            select(Course).where(Course.category == category.key, Course.deleted_at.is_(None))
+            select(ArchiveSubmission).where(
+                (ArchiveSubmission.category == category.key)
+                | (ArchiveSubmission.requested_category_key == category.key)
+            )
         )
     ).scalar_one_or_none()
-    if active_course:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category still has active courses")
+    if related_course or related_course_submission or related_archive_submission:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category is still used by courses or submissions; disable it instead",
+        )
 
-    category.is_active = False
-    category.updated_at = datetime.now(timezone.utc)
+    await db.delete(category)
     await db.commit()
-    return {"message": "Category disabled successfully"}
+    return {"message": "Category deleted successfully"}
