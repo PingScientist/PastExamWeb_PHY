@@ -1463,24 +1463,41 @@ async def delete_course_category(
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
-    related_course = (
-        await db.execute(select(Course).where(Course.category == category.key))
-    ).scalar_one_or_none()
-    related_course_submission = (
+    active_courses = (
+        await db.execute(
+            select(Course).where(
+                Course.category == category.key,
+                Course.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    related_course_submissions = (
         await db.execute(select(CourseSubmission).where(CourseSubmission.category == category.key))
-    ).scalar_one_or_none()
-    related_archive_submission = (
+    ).scalars().all()
+    related_archive_submissions = (
         await db.execute(
             select(ArchiveSubmission).where(
                 (ArchiveSubmission.category == category.key)
                 | (ArchiveSubmission.requested_category_key == category.key)
             )
         )
-    ).scalar_one_or_none()
-    if related_course or related_course_submission or related_archive_submission:
+    ).scalars().all()
+
+    blockers = []
+    if active_courses:
+        course_names = ", ".join(course.name for course in active_courses[:5])
+        if len(active_courses) > 5:
+            course_names += f", and {len(active_courses) - 5} more"
+        blockers.append(f"active courses: {course_names}")
+    if related_course_submissions:
+        blockers.append(f"course submissions: {len(related_course_submissions)}")
+    if related_archive_submissions:
+        blockers.append(f"archive submissions: {len(related_archive_submissions)}")
+
+    if blockers:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Category is still used by courses or submissions; disable it instead",
+            detail=f"Category cannot be deleted because it is still referenced by {'; '.join(blockers)}.",
         )
 
     await db.delete(category)
