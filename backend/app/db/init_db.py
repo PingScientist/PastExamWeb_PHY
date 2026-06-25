@@ -11,10 +11,18 @@ from sqlmodel import SQLModel, func, select
 
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal, engine
-from app.models.models import Course, CourseCategory, Meme, User
+from app.models.models import Course, CourseCategory, CourseCategoryConfig, Meme, User
 from app.utils.auth import get_password_hash
 
 SEED_DATA_PATH = Path(__file__).with_name("seed_data.yaml")
+DEFAULT_CATEGORY_CONFIGS = [
+    ("freshman", "基礎必修", "基礎", "pi pi-fw pi-book"),
+    ("sophomore", "專業必修", "必修", "pi pi-fw pi-compass"),
+    ("junior", "實驗課程", "實驗", "pi pi-fw pi-sparkles"),
+    ("senior", "專業選修", "選修", "pi pi-fw pi-book"),
+    ("graduate", "研究所", "研究所", "pi pi-fw pi-graduation-cap"),
+    ("interdisciplinary", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
+]
 
 
 @lru_cache(maxsize=1)
@@ -85,8 +93,49 @@ async def sync_course_catalog(session):
         session.add(
             Course(
                 name=course_name,
-                category=category,
+                category=category.value,
                 order_index=seed_order_by_key[key],
+            )
+        )
+        changed = True
+
+    if changed:
+        await session.commit()
+
+
+async def sync_course_categories(session):
+    result = await session.execute(select(CourseCategoryConfig))
+    existing_by_key = {category.key: category for category in result.scalars().all()}
+    changed = False
+
+    for order_index, (key, name, label, icon) in enumerate(DEFAULT_CATEGORY_CONFIGS):
+        category = existing_by_key.get(key)
+        if category:
+            if not category.name:
+                category.name = name
+                changed = True
+            if not category.label:
+                category.label = label
+                changed = True
+            if not category.icon:
+                category.icon = icon
+                changed = True
+            if category.order_index is None:
+                category.order_index = order_index
+                changed = True
+            if not category.is_active:
+                category.is_active = True
+                changed = True
+            continue
+
+        session.add(
+            CourseCategoryConfig(
+                key=key,
+                name=name,
+                label=label,
+                icon=icon,
+                order_index=order_index,
+                is_active=True,
             )
         )
         changed = True
@@ -147,6 +196,7 @@ async def init_db():
             await session.commit()
             await session.refresh(admin_user)
 
+        await sync_course_categories(session)
         await sync_course_catalog(session)
 
         result = await session.execute(select(func.count()).select_from(Meme))

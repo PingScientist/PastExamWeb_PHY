@@ -59,11 +59,36 @@ class User(SQLModel, table=True):
     archives: List["Archive"] = Relationship(back_populates="uploader")
 
 
+class CourseCategoryConfig(SQLModel, table=True):
+    __tablename__ = "course_category_configs"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    key: str = Field(unique=True, index=True)
+    name: str = Field(index=True)
+    label: str = Field(default="")
+    icon: str = Field(default="pi pi-fw pi-book")
+    order_index: int = Field(default=0, index=True)
+    is_active: bool = Field(default=True, index=True)
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+
+
 class Course(SQLModel, table=True):
     __tablename__ = "courses"
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    category: CourseCategory
+    category: str = Field(index=True)
     order_index: int = Field(default=0, index=True)
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
@@ -114,7 +139,7 @@ class CourseSubmission(SQLModel, table=True):
     __tablename__ = "course_submissions"
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    category: CourseCategory
+    category: str = Field(index=True)
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING, index=True)
     requester_id: int = Field(foreign_key="users.id", index=True)
     reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
@@ -136,7 +161,7 @@ class ArchiveSubmission(SQLModel, table=True):
     __tablename__ = "archive_submissions"
     id: Optional[int] = Field(default=None, primary_key=True)
     subject: str = Field(index=True)
-    category: CourseCategory
+    category: str = Field(index=True)
     name: str
     academic_year: int
     archive_type: ArchiveType
@@ -306,12 +331,7 @@ class CourseInfo(BaseModel):
 
 
 class CoursesByCategory(BaseModel):
-    freshman: List[CourseInfo] = []
-    sophomore: List[CourseInfo] = []
-    junior: List[CourseInfo] = []
-    senior: List[CourseInfo] = []
-    graduate: List[CourseInfo] = []
-    interdisciplinary: List[CourseInfo] = []
+    courses: dict[str, List[CourseInfo]] = {}
 
     class Config:
         from_attributes = True
@@ -346,25 +366,25 @@ class ArchiveDiscussionMessageRead(BaseModel):
 
 class CourseCreate(BaseModel):
     name: str
-    category: CourseCategory
+    category: str
     order_index: Optional[int] = None
 
 
 class CourseUpdate(BaseModel):
     name: Optional[str] = None
-    category: Optional[CourseCategory] = None
+    category: Optional[str] = None
     order_index: Optional[int] = None
 
 
 class CourseReorder(BaseModel):
-    category: CourseCategory
+    category: str
     course_ids: List[int]
 
 
 class CourseRead(BaseModel):
     id: int
     name: str
-    category: CourseCategory
+    category: str
     order_index: int = 0
 
     class Config:
@@ -374,12 +394,46 @@ class CourseRead(BaseModel):
 class ArchiveUpdateCourse(BaseModel):
     course_id: Optional[int] = None
     course_name: Optional[str] = None
-    course_category: Optional[CourseCategory] = None
+    course_category: Optional[str] = None
 
 
 class CourseSubmissionCreate(BaseModel):
     name: str
-    category: CourseCategory
+    category: str
+
+
+class CourseCategoryCreate(BaseModel):
+    key: str
+    name: str
+    label: str = ""
+    icon: str = "pi pi-fw pi-book"
+    order_index: Optional[int] = None
+
+
+class CourseCategoryUpdate(BaseModel):
+    key: Optional[str] = None
+    name: Optional[str] = None
+    label: Optional[str] = None
+    icon: Optional[str] = None
+    order_index: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class CourseCategoryReorder(BaseModel):
+    category_ids: List[int]
+
+
+class CourseCategoryRead(BaseModel):
+    id: int
+    key: str
+    name: str
+    label: str
+    icon: str
+    order_index: int
+    is_active: bool
+
+    class Config:
+        from_attributes = True
 
 
 class SubmissionDecision(BaseModel):
@@ -389,7 +443,7 @@ class SubmissionDecision(BaseModel):
 class CourseSubmissionRead(BaseModel):
     id: int
     name: str
-    category: CourseCategory
+    category: str
     status: SubmissionStatus
     requester_id: int
     reviewer_id: Optional[int] = None
@@ -405,7 +459,7 @@ class CourseSubmissionRead(BaseModel):
 class ArchiveSubmissionRead(BaseModel):
     id: int
     subject: str
-    category: CourseCategory
+    category: str
     name: str
     academic_year: int
     archive_type: ArchiveType
@@ -421,3 +475,18 @@ class ArchiveSubmissionRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CourseSubmissionUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+
+
+class ArchiveSubmissionUpdate(BaseModel):
+    subject: Optional[str] = None
+    category: Optional[str] = None
+    name: Optional[str] = None
+    academic_year: Optional[int] = None
+    archive_type: Optional[ArchiveType] = None
+    professor: Optional[str] = None
+    has_answers: Optional[bool] = None

@@ -11,6 +11,64 @@
         <TabPanels>
           <TabPanel value="0">
             <div class="p-2 md:p-4">
+              <section class="admin-section mb-5">
+                <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center gap-3 mb-3">
+                  <div>
+                    <h3 class="m-0">課程分類</h3>
+                    <p class="m-0 text-sm text-500">管理左側分類順序、分類名稱與科目標籤</p>
+                  </div>
+                  <Button
+                    label="新增分類"
+                    icon="pi pi-plus"
+                    severity="success"
+                    outlined
+                    @click="openCreateCategoryDialog"
+                  />
+                </div>
+                <DataTable :value="courseCategories" tableStyle="min-width: 44rem">
+                  <Column header="順序" style="width: 12rem">
+                    <template #body="{ data }">
+                      <div class="flex align-items-center gap-2">
+                        <span class="text-sm text-500 w-2rem">{{ getCategoryPosition(data) + 1 }}</span>
+                        <Button
+                          icon="pi pi-arrow-up"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          :disabled="!canMoveCategory(data, -1) || categoryOrderLoading"
+                          @click="moveCategory(data, -1)"
+                        />
+                        <Button
+                          icon="pi pi-arrow-down"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          :disabled="!canMoveCategory(data, 1) || categoryOrderLoading"
+                          @click="moveCategory(data, 1)"
+                        />
+                      </div>
+                    </template>
+                  </Column>
+                  <Column field="name" header="分類名稱" />
+                  <Column field="label" header="科目標籤">
+                    <template #body="{ data }">
+                      <Tag severity="secondary">{{ data.label || data.name }}</Tag>
+                    </template>
+                  </Column>
+                  <Column field="key" header="Key" />
+                  <Column header="操作" style="width: 12rem">
+                    <template #body="{ data }">
+                      <div class="flex gap-2">
+                        <Button icon="pi pi-pencil" label="編輯" size="small" outlined @click="openEditCategoryDialog(data)" />
+                        <Button icon="pi pi-trash" label="停用" size="small" severity="danger" outlined @click="confirmDeleteCategory(data)" />
+                      </div>
+                    </template>
+                  </Column>
+                </DataTable>
+              </section>
+
               <div
                 class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-4 gap-3"
               >
@@ -351,9 +409,17 @@
                   </Column>
                   <Column header="操作">
                     <template #body="{ data }">
-                      <div class="flex gap-2">
-                        <Button
-                          label="通過"
+	                      <div class="flex gap-2">
+	                        <Button
+	                          label="查看/編輯"
+	                          icon="pi pi-search"
+	                          size="small"
+	                          severity="secondary"
+	                          outlined
+	                          @click="openCourseRequestDialog(data)"
+	                        />
+	                        <Button
+	                          label="通過"
                           icon="pi pi-check"
                           size="small"
                           severity="success"
@@ -395,9 +461,17 @@
                   </Column>
                   <Column header="操作">
                     <template #body="{ data }">
-                      <div class="flex gap-2">
-                        <Button
-                          label="通過"
+	                      <div class="flex gap-2">
+	                        <Button
+	                          label="查看/編輯"
+	                          icon="pi pi-search"
+	                          size="small"
+	                          severity="secondary"
+	                          outlined
+	                          @click="openArchiveRequestDialog(data)"
+	                        />
+	                        <Button
+	                          label="通過"
                           icon="pi pi-check"
                           size="small"
                           severity="success"
@@ -472,6 +546,236 @@
             severity="success"
             @click="saveCourse"
             :loading="saveLoading"
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        :visible="showCategoryDialog"
+        @update:visible="showCategoryDialog = $event"
+        :modal="true"
+        :draggable="false"
+        :header="editingCategory ? '編輯課程分類' : '新增課程分類'"
+        :style="{ width: '480px', maxWidth: '92vw' }"
+        :autoFocus="false"
+      >
+        <div class="flex flex-column gap-4">
+          <div class="flex flex-column gap-2">
+            <label>分類 Key</label>
+            <InputText
+              v-model="categoryForm.key"
+              placeholder="例如 advanced-physics"
+              class="w-full"
+              :class="{ 'p-invalid': categoryFormErrors.key }"
+            />
+            <small v-if="categoryFormErrors.key" class="p-error">{{ categoryFormErrors.key }}</small>
+          </div>
+          <div class="flex flex-column gap-2">
+            <label>顯示名稱</label>
+            <InputText
+              v-model="categoryForm.name"
+              placeholder="例如 進階物理"
+              class="w-full"
+              :class="{ 'p-invalid': categoryFormErrors.name }"
+            />
+            <small v-if="categoryFormErrors.name" class="p-error">{{ categoryFormErrors.name }}</small>
+          </div>
+          <div class="flex flex-column gap-2">
+            <label>科目旁小標籤</label>
+            <InputText v-model="categoryForm.label" placeholder="例如 進階" class="w-full" />
+          </div>
+          <div class="flex flex-column gap-2">
+            <label>PrimeIcons class</label>
+            <InputText v-model="categoryForm.icon" placeholder="pi pi-fw pi-book" class="w-full" />
+          </div>
+        </div>
+
+        <div class="flex pt-6 justify-end gap-2.5">
+          <Button label="取消" icon="pi pi-times" severity="secondary" @click="closeCategoryDialog" />
+          <Button
+            :label="editingCategory ? '更新' : '新增'"
+            :icon="editingCategory ? 'pi pi-check' : 'pi pi-plus'"
+            severity="success"
+            :loading="categorySaveLoading"
+            @click="saveCategory"
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        v-model:visible="showCourseRequestDialog"
+        header="課程申請詳情"
+        modal
+        :draggable="false"
+        :style="{ width: '520px', maxWidth: '94vw' }"
+      >
+        <div class="flex flex-column gap-4">
+          <div class="flex flex-column gap-2">
+            <label>課程名稱</label>
+            <InputText v-model="courseRequestEditForm.name" :disabled="!canEditSelectedCourseRequest" />
+          </div>
+          <div class="flex flex-column gap-2">
+            <label>分類</label>
+            <Select
+              v-model="courseRequestEditForm.category"
+              :options="categoryOptions"
+              optionLabel="name"
+              optionValue="value"
+              :disabled="!canEditSelectedCourseRequest"
+            />
+          </div>
+          <div class="text-sm text-500">
+            投稿者 ID：{{ selectedCourseRequest?.requester_id || '-' }}，
+            狀態：{{ getSubmissionLabel(selectedCourseRequest?.status) }}
+          </div>
+          <div class="review-history">
+            <h4 class="mb-2">此帳號投稿紀錄</h4>
+            <div v-if="getRequesterHistory(selectedCourseRequest?.requester_id).length === 0" class="text-sm text-500">
+              尚無其他投稿紀錄
+            </div>
+            <div
+              v-for="item in getRequesterHistory(selectedCourseRequest?.requester_id)"
+              :key="`${item.kind}-${item.id}`"
+              class="review-history-row"
+            >
+              <span>{{ item.title }}</span>
+              <Tag :severity="getSubmissionSeverity(item.status)">{{ getSubmissionLabel(item.status) }}</Tag>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-4">
+          <Button label="關閉" severity="secondary" outlined @click="showCourseRequestDialog = false" />
+          <Button
+            label="儲存修改"
+            icon="pi pi-save"
+            :disabled="!canEditSelectedCourseRequest"
+            :loading="reviewEditLoading"
+            @click="saveCourseRequestEdit"
+          />
+          <Button
+            label="通過"
+            icon="pi pi-check"
+            severity="success"
+            :disabled="!canEditSelectedCourseRequest"
+            @click="reviewCourseRequest(selectedCourseRequest.id, 'approve')"
+          />
+          <Button
+            label="退回"
+            icon="pi pi-times"
+            severity="danger"
+            outlined
+            :disabled="!canEditSelectedCourseRequest"
+            @click="reviewCourseRequest(selectedCourseRequest.id, 'reject')"
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        v-model:visible="showArchiveRequestDialog"
+        header="考古題投稿詳情"
+        modal
+        :draggable="false"
+        :style="{ width: '760px', maxWidth: '96vw' }"
+      >
+        <div class="grid">
+          <div class="col-12 md:col-6 flex flex-column gap-2">
+            <label>課程</label>
+            <InputText v-model="archiveRequestEditForm.subject" :disabled="!canEditSelectedArchiveRequest" />
+          </div>
+          <div class="col-12 md:col-6 flex flex-column gap-2">
+            <label>分類</label>
+            <Select
+              v-model="archiveRequestEditForm.category"
+              :options="categoryOptions"
+              optionLabel="name"
+              optionValue="value"
+              :disabled="!canEditSelectedArchiveRequest"
+            />
+          </div>
+          <div class="col-12 md:col-6 flex flex-column gap-2">
+            <label>考試名稱</label>
+            <InputText v-model="archiveRequestEditForm.name" :disabled="!canEditSelectedArchiveRequest" />
+          </div>
+          <div class="col-12 md:col-6 flex flex-column gap-2">
+            <label>授課教師</label>
+            <InputText v-model="archiveRequestEditForm.professor" :disabled="!canEditSelectedArchiveRequest" />
+          </div>
+          <div class="col-12 md:col-6 flex flex-column gap-2">
+            <label>學期代碼</label>
+            <InputNumber v-model="archiveRequestEditForm.academic_year" :disabled="!canEditSelectedArchiveRequest" :useGrouping="false" />
+          </div>
+          <div class="col-12 md:col-6 flex flex-column gap-2">
+            <label>考試類型</label>
+            <Select
+              v-model="archiveRequestEditForm.archive_type"
+              :options="archiveTypeOptions"
+              optionLabel="name"
+              optionValue="value"
+              :disabled="!canEditSelectedArchiveRequest"
+            />
+          </div>
+          <div class="col-12 flex align-items-center gap-2">
+            <Checkbox v-model="archiveRequestEditForm.has_answers" :binary="true" :disabled="!canEditSelectedArchiveRequest" />
+            <label>附解答</label>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <h4 class="mb-2">同課程同考試比對</h4>
+          <div v-if="comparisonLoading" class="text-sm text-500">載入中...</div>
+          <div v-else-if="comparisonArchives.length === 0" class="text-sm text-500">
+            沒有找到相同課程、學期與類型的既有考古題。
+          </div>
+          <DataTable v-else :value="comparisonArchives" tableStyle="min-width: 36rem">
+            <Column field="name" header="考試名稱" />
+            <Column field="professor" header="授課教師" />
+            <Column field="academic_year" header="學期">
+              <template #body="{ data }">{{ formatAcademicTerm(data.academic_year) }}</template>
+            </Column>
+            <Column field="has_answers" header="解答">
+              <template #body="{ data }">{{ data.has_answers ? '有' : '無' }}</template>
+            </Column>
+          </DataTable>
+        </div>
+
+        <div class="mt-4 review-history">
+          <h4 class="mb-2">此帳號投稿紀錄</h4>
+          <div v-if="getRequesterHistory(selectedArchiveRequest?.requester_id).length === 0" class="text-sm text-500">
+            尚無其他投稿紀錄
+          </div>
+          <div
+            v-for="item in getRequesterHistory(selectedArchiveRequest?.requester_id)"
+            :key="`${item.kind}-${item.id}`"
+            class="review-history-row"
+          >
+            <span>{{ item.title }}</span>
+            <Tag :severity="getSubmissionSeverity(item.status)">{{ getSubmissionLabel(item.status) }}</Tag>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-4">
+          <Button label="關閉" severity="secondary" outlined @click="showArchiveRequestDialog = false" />
+          <Button
+            label="儲存修改"
+            icon="pi pi-save"
+            :disabled="!canEditSelectedArchiveRequest"
+            :loading="reviewEditLoading"
+            @click="saveArchiveRequestEdit"
+          />
+          <Button
+            label="通過"
+            icon="pi pi-check"
+            severity="success"
+            :disabled="!canEditSelectedArchiveRequest"
+            @click="reviewArchiveSubmission(selectedArchiveRequest.id, 'approve')"
+          />
+          <Button
+            label="退回"
+            icon="pi pi-times"
+            severity="danger"
+            outlined
+            :disabled="!canEditSelectedArchiveRequest"
+            @click="reviewArchiveSubmission(selectedArchiveRequest.id, 'reject')"
           />
         </div>
       </Dialog>
@@ -694,6 +998,10 @@ const courseOrderLoading = ref(false)
 const showCourseDialog = ref(false)
 const editingCourse = ref(null)
 const saveLoading = ref(false)
+const showCategoryDialog = ref(false)
+const editingCategory = ref(null)
+const categorySaveLoading = ref(false)
+const categoryOrderLoading = ref(false)
 
 const courseForm = ref({
   name: '',
@@ -701,6 +1009,13 @@ const courseForm = ref({
 })
 
 const courseFormErrors = ref({})
+const categoryForm = ref({
+  key: '',
+  name: '',
+  label: '',
+  icon: 'pi pi-fw pi-book',
+})
+const categoryFormErrors = ref({})
 const users = ref([])
 const usersLoading = ref(false)
 const userSearchQuery = ref('')
@@ -757,8 +1072,37 @@ const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const courseRequests = ref([])
 const archiveRequests = ref([])
+const courseCategories = ref([])
+const reviewEditLoading = ref(false)
+const showCourseRequestDialog = ref(false)
+const showArchiveRequestDialog = ref(false)
+const selectedCourseRequest = ref(null)
+const selectedArchiveRequest = ref(null)
+const comparisonArchives = ref([])
+const comparisonLoading = ref(false)
+const courseRequestEditForm = ref({
+  name: '',
+  category: '',
+})
+const archiveRequestEditForm = ref({
+  subject: '',
+  category: '',
+  name: '',
+  academic_year: null,
+  archive_type: '',
+  professor: '',
+  has_answers: false,
+})
+const archiveTypeOptions = [
+  { name: '期中考', value: 'midterm' },
+  { name: '期末考', value: 'final' },
+  { name: '小考', value: 'quiz' },
+  { name: '其他', value: 'other' },
+]
 
 const currentUserId = computed(() => getCurrentUser()?.id)
+const canEditSelectedCourseRequest = computed(() => isPending(selectedCourseRequest.value?.status))
+const canEditSelectedArchiveRequest = computed(() => isPending(selectedArchiveRequest.value?.status))
 
 const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
 
@@ -776,14 +1120,13 @@ const getInitialTab = () => {
 
 const currentTab = ref(getInitialTab())
 
-const categoryOptions = [
-  { name: '基礎必修', value: 'freshman' },
-  { name: '專業必修', value: 'sophomore' },
-  { name: '實驗課程', value: 'junior' },
-  { name: '專業選修', value: 'senior' },
-  { name: '研究所', value: 'graduate' },
-  { name: '戳戳數學系', value: 'interdisciplinary' },
-]
+const categoryOptions = computed(() =>
+  courseCategories.value.map((category) => ({
+    name: category.name,
+    value: category.key,
+    label: category.label,
+  }))
+)
 
 const userTypeFilterOptions = [
   { name: '管理員', value: true },
@@ -791,15 +1134,7 @@ const userTypeFilterOptions = [
 ]
 
 const getCategoryName = (category) => {
-  const categoryMap = {
-    freshman: '基礎必修',
-    sophomore: '專業必修',
-    junior: '實驗課程',
-    senior: '專業選修',
-    graduate: '研究所',
-    interdisciplinary: '戳戳數學系',
-  }
-  return categoryMap[category] || category
+  return courseCategories.value.find((item) => item.key === category)?.name || category
 }
 
 const getCategorySeverity = (category) => {
@@ -814,14 +1149,16 @@ const getCategorySeverity = (category) => {
   return severityMap[category] || 'secondary'
 }
 
-const categoryOrder = categoryOptions.reduce((acc, category, index) => {
-  acc[category.value] = index
-  return acc
-}, {})
+const categoryOrder = computed(() =>
+  courseCategories.value.reduce((acc, category, index) => {
+    acc[category.key] = index
+    return acc
+  }, {})
+)
 
 const sortCourses = (courseList) => {
   return [...courseList].sort((a, b) => {
-    const categoryDiff = (categoryOrder[a.category] ?? 999) - (categoryOrder[b.category] ?? 999)
+    const categoryDiff = (categoryOrder.value[a.category] ?? 999) - (categoryOrder.value[b.category] ?? 999)
     if (categoryDiff !== 0) return categoryDiff
     const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0)
     if (orderDiff !== 0) return orderDiff
@@ -959,6 +1296,39 @@ const canMoveCourse = (course, direction) => {
   return nextPosition >= 0 && nextPosition < categoryCourses.length
 }
 
+const getCategoryPosition = (category) => {
+  return courseCategories.value.findIndex((item) => item.id === category.id)
+}
+
+const canMoveCategory = (category, direction) => {
+  const position = getCategoryPosition(category)
+  const nextPosition = position + direction
+  return position >= 0 && nextPosition >= 0 && nextPosition < courseCategories.value.length
+}
+
+const moveCategory = async (category, direction) => {
+  if (!canMoveCategory(category, direction)) return
+
+  const currentIndex = getCategoryPosition(category)
+  const nextIndex = currentIndex + direction
+  const reordered = [...courseCategories.value]
+  const [movedCategory] = reordered.splice(currentIndex, 1)
+  reordered.splice(nextIndex, 0, movedCategory)
+
+  categoryOrderLoading.value = true
+  try {
+    await courseService.reorderCategories(reordered.map((item) => item.id))
+    courseCategories.value = reordered.map((item, index) => ({ ...item, order_index: index }))
+    await loadCourses()
+  } catch (error) {
+    console.error('更新分類順序失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '分類順序更新失敗', life: 3000 })
+  } finally {
+    categoryOrderLoading.value = false
+  }
+}
+
 const moveCourse = async (course, direction) => {
   if (!canMoveCourse(course, direction)) return
 
@@ -1041,10 +1411,31 @@ const filteredNotifications = computed(() => {
   })
 })
 
+const loadCategories = async () => {
+  try {
+    const response = await courseService.listAdminCategories()
+    courseCategories.value = Array.isArray(response.data) ? response.data : []
+  } catch (error) {
+    console.error('載入課程分類失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: '載入課程分類失敗',
+      life: 3000,
+    })
+  }
+}
+
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
-    const response = await getCourses()
+    const [categoryResponse, courseResponse] = await Promise.all([
+      courseService.listAdminCategories(),
+      getCourses(),
+    ])
+    courseCategories.value = Array.isArray(categoryResponse.data) ? categoryResponse.data : []
+    const response = courseResponse
     courses.value = response.data
   } catch (error) {
     console.error('載入課程失敗:', error)
@@ -1107,10 +1498,14 @@ const loadNotifications = async () => {
 const loadReviewItems = async () => {
   reviewLoading.value = true
   try {
-    const [courseResponse, archiveResponse] = await Promise.all([
+    const [categoryResponse, allCoursesResponse, courseResponse, archiveResponse] = await Promise.all([
+      courseService.listAdminCategories(),
+      getCourses(),
       courseService.listAdminRequests(),
       archiveService.listAdminSubmissions(),
     ])
+    courseCategories.value = Array.isArray(categoryResponse.data) ? categoryResponse.data : []
+    courses.value = Array.isArray(allCoursesResponse.data) ? allCoursesResponse.data : []
     courseRequests.value = Array.isArray(courseResponse.data) ? courseResponse.data : []
     archiveRequests.value = Array.isArray(archiveResponse.data) ? archiveResponse.data : []
   } catch (error) {
@@ -1129,6 +1524,116 @@ const loadReviewItems = async () => {
   }
 }
 
+const openCourseRequestDialog = (request) => {
+  selectedCourseRequest.value = request
+  courseRequestEditForm.value = {
+    name: request.name,
+    category: request.category,
+  }
+  showCourseRequestDialog.value = true
+}
+
+const openArchiveRequestDialog = async (request) => {
+  selectedArchiveRequest.value = request
+  archiveRequestEditForm.value = {
+    subject: request.subject,
+    category: request.category,
+    name: request.name,
+    academic_year: request.academic_year,
+    archive_type: request.archive_type,
+    professor: request.professor,
+    has_answers: Boolean(request.has_answers),
+  }
+  showArchiveRequestDialog.value = true
+  await loadArchiveComparison(request)
+}
+
+const saveCourseRequestEdit = async () => {
+  if (!selectedCourseRequest.value) return
+  reviewEditLoading.value = true
+  try {
+    const { data } = await courseService.updateRequest(selectedCourseRequest.value.id, courseRequestEditForm.value)
+    selectedCourseRequest.value = data
+    toast.add({ severity: 'success', summary: '成功', detail: '課程申請已更新', life: 3000 })
+    await loadReviewItems()
+  } catch (error) {
+    console.error('更新課程申請失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '課程申請更新失敗', life: 3000 })
+  } finally {
+    reviewEditLoading.value = false
+  }
+}
+
+const saveArchiveRequestEdit = async () => {
+  if (!selectedArchiveRequest.value) return
+  reviewEditLoading.value = true
+  try {
+    const { data } = await archiveService.updateSubmission(
+      selectedArchiveRequest.value.id,
+      archiveRequestEditForm.value
+    )
+    selectedArchiveRequest.value = data
+    toast.add({ severity: 'success', summary: '成功', detail: '考古題投稿已更新', life: 3000 })
+    await loadReviewItems()
+    await loadArchiveComparison(data)
+  } catch (error) {
+    console.error('更新考古題投稿失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '考古題投稿更新失敗', life: 3000 })
+  } finally {
+    reviewEditLoading.value = false
+  }
+}
+
+const loadArchiveComparison = async (request) => {
+  comparisonArchives.value = []
+  if (!request?.subject || !request?.category) return
+
+  comparisonLoading.value = true
+  try {
+    const matchingCourse = courses.value.find(
+      (course) => course.name === request.subject && course.category === request.category
+    )
+    if (!matchingCourse) return
+
+    const { data } = await courseService.getCourseArchives(matchingCourse.id)
+    comparisonArchives.value = (Array.isArray(data) ? data : []).filter(
+      (archive) =>
+        Number(archive.academic_year) === Number(request.academic_year) &&
+        archive.archive_type === request.archive_type &&
+        archive.name === request.name
+    )
+  } catch (error) {
+    console.error('載入比對資料失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '比對資料載入失敗', life: 3000 })
+  } finally {
+    comparisonLoading.value = false
+  }
+}
+
+const getRequesterHistory = (requesterId) => {
+  if (!requesterId) return []
+  const courseHistory = courseRequests.value
+    .filter((item) => item.requester_id === requesterId)
+    .map((item) => ({
+      kind: 'course',
+      id: item.id,
+      title: `課程申請：${item.name}`,
+      status: item.status,
+    }))
+  const archiveHistory = archiveRequests.value
+    .filter((item) => item.requester_id === requesterId)
+    .map((item) => ({
+      kind: 'archive',
+      id: item.id,
+      title: `考古題：${item.subject} / ${item.name}`,
+      status: item.status,
+    }))
+  return [...courseHistory, ...archiveHistory]
+}
+
 const reviewCourseRequest = async (requestId, action) => {
   try {
     if (action === 'approve') {
@@ -1144,6 +1649,7 @@ const reviewCourseRequest = async (requestId, action) => {
       life: 3000,
     })
     await loadReviewItems()
+    showCourseRequestDialog.value = false
   } catch (error) {
     console.error('審核課程申請失敗:', error)
     if (isUnauthorizedError(error)) return
@@ -1165,6 +1671,7 @@ const reviewArchiveSubmission = async (submissionId, action) => {
       life: 3000,
     })
     await loadReviewItems()
+    showArchiveRequestDialog.value = false
   } catch (error) {
     console.error('審核考古題投稿失敗:', error)
     if (isUnauthorizedError(error)) return
@@ -1305,6 +1812,119 @@ const deleteCourseAction = async (course) => {
       severity: 'error',
       summary: '錯誤',
       detail: '課程刪除失敗',
+      life: 3000,
+    })
+  }
+}
+
+const openCreateCategoryDialog = () => {
+  categoryForm.value = {
+    key: '',
+    name: '',
+    label: '',
+    icon: 'pi pi-fw pi-book',
+  }
+  categoryFormErrors.value = {}
+  editingCategory.value = null
+  showCategoryDialog.value = true
+}
+
+const openEditCategoryDialog = (category) => {
+  categoryForm.value = {
+    key: category.key,
+    name: category.name,
+    label: category.label || '',
+    icon: category.icon || 'pi pi-fw pi-book',
+  }
+  categoryFormErrors.value = {}
+  editingCategory.value = category
+  showCategoryDialog.value = true
+}
+
+const closeCategoryDialog = () => {
+  showCategoryDialog.value = false
+  editingCategory.value = null
+  categoryForm.value = {
+    key: '',
+    name: '',
+    label: '',
+    icon: 'pi pi-fw pi-book',
+  }
+  categoryFormErrors.value = {}
+}
+
+const validateCategoryForm = () => {
+  const errors = {}
+  if (!categoryForm.value.key.trim()) {
+    errors.key = '分類 Key 是必填欄位'
+  } else if (!/^[a-z0-9-]+$/.test(categoryForm.value.key.trim())) {
+    errors.key = '只能使用小寫英文字母、數字與連字號'
+  }
+  if (!categoryForm.value.name.trim()) {
+    errors.name = '顯示名稱是必填欄位'
+  }
+  categoryFormErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+const saveCategory = async () => {
+  if (!validateCategoryForm()) return
+
+  categorySaveLoading.value = true
+  try {
+    const payload = {
+      key: categoryForm.value.key.trim(),
+      name: categoryForm.value.name.trim(),
+      label: categoryForm.value.label.trim(),
+      icon: categoryForm.value.icon.trim() || 'pi pi-fw pi-book',
+    }
+    if (editingCategory.value) {
+      await courseService.updateCategory(editingCategory.value.id, payload)
+    } else {
+      await courseService.createCategory(payload)
+    }
+    toast.add({
+      severity: 'success',
+      summary: '成功',
+      detail: editingCategory.value ? '分類更新成功' : '分類新增成功',
+      life: 3000,
+    })
+    closeCategoryDialog()
+    await loadCourses()
+  } catch (error) {
+    console.error('儲存分類失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: '分類儲存失敗', life: 3000 })
+  } finally {
+    categorySaveLoading.value = false
+  }
+}
+
+const confirmDeleteCategory = (category) => {
+  confirm.require({
+    message: `確定要停用分類「${category.name}」嗎？如果分類下還有課程，系統會拒絕停用。`,
+    header: '停用分類',
+    icon: 'pi pi-exclamation-triangle',
+    rejectClass: 'p-button-secondary p-button-outlined',
+    acceptClass: 'p-button-danger',
+    rejectLabel: '取消',
+    acceptLabel: '停用',
+    accept: () => deleteCategoryAction(category),
+  })
+}
+
+const deleteCategoryAction = async (category) => {
+  try {
+    await courseService.deleteCategory(category.id)
+    toast.add({ severity: 'success', summary: '成功', detail: '分類已停用', life: 3000 })
+    await loadCourses()
+  } catch (error) {
+    console.error('停用分類失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: error?.response?.data?.detail || '分類停用失敗',
       life: 3000,
     })
   }
@@ -1630,6 +2250,7 @@ const saveTabToStorage = (tabValue) => {
 
 const loadTabData = async (value) => {
   const tab = String(value)
+  await loadCategories()
 
   if (tab === '0') {
     await loadCourses()
@@ -1742,6 +2363,26 @@ watch(
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.review-history {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.875rem;
+  background: color-mix(in srgb, var(--bg-secondary) 75%, transparent);
+}
+
+.review-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.review-history-row:first-of-type {
+  border-top: 0;
 }
 
 /* Mobile responsive adjustments */

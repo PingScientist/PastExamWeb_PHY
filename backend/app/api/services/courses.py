@@ -22,9 +22,15 @@ from app.models.models import (
     ArchiveDiscussionMessage,
     ArchiveDiscussionMessageRead,
     ArchiveRead,
+    ArchiveSubmission,
     ArchiveType,
     ArchiveUpdateCourse,
     Course,
+    CourseCategoryConfig,
+    CourseCategoryCreate,
+    CourseCategoryRead,
+    CourseCategoryReorder,
+    CourseCategoryUpdate,
     CourseCreate,
     CourseInfo,
     CourseRead,
@@ -32,7 +38,7 @@ from app.models.models import (
     CourseSubmission,
     CourseSubmissionCreate,
     CourseSubmissionRead,
-    CoursesByCategory,
+    CourseSubmissionUpdate,
     CourseUpdate,
     SubmissionDecision,
     SubmissionStatus,
@@ -48,35 +54,49 @@ router = APIRouter()
 # In-memory connection registry (single-process broadcast).
 _discussion_connections_by_archive: dict[int, set[WebSocket]] = {}
 DISCUSSION_MESSAGE_MAX_LENGTH = 200
-CATEGORY_ORDER = {
-    "freshman": 0,
-    "sophomore": 1,
-    "junior": 2,
-    "senior": 3,
-    "graduate": 4,
-    "interdisciplinary": 5,
-}
+DEFAULT_CATEGORIES = [
+    ("freshman", "基礎必修", "基礎", "pi pi-fw pi-book"),
+    ("sophomore", "專業必修", "必修", "pi pi-fw pi-compass"),
+    ("junior", "實驗課程", "實驗", "pi pi-fw pi-sparkles"),
+    ("senior", "專業選修", "選修", "pi pi-fw pi-book"),
+    ("graduate", "研究所", "研究所", "pi pi-fw pi-graduation-cap"),
+    ("interdisciplinary", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
+]
+DEFAULT_CATEGORY_ORDER = {item[0]: index for index, item in enumerate(DEFAULT_CATEGORIES)}
+
+
+class CategorizedCourses(dict):
+    def model_dump(self):
+        return {
+            category: [
+                item.model_dump() if hasattr(item, "model_dump") else item
+                for item in courses
+            ]
+            for category, courses in self.items()
+        }
 
 
 def _course_category_value(course: Course) -> str:
     return getattr(course.category, "value", course.category)
 
 
-def _course_sort_key(course: Course) -> tuple[int, int, int]:
+def _course_sort_key(course: Course, category_order: dict[str, int] | None = None) -> tuple[int, int, int]:
+    order = category_order or DEFAULT_CATEGORY_ORDER
     category = _course_category_value(course)
     return (
-        CATEGORY_ORDER.get(category, 999),
+        order.get(category, 999),
         course.order_index,
         course.id or 0,
     )
 
 
-def _visible_courses(courses: list[Course]) -> list[Course]:
+def _visible_courses(courses: list[Course], category_order: dict[str, int] | None = None) -> list[Course]:
     seen: set[tuple[str, str]] = set()
     selected: list[Course] = []
-    for course in sorted(courses, key=_course_sort_key):
+    allowed_categories = set((category_order or DEFAULT_CATEGORY_ORDER).keys())
+    for course in sorted(courses, key=lambda item: _course_sort_key(item, category_order)):
         category = _course_category_value(course)
-        if category not in CATEGORY_ORDER:
+        if category not in allowed_categories:
             continue
         key = (category, course.name)
         if key in seen:
@@ -84,6 +104,38 @@ def _visible_courses(courses: list[Course]) -> list[Course]:
         seen.add(key)
         selected.append(course)
     return selected
+
+
+async def _category_order_map(db: AsyncSession) -> dict[str, int]:
+    result = await db.execute(
+        select(CourseCategoryConfig)
+        .where(CourseCategoryConfig.is_active.is_(True))
+        .order_by(CourseCategoryConfig.order_index, CourseCategoryConfig.id)
+    )
+    categories = result.scalars().all()
+    if not categories:
+        return DEFAULT_CATEGORY_ORDER.copy()
+    return {category.key: index for index, category in enumerate(categories)}
+
+
+async def _ensure_category(db: AsyncSession, category_key: str) -> CourseCategoryConfig:
+    result = await db.execute(
+        select(CourseCategoryConfig).where(
+            CourseCategoryConfig.key == category_key,
+            CourseCategoryConfig.is_active.is_(True),
+        )
+    )
+    category = result.scalar_one_or_none()
+    if category:
+        return category
+    if category_key in DEFAULT_CATEGORY_ORDER:
+        return CourseCategoryConfig(
+            key=category_key,
+            name=category_key,
+            label=category_key,
+            order_index=DEFAULT_CATEGORY_ORDER[category_key],
+        )
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Course category does not exist")
 
 
 async def _next_order_index(db: AsyncSession, category) -> int:
@@ -106,7 +158,34 @@ def _discussion_public_display_name(
     return (name or "").strip()
 
 
-@router.get("", response_model=CoursesByCategory)
+@router.get("/categories", response_model=List[CourseCategoryRead])
+async def list_course_categories(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    result = await db.execute(
+        select(CourseCategoryConfig)
+        .where(CourseCategoryConfig.is_active.is_(True))
+        .order_by(CourseCategoryConfig.order_index, CourseCategoryConfig.id)
+    )
+    categories = result.scalars().all()
+    if categories:
+        return categories
+    return [
+        CourseCategoryRead(
+            id=index + 1,
+            key=key,
+            name=name,
+            label=label,
+            icon=icon,
+            order_index=index,
+            is_active=True,
+        )
+        for index, (key, name, label, icon) in enumerate(DEFAULT_CATEGORIES)
+    ]
+
+
+@router.get("", response_model=dict[str, List[CourseInfo]])
 async def get_categorized_courses(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
@@ -117,16 +196,17 @@ async def get_categorized_courses(
     """
     query = select(Course).where(Course.deleted_at.is_(None))
     result = await db.execute(query)
-    courses = _visible_courses(result.scalars().all())
+    category_order = await _category_order_map(db)
+    courses = _visible_courses(result.scalars().all(), category_order)
 
-    categorized_courses = CoursesByCategory()
+    categorized_courses = CategorizedCourses({category: [] for category in category_order})
     for course in courses:
         course_info = CourseInfo(
             id=course.id,
             name=course.name,
             order_index=course.order_index,
         )
-        getattr(categorized_courses, _course_category_value(course)).append(course_info)
+        categorized_courses.setdefault(_course_category_value(course), []).append(course_info)
 
     return categorized_courses
 
@@ -137,6 +217,8 @@ async def create_course_request(
     current_user: UserRoles = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
+    await _ensure_category(db, course_data.category)
+
     existing_course = (
         await db.execute(
             select(Course).where(
@@ -226,6 +308,33 @@ async def list_course_requests_for_admin(
         )
     )
     return result.scalars().all()
+
+
+@router.put("/admin/requests/{request_id}", response_model=CourseSubmissionRead)
+async def update_course_request_for_admin(
+    request_id: int,
+    request_data: CourseSubmissionUpdate,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(CourseSubmission, request_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+    if submission.status != SubmissionStatus.PENDING:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request already reviewed")
+
+    if request_data.name is not None:
+        submission.name = request_data.name
+    if request_data.category is not None:
+        await _ensure_category(db, request_data.category)
+        submission.category = request_data.category
+
+    await db.commit()
+    await db.refresh(submission)
+    return submission
 
 
 @router.post("/admin/requests/{request_id}/approve", response_model=CourseSubmissionRead)
@@ -858,6 +967,8 @@ async def create_course(
             detail="Only admins can create courses",
         )
 
+    await _ensure_category(db, course_data.category)
+
     query = select(Course).where(
         Course.name == course_data.name,
         Course.category == course_data.category,
@@ -943,6 +1054,7 @@ async def update_course(
     if course_data.name is not None:
         course.name = course_data.name
     if course_data.category is not None:
+        await _ensure_category(db, course_data.category)
         course.category = course_data.category
         if course_data.category != original_category and course_data.order_index is None:
             course.order_index = await _next_order_index(db, course_data.category)
@@ -970,6 +1082,8 @@ async def reorder_courses(
             detail="Only admins can reorder courses",
         )
 
+    await _ensure_category(db, reorder_data.category)
+
     result = await db.execute(
         select(Course).where(
             Course.category == reorder_data.category,
@@ -991,7 +1105,7 @@ async def reorder_courses(
     ordered_id_set = set(requested_ids)
     remaining_courses = sorted(
         (course for course in courses if course.id not in ordered_id_set),
-        key=_course_sort_key,
+        key=lambda item: _course_sort_key(item),
     )
 
     for index, course in enumerate([*ordered_courses, *remaining_courses]):
@@ -1005,7 +1119,8 @@ async def reorder_courses(
             Course.deleted_at.is_(None),
         )
     )
-    return _visible_courses(result.scalars().all())
+    category_order = await _category_order_map(db)
+    return _visible_courses(result.scalars().all(), category_order)
 
 
 @router.delete("/admin/courses/{course_id}")
@@ -1073,6 +1188,180 @@ async def list_all_courses(
 
     query = select(Course).where(Course.deleted_at.is_(None))
     result = await db.execute(query)
-    courses = _visible_courses(result.scalars().all())
+    category_order = await _category_order_map(db)
+    courses = _visible_courses(result.scalars().all(), category_order)
 
     return courses
+
+
+@router.get("/admin/categories", response_model=List[CourseCategoryRead])
+async def list_admin_course_categories(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    result = await db.execute(
+        select(CourseCategoryConfig).order_by(
+            CourseCategoryConfig.order_index,
+            CourseCategoryConfig.id,
+        )
+    )
+    return result.scalars().all()
+
+
+@router.post("/admin/categories", response_model=CourseCategoryRead)
+async def create_course_category(
+    category_data: CourseCategoryCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    key = category_data.key.strip().lower().replace(" ", "-")
+    if not key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category key is required")
+
+    existing = (
+        await db.execute(select(CourseCategoryConfig).where(CourseCategoryConfig.key == key))
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category key already exists")
+
+    order_index = category_data.order_index
+    if order_index is None:
+        current_max = (
+            await db.execute(select(func.max(CourseCategoryConfig.order_index)))
+        ).scalar()
+        order_index = 0 if current_max is None else int(current_max) + 1
+
+    category = CourseCategoryConfig(
+        key=key,
+        name=category_data.name.strip(),
+        label=category_data.label.strip(),
+        icon=category_data.icon.strip() or "pi pi-fw pi-book",
+        order_index=order_index,
+        is_active=True,
+    )
+    db.add(category)
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+
+@router.put("/admin/categories/{category_id}", response_model=CourseCategoryRead)
+async def update_course_category(
+    category_id: int,
+    category_data: CourseCategoryUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    category = await db.get(CourseCategoryConfig, category_id)
+    if not category:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+
+    old_key = category.key
+    if category_data.key is not None:
+        new_key = category_data.key.strip().lower().replace(" ", "-")
+        if not new_key:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category key is required")
+        existing = (
+            await db.execute(
+                select(CourseCategoryConfig).where(
+                    CourseCategoryConfig.key == new_key,
+                    CourseCategoryConfig.id != category_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category key already exists")
+        category.key = new_key
+        if new_key != old_key:
+            for model in (Course, CourseSubmission, ArchiveSubmission):
+                result = await db.execute(select(model).where(model.category == old_key))
+                for item in result.scalars().all():
+                    item.category = new_key
+
+    if category_data.name is not None:
+        category.name = category_data.name.strip()
+    if category_data.label is not None:
+        category.label = category_data.label.strip()
+    if category_data.icon is not None:
+        category.icon = category_data.icon.strip() or "pi pi-fw pi-book"
+    if category_data.order_index is not None:
+        category.order_index = category_data.order_index
+    if category_data.is_active is not None:
+        category.is_active = category_data.is_active
+    category.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+
+@router.post("/admin/categories/reorder", response_model=List[CourseCategoryRead])
+async def reorder_course_categories(
+    reorder_data: CourseCategoryReorder,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    result = await db.execute(select(CourseCategoryConfig))
+    categories = result.scalars().all()
+    categories_by_id = {category.id: category for category in categories}
+    requested_ids = list(dict.fromkeys(reorder_data.category_ids))
+    missing = [category_id for category_id in requested_ids if category_id not in categories_by_id]
+    if missing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category order includes unknown categories")
+
+    ordered = [categories_by_id[category_id] for category_id in requested_ids]
+    ordered_ids = set(requested_ids)
+    remaining = sorted(
+        (category for category in categories if category.id not in ordered_ids),
+        key=lambda item: (item.order_index, item.id or 0),
+    )
+    for index, category in enumerate([*ordered, *remaining]):
+        category.order_index = index
+        category.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    result = await db.execute(
+        select(CourseCategoryConfig).order_by(
+            CourseCategoryConfig.order_index,
+            CourseCategoryConfig.id,
+        )
+    )
+    return result.scalars().all()
+
+
+@router.delete("/admin/categories/{category_id}")
+async def delete_course_category(
+    category_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    category = await db.get(CourseCategoryConfig, category_id)
+    if not category:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+
+    active_course = (
+        await db.execute(
+            select(Course).where(Course.category == category.key, Course.deleted_at.is_(None))
+        )
+    ).scalar_one_or_none()
+    if active_course:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category still has active courses")
+
+    category.is_active = False
+    category.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"message": "Category disabled successfully"}

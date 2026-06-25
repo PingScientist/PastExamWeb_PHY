@@ -316,6 +316,7 @@
           <UploadArchiveDialog
             v-model="showUploadDialog"
             :coursesList="coursesList"
+            :courseCategories="courseCategories"
             @upload-success="handleUploadSuccess"
           />
 
@@ -648,31 +649,23 @@ const expandedPanels = ref([])
 const expandedMenuItems = ref({})
 const shouldResetPanels = ref(true)
 
-const CATEGORIES = {
-  freshman: { name: '基礎必修', icon: 'pi pi-fw pi-book', tag: '基礎' },
-  sophomore: { name: '專業必修', icon: 'pi pi-fw pi-compass', tag: '必修' },
-  junior: { name: '實驗課程', icon: 'pi pi-fw pi-sparkles', tag: '實驗' },
-  senior: { name: '專業選修', icon: 'pi pi-fw pi-book', tag: '選修' },
-  graduate: {
-    name: '研究所',
-    icon: 'pi pi-fw pi-graduation-cap',
-    tag: '研究所',
-  },
-  interdisciplinary: {
-    name: '戳戳數學系',
-    icon: 'pi pi-fw pi-calculator',
-    tag: '數學',
-  },
-}
+const fallbackCategories = [
+  { key: 'freshman', name: '基礎必修', icon: 'pi pi-fw pi-book', label: '基礎' },
+  { key: 'sophomore', name: '專業必修', icon: 'pi pi-fw pi-compass', label: '必修' },
+  { key: 'junior', name: '實驗課程', icon: 'pi pi-fw pi-sparkles', label: '實驗' },
+  { key: 'senior', name: '專業選修', icon: 'pi pi-fw pi-book', label: '選修' },
+  { key: 'graduate', name: '研究所', icon: 'pi pi-fw pi-graduation-cap', label: '研究所' },
+  { key: 'interdisciplinary', name: '戳戳數學系', icon: 'pi pi-fw pi-calculator', label: '數學' },
+]
 
-const coursesList = ref({
-  freshman: [],
-  sophomore: [],
-  junior: [],
-  senior: [],
-  graduate: [],
-  interdisciplinary: [],
-})
+const courseCategories = ref([...fallbackCategories])
+const coursesList = ref({})
+const categoryMap = computed(() =>
+  courseCategories.value.reduce((acc, category) => {
+    acc[category.key] = category
+    return acc
+  }, {})
+)
 
 const archiveTypeConfig = {
   midterm: {
@@ -774,11 +767,11 @@ watch(
 const menuItems = computed(() => {
   if (!coursesList.value) return []
 
-  return Object.entries(CATEGORIES).map(([key, category]) => ({
-    key: key,
+  return courseCategories.value.map((category) => ({
+    key: category.key,
     label: category.name,
-    icon: category.icon,
-    items: (coursesList.value[key] || [])
+    icon: category.icon || 'pi pi-fw pi-book',
+    items: (coursesList.value[category.key] || [])
       .map((course) => ({
         label: course.name,
         command: () => filterBySubject({ label: course.name, id: course.id }),
@@ -806,7 +799,7 @@ const filteredCategories = computed(() => {
         ...category,
         items: filteredItems
           .map((item) => {
-            const course = coursesList.value[getCategoryKey(category.label)].find(
+            const course = (coursesList.value[getCategoryKey(category.label)] || []).find(
               (c) => c.name === item.label
             )
             return {
@@ -822,7 +815,7 @@ const filteredCategories = computed(() => {
 })
 
 function getCategoryKey(categoryLabel) {
-  return Object.keys(CATEGORIES).find((key) => CATEGORIES[key].name === categoryLabel) || ''
+  return courseCategories.value.find((category) => category.name === categoryLabel)?.key || ''
 }
 
 function getCategoryKeyForCourse(courseId) {
@@ -894,12 +887,26 @@ function formatAcademicTerm(value) {
 async function fetchCourses() {
   try {
     loading.value = true
-    const response = await courseService.listCourses()
+    const [categoriesResponse, coursesResponse] = await Promise.all([
+      courseService.listCategories(),
+      courseService.listCourses(),
+    ])
+    const categories = Array.isArray(categoriesResponse.data) && categoriesResponse.data.length
+      ? categoriesResponse.data
+      : fallbackCategories
 
     // Only update coursesList if the data has actually changed to prevent unnecessary re-renders
-    const newData = response.data
+    const newData = coursesResponse.data || {}
     const currentData = coursesList.value
     const hasChanged = JSON.stringify(currentData) !== JSON.stringify(newData)
+
+    courseCategories.value = categories.map((category, index) => ({
+      key: category.key,
+      name: category.name,
+      label: category.label || category.name,
+      icon: category.icon || 'pi pi-fw pi-book',
+      order_index: category.order_index ?? index,
+    }))
 
     if (hasChanged) {
       coursesList.value = newData
@@ -1255,15 +1262,17 @@ function closePreview() {
 }
 
 function getCategoryName(code) {
-  return CATEGORIES[code]?.name || code
+  return categoryMap.value[code]?.name || code
 }
 
 const availableEditProfessors = ref([])
 
-const categoryOptions = Object.entries(CATEGORIES).map(([value, category]) => ({
-  name: category.name,
-  value: value,
-}))
+const categoryOptions = computed(() =>
+  courseCategories.value.map((category) => ({
+    name: category.name,
+    value: category.key,
+  }))
+)
 
 watch(
   () => groupedArchives.value,
@@ -1560,8 +1569,8 @@ async function handleUploadSuccess() {
 }
 
 function getCategoryTag(categoryLabel) {
-  const category = Object.values(CATEGORIES).find((cat) => cat.name === categoryLabel)
-  return category?.tag || categoryLabel
+  const category = courseCategories.value.find((cat) => cat.name === categoryLabel)
+  return category?.label || categoryLabel
 }
 
 function formatDownloadCount(count) {

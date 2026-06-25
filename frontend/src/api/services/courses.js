@@ -5,6 +5,10 @@ export const courseService = {
     return api.get('/courses')
   },
 
+  listCategories() {
+    return api.get('/courses/categories')
+  },
+
   getCourseArchives(courseId) {
     return api.get(`/courses/${courseId}/archives`)
   },
@@ -32,6 +36,28 @@ export const courseService = {
     return api.delete(`/courses/admin/courses/${courseId}`)
   },
 
+  listAdminCategories() {
+    return api.get('/courses/admin/categories')
+  },
+
+  createCategory(categoryData) {
+    return api.post('/courses/admin/categories', categoryData)
+  },
+
+  updateCategory(categoryId, categoryData) {
+    return api.put(`/courses/admin/categories/${categoryId}`, categoryData)
+  },
+
+  reorderCategories(categoryIds) {
+    return api.post('/courses/admin/categories/reorder', {
+      category_ids: categoryIds,
+    })
+  },
+
+  deleteCategory(categoryId) {
+    return api.delete(`/courses/admin/categories/${categoryId}`)
+  },
+
   requestCourse(courseData) {
     return api.post('/courses/requests', courseData)
   },
@@ -50,5 +76,9 @@ export const courseService = {
 
   rejectRequest(requestId, note = '') {
     return api.post(`/courses/admin/requests/${requestId}/reject`, { note })
+  },
+
+  updateRequest(requestId, requestData) {
+    return api.put(`/courses/admin/requests/${requestId}`, requestData)
   },
 }

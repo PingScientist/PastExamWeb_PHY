@@ -13,8 +13,9 @@ from app.models.models import (
     Archive,
     ArchiveSubmission,
     ArchiveSubmissionRead,
+    ArchiveSubmissionUpdate,
     Course,
-    CourseCategory,
+    CourseCategoryConfig,
     SubmissionDecision,
     SubmissionStatus,
     User,
@@ -25,11 +26,25 @@ from app.utils.storage import get_minio_client
 router = APIRouter()
 
 
+async def _ensure_category(db: AsyncSession, category_key: str) -> None:
+    result = await db.execute(
+        select(CourseCategoryConfig).where(
+            CourseCategoryConfig.key == category_key,
+            CourseCategoryConfig.is_active.is_(True),
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Course category does not exist",
+        )
+
+
 @router.post("/upload")
 async def upload_archive(
     file: UploadFile,
     subject: str = Form(...),
-    category: CourseCategory = Form(...),
+    category: str = Form(...),
     professor: str = Form(...),
     archive_type: str = Form(...),
     has_answers: bool = Form(False),
@@ -51,6 +66,8 @@ async def upload_archive(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
+
+    await _ensure_category(db, category)
 
     course = None
     if current_user.is_admin:
@@ -198,6 +215,43 @@ async def list_archive_submissions_for_admin(
         )
     )
     return result.scalars().all()
+
+
+@router.put("/admin/submissions/{submission_id}", response_model=ArchiveSubmissionRead)
+async def update_archive_submission_for_admin(
+    submission_id: int,
+    submission_data: ArchiveSubmissionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    if submission.status != SubmissionStatus.PENDING:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Submission already reviewed")
+
+    if submission_data.subject is not None:
+        submission.subject = submission_data.subject
+    if submission_data.category is not None:
+        await _ensure_category(db, submission_data.category)
+        submission.category = submission_data.category
+    if submission_data.name is not None:
+        submission.name = submission_data.name
+    if submission_data.academic_year is not None:
+        submission.academic_year = submission_data.academic_year
+    if submission_data.archive_type is not None:
+        submission.archive_type = submission_data.archive_type
+    if submission_data.professor is not None:
+        submission.professor = submission_data.professor
+    if submission_data.has_answers is not None:
+        submission.has_answers = submission_data.has_answers
+
+    await db.commit()
+    await db.refresh(submission)
+    return submission
 
 
 @router.post("/admin/submissions/{submission_id}/approve", response_model=ArchiveSubmissionRead)

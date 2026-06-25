@@ -57,4 +57,8 @@ export const archiveService = {
   rejectSubmission(submissionId, note = '') {
     return api.post(`/archives/admin/submissions/${submissionId}/reject`, { note })
   },
+
+  updateSubmission(submissionId, submissionData) {
+    return api.put(`/archives/admin/submissions/${submissionId}`, submissionData)
+  },
 }

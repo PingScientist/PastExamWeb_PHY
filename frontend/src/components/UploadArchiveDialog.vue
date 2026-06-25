@@ -31,14 +31,7 @@
                 <label>課程類別</label>
                 <Select
                   v-model="form.category"
-                  :options="[
-                    { name: '基礎必修', value: 'freshman' },
-                    { name: '專業必修', value: 'sophomore' },
-                    { name: '實驗課程', value: 'junior' },
-                    { name: '專業選修', value: 'senior' },
-                    { name: '研究所', value: 'graduate' },
-                    { name: '戳戳數學系', value: 'interdisciplinary' },
-                  ]"
+                  :options="categoryOptions"
                   optionLabel="name"
                   optionValue="value"
                   placeholder="選擇課程類別"
@@ -405,6 +398,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  courseCategories: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'upload-success'])
@@ -438,6 +435,13 @@ const uploadPreviewError = ref(false)
 
 const availableSubjects = ref([])
 const availableProfessors = ref([])
+
+const categoryOptions = computed(() =>
+  props.courseCategories.map((category) => ({
+    name: category.name,
+    value: category.key,
+  }))
+)
 
 const examNumberOptions = Array.from({ length: 10 }, (_, index) => ({
   name: `第 ${index + 1} 次`,
@@ -526,15 +530,7 @@ function formatSemester(value) {
 }
 
 function getCategoryName(code) {
-  const categories = {
-    freshman: '基礎必修',
-    sophomore: '專業必修',
-    junior: '實驗課程',
-    senior: '專業選修',
-    graduate: '研究所',
-    interdisciplinary: '戳戳數學系',
-  }
-  return categories[code] || code
+  return props.courseCategories.find((category) => category.key === code)?.name || code
 }
 
 function getTypeName(code) {
