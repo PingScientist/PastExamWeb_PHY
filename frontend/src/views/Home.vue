@@ -302,6 +302,13 @@ function formatNumber(num) {
     linear-gradient(135deg, #101610 0%, #13201a 58%, #171b15 100%);
 }
 
+.physics-home:not(.physics-home-dark) {
+  background:
+    radial-gradient(circle at 74% 38%, rgba(188, 205, 178, 0.42), transparent 30rem),
+    radial-gradient(circle at 20% 14%, rgba(112, 158, 133, 0.2), transparent 24rem),
+    linear-gradient(135deg, #f7f3e8 0%, #edf4ec 48%, #dfeade 100%);
+}
+
 .hero-shell {
   min-height: calc(100vh - var(--navbar-height));
   position: relative;
@@ -334,6 +341,10 @@ function formatNumber(num) {
   color: #9be0d4;
 }
 
+.physics-home:not(.physics-home-dark) .eyebrow {
+  color: #3d7c6e;
+}
+
 h1 {
   margin: 0;
   color: #edf7ed;
@@ -344,6 +355,11 @@ h1 {
   text-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.22);
   word-break: keep-all;
   overflow-wrap: normal;
+}
+
+.physics-home:not(.physics-home-dark) h1 {
+  color: #183a31;
+  text-shadow: 0 1rem 2.6rem rgba(82, 109, 91, 0.16);
 }
 
 .title-line {
@@ -397,16 +413,32 @@ h1 {
   line-height: 1.78;
 }
 
+.physics-home:not(.physics-home-dark) .subtitle {
+  color: rgba(33, 58, 50, 0.78);
+}
+
 .hero-actions :deep(.p-button.p-button-secondary.p-button-outlined) {
   color: rgba(232, 240, 226, 0.86);
   border-color: rgba(214, 230, 223, 0.62);
   background: rgba(10, 20, 18, 0.18);
 }
 
+.physics-home:not(.physics-home-dark) .hero-actions :deep(.p-button.p-button-secondary.p-button-outlined) {
+  color: #1c4c42;
+  border-color: rgba(58, 111, 93, 0.36);
+  background: rgba(249, 247, 238, 0.52);
+}
+
 .hero-actions :deep(.p-button.p-button-secondary.p-button-outlined:hover) {
   color: #f5fbf6;
   border-color: rgba(238, 246, 239, 0.82);
   background: rgba(214, 230, 223, 0.1);
+}
+
+.physics-home:not(.physics-home-dark) .hero-actions :deep(.p-button.p-button-secondary.p-button-outlined:hover) {
+  color: #123a31;
+  border-color: rgba(58, 111, 93, 0.5);
+  background: rgba(232, 240, 224, 0.75);
 }
 
 .hero-actions {
@@ -432,6 +464,13 @@ h1 {
   z-index: 0;
 }
 
+.physics-home:not(.physics-home-dark) .physics-board {
+  background:
+    radial-gradient(circle at 68% 44%, rgba(177, 198, 168, 0.34), transparent 22rem),
+    radial-gradient(circle at 24% 20%, rgba(91, 142, 118, 0.14), transparent 24rem),
+    linear-gradient(135deg, rgba(248, 244, 232, 0.94), rgba(232, 241, 232, 0.92));
+}
+
 .physics-board::before {
   content: '';
   position: absolute;
@@ -451,6 +490,19 @@ h1 {
   animation: fieldGlow 10s ease-in-out infinite alternate;
 }
 
+.physics-home:not(.physics-home-dark) .physics-board::before {
+  background:
+    radial-gradient(circle at 70% 44%, rgba(196, 166, 92, 0.14), transparent 10rem),
+    linear-gradient(115deg, transparent 0 42%, rgba(54, 105, 88, 0.055) 44%, transparent 48%),
+    linear-gradient(
+      90deg,
+      rgba(250, 246, 234, 0.38),
+      rgba(247, 244, 231, 0.66) 28%,
+      rgba(233, 241, 230, 0.32) 62%,
+      rgba(233, 241, 230, 0.1)
+    );
+}
+
 .physics-board::after {
   content: '';
   position: absolute;
@@ -466,6 +518,17 @@ h1 {
   pointer-events: none;
   z-index: 4;
   animation: gravityVignette 12s ease-in-out infinite alternate;
+}
+
+.physics-home:not(.physics-home-dark) .physics-board::after {
+  background:
+    radial-gradient(
+      circle at 68% 46%,
+      transparent 0 13rem,
+      rgba(82, 115, 94, 0.08) 18rem,
+      transparent 31rem
+    ),
+    linear-gradient(0deg, rgba(247, 242, 228, 0.46), transparent 42%);
 }
 
 .formula-cloud::before {
@@ -487,6 +550,16 @@ h1 {
   animation: spectralSweep 5.2s linear infinite;
 }
 
+.physics-home:not(.physics-home-dark) .formula-cloud::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(67, 124, 103, 0.075),
+    rgba(190, 159, 78, 0.11),
+    transparent
+  );
+}
+
 .spacetime-mesh {
   position: absolute;
   inset: -10% -14% -10% -14%;
@@ -506,6 +579,10 @@ h1 {
   animation: meshBreathing 5.5s ease-in-out infinite alternate;
 }
 
+.physics-home:not(.physics-home-dark) .mesh-lines path {
+  stroke: rgba(56, 103, 84, 0.25);
+}
+
 .geodesics path {
   fill: none;
   stroke: rgba(202, 179, 111, 0.58);
@@ -516,6 +593,10 @@ h1 {
   animation: geodesicFlow 3.8s linear infinite;
 }
 
+.physics-home:not(.physics-home-dark) .geodesics path {
+  stroke: rgba(174, 139, 54, 0.5);
+}
+
 .mass-core {
   fill: rgba(232, 238, 218, 0.09);
   stroke: rgba(221, 237, 210, 0.18);
@@ -523,6 +604,11 @@ h1 {
   vector-effect: non-scaling-stroke;
   transform-origin: 760px 380px;
   animation: massPulse 3.2s ease-in-out infinite;
+}
+
+.physics-home:not(.physics-home-dark) .mass-core {
+  fill: rgba(64, 113, 91, 0.08);
+  stroke: rgba(74, 122, 98, 0.18);
 }
 
 .formula-cloud {
@@ -544,10 +630,18 @@ h1 {
   animation-delay: var(--float-delay, 0s);
 }
 
+.physics-home:not(.physics-home-dark) .theory-card {
+  color: rgba(38, 84, 69, 0.24);
+}
+
 .formula-expression {
   font-size: clamp(0.9rem, 1.05vw, 1.15rem);
   line-height: 1.2;
   text-shadow: 0 0 1rem rgba(168, 204, 181, 0.1);
+}
+
+.physics-home:not(.physics-home-dark) .formula-expression {
+  text-shadow: 0 0 1rem rgba(255, 250, 234, 0.45);
 }
 
 .formula-1 {
@@ -722,6 +816,10 @@ h1 {
   --formula-motion: formulaOrbitC;
 }
 
+.physics-home:not(.physics-home-dark) .formula-19 {
+  color: rgba(83, 111, 75, 0.3);
+}
+
 .formula-20 {
   bottom: 39%;
   right: 31%;
@@ -751,6 +849,10 @@ h1 {
   letter-spacing: 0.26em;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.physics-home:not(.physics-home-dark) .dashboard-strip::before {
+  color: rgba(137, 108, 43, 0.78);
 }
 
 @media (min-width: 1101px) {
@@ -783,6 +885,15 @@ h1 {
   transform: translateY(12px);
 }
 
+.physics-home:not(.physics-home-dark) .stat-card {
+  border-color: rgba(85, 125, 108, 0.2);
+  border-left-color: rgba(184, 145, 54, 0.62);
+  background:
+    linear-gradient(90deg, rgba(190, 159, 78, 0.13), transparent 46%),
+    rgba(250, 248, 240, 0.72);
+  box-shadow: 0 1.4rem 3.6rem rgba(68, 92, 78, 0.12);
+}
+
 .physics-home-dark .stat-card {
   background:
     linear-gradient(90deg, rgba(202, 179, 111, 0.08), transparent 44%), rgba(7, 18, 17, 0.62);
@@ -800,15 +911,28 @@ h1 {
   background: rgba(196, 238, 232, 0.08);
 }
 
+.physics-home:not(.physics-home-dark) .stat-icon {
+  color: #927333;
+  background: rgba(74, 127, 105, 0.1);
+}
+
 .stat-card p {
   margin: 0 0 0.2rem;
   color: rgba(229, 238, 229, 0.74);
   font-size: 0.85rem;
 }
 
+.physics-home:not(.physics-home-dark) .stat-card p {
+  color: rgba(41, 68, 59, 0.72);
+}
+
 .stat-card strong {
   color: #f4fbf4;
   font-size: 1.3rem;
+}
+
+.physics-home:not(.physics-home-dark) .stat-card strong {
+  color: #183a31;
 }
 
 .animate-fade-in {
@@ -973,7 +1097,7 @@ h1 {
     right: auto;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     width: min(1180px, calc(100% - 2rem));
-    margin: -5.5rem auto 2rem;
+    margin: clamp(2rem, 6vh, 4rem) auto 2rem;
   }
 
   .dashboard-strip::before {
@@ -1018,28 +1142,30 @@ h1 {
 
   .hero-shell {
     width: min(100% - 2rem, 1180px);
-    padding-top: 1.35rem;
-    padding-bottom: 0.9rem;
+    min-height: calc(100svh - var(--navbar-height, 72px));
+    padding-top: clamp(2.35rem, 8vh, 4.75rem);
+    padding-bottom: clamp(2rem, 6vh, 3.5rem);
     justify-content: center;
+    align-items: center;
   }
 
   .hero-copy {
     width: 100%;
-    padding-top: 0.25rem;
+    padding-top: 0.65rem;
     margin: 0 auto;
     text-align: center;
     justify-items: center;
   }
 
   .eyebrow {
-    margin-bottom: 0.65rem;
+    margin-bottom: 0.9rem;
     font-size: 0.78rem;
   }
 
   h1 {
     max-width: min(100%, 7.2em);
-    font-size: clamp(2.08rem, 10.4vw, 2.85rem);
-    line-height: 1.08;
+    font-size: clamp(2rem, 9.7vw, 2.72rem);
+    line-height: 1.1;
     letter-spacing: 0.03em;
     margin-inline: auto;
   }
@@ -1063,18 +1189,19 @@ h1 {
     letter-spacing: 0.34em;
     text-indent: 0.34em;
     margin-inline: auto;
+    margin-top: 0.25rem;
   }
 
   .subtitle {
-    margin-top: 1.1rem;
+    margin-top: 1.45rem;
     margin-inline: auto;
     font-size: 0.95rem;
     line-height: 1.6;
   }
 
   .hero-actions {
-    gap: 0.65rem;
-    margin-top: 1.25rem;
+    gap: 0.85rem;
+    margin-top: 1.8rem;
     width: min(100%, 23rem);
     margin-inline: auto;
   }
@@ -1154,13 +1281,17 @@ h1 {
   .dashboard-strip {
     grid-template-columns: 1fr;
     width: min(100% - 2rem, 1180px);
-    gap: 0.65rem;
-    margin: 0 auto 1rem;
+    gap: 0.85rem;
+    margin: clamp(1.5rem, 5vh, 3rem) auto 1.75rem;
+  }
+
+  .dashboard-strip::before {
+    margin-bottom: 0.15rem;
   }
 
   .stat-card {
-    min-height: 3.7rem;
-    padding: 0.65rem 0.75rem;
+    min-height: 3.85rem;
+    padding: 0.72rem 0.82rem;
   }
 }
 </style>
