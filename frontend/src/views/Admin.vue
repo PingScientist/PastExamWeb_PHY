@@ -25,10 +25,16 @@
                     @click="openCreateCategoryDialog"
                   />
                 </div>
-                <DataTable :value="courseCategories" tableStyle="min-width: 44rem">
+                <DataTable
+                  :value="courseCategories"
+                  class="admin-data-table admin-desktop-data-table category-management-table"
+                  tableStyle="min-width: 44rem"
+                  responsiveLayout="stack"
+                  breakpoint="768px"
+                >
                   <Column header="順序" style="width: 12rem">
                     <template #body="{ data }">
-                      <div class="flex align-items-center gap-2">
+                      <div class="mobile-card-order flex align-items-center gap-2">
                         <span class="text-sm text-500 w-2rem">{{ getCategoryPosition(data) + 1 }}</span>
                         <Button
                           icon="pi pi-arrow-up"
@@ -51,13 +57,30 @@
                       </div>
                     </template>
                   </Column>
-                  <Column field="name" header="分類名稱" />
+                <Column field="name" header="分類名稱">
+                  <template #body="{ data }">
+                    <span class="category-name-desktop">{{ data.name }}</span>
+                    <span class="category-name-mobile">
+                      <span class="category-mobile-header">
+                        <span class="category-mobile-title">{{ data.name }}</span>
+                        <span class="category-key-mobile">
+                          <span class="mobile-field-label">系統識別碼</span>
+                          <span class="mobile-field-value">{{ data.key }}</span>
+                        </span>
+                      </span>
+                    </span>
+                  </template>
+                </Column>
                   <Column field="label" header="科目標籤">
                     <template #body="{ data }">
                       <Tag severity="secondary">{{ data.label || data.name }}</Tag>
                     </template>
                   </Column>
-                  <Column field="key" header="Key" />
+                  <Column field="key" header="Key">
+                    <template #body="{ data }">
+                      <span class="category-key-desktop">{{ data.key }}</span>
+                    </template>
+                  </Column>
                   <Column field="is_active" header="狀態" style="width: 8rem">
                     <template #body="{ data }">
                       <Tag :severity="data.is_active ? 'success' : 'secondary'">
@@ -67,11 +90,13 @@
                   </Column>
                   <Column header="操作" style="width: 20rem">
                     <template #body="{ data }">
-                      <div class="flex gap-2 flex-wrap">
-                        <Button icon="pi pi-pencil" label="編輯" size="small" outlined @click="openEditCategoryDialog(data)" />
+                      <div class="admin-card-actions">
+                        <Button icon="pi pi-pencil" label="編輯" aria-label="編輯分類" title="編輯分類" size="small" outlined @click="openEditCategoryDialog(data)" />
                         <Button
                           :icon="data.is_active ? 'pi pi-eye-slash' : 'pi pi-check'"
                           :label="data.is_active ? '停用' : '啟用'"
+                          :aria-label="data.is_active ? '停用分類' : '啟用分類'"
+                          :title="data.is_active ? '停用分類' : '啟用分類'"
                           size="small"
                           :severity="data.is_active ? 'warn' : 'success'"
                           outlined
@@ -80,6 +105,8 @@
                         <Button
                           icon="pi pi-trash"
                           label="刪除"
+                          aria-label="刪除分類"
+                          title="刪除分類"
                           size="small"
                           severity="danger"
                           outlined
@@ -89,6 +116,83 @@
                     </template>
                   </Column>
                 </DataTable>
+                <div class="admin-mobile-list admin-mobile-list--categories">
+                  <article
+                    v-for="category in courseCategories"
+                    :key="category.id"
+                    class="admin-mobile-card admin-category-card"
+                  >
+                    <section class="category-card-topline">
+                      <span class="category-card-order">{{ getCategoryPosition(category) + 1 }}</span>
+                      <Button
+                        icon="pi pi-arrow-up"
+                        severity="secondary"
+                        text
+                        rounded
+                        size="small"
+                        aria-label="上移"
+                        title="上移"
+                        :disabled="!canMoveCategory(category, -1) || categoryOrderLoading"
+                        @click="moveCategory(category, -1)"
+                      />
+                      <Button
+                        icon="pi pi-arrow-down"
+                        severity="secondary"
+                        text
+                        rounded
+                        size="small"
+                        aria-label="下移"
+                        title="下移"
+                        :disabled="!canMoveCategory(category, 1) || categoryOrderLoading"
+                        @click="moveCategory(category, 1)"
+                      />
+                    </section>
+                    <section class="category-card-main">
+                      <strong class="category-card-title">{{ category.name }}</strong>
+                      <span class="category-card-key">
+                        <span class="category-card-key-label">系統識別碼</span>
+                        <span class="category-card-key-value">{{ category.key }}</span>
+                      </span>
+                    </section>
+                    <section class="category-card-meta">
+                      <Tag severity="secondary">{{ category.label || category.name }}</Tag>
+                      <Tag :severity="category.is_active ? 'success' : 'secondary'">
+                        {{ category.is_active ? '啟用中' : '已停用' }}
+                      </Tag>
+                    </section>
+                    <section class="admin-card-actions admin-mobile-card-actions category-card-actions">
+                      <Button
+                        icon="pi pi-pencil"
+                        label="編輯"
+                        aria-label="編輯分類"
+                        title="編輯分類"
+                        size="small"
+                        outlined
+                        @click="openEditCategoryDialog(category)"
+                      />
+                      <Button
+                        :icon="category.is_active ? 'pi pi-eye-slash' : 'pi pi-check'"
+                        :label="category.is_active ? '停用' : '啟用'"
+                        :aria-label="category.is_active ? '停用分類' : '啟用分類'"
+                        :title="category.is_active ? '停用分類' : '啟用分類'"
+                        size="small"
+                        :severity="category.is_active ? 'warn' : 'success'"
+                        outlined
+                        @click="confirmToggleCategory(category)"
+                      />
+                      <Button
+                        icon="pi pi-trash"
+                        label="刪除"
+                        aria-label="刪除分類"
+                        title="刪除分類"
+                        size="small"
+                        severity="danger"
+                        outlined
+                        @click="confirmDeleteCategory(category)"
+                      />
+                    </section>
+                  </article>
+                </div>
               </section>
 
               <div
@@ -126,16 +230,19 @@
               <DataTable
                 v-else
                 :value="filteredCourses"
+                class="admin-data-table admin-desktop-data-table course-management-table"
                 paginator
                 :rows="10"
                 :rowsPerPageOptions="[5, 10, 15, 25, 50]"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
+                responsiveLayout="stack"
+                breakpoint="768px"
               >
                 <Column header="順序" style="width: 18%">
                   <template #body="{ data }">
-                    <div class="flex align-items-center gap-2">
+                    <div class="mobile-card-order flex align-items-center gap-2">
                       <span class="text-sm text-500 w-2rem">
                         {{ getCoursePosition(data) + 1 }}
                       </span>
@@ -162,7 +269,11 @@
                     </div>
                   </template>
                 </Column>
-                <Column field="name" header="課程名稱" style="width: 32%"></Column>
+                <Column field="name" header="課程名稱" style="width: 32%">
+                  <template #body="{ data }">
+                    <span class="mobile-primary-text">{{ data.name }}</span>
+                  </template>
+                </Column>
                 <Column field="category" header="分類" style="width: 22%">
                   <template #body="{ data }">
                     <Tag :severity="getCategorySeverity(data.category)" class="text-sm">
@@ -172,13 +283,15 @@
                 </Column>
                 <Column header="操作" style="width: 18%">
                   <template #body="{ data }">
-                    <div class="flex gap-2">
+                    <div class="admin-card-actions">
                       <Button
                         icon="pi pi-pencil"
                         severity="warning"
                         size="small"
                         @click="openEditDialog(data)"
                         label="編輯"
+                        aria-label="編輯課程"
+                        title="編輯課程"
                       />
                       <Button
                         icon="pi pi-trash"
@@ -186,11 +299,68 @@
                         size="small"
                         @click="confirmDeleteCourse(data)"
                         label="刪除"
+                        aria-label="刪除課程"
+                        title="刪除課程"
                       />
                     </div>
                   </template>
                 </Column>
               </DataTable>
+              <div v-if="!coursesLoading" class="admin-mobile-list admin-mobile-list--courses">
+                <article v-for="course in filteredCourses" :key="course.id" class="admin-mobile-card admin-course-card">
+                  <section class="course-card-topline">
+                    <span class="course-card-order">{{ getCoursePosition(course) + 1 }}</span>
+                    <Button
+                      icon="pi pi-arrow-up"
+                      severity="secondary"
+                      text
+                      rounded
+                      size="small"
+                      aria-label="上移"
+                      title="上移"
+                      :disabled="!canMoveCourse(course, -1) || courseOrderLoading"
+                      @click="moveCourse(course, -1)"
+                    />
+                    <Button
+                      icon="pi pi-arrow-down"
+                      severity="secondary"
+                      text
+                      rounded
+                      size="small"
+                      aria-label="下移"
+                      title="下移"
+                      :disabled="!canMoveCourse(course, 1) || courseOrderLoading"
+                      @click="moveCourse(course, 1)"
+                    />
+                    <Tag :severity="getCategorySeverity(course.category)" class="course-card-category">
+                      {{ getCategoryName(course.category) }}
+                    </Tag>
+                  </section>
+                  <section class="course-card-primary">
+                    <strong class="course-card-title">{{ course.name }}</strong>
+                  </section>
+                  <section class="admin-card-actions admin-mobile-card-actions course-card-actions">
+                    <Button
+                      icon="pi pi-pencil"
+                      severity="warning"
+                      size="small"
+                      @click="openEditDialog(course)"
+                      label="編輯"
+                      aria-label="編輯課程"
+                      title="編輯課程"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      @click="confirmDeleteCourse(course)"
+                      label="刪除"
+                      aria-label="刪除課程"
+                      title="刪除課程"
+                    />
+                  </section>
+                </article>
+              </div>
             </div>
           </TabPanel>
 
@@ -235,18 +405,46 @@
               <DataTable
                 v-else
                 :value="filteredUsers"
+                class="admin-data-table admin-desktop-data-table user-management-table"
                 paginator
                 :rows="10"
                 :rowsPerPageOptions="[5, 10, 15, 25, 50]"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
+                responsiveLayout="stack"
+                breakpoint="768px"
                 :multiSortMeta="userSortMeta"
                 sortMode="multiple"
                 removableSort
               >
-                <Column field="name" header="使用者名稱" sortable style="width: 15%"></Column>
-                <Column field="email" header="電子郵件" sortable style="width: 20%"></Column>
+                <Column header="使用者名稱" sortable style="width: 15%">
+                  <template #body="{ data }">
+                    <span class="mobile-primary-text admin-desktop-cell">{{ data.name }}</span>
+                    <div class="admin-mobile-card admin-user-mobile-card">
+                      <div class="admin-card-primary">
+                        <strong class="admin-card-title">{{ data.name }}</strong>
+                        <span class="admin-card-email">{{ data.email }}</span>
+                      </div>
+                      <div class="admin-card-meta">
+                        <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
+                          {{ data.is_admin ? '是' : '否' }}
+                        </Tag>
+                        <Tag :severity="data.is_local ? 'info' : 'warning'" class="text-sm">
+                          {{ data.is_local ? '本地帳號' : '外部帳號' }}
+                        </Tag>
+                        <span class="admin-card-meta-text">
+                          {{ data.last_login ? formatDateTime(data.last_login) : '從未登入' }}
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </Column>
+                <Column header="電子郵件" sortable style="width: 20%">
+                  <template #body="{ data }">
+                    <span class="mobile-long-text admin-desktop-cell">{{ data.email }}</span>
+                  </template>
+                </Column>
                 <Column field="is_admin" header="管理員權限" sortable style="width: 15%">
                   <template #body="{ data }">
                     <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
@@ -271,13 +469,15 @@
                 </Column>
                 <Column header="操作" style="width: 20%">
                   <template #body="{ data }">
-                    <div class="flex gap-2">
+                    <div class="admin-card-actions">
                       <Button
                         icon="pi pi-pencil"
                         severity="warning"
                         size="small"
                         @click="openEditUserDialog(data)"
                         label="編輯"
+                        aria-label="編輯使用者"
+                        title="編輯使用者"
                       />
                       <Button
                         icon="pi pi-trash"
@@ -285,12 +485,54 @@
                         size="small"
                         @click="confirmDeleteUser(data)"
                         label="刪除"
+                        aria-label="刪除使用者"
+                        title="刪除使用者"
                         :disabled="data.id === currentUserId"
                       />
                     </div>
                   </template>
                 </Column>
               </DataTable>
+              <div v-if="!usersLoading" class="admin-mobile-list admin-mobile-list--users">
+                <article v-for="user in filteredUsers" :key="user.id" class="admin-mobile-card admin-user-card">
+                  <section class="admin-card-primary">
+                    <strong class="admin-card-title">{{ user.name }}</strong>
+                    <span class="admin-card-email">{{ user.email }}</span>
+                  </section>
+                  <section class="admin-card-meta">
+                    <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
+                      {{ user.is_admin ? '是' : '否' }}
+                    </Tag>
+                    <Tag :severity="user.is_local ? 'info' : 'warning'" class="text-sm">
+                      {{ user.is_local ? '本地帳號' : '外部帳號' }}
+                    </Tag>
+                    <span class="admin-card-meta-text">
+                      {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
+                    </span>
+                  </section>
+                  <section class="admin-card-actions admin-mobile-card-actions">
+                    <Button
+                      icon="pi pi-pencil"
+                      severity="warning"
+                      size="small"
+                      @click="openEditUserDialog(user)"
+                      label="編輯"
+                      aria-label="編輯使用者"
+                      title="編輯使用者"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      @click="confirmDeleteUser(user)"
+                      label="刪除"
+                      aria-label="刪除使用者"
+                      title="刪除使用者"
+                      :disabled="user.id === currentUserId"
+                    />
+                  </section>
+                </article>
+              </div>
             </div>
           </TabPanel>
 
@@ -335,17 +577,43 @@
               <DataTable
                 v-else
                 :value="filteredNotifications"
+                class="admin-data-table admin-desktop-data-table notification-management-table"
                 paginator
                 :rows="10"
                 :rowsPerPageOptions="[5, 10, 15, 25, 50]"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
+                responsiveLayout="stack"
+                breakpoint="768px"
                 sortMode="multiple"
                 :multiSortMeta="notificationSortMeta"
                 removableSort
               >
-                <Column field="title" header="標題" sortable style="width: 26%"></Column>
+                <Column field="title" header="標題" sortable style="width: 26%">
+                  <template #body="{ data }">
+                    <span class="mobile-primary-text admin-desktop-cell">{{ data.title }}</span>
+                    <div class="admin-mobile-card admin-announcement-mobile-card">
+                      <div class="admin-card-primary">
+                        <strong class="admin-card-title">{{ data.title }}</strong>
+                      </div>
+                      <div class="admin-card-meta">
+                        <Tag :severity="getNotificationSeverity(data.severity)">
+                          {{ getNotificationSeverityLabel(data.severity) }}
+                        </Tag>
+                        <Tag :severity="data.is_active ? 'success' : 'secondary'">
+                          {{ data.is_active ? '啟用中' : '已停用' }}
+                        </Tag>
+                        <Tag :severity="isNotificationEffective(data) ? 'success' : 'secondary'">
+                          {{ isNotificationEffective(data) ? '生效中' : '未生效' }}
+                        </Tag>
+                        <span class="admin-card-meta-text">
+                          {{ formatNotificationDate(data.updated_at || data.created_at) }}
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </Column>
                 <Column field="severity" header="重要程度" sortable style="width: 12%">
                   <template #body="{ data }">
                     <Tag :severity="getNotificationSeverity(data.severity)">
@@ -388,13 +656,15 @@
                 </Column>
                 <Column header="操作" style="width: 20%">
                   <template #body="{ data }">
-                    <div class="flex gap-2">
+                    <div class="admin-card-actions">
                       <Button
                         icon="pi pi-pencil"
                         severity="warning"
                         size="small"
                         @click="openNotificationEditDialog(data)"
                         label="編輯"
+                        aria-label="編輯公告"
+                        title="編輯公告"
                       />
                       <Button
                         icon="pi pi-trash"
@@ -402,11 +672,58 @@
                         size="small"
                         @click="confirmDeleteNotification(data)"
                         label="刪除"
+                        aria-label="刪除公告"
+                        title="刪除公告"
                       />
                     </div>
                   </template>
                 </Column>
               </DataTable>
+              <div v-if="!notificationsLoading" class="admin-mobile-list admin-mobile-list--notifications">
+                <article
+                  v-for="notification in filteredNotifications"
+                  :key="notification.id"
+                  class="admin-mobile-card admin-announcement-card"
+                >
+                  <section class="admin-card-primary">
+                    <strong class="admin-card-title">{{ notification.title }}</strong>
+                  </section>
+                  <section class="admin-card-meta">
+                    <Tag :severity="getNotificationSeverity(notification.severity)">
+                      {{ getNotificationSeverityLabel(notification.severity) }}
+                    </Tag>
+                    <Tag :severity="notification.is_active ? 'success' : 'secondary'">
+                      {{ notification.is_active ? '啟用中' : '已停用' }}
+                    </Tag>
+                    <Tag :severity="isNotificationEffective(notification) ? 'success' : 'secondary'">
+                      {{ isNotificationEffective(notification) ? '生效中' : '未生效' }}
+                    </Tag>
+                    <span class="admin-card-meta-text">
+                      {{ formatNotificationDate(notification.updated_at || notification.created_at) }}
+                    </span>
+                  </section>
+                  <section class="admin-card-actions admin-mobile-card-actions">
+                    <Button
+                      icon="pi pi-pencil"
+                      severity="warning"
+                      size="small"
+                      @click="openNotificationEditDialog(notification)"
+                      label="編輯"
+                      aria-label="編輯公告"
+                      title="編輯公告"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      @click="confirmDeleteNotification(notification)"
+                      label="刪除"
+                      aria-label="刪除公告"
+                      title="刪除公告"
+                    />
+                  </section>
+                </article>
+              </div>
             </div>
           </TabPanel>
 
@@ -417,33 +734,59 @@
                   <h3>新課程 / 新分類考古申請</h3>
                   <Button icon="pi pi-refresh" label="重新整理" size="small" outlined @click="loadReviewItems" />
                 </div>
-                <DataTable :value="newCourseArchiveRequests" :loading="reviewLoading" tableStyle="min-width: 60rem">
-                  <Column field="subject" header="課程" />
+                <DataTable
+                  :value="newCourseArchiveRequests"
+                  :loading="reviewLoading"
+                  class="admin-data-table review-request-table review-request-table--new"
+                  tableStyle="min-width: 60rem"
+                  responsiveLayout="stack"
+                  breakpoint="768px"
+                >
+                  <Column field="subject" header="課程">
+                    <template #body="{ data }">
+                      <span class="mobile-primary-text review-card-title">{{ data.subject }}</span>
+                    </template>
+                  </Column>
                   <Column header="投稿類型">
                     <template #body="{ data }">
-                      <Tag :severity="getArchiveSubmissionKindSeverity(data)">
+                      <Tag class="review-card-chip" :severity="getArchiveSubmissionKindSeverity(data)">
                         {{ getArchiveSubmissionKind(data) }}
                       </Tag>
                     </template>
                   </Column>
-                  <Column field="name" header="考試名稱" />
-                  <Column field="professor" header="授課教師" />
+                  <Column field="name" header="考試名稱">
+                    <template #body="{ data }">
+                      <span class="mobile-metadata-text review-card-meta-text">{{ data.name }}</span>
+                    </template>
+                  </Column>
+                  <Column field="professor" header="授課教師">
+                    <template #body="{ data }">
+                      <span class="mobile-metadata-text review-card-meta-text">{{ data.professor }}</span>
+                    </template>
+                  </Column>
                   <Column field="academic_year" header="學期">
-                    <template #body="{ data }">{{ formatAcademicTerm(data.academic_year) }}</template>
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatAcademicTerm(data.academic_year) }}</span>
+                    </template>
                   </Column>
                   <Column field="status" header="狀態">
                     <template #body="{ data }">
-                      <Tag :severity="getSubmissionSeverity(data.status)">
+                      <Tag
+                        :class="['review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
+                        :severity="getSubmissionSeverity(data.status)"
+                      >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
                     </template>
                   </Column>
                   <Column header="操作">
                     <template #body="{ data }">
-	                      <div class="flex gap-2">
+	                      <div class="admin-card-actions review-card-actions">
 	                        <Button
 	                          label="查看/編輯"
 	                          icon="pi pi-search"
+                            aria-label="查看/編輯"
+                            title="查看/編輯"
 	                          size="small"
 	                          severity="secondary"
 	                          outlined
@@ -452,13 +795,17 @@
 	                        <Button
 	                          label="通過"
                           icon="pi pi-check"
+                          aria-label="通過"
+                          title="通過"
                           size="small"
                           severity="success"
                           @click="reviewArchiveSubmission(data.id, 'approve')"
                         />
                         <Button
                           label="退回"
-                          icon="pi pi-times"
+                          icon="pi pi-ban"
+                          aria-label="退回"
+                          title="退回"
                           size="small"
                           severity="danger"
                           outlined
@@ -467,6 +814,8 @@
                         <Button
                           label="刪除"
                           icon="pi pi-trash"
+                          aria-label="刪除"
+                          title="刪除"
                           size="small"
                           severity="danger"
                           text
@@ -482,26 +831,52 @@
                 <div class="review-section-header">
                   <h3>既有課程考古申請</h3>
                 </div>
-                <DataTable :value="existingCourseArchiveRequests" :loading="reviewLoading" tableStyle="min-width: 60rem">
-                  <Column field="subject" header="課程" />
-                  <Column field="name" header="考試名稱" />
-                  <Column field="professor" header="授課教師" />
+                <DataTable
+                  :value="existingCourseArchiveRequests"
+                  :loading="reviewLoading"
+                  class="admin-data-table review-request-table"
+                  tableStyle="min-width: 60rem"
+                  responsiveLayout="stack"
+                  breakpoint="768px"
+                >
+                  <Column field="subject" header="課程">
+                    <template #body="{ data }">
+                      <span class="mobile-primary-text review-card-title">{{ data.subject }}</span>
+                    </template>
+                  </Column>
+                  <Column field="name" header="考試名稱">
+                    <template #body="{ data }">
+                      <span class="mobile-metadata-text review-card-meta-text">{{ data.name }}</span>
+                    </template>
+                  </Column>
+                  <Column field="professor" header="授課教師">
+                    <template #body="{ data }">
+                      <span class="mobile-metadata-text review-card-meta-text">{{ data.professor }}</span>
+                    </template>
+                  </Column>
                   <Column field="academic_year" header="學期">
-                    <template #body="{ data }">{{ formatAcademicTerm(data.academic_year) }}</template>
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatAcademicTerm(data.academic_year) }}</span>
+                    </template>
                   </Column>
                   <Column field="status" header="狀態">
                     <template #body="{ data }">
-                      <Tag :severity="getSubmissionSeverity(data.status)">
+                      <Tag
+                        :class="['review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
+                        :severity="getSubmissionSeverity(data.status)"
+                      >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
                     </template>
                   </Column>
                   <Column header="操作">
                     <template #body="{ data }">
-                      <div class="flex gap-2">
+                      <div class="admin-card-actions review-card-actions">
                         <Button
                           label="查看/編輯"
                           icon="pi pi-search"
+                          aria-label="查看/編輯"
+                          title="查看/編輯"
                           size="small"
                           severity="secondary"
                           outlined
@@ -510,13 +885,17 @@
                         <Button
                           label="通過"
                           icon="pi pi-check"
+                          aria-label="通過"
+                          title="通過"
                           size="small"
                           severity="success"
                           @click="reviewArchiveSubmission(data.id, 'approve')"
                         />
                         <Button
                           label="退回"
-                          icon="pi pi-times"
+                          icon="pi pi-ban"
+                          aria-label="退回"
+                          title="退回"
                           size="small"
                           severity="danger"
                           outlined
@@ -525,6 +904,8 @@
                         <Button
                           label="刪除"
                           icon="pi pi-trash"
+                          aria-label="刪除"
+                          title="刪除"
                           size="small"
                           severity="danger"
                           text
@@ -732,7 +1113,13 @@
           <div v-else-if="comparisonArchives.length === 0" class="text-sm text-500">
             沒有找到相同課程、學期與類型的既有考古題。
           </div>
-          <DataTable v-else :value="comparisonArchives" tableStyle="min-width: 36rem">
+          <DataTable
+            v-else
+            :value="comparisonArchives"
+            tableStyle="min-width: 36rem"
+            responsiveLayout="stack"
+            breakpoint="768px"
+          >
             <Column field="name" header="考試名稱" />
             <Column field="professor" header="授課教師" />
             <Column field="academic_year" header="學期">
@@ -774,15 +1161,29 @@
               {{ item.title }}
               <small>投稿：{{ item.requester }}</small>
             </span>
-            <Tag :severity="getSubmissionSeverity(item.status)">{{ getSubmissionLabel(item.status) }}</Tag>
+            <Tag
+              :class="['review-status-chip', getSubmissionStatusClass(item.status)]"
+              :severity="getSubmissionSeverity(item.status)"
+            >
+              {{ getSubmissionLabel(item.status) }}
+            </Tag>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 mt-4">
-          <Button label="關閉" severity="secondary" outlined @click="showArchiveRequestDialog = false" />
+        <div class="flex justify-end gap-2 mt-4 review-dialog-actions">
+          <Button
+            class="review-close-action"
+            label="關閉"
+            icon="pi pi-times"
+            aria-label="關閉"
+            severity="secondary"
+            outlined
+            @click="showArchiveRequestDialog = false"
+          />
           <Button
             label="預覽 PDF"
             icon="pi pi-eye"
+            aria-label="預覽 PDF"
             severity="secondary"
             outlined
             :loading="archiveRequestPreviewLoading"
@@ -791,6 +1192,7 @@
           <Button
             label="儲存修改"
             icon="pi pi-save"
+            aria-label="儲存修改"
             :disabled="!canEditSelectedArchiveRequest"
             :loading="reviewEditLoading"
             @click="saveArchiveRequestEdit"
@@ -798,13 +1200,15 @@
           <Button
             label="通過"
             icon="pi pi-check"
+            aria-label="通過"
             severity="success"
             :disabled="!canEditSelectedArchiveRequest"
             @click="reviewArchiveSubmission(selectedArchiveRequest.id, 'approve')"
           />
           <Button
             label="退回"
-            icon="pi pi-times"
+            icon="pi pi-ban"
+            aria-label="退回"
             severity="danger"
             outlined
             :disabled="!canEditSelectedArchiveRequest"
@@ -813,6 +1217,7 @@
           <Button
             label="刪除"
             icon="pi pi-trash"
+            aria-label="刪除"
             severity="danger"
             text
             :disabled="!selectedArchiveRequest"
@@ -1350,6 +1755,13 @@ const getSubmissionSeverity = (status) => {
   if (normalized === 'approved') return 'success'
   if (normalized === 'rejected') return 'danger'
   return 'warning'
+}
+
+const getSubmissionStatusClass = (status) => {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'approved') return 'review-status-approved'
+  if (normalized === 'rejected') return 'review-status-rejected'
+  return 'review-status-pending'
 }
 
 const getArchiveSubmissionKind = (item) => {
@@ -2544,14 +2956,28 @@ onBeforeUnmount(() => {
 <style scoped>
 .admin-container {
   background: var(--p-tabs-tabpanel-background);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .card {
   background-color: var(--bg-primary);
+  min-width: 0;
+  max-width: 100%;
 }
 
 :deep(.p-tabs) {
   background: var(--p-tabs-tabpanel-background);
+  min-width: 0;
+  max-width: 100%;
+}
+
+:deep(.p-tabpanels),
+:deep(.p-tabpanel) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 :deep(.p-tabview-header) {
@@ -2565,6 +2991,14 @@ onBeforeUnmount(() => {
 
 :deep(.p-datatable) {
   background: var(--bg-primary);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+:deep(.p-datatable-table-container) {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 :deep(.p-datatable-thead > tr > th) {
@@ -2645,6 +3079,24 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
 }
 
+:deep(.review-status-chip.review-status-pending) {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.42);
+}
+
+:deep(.review-status-chip.review-status-approved) {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.38);
+}
+
+:deep(.review-status-chip.review-status-rejected) {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.38);
+}
+
 .compare-preview-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -2694,64 +3146,967 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
 }
 
+.category-name-mobile,
+.category-key-mobile,
+.category-key-mobile-inline {
+  display: none;
+}
+
+.category-name-desktop {
+  display: inline;
+}
+
+.category-key-desktop {
+  display: inline;
+}
+
+.mobile-primary-text,
+.mobile-long-text,
+.mobile-metadata-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-mobile-card {
+  display: none;
+}
+
+.admin-mobile-list {
+  display: none;
+}
+
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
-  :deep(.p-dialog .p-dialog-content) {
-    font-size: 0.875rem;
+  .admin-container {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    overflow-x: hidden;
   }
 
-  :deep(.p-dialog .p-dialog-header) {
-    font-size: 1rem;
+  :deep(.p-tablist),
+  :deep(.p-tablist-content),
+  :deep(.p-tablist-tab-list) {
+    overflow-x: auto;
+    scrollbar-width: thin;
   }
 
-  :deep(.p-dialog label) {
-    font-size: 0.875rem;
+  :deep(.p-tab) {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
-  :deep(.p-dialog .p-inputtext) {
-    font-size: 0.875rem;
-  }
-
-  :deep(.p-dialog .p-button) {
-    font-size: 0.875rem;
-    padding: 0.5rem 0.75rem;
-  }
-
-  :deep(.p-dialog .p-dropdown-label),
-  :deep(.p-dialog .p-password-input) {
-    font-size: 0.875rem;
-  }
-
-  :deep(.p-dialog .p-checkbox-label) {
-    font-size: 0.875rem;
-  }
-
-  /* Table adjustments for mobile */
   :deep(.p-datatable) {
     font-size: 0.875rem;
     overflow-x: auto;
+    border-radius: 8px;
+    max-width: 100%;
+  }
+
+  :deep(.p-datatable-table-container) {
+    overflow-x: visible !important;
+    max-height: none !important;
   }
 
   :deep(.p-datatable-table) {
-    min-width: 600px;
+    display: block;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  :deep(.p-datatable-thead) {
+    display: none;
+  }
+
+  :deep(.p-datatable-tbody) {
+    display: block;
+  }
+
+  :deep(.p-datatable-tbody > tr) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.45rem;
+    width: 100%;
+    margin-bottom: 0.65rem;
+    padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  :deep(.p-datatable .p-datatable-tbody > tr > td) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  :deep(.p-datatable .p-datatable-tbody > tr > td .p-column-title) {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  :deep(.p-datatable .p-column-title + *) {
     width: 100%;
   }
 
-  :deep(.p-datatable .p-datatable-thead > tr > th),
-  :deep(.p-datatable .p-datatable-tbody > tr > td) {
+  :deep(.p-datatable .p-tag) {
+    width: fit-content;
+    max-width: 100%;
     white-space: nowrap;
   }
 
-  :deep(.p-datatable .p-button) {
+  .mobile-card-order {
+    width: auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .mobile-card-order .w-2rem {
+    width: auto !important;
+    min-width: 1.25rem;
+    text-align: center;
+  }
+
+  :deep(.mobile-card-order .p-button) {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+  }
+
+  :deep(.course-management-table .p-column-title),
+  :deep(.category-management-table .p-column-title) {
+    display: none !important;
+  }
+
+  :deep(.course-management-table .p-datatable-tbody > tr),
+  :deep(.category-management-table .p-datatable-tbody > tr) {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.55rem;
+    padding: 0.9rem;
+  }
+
+  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(1)) {
+    align-self: stretch;
+  }
+
+  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(2)) {
+    align-self: stretch;
+  }
+
+  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(3)) {
+    align-self: stretch;
+  }
+
+  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(4)) {
+    display: none;
+  }
+
+  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(5)) {
+    align-self: stretch;
+  }
+
+  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(6)) {
+    align-self: stretch;
+  }
+
+  :deep(.course-management-table .p-datatable-tbody > tr > td),
+  :deep(.category-management-table .p-datatable-tbody > tr > td) {
+    grid-area: auto;
+    align-self: stretch;
+  }
+
+  .category-name-desktop,
+  .category-key-desktop {
+    display: none;
+  }
+
+  .category-name-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .category-mobile-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0.45rem;
+    width: 100%;
+  }
+
+  .category-mobile-title {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .category-key-mobile {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: flex-start;
+    max-width: 100%;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
+  }
+
+  .mobile-field-label {
+    display: block;
+    color: var(--accent-gold);
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: 0.04em;
     white-space: nowrap;
+  }
+
+  .mobile-field-value {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-primary-text,
+  .mobile-long-text,
+  .mobile-metadata-text {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    word-break: normal;
+  }
+
+  .mobile-primary-text {
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.35;
+    color: var(--text-primary);
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .mobile-long-text {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .mobile-metadata-text {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  :deep(.admin-desktop-data-table.user-management-table),
+  :deep(.admin-desktop-data-table.course-management-table),
+  :deep(.admin-desktop-data-table.category-management-table),
+  :deep(.admin-desktop-data-table.notification-management-table) {
+    display: none;
+  }
+
+  .admin-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list .admin-mobile-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.85rem;
+    box-sizing: border-box;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  .admin-mobile-list .admin-card-primary {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list .admin-card-title {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-mobile-list .admin-card-email {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 0.25rem;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-mobile-list .admin-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list .admin-card-meta-text {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  :deep(.admin-mobile-list .p-tag) {
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--categories .admin-category-card {
+    gap: 0.7rem;
+  }
+
+  .category-card-topline {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .category-card-order {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  :deep(.category-card-topline .p-button) {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  :deep(.category-card-topline .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+  .category-card-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .category-card-title {
+    display: block;
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .category-card-key {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    gap: 0.1rem;
+    align-items: flex-start;
+    max-width: 48%;
+    padding: 0.32rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
+  }
+
+  .category-card-key-label {
+    color: var(--accent-gold);
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .category-card-key-value {
+    max-width: 100%;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .category-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list.admin-mobile-list--categories .admin-mobile-card-actions.category-card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(44px, 1fr));
+    gap: 0.5rem;
+    width: 100%;
+    align-items: center;
+  }
+
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button-label) {
+    display: none;
+  }
+
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button) {
+    width: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .admin-mobile-list--courses .admin-course-card {
+    gap: 0.7rem;
+  }
+
+  .course-card-topline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .course-card-order {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  :deep(.course-card-topline .p-button) {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  :deep(.course-card-topline .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+  :deep(.course-card-category) {
+    width: fit-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .course-card-primary {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .course-card-title {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-mobile-list .admin-mobile-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button-label) {
+    display: none;
+  }
+
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+  :deep(.admin-mobile-list .admin-mobile-card-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.65rem;
+    justify-content: center;
+  }
+
+  :deep(.user-management-table .p-column-title),
+  :deep(.notification-management-table .p-column-title) {
+    display: none !important;
+  }
+
+  :deep(.user-management-table .p-datatable-tbody > tr),
+  :deep(.notification-management-table .p-datatable-tbody > tr) {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.7rem;
+    padding: 1rem;
+  }
+
+  :deep(.user-management-table .p-datatable-tbody > tr > td:nth-child(1)),
+  :deep(.notification-management-table .p-datatable-tbody > tr > td:nth-child(1)) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.user-management-table .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(.user-management-table .p-datatable-tbody > tr > td:nth-child(3)),
+  :deep(.user-management-table .p-datatable-tbody > tr > td:nth-child(4)),
+  :deep(.user-management-table .p-datatable-tbody > tr > td:nth-child(5)),
+  :deep(.notification-management-table .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(.notification-management-table .p-datatable-tbody > tr > td:nth-child(3)),
+  :deep(.notification-management-table .p-datatable-tbody > tr > td:nth-child(4)),
+  :deep(.notification-management-table .p-datatable-tbody > tr > td:nth-child(5)) {
+    display: none;
+  }
+
+  :deep(.user-management-table .p-datatable-tbody > tr > td:last-child),
+  :deep(.notification-management-table .p-datatable-tbody > tr > td:last-child) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.user-management-table .admin-desktop-cell),
+  :deep(.notification-management-table .admin-desktop-cell) {
+    display: none;
+  }
+
+  .admin-mobile-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.75rem;
+    box-sizing: border-box;
+  }
+
+  :deep(.user-management-table .admin-mobile-card),
+  :deep(.notification-management-table .admin-mobile-card) {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-card-primary {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-card-title {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-card-email {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 0.25rem;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-card-meta-text {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  :deep(.user-management-table .admin-card-actions),
+  :deep(.notification-management-table .admin-card-actions) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  :deep(.user-management-table .admin-card-actions .p-button),
+  :deep(.notification-management-table .admin-card-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.6rem;
+  }
+
+  .admin-card-actions {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: stretch;
+  }
+
+  :deep(.admin-card-actions .p-button) {
+    width: auto;
+    min-width: 7rem;
+    min-height: 2.35rem;
+    justify-content: center;
+  }
+
+  :deep(.course-management-table .admin-card-actions),
+  :deep(.category-management-table .admin-card-actions) {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  :deep(.course-management-table .admin-card-actions .p-button),
+  :deep(.category-management-table .admin-card-actions .p-button) {
+    min-width: 2.45rem;
+    width: 2.45rem;
+    height: 2.45rem;
+    padding-inline: 0;
+  }
+
+  :deep(.course-management-table .admin-card-actions .p-button-label),
+  :deep(.category-management-table .admin-card-actions .p-button-label) {
+    display: none;
+  }
+
+  :deep(.course-management-table .admin-card-actions .pi),
+  :deep(.category-management-table .admin-card-actions .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+  :deep(.p-datatable .p-button) {
+    min-height: 2.25rem;
+    white-space: nowrap;
+  }
+
+  :deep(.p-datatable .p-button.p-button-icon-only) {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    flex-basis: 2.5rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+
+  :deep(.p-datatable-tbody > tr:last-child) {
+    margin-bottom: 0;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem 0.75rem;
+    padding: 0.9rem;
+    align-items: center;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr > td) {
+    width: 100%;
+    min-width: 0;
+    align-self: stretch;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr > td:first-child),
+  :deep(.review-request-table .p-datatable-tbody > tr > td:last-child) {
+    grid-column: 1 / -1;
+  }
+
+  :deep(.review-request-table .p-column-title) {
+    display: none !important;
+  }
+
+  :deep(.review-card-title) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  :deep(.review-card-meta-text) {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  :deep(.review-request-table .p-tag),
+  :deep(.review-card-chip) {
+    width: fit-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(1)) {
+    order: 1;
+    grid-column: 1 / -1;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(3)) {
+    order: 2;
+    grid-column: 1;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(4)) {
+    order: 3;
+    grid-column: 2;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(5)) {
+    order: 4;
+    grid-column: 1;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(2)) {
+    order: 5;
+    grid-column: 1;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(6)) {
+    order: 6;
+    grid-column: 2;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(7)) {
+    order: 7;
+    grid-column: 1 / -1;
+  }
+
+  :deep(.review-card-actions) {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(2.5rem, 1fr));
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  :deep(.review-card-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.5rem;
+    padding-inline: 0.4rem;
+    justify-content: center;
+  }
+
+  :deep(.review-card-actions .p-button-label) {
+    display: none;
+  }
+
+  :deep(.review-card-actions .pi) {
+    margin: 0;
+    line-height: 1;
   }
 
   :deep(.p-paginator) {
     font-size: 0.875rem;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+    max-width: 100%;
   }
 
   .compare-preview-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.admin-card-actions .p-button) {
+    min-width: 2.6rem;
+    width: 2.6rem;
+    padding-inline: 0.4rem;
+    justify-content: center;
+  }
+
+  :deep(.admin-card-actions .p-button .p-button-label) {
+    display: none;
+  }
+
+  :deep(.admin-card-actions .p-button .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+}
+
+@media (max-width: 600px) {
+  :deep(.admin-card-actions .p-button) {
+    min-width: 2.65rem;
+    width: 2.65rem;
+    min-height: 2.65rem;
+    padding-inline: 0.45rem;
+    justify-content: center;
+  }
+
+  :deep(.admin-card-actions .p-button .p-button-label) {
+    display: none;
+  }
+
+  :deep(.admin-card-actions .p-button .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+  :deep(.user-management-table .admin-card-actions),
+  :deep(.notification-management-table .admin-card-actions) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  :deep(.user-management-table .admin-card-actions .p-button),
+  :deep(.notification-management-table .admin-card-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.65rem;
+  }
+
+  :deep(.admin-mobile-list .admin-mobile-card-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.65rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .review-dialog-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    justify-content: stretch;
+  }
+
+  :deep(.review-dialog-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    padding-inline: 0.45rem;
+    justify-content: center;
+  }
+
+  :deep(.review-dialog-actions .p-button-label) {
+    display: none;
+  }
+
+  :deep(.review-dialog-actions .pi) {
+    margin: 0;
+    line-height: 1;
   }
 }
 
@@ -2773,6 +4128,14 @@ onBeforeUnmount(() => {
 
   :deep(.p-datatable .p-button) {
     white-space: nowrap;
+  }
+
+  :deep(.p-datatable .admin-card-actions),
+  :deep(.p-datatable .review-card-actions) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   /* Ensure buttons don't wrap on desktop */

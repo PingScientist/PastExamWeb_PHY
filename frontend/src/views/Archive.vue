@@ -81,7 +81,7 @@
         @update:visible="sidebarVisible = $event"
         class="mobile-drawer"
         position="left"
-        :style="{ width: '300px', maxWidth: '85vw' }"
+        :style="{ width: 'min(92vw, 24rem)' }"
         :autoFocus="false"
       >
         <template #header>
@@ -325,7 +325,10 @@
                 <div v-if="archiveSubmissions.length === 0" class="submission-empty">目前沒有考古題投稿</div>
                 <article v-for="item in archiveSubmissions" :key="`archive-${item.id}`" class="submission-status-card">
                   <div class="submission-status-head">
-                    <Tag :severity="getSubmissionSeverity(item.status)">
+                    <Tag
+                      :class="['submission-status-badge', getSubmissionStatusClass(item.status)]"
+                      :severity="getSubmissionSeverity(item.status)"
+                    >
                       {{ getSubmissionLabel(item.status) }}
                     </Tag>
                     <div class="submission-status-title">
@@ -898,6 +901,13 @@ function getSubmissionSeverity(status) {
   if (normalized === 'approved') return 'success'
   if (normalized === 'rejected') return 'danger'
   return 'warning'
+}
+
+function getSubmissionStatusClass(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'approved') return 'submission-status-approved'
+  if (normalized === 'rejected') return 'submission-status-rejected'
+  return 'submission-status-pending'
 }
 
 function getArchiveSubmissionKind(item) {
@@ -1691,20 +1701,32 @@ const mobileMenuItems = computed(() => {
   background: var(--bg-primary);
 }
 
-:deep(.p-sidebar) {
+.archive-screen,
+.archive-screen > .flex {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+:deep(.p-sidebar),
+:deep(.p-drawer) {
   padding: 0;
   background-color: var(--bg-primary);
   z-index: 2;
   border-right: 1px solid var(--border-color);
+  max-width: 100vw;
 }
 
-:deep(.p-sidebar-header) {
+:deep(.p-sidebar-header),
+:deep(.p-drawer-header) {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-primary);
 }
 
-:deep(.p-sidebar-content) {
+:deep(.p-sidebar-content),
+:deep(.p-drawer-content) {
   padding: 1rem;
   background-color: var(--bg-primary);
 }
@@ -1741,6 +1763,7 @@ const mobileMenuItems = computed(() => {
 .sidebar {
   width: 318px;
   min-width: 0;
+  max-width: min(318px, 100vw);
   background: #e4eee9;
   border: 0;
   border-right: 1px solid #c7d8d0;
@@ -1817,6 +1840,7 @@ const mobileMenuItems = computed(() => {
 .main-content {
   flex: 1 1 0%;
   min-width: 0;
+  max-width: 100%;
   background: transparent;
   height: 100%;
   display: flex;
@@ -2043,25 +2067,59 @@ const mobileMenuItems = computed(() => {
   }
 }
 
-:deep(.mobile-drawer .p-sidebar) {
+:deep(.mobile-drawer.p-drawer),
+:deep(.mobile-drawer .p-sidebar),
+:deep(.mobile-drawer .p-drawer) {
   z-index: 1000;
+  width: min(92vw, 24rem) !important;
+  max-width: 100vw;
+  background: #151719;
+  border-right: 1px solid rgba(214, 230, 223, 0.16);
 }
 
-:deep(.mobile-drawer .p-sidebar-content) {
-  padding: 1rem;
+:global(.mobile-drawer.p-drawer),
+:global(.mobile-drawer .p-drawer),
+:global(.mobile-drawer .p-sidebar) {
+  width: min(92vw, 24rem) !important;
+  max-width: 100vw;
+  background: #151719 !important;
+  color: rgba(239, 247, 238, 0.94) !important;
+  border-right: 1px solid rgba(214, 230, 223, 0.16);
+}
+
+:deep(.mobile-drawer .p-sidebar-content),
+:deep(.mobile-drawer .p-drawer-content) {
+  padding: 0.9rem;
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow-x: hidden;
+  background: #151719;
 }
 
-:deep(.mobile-drawer .p-sidebar-header) {
+:global(.mobile-drawer .p-drawer-content),
+:global(.mobile-drawer .p-sidebar-content) {
+  padding: 0.9rem !important;
+  overflow-x: hidden;
+  background: #151719 !important;
+}
+
+:deep(.mobile-drawer .p-sidebar-header),
+:deep(.mobile-drawer .p-drawer-header) {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-primary);
+  background-color: #151719;
   position: relative;
 }
 
-:deep(.mobile-drawer .p-sidebar-close) {
+:global(.mobile-drawer .p-drawer-header),
+:global(.mobile-drawer .p-sidebar-header) {
+  background: #151719 !important;
+  border-bottom: 1px solid rgba(214, 230, 223, 0.16);
+}
+
+:deep(.mobile-drawer .p-sidebar-close),
+:deep(.mobile-drawer .p-drawer-close-button) {
   position: absolute;
   top: 50%;
   right: 1rem;
@@ -2079,7 +2137,8 @@ const mobileMenuItems = computed(() => {
   transition: all 0.2s;
 }
 
-:deep(.mobile-drawer .p-sidebar-close:hover) {
+:deep(.mobile-drawer .p-sidebar-close:hover),
+:deep(.mobile-drawer .p-drawer-close-button:hover) {
   background: var(--highlight-bg);
 }
 
@@ -2087,6 +2146,8 @@ const mobileMenuItems = computed(() => {
 @media (max-width: 768px) {
   .main-content {
     width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
   }
 
   .subject-header {
@@ -2208,6 +2269,91 @@ const mobileMenuItems = computed(() => {
   }
 }
 
+@media (max-width: 768px) {
+  :deep(.mobile-drawer .p-panelmenu),
+  :deep(.mobile-drawer .p-panelmenu-panel),
+  :deep(.mobile-drawer .p-panelmenu-header-content),
+  :deep(.mobile-drawer .p-panelmenu-header),
+  :deep(.mobile-drawer .p-panelmenu-item-content),
+  :deep(.mobile-drawer .p-panelmenu-content) {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    border-color: rgba(214, 230, 223, 0.16);
+    background: #111816 !important;
+  }
+
+  :global(.mobile-drawer .p-panelmenu),
+  :global(.mobile-drawer .p-panelmenu-panel),
+  :global(.mobile-drawer .p-panelmenu-header),
+  :global(.mobile-drawer .p-panelmenu-header-content),
+  :global(.mobile-drawer .p-panelmenu-item-content),
+  :global(.mobile-drawer .p-panelmenu-content) {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    border-color: rgba(214, 230, 223, 0.16) !important;
+    background: #111816 !important;
+  }
+
+  :deep(.mobile-drawer .p-panelmenu-panel) {
+    margin-bottom: 0.75rem;
+    border-radius: 8px;
+  }
+
+  :global(.mobile-drawer .p-panelmenu-panel) {
+    margin-bottom: 0.75rem;
+    border-radius: 8px;
+    box-shadow: none !important;
+  }
+
+  :deep(.mobile-drawer .p-panelmenu-header-link),
+  :deep(.mobile-drawer .p-panelmenu-item-link) {
+    min-height: 3rem;
+    color: rgba(239, 247, 238, 0.9) !important;
+    background: #111816 !important;
+  }
+
+  :global(.mobile-drawer .p-panelmenu-header-link),
+  :global(.mobile-drawer .p-panelmenu-item-link) {
+    min-height: 3rem;
+    color: rgba(239, 247, 238, 0.92) !important;
+    background: #111816 !important;
+  }
+
+  :deep(.mobile-drawer .p-panelmenu-header-link:hover),
+  :deep(.mobile-drawer .p-panelmenu-item-link:hover) {
+    background: #172522 !important;
+  }
+
+  :deep(.mobile-drawer .p-panelmenu-header-label),
+  :deep(.mobile-drawer .p-panelmenu-item-label),
+  :deep(.mobile-drawer .p-panelmenu-header-icon),
+  :deep(.mobile-drawer .p-panelmenu-submenu-icon) {
+    color: rgba(239, 247, 238, 0.9) !important;
+  }
+
+  :global(.mobile-drawer .p-panelmenu-header-label),
+  :global(.mobile-drawer .p-panelmenu-item-label),
+  :global(.mobile-drawer .p-panelmenu-header-icon),
+  :global(.mobile-drawer .p-panelmenu-submenu-icon),
+  :global(.mobile-drawer .p-panelmenu-item-icon) {
+    color: rgba(239, 247, 238, 0.92) !important;
+  }
+
+  :deep(.mobile-drawer .p-inputtext) {
+    min-height: 3rem;
+    background: #080a0b;
+    color: rgba(239, 247, 238, 0.94);
+    border-color: rgba(214, 230, 223, 0.22);
+  }
+
+  .upload-section,
+  .admin-section {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
 /* Desktop table overflow handling */
 @media (min-width: 769px) {
   :deep(.p-accordioncontent-content .p-datatable) {
@@ -2315,6 +2461,24 @@ const mobileMenuItems = computed(() => {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+}
+
+:deep(.submission-status-badge.submission-status-pending) {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.42);
+}
+
+:deep(.submission-status-badge.submission-status-approved) {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.38);
+}
+
+:deep(.submission-status-badge.submission-status-rejected) {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.38);
 }
 
 .submission-status-title {

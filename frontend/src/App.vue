@@ -57,11 +57,22 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 #app {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 
 .navbar {
@@ -72,5 +83,14 @@ body,
 .content-container {
   height: calc(100vh - var(--navbar-height));
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@supports (height: 100svh) {
+  .content-container {
+    height: calc(100svh - var(--navbar-height));
+  }
 }
 </style>

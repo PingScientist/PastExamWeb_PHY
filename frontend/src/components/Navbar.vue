@@ -879,12 +879,14 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  min-width: 0;
 }
 
 .brand-lockup {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
   min-height: 3rem;
   padding: 0.2rem 0.45rem 0.2rem 0;
   border: 0;
@@ -918,6 +920,7 @@ export default {
 .brand-wordmark {
   display: grid;
   gap: 0.12rem;
+  min-width: 0;
 }
 
 .brand-title-main {
@@ -927,6 +930,7 @@ export default {
   letter-spacing: 0.08em;
   line-height: 1;
   text-shadow: none;
+  white-space: nowrap;
 }
 
 .navbar-dark .brand-title-main {
@@ -986,6 +990,7 @@ export default {
 
 :deep(.p-menubar) {
   width: 100%;
+  min-width: 0;
   padding: 0.42rem clamp(0.75rem, 1.6vw, 1.25rem);
   border: 0;
   background: transparent;
@@ -1097,5 +1102,62 @@ export default {
 
 :deep(.p-menubar *.p-highlight) {
   background: transparent !important;
+}
+
+@media (max-width: 640px) {
+  .nav-brand-cluster,
+  .nav-control-cluster {
+    gap: 0.4rem;
+  }
+
+  .brand-lockup {
+    gap: 0.55rem;
+    padding-right: 0;
+  }
+
+  .brand-mark-frame {
+    width: 2.15rem;
+    border-radius: 7px;
+  }
+
+  .brand-title-main {
+    max-width: 9.5rem;
+    overflow: hidden;
+    font-size: 0.92rem;
+    letter-spacing: 0.03em;
+    text-overflow: ellipsis;
+  }
+
+  .brand-title-sub {
+    max-width: 9.5rem;
+    overflow: hidden;
+    font-size: 0.48rem;
+    letter-spacing: 0.18em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .nav-action-group {
+    gap: 0.2rem !important;
+    padding-right: 0.35rem;
+  }
+
+  :deep(.p-menubar) {
+    padding: 0.35rem 0.55rem;
+  }
+
+  :deep(.p-button.p-button-text) {
+    width: 2.35rem;
+    min-width: 2.35rem;
+    height: 2.35rem;
+    padding: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-title-main,
+  .brand-title-sub {
+    max-width: 7.5rem;
+  }
 }
 </style>

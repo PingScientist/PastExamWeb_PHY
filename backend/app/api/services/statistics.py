@@ -21,7 +21,9 @@ async def get_system_statistics(db: AsyncSession = Depends(get_session)):
         )
         total_users = result.scalar()
 
-        result = await db.execute(select(func.count(Course.id)))
+        result = await db.execute(
+            select(func.count(Course.id)).where(Course.deleted_at.is_(None))
+        )
         total_courses = result.scalar()
 
         result = await db.execute(

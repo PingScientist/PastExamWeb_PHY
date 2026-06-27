@@ -1,7 +1,7 @@
 <template>
   <main class="physics-home" :class="{ 'physics-home-dark': isDarkTheme }">
     <div class="physics-board" aria-hidden="true">
-      <svg class="spacetime-mesh" viewBox="0 0 1200 760" preserveAspectRatio="none">
+      <svg class="spacetime-mesh" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid slice">
         <defs>
           <radialGradient id="gravity-well" cx="70%" cy="44%" r="42%">
             <stop offset="0%" stop-color="#aed1b8" stop-opacity="0.35" />
@@ -45,11 +45,10 @@
 
     <section class="hero-shell">
       <div class="hero-copy">
-        <p class="eyebrow">PHY Past Exam Archive</p>
+        <p class="eyebrow">PHY Archive</p>
         <div class="hero-title-lockup">
-          <h1>清大物理考古系統</h1>
-          <p class="title-roman">Physics &amp; Archaeology System</p>
-          <p class="title-campus"><span></span>NTHU<span></span></p>
+          <h1><span class="title-line">清大物理</span><span class="title-line">考古系統</span></h1>
+          <p class="title-campus"><span></span>NTHU PHYSICS<span></span></p>
         </div>
         <p class="subtitle">書卷沒有，考古這有。</p>
         <div class="hero-actions">
@@ -317,7 +316,8 @@ function formatNumber(num) {
 .hero-copy {
   position: relative;
   z-index: 1;
-  max-width: 42rem;
+  width: min(100%, 44rem);
+  max-width: 44rem;
   padding: clamp(1rem, 2vw, 1.5rem) 0;
 }
 
@@ -337,11 +337,17 @@ function formatNumber(num) {
 h1 {
   margin: 0;
   color: #edf7ed;
-  font-size: clamp(3rem, 4.2vw, 4.7rem);
+  font-size: clamp(2.85rem, 4.4vw, 4.85rem);
   font-weight: 780;
   line-height: 1.04;
   letter-spacing: 0.08em;
   text-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.22);
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.title-line {
+  display: inline;
 }
 
 .hero-title-lockup {
@@ -415,7 +421,7 @@ h1 {
   top: 0;
   left: 0;
   right: 0;
-  height: calc(100vh - var(--navbar-height));
+  height: 100%;
   min-height: 42rem;
   overflow: hidden;
   background:
@@ -747,6 +753,19 @@ h1 {
   text-transform: uppercase;
 }
 
+@media (min-width: 1101px) {
+  .hero-shell {
+    width: min(1280px, calc(100% - clamp(3rem, 8vw, 10rem)));
+  }
+
+  .dashboard-strip {
+    width: min(18.25rem, calc(100% - 2rem));
+    top: 50%;
+    right: max(clamp(2rem, 7vw, 7rem), calc((100% - 1280px) / 2));
+    transform: translateY(-45%);
+  }
+}
+
 .stat-card {
   display: flex;
   align-items: center;
@@ -943,6 +962,11 @@ h1 {
 }
 
 @media (max-width: 1100px) {
+  .hero-shell {
+    min-height: auto;
+    padding-bottom: 2rem;
+  }
+
   .dashboard-strip {
     position: relative;
     top: auto;
@@ -960,7 +984,7 @@ h1 {
 @media (max-width: 920px) {
   .hero-shell {
     align-items: flex-start;
-    padding-top: clamp(2rem, 7vh, 5rem);
+    padding-top: clamp(2.5rem, 8vh, 5rem);
   }
 
   .physics-board {
@@ -987,18 +1011,99 @@ h1 {
 }
 
 @media (max-width: 560px) {
+  .physics-home {
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
   .hero-shell {
-    width: min(100% - 1rem, 1180px);
+    width: min(100% - 2rem, 1180px);
+    padding-top: 1.35rem;
+    padding-bottom: 0.9rem;
+    justify-content: center;
+  }
+
+  .hero-copy {
+    width: 100%;
+    padding-top: 0.25rem;
+    margin: 0 auto;
+    text-align: center;
+    justify-items: center;
+  }
+
+  .eyebrow {
+    margin-bottom: 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  h1 {
+    max-width: min(100%, 7.2em);
+    font-size: clamp(2.08rem, 10.4vw, 2.85rem);
+    line-height: 1.08;
+    letter-spacing: 0.03em;
+    margin-inline: auto;
+  }
+
+  .title-line {
+    display: block;
+  }
+
+  .title-roman {
+    max-width: min(100%, 18rem);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    line-height: 1.45;
+    margin-inline: auto;
+  }
+
+  .title-campus {
+    width: min(100%, 18rem);
+    gap: 0.55rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.34em;
+    text-indent: 0.34em;
+    margin-inline: auto;
+  }
+
+  .subtitle {
+    margin-top: 1.1rem;
+    margin-inline: auto;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .hero-actions {
+    gap: 0.65rem;
+    margin-top: 1.25rem;
+    width: min(100%, 23rem);
+    margin-inline: auto;
   }
 
   .hero-actions :deep(.p-button) {
     width: 100%;
+    justify-content: center;
+    min-height: 2.85rem;
+    font-size: 0.95rem;
+  }
+
+  .physics-board {
+    min-height: 100%;
+    width: 100%;
+    max-width: 100%;
+    contain: paint;
   }
 
   .spacetime-mesh {
-    inset: 4% -35% 0 -22%;
-    width: 150%;
-    opacity: 0.52;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.48;
+    transform: scale(1.2);
+  }
+
+  .formula-cloud {
+    inset: 0;
+    overflow: hidden;
   }
 
   .theory-card {
@@ -1048,7 +1153,14 @@ h1 {
 
   .dashboard-strip {
     grid-template-columns: 1fr;
-    width: min(100% - 1rem, 1180px);
+    width: min(100% - 2rem, 1180px);
+    gap: 0.65rem;
+    margin: 0 auto 1rem;
+  }
+
+  .stat-card {
+    min-height: 3.7rem;
+    padding: 0.65rem 0.75rem;
   }
 }
 </style>
