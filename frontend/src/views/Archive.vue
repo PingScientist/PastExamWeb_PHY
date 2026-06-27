@@ -79,10 +79,17 @@
         v-if="isMobile"
         :visible="sidebarVisible"
         @update:visible="sidebarVisible = $event"
-        class="mobile-drawer"
+        :class="['mobile-drawer', { 'mobile-drawer-dark': isDarkTheme }]"
         position="left"
-        :style="{ width: 'min(92vw, 24rem)' }"
+        :style="{ width: 'min(100vw, 26rem)' }"
         :autoFocus="false"
+        :pt="{
+          mask: {
+            class: isDarkTheme
+              ? 'mobile-drawer-mask mobile-drawer-mask-dark'
+              : 'mobile-drawer-mask',
+          },
+        }"
       >
         <template #header>
           <div class="flex justify-content-between align-items-center w-full">
@@ -127,6 +134,28 @@
               </div>
             </div>
             <PanelMenu v-else :model="mobileMenuItems" multiple class="w-full" />
+          </div>
+
+          <div v-if="isAuthenticatedRef" class="upload-section mobile-upload-section">
+            <div class="upload-actions">
+              <Button
+                icon="pi pi-cloud-upload"
+                label="上傳考古"
+                severity="success"
+                @click="openUploadFromMobileMenu"
+                class="w-full"
+                size="small"
+              />
+              <Button
+                icon="pi pi-list-check"
+                label="我的投稿狀態"
+                severity="secondary"
+                outlined
+                @click="openSubmissionStatusFromMobileMenu"
+                class="w-full"
+                size="small"
+              />
+            </div>
           </div>
         </div>
       </Drawer>
@@ -938,6 +967,16 @@ async function loadSubmissionStatus() {
 async function openSubmissionStatus() {
   showSubmissionStatusDialog.value = true
   await loadSubmissionStatus()
+}
+
+function openUploadFromMobileMenu() {
+  sidebarVisible.value = false
+  showUploadDialog.value = true
+}
+
+async function openSubmissionStatusFromMobileMenu() {
+  sidebarVisible.value = false
+  await openSubmissionStatus()
 }
 
 function filterBySubject(course) {
@@ -2071,20 +2110,39 @@ const mobileMenuItems = computed(() => {
 :deep(.mobile-drawer .p-sidebar),
 :deep(.mobile-drawer .p-drawer) {
   z-index: 1000;
-  width: min(92vw, 24rem) !important;
+  width: min(100vw, 26rem) !important;
   max-width: 100vw;
-  background: #151719;
-  border-right: 1px solid rgba(214, 230, 223, 0.16);
+  background: #f5f8f1;
+  border-right: 1px solid rgba(88, 126, 106, 0.22);
 }
 
 :global(.mobile-drawer.p-drawer),
 :global(.mobile-drawer .p-drawer),
 :global(.mobile-drawer .p-sidebar) {
-  width: min(92vw, 24rem) !important;
+  width: min(100vw, 26rem) !important;
   max-width: 100vw;
-  background: #151719 !important;
+  background: #f5f8f1 !important;
+  color: #17382f !important;
+  border-right: 1px solid rgba(88, 126, 106, 0.22);
+  box-shadow: 0 1.5rem 3.5rem rgba(42, 68, 54, 0.18);
+}
+
+:global(.mobile-drawer.mobile-drawer-dark.p-drawer),
+:global(.mobile-drawer.mobile-drawer-dark .p-drawer),
+:global(.mobile-drawer.mobile-drawer-dark .p-sidebar) {
+  background: #101916 !important;
   color: rgba(239, 247, 238, 0.94) !important;
-  border-right: 1px solid rgba(214, 230, 223, 0.16);
+  border-right-color: rgba(214, 230, 223, 0.16);
+  box-shadow: 0 1.5rem 3.5rem rgba(0, 0, 0, 0.38);
+}
+
+:global(.mobile-drawer-mask) {
+  background: rgba(31, 54, 45, 0.2) !important;
+  backdrop-filter: blur(2px);
+}
+
+:global(.mobile-drawer-mask-dark) {
+  background: rgba(2, 8, 7, 0.54) !important;
 }
 
 :deep(.mobile-drawer .p-sidebar-content),
@@ -2094,28 +2152,47 @@ const mobileMenuItems = computed(() => {
   flex-direction: column;
   height: 100%;
   overflow-x: hidden;
-  background: #151719;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(202, 179, 111, 0.14), transparent 9rem),
+    linear-gradient(180deg, #fbfaf3 0%, #eef6f1 100%);
 }
 
 :global(.mobile-drawer .p-drawer-content),
 :global(.mobile-drawer .p-sidebar-content) {
   padding: 0.9rem !important;
   overflow-x: hidden;
-  background: #151719 !important;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(202, 179, 111, 0.14), transparent 9rem),
+    linear-gradient(180deg, #fbfaf3 0%, #eef6f1 100%) !important;
+}
+
+:global(.mobile-drawer.mobile-drawer-dark .p-drawer-content),
+:global(.mobile-drawer.mobile-drawer-dark .p-sidebar-content) {
+  background:
+    radial-gradient(circle at 78% 8%, rgba(202, 179, 111, 0.12), transparent 9rem),
+    linear-gradient(180deg, #101916 0%, #0b1512 100%) !important;
 }
 
 :deep(.mobile-drawer .p-sidebar-header),
 :deep(.mobile-drawer .p-drawer-header) {
   padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  background-color: #151719;
+  border-bottom: 1px solid rgba(88, 126, 106, 0.2);
+  background-color: #fbfaf3;
   position: relative;
 }
 
 :global(.mobile-drawer .p-drawer-header),
 :global(.mobile-drawer .p-sidebar-header) {
-  background: #151719 !important;
-  border-bottom: 1px solid rgba(214, 230, 223, 0.16);
+  background: #fbfaf3 !important;
+  border-bottom: 1px solid rgba(88, 126, 106, 0.2);
+  color: #17382f !important;
+}
+
+:global(.mobile-drawer.mobile-drawer-dark .p-drawer-header),
+:global(.mobile-drawer.mobile-drawer-dark .p-sidebar-header) {
+  background: #101916 !important;
+  border-bottom-color: rgba(214, 230, 223, 0.16);
+  color: rgba(239, 247, 238, 0.94) !important;
 }
 
 :deep(.mobile-drawer .p-sidebar-close),
@@ -2130,16 +2207,52 @@ const mobileMenuItems = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(88, 126, 106, 0.24);
+  color: #17382f;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 :deep(.mobile-drawer .p-sidebar-close:hover),
 :deep(.mobile-drawer .p-drawer-close-button:hover) {
-  background: var(--highlight-bg);
+  background: rgba(225, 238, 229, 0.86);
+}
+
+:global(.mobile-drawer.mobile-drawer-dark .p-drawer-close-button),
+:global(.mobile-drawer.mobile-drawer-dark .p-sidebar-close) {
+  background: rgba(214, 230, 223, 0.06);
+  border-color: rgba(214, 230, 223, 0.16);
+  color: rgba(239, 247, 238, 0.94);
+}
+
+:global(.mobile-drawer.mobile-drawer-dark .p-drawer-close-button:hover),
+:global(.mobile-drawer.mobile-drawer-dark .p-sidebar-close:hover) {
+  background: rgba(214, 230, 223, 0.12);
+}
+
+.mobile-upload-section {
+  margin: 0 -0.9rem -0.9rem;
+  padding: 0.9rem;
+  padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+}
+
+:global(.mobile-drawer.mobile-drawer-dark .mobile-upload-section) {
+  background: #0b1714 !important;
+  border-top: 1px solid #22342f !important;
+  box-shadow: 0 -1px 0 rgba(214, 230, 223, 0.04);
+}
+
+:global(.mobile-drawer.mobile-drawer-dark .mobile-upload-section .p-button.p-button-secondary.p-button-outlined) {
+  background: rgba(214, 230, 223, 0.06) !important;
+  border-color: rgba(214, 230, 223, 0.28) !important;
+  color: rgba(239, 247, 238, 0.92) !important;
+}
+
+:global(.mobile-drawer.mobile-drawer-dark .mobile-upload-section .p-button.p-button-secondary.p-button-outlined:hover) {
+  background: rgba(214, 230, 223, 0.12) !important;
+  border-color: rgba(214, 230, 223, 0.4) !important;
+  color: #f4fbf4 !important;
 }
 
 /* Ensure proper mobile responsiveness */
@@ -2279,8 +2392,8 @@ const mobileMenuItems = computed(() => {
     width: 100%;
     max-width: 100%;
     overflow: hidden;
-    border-color: rgba(214, 230, 223, 0.16);
-    background: #111816 !important;
+    border-color: rgba(88, 126, 106, 0.2);
+    background: #f8fbf6 !important;
   }
 
   :global(.mobile-drawer .p-panelmenu),
@@ -2292,8 +2405,8 @@ const mobileMenuItems = computed(() => {
     width: 100%;
     max-width: 100%;
     overflow: hidden;
-    border-color: rgba(214, 230, 223, 0.16) !important;
-    background: #111816 !important;
+    border-color: rgba(88, 126, 106, 0.2) !important;
+    background: #f8fbf6 !important;
   }
 
   :deep(.mobile-drawer .p-panelmenu-panel) {
@@ -2310,27 +2423,27 @@ const mobileMenuItems = computed(() => {
   :deep(.mobile-drawer .p-panelmenu-header-link),
   :deep(.mobile-drawer .p-panelmenu-item-link) {
     min-height: 3rem;
-    color: rgba(239, 247, 238, 0.9) !important;
-    background: #111816 !important;
+    color: #17382f !important;
+    background: #f8fbf6 !important;
   }
 
   :global(.mobile-drawer .p-panelmenu-header-link),
   :global(.mobile-drawer .p-panelmenu-item-link) {
     min-height: 3rem;
-    color: rgba(239, 247, 238, 0.92) !important;
-    background: #111816 !important;
+    color: #17382f !important;
+    background: #f8fbf6 !important;
   }
 
   :deep(.mobile-drawer .p-panelmenu-header-link:hover),
   :deep(.mobile-drawer .p-panelmenu-item-link:hover) {
-    background: #172522 !important;
+    background: #edf6f1 !important;
   }
 
   :deep(.mobile-drawer .p-panelmenu-header-label),
   :deep(.mobile-drawer .p-panelmenu-item-label),
   :deep(.mobile-drawer .p-panelmenu-header-icon),
   :deep(.mobile-drawer .p-panelmenu-submenu-icon) {
-    color: rgba(239, 247, 238, 0.9) !important;
+    color: #17382f !important;
   }
 
   :global(.mobile-drawer .p-panelmenu-header-label),
@@ -2338,14 +2451,49 @@ const mobileMenuItems = computed(() => {
   :global(.mobile-drawer .p-panelmenu-header-icon),
   :global(.mobile-drawer .p-panelmenu-submenu-icon),
   :global(.mobile-drawer .p-panelmenu-item-icon) {
-    color: rgba(239, 247, 238, 0.92) !important;
+    color: #17382f !important;
   }
 
   :deep(.mobile-drawer .p-inputtext) {
     min-height: 3rem;
-    background: #080a0b;
-    color: rgba(239, 247, 238, 0.94);
-    border-color: rgba(214, 230, 223, 0.22);
+    background: rgba(255, 255, 255, 0.82);
+    color: #17382f;
+    border-color: rgba(88, 126, 106, 0.24);
+  }
+
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-panel),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-header),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-header-content),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-item-content),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-content) {
+    border-color: rgba(214, 230, 223, 0.16) !important;
+    background: #111816 !important;
+  }
+
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-header-link),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-item-link) {
+    color: rgba(239, 247, 238, 0.92) !important;
+    background: #111816 !important;
+  }
+
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-header-link:hover),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-item-link:hover) {
+    background: #172522 !important;
+  }
+
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-header-label),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-item-label),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-header-icon),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-submenu-icon),
+  :global(.mobile-drawer.mobile-drawer-dark .p-panelmenu-item-icon) {
+    color: rgba(239, 247, 238, 0.92) !important;
+  }
+
+  :global(.mobile-drawer.mobile-drawer-dark .p-inputtext) {
+    background: #080a0b !important;
+    color: rgba(239, 247, 238, 0.94) !important;
+    border-color: rgba(214, 230, 223, 0.22) !important;
   }
 
   .upload-section,

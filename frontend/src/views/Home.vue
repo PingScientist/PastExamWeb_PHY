@@ -855,7 +855,7 @@ h1 {
   color: rgba(137, 108, 43, 0.78);
 }
 
-@media (min-width: 1101px) {
+@media (min-width: 1181px) {
   .hero-shell {
     width: min(1280px, calc(100% - clamp(3rem, 8vw, 10rem)));
   }
@@ -1085,19 +1085,49 @@ h1 {
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
   .hero-shell {
-    min-height: auto;
-    padding-bottom: 2rem;
+    width: min(100% - 2rem, 42rem);
+    min-height: calc(100svh - var(--navbar-height, 72px));
+    justify-content: center;
+    align-items: center;
+    padding-top: clamp(1.9rem, 5vh, 2.6rem);
+    padding-bottom: clamp(1.7rem, 4.5vh, 2.3rem);
+  }
+
+  .hero-copy {
+    width: min(100%, 38rem);
+    max-width: none;
+    padding-top: 0;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .hero-title-lockup,
+  .title-campus {
+    margin-inline: auto;
+  }
+
+  .hero-actions {
+    width: min(100%, 24rem);
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+    gap: 0.8rem;
+  }
+
+  .hero-actions :deep(.p-button) {
+    width: 100%;
   }
 
   .dashboard-strip {
     position: relative;
     top: auto;
     right: auto;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: min(1180px, calc(100% - 2rem));
-    margin: clamp(2rem, 6vh, 4rem) auto 2rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(45rem, calc(100% - 2rem));
+    margin: 0 auto 2rem;
+    transform: none;
   }
 
   .dashboard-strip::before {
@@ -1107,7 +1137,7 @@ h1 {
 
 @media (max-width: 920px) {
   .hero-shell {
-    align-items: flex-start;
+    align-items: center;
     padding-top: clamp(2.5rem, 8vh, 5rem);
   }
 
@@ -1131,6 +1161,14 @@ h1 {
   .dashboard-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-strip {
+    grid-template-columns: 1fr;
+    width: min(100% - 2rem, 32rem);
+    gap: 0.85rem;
   }
 }
 
