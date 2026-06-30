@@ -1035,8 +1035,13 @@
                 <Column field="display_name" header="名稱">
                   <template #body="{ data }">
                     <span class="trash-name-cell">
-                      <strong :style="{ paddingLeft: `${Math.max(0, (data?.trash_depth || 0) * 1.25)}rem` }">
-                        <span v-if="(data?.trash_depth || 0) > 0" aria-hidden="true">└─ </span>
+                      <strong
+                        class="trash-name-title"
+                        :style="{ paddingLeft: `${getTrashNameIndent(data)}rem` }"
+                      >
+                        <span v-if="(data?.trash_depth || 0) > 0" class="trash-tree-prefix" aria-hidden="true">
+                          {{ getTrashTreePrefix(data) }}
+                        </span>
                         {{ data.display_name }}
                       </strong>
                       <small v-if="data.item_type === 'archive_submission' && data.id">投稿編號：#{{ data.id }}</small>
@@ -1642,20 +1647,20 @@
           </p>
           <ul class="m-0 pl-4">
             <li>
-              <strong>無阻擋</strong>：表示目前這筆資料沒有會阻止還原／永久刪除的阻擋依賴。
+              <strong>無阻擋</strong>：表示目前這筆資料沒有會阻止永久刪除的啟用中依賴，也沒有需要提示的一併永久刪除子項。
             </li>
             <li>
-              <strong>阻擋永久刪除</strong>：代表仍有啟用中的資料引用這筆資料，系統會阻擋直接永久刪除。<br />
-              例如：阻擋永久刪除：1 筆啟用中投稿引用此考古題
+              <strong>阻擋永久刪除</strong>：代表仍有啟用中／未刪除資料連到這筆資料，系統會禁止永久刪除目前這一列。<br />
+              例如：阻擋永久刪除：1 筆啟用中投稿仍連到此考古題
             </li>
             <li>
-              <strong>可一併清理</strong>：代表關聯資料也在垃圾桶中，通常不阻擋永久刪除，可在永久刪除時依規則一起處理。
+              <strong>一併永久刪除</strong>：代表下轄或關聯項目已在垃圾桶中，永久刪除此父項時會跟著一起永久刪除。
             </li>
             <li>
               <strong>關聯</strong>：表示有關聯到其他資料，僅供參考，通常不阻擋刪除。
             </li>
             <li>
-              <strong>永久刪除</strong>：不可復原。active 依賴會阻擋，已在垃圾桶中的依賴通常不會阻擋。
+              <strong>永久刪除</strong>：不可復原。啟用中依賴會阻擋，已在垃圾桶中的子項才會被列為一併永久刪除。
             </li>
             <li>
               <strong>還原</strong>：若父層仍在垃圾桶，子項目可能需先還原父層後才能單獨還原。
@@ -1664,16 +1669,15 @@
               <strong>考古題與考古題投稿</strong>：
               <ul class="mt-1 pl-4">
                 <li>考古題投稿若有 <em>created_archive_id</em>，表示這筆投稿已對應到正式考古題，會作為該考古題的子項目/來源紀錄。</li>
-                <li>考古題刪除時，投稿不一定會同步軟刪，因為投稿用於保留上傳者歷史、審核紀錄與來源脈絡。</li>
                 <li>若此投稿為「啟用中」且仍引用此考古題，會阻擋考古題的永久刪除。</li>
-                <li>若投稿已進垃圾桶，通常可在永久刪除流程中一併清理。</li>
+                <li>若投稿已進垃圾桶，會在「全部」篩選中縮排顯示於考古題底下，並標示為一併永久刪除。</li>
               </ul>
             </li>
             <li>
               <strong>課程與考古題</strong>：
               <ul class="mt-1 pl-4">
                 <li>考古題是課程的內容項目，課程會持有考古題。</li>
-                <li>已刪除課程下的考古題可在課程刪除時一併清理。</li>
+                <li>已刪除課程下的考古題會縮排顯示於課程底下，並在永久刪除課程時一併永久刪除。</li>
                 <li>啟用中的考古題會阻擋課程永久刪除。</li>
               </ul>
             </li>
@@ -1994,6 +1998,14 @@ const getTrashItemKey = (item, fallbackIndex = 0) => {
 const getTrashParentKey = (item) => {
   if (!item?.parent_type || item?.parent_id === null || item?.parent_id === undefined) return null
   return `${item.parent_type}:${item.parent_id}`
+}
+
+const getTrashNameIndent = (item) => Math.max(0, Number(item?.trash_depth || 0)) * 1.65
+
+const getTrashTreePrefix = (item) => {
+  const depth = Math.max(0, Number(item?.trash_depth || 0))
+  if (!depth) return ''
+  return `${'│  '.repeat(Math.max(0, depth - 1))}└─`
 }
 
 const getValidTrashFilterType = (value) => {
@@ -2674,6 +2686,11 @@ const formatSubmissionLabel = (item) => {
   return `投稿編號：#${item.id}`
 }
 
+const applyDependencyCount = (label, count) => {
+  if (label.includes('{count}')) return label.replace('{count}', count)
+  return `${count} 筆${label}`
+}
+
 const formatTrashDependency = (dependency, itemType = '') => {
   if (!dependency) return null
 
@@ -2687,7 +2704,7 @@ const formatTrashDependency = (dependency, itemType = '') => {
       const label = typeLabel || getFallbackRelationLabel(typeRaw, 'active', itemType)
       return {
         key: `blocking-${typeRaw || 'dependency'}-${count}`,
-        label: `阻擋永久刪除：${label} ${count} 筆`,
+        label: `阻擋永久刪除：${applyDependencyCount(label, count)}`,
         severity: 'danger',
         blocking: true,
         kindOrder: 0,
@@ -2698,7 +2715,7 @@ const formatTrashDependency = (dependency, itemType = '') => {
       const label = typeLabel || getFallbackRelationLabel(typeRaw, 'trashed', itemType)
       return {
         key: `trashed-${typeRaw || 'dependency'}-${count}`,
-        label: `可一併清理：${label} ${count} 筆`,
+        label: `一併永久刪除：${applyDependencyCount(label, count)}`,
         severity: 'info',
         blocking: false,
         kindOrder: 1,
@@ -2709,7 +2726,7 @@ const formatTrashDependency = (dependency, itemType = '') => {
   const raw = String(dependency || '').trim()
   if (!raw) return null
 
-  if (raw.startsWith('阻擋：') || raw.startsWith('同組啟用中投稿：')) {
+  if (raw.startsWith('阻擋永久刪除：')) {
     return {
       key: `blocking-${raw}`,
       label: raw,
@@ -2719,7 +2736,7 @@ const formatTrashDependency = (dependency, itemType = '') => {
     }
   }
 
-  if (raw.startsWith('同組已刪除投稿：')) {
+  if (raw.startsWith('一併永久刪除：')) {
     return {
       key: `trashed-${raw}`,
       label: raw,
@@ -2776,7 +2793,7 @@ const formatTrashDependency = (dependency, itemType = '') => {
     if (isTrashed) {
       return {
         key: `relation-${raw}`,
-        label: '可一併清理：關聯考古題已刪除',
+        label: '一併永久刪除：關聯考古題已刪除',
         severity: 'info',
         blocking: false,
         kindOrder: 1,
@@ -2854,7 +2871,7 @@ const formatTrashDependency = (dependency, itemType = '') => {
   if (isTrashed) {
     return {
       key: `trashed-${raw}`,
-      label: `可一併清理：${cascadeLabel}`,
+      label: `一併永久刪除：${cascadeLabel}`,
       severity: 'info',
       blocking: false,
       kindOrder: 1,
@@ -2876,16 +2893,23 @@ const getFallbackRelationLabel = (typeRaw, kind, itemType) => {
   const isCourse = t.includes('course') || t.includes('課程')
   const isArchive = t.includes('archive') || t.includes('考古題')
 
-  if (isSubmission) return kind === 'active' ? '啟用中投稿' : '已刪除投稿'
-  if (isCourse) return kind === 'active' ? '啟用中課程' : '已刪除課程'
-  if (isArchive) return kind === 'active' ? '啟用中考古題' : '已刪除考古題'
-
   if (kind === 'active') {
-    if (itemType === 'archive') return '啟用中字項關聯'
-    if (itemType === 'course') return '啟用中關聯課程項目'
-    if (itemType === 'course_category') return '啟用中關聯投稿/課程'
+    if (itemType === 'archive' && isSubmission) return '{count} 筆啟用中投稿仍連到此考古題'
+    if (itemType === 'course' && isArchive) return '{count} 筆啟用中考古題仍屬於此課程'
+    if (itemType === 'course_category' && isCourse) return '{count} 門啟用中課程仍屬於此分類'
+    if (isSubmission) return '{count} 筆啟用中投稿仍關聯此項目'
+    if (isCourse) return '{count} 門啟用中課程仍關聯此項目'
+    if (isArchive) return '{count} 筆啟用中考古題仍關聯此項目'
+    return '{count} 筆啟用中關聯資料仍關聯此項目'
   }
-  return kind === 'active' ? '啟用中關聯資料' : '已刪除關聯資料'
+
+  if (itemType === 'archive' && isSubmission) return '{count} 筆已刪除投稿連到此考古題'
+  if (itemType === 'course' && isArchive) return '{count} 筆已刪除考古題屬於此課程'
+  if (itemType === 'course_category' && isCourse) return '{count} 門已刪除課程屬於此分類'
+  if (isSubmission) return '{count} 筆已刪除投稿關聯此項目'
+  if (isCourse) return '{count} 門已刪除課程關聯此項目'
+  if (isArchive) return '{count} 筆已刪除考古題關聯此項目'
+  return '{count} 筆已刪除關聯資料關聯此項目'
 }
 
 const getTrashErrorMessage = (error, fallback = '操作失敗') => {
@@ -4078,10 +4102,26 @@ onBeforeUnmount(() => {
   display: inline-flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 16rem;
+}
+
+.trash-name-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.trash-tree-prefix {
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .trash-name-cell small {
   color: var(--text-secondary);
+  margin-left: 0.15rem;
 }
 
 .trash-dependencies {

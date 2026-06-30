@@ -104,6 +104,12 @@ def _format_deleted_by(users_by_id: dict[int, User], user_id: Optional[int]) -> 
     return user.nickname or user.name or user.email or f"使用者 #{user_id}"
 
 
+def _dependency_count(count: int, unit: str, singular_unit: Optional[str] = None) -> str:
+    if count == 1 and singular_unit:
+        return f"1 {singular_unit}"
+    return f"{count} {unit}"
+
+
 async def _count_rows(db: SQLModelAsyncSession, statement) -> int:
     result = await db.execute(statement)
     return int(result.scalar() or 0)
@@ -128,6 +134,7 @@ async def _get_category_dependency_messages(db: SQLModelAsyncSession, category: 
         db,
         select(func.count(CourseSubmission.id)).where(
             CourseSubmission.category == category.key,
+            CourseSubmission.status != SubmissionStatus.DELETED,
         ),
     )
     active_archive_submissions = await _count_rows(
@@ -141,26 +148,11 @@ async def _get_category_dependency_messages(db: SQLModelAsyncSession, category: 
             ArchiveSubmission.deleted_at.is_(None),
         ),
     )
-    trashed_archive_submissions = await _count_rows(
-        db,
-        select(func.count(ArchiveSubmission.id)).where(
-            or_(
-                ArchiveSubmission.category == category.key,
-                ArchiveSubmission.requested_category_key == category.key,
-            ),
-            or_(
-                ArchiveSubmission.deleted_at.is_not(None),
-                ArchiveSubmission.status == SubmissionStatus.DELETED,
-            ),
-        ),
-    )
-
     return [
-        f"active courses: {active_courses}" if active_courses else "",
-        f"trashed courses: {trashed_courses}" if trashed_courses else "",
-        f"course submissions: {course_submissions}" if course_submissions else "",
-        f"archive submissions (active): {active_archive_submissions}" if active_archive_submissions else "",
-        f"archive submissions (trashed): {trashed_archive_submissions}" if trashed_archive_submissions else "",
+        f"阻擋永久刪除：{_dependency_count(active_courses, '門')}啟用中課程仍屬於此分類" if active_courses else "",
+        f"一併永久刪除：{_dependency_count(trashed_courses, '門')}已刪除課程屬於此分類" if trashed_courses else "",
+        f"阻擋永久刪除：{_dependency_count(course_submissions, '筆')}啟用中課程投稿仍屬於此分類" if course_submissions else "",
+        f"阻擋永久刪除：{_dependency_count(active_archive_submissions, '筆')}啟用中投稿仍屬於此分類" if active_archive_submissions else "",
     ]
 
 
@@ -181,8 +173,8 @@ async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Cour
     )
 
     return [
-        f"active archives: {active_archives}" if active_archives else "",
-        f"trashed archives: {trashed_archives}" if trashed_archives else "",
+        f"阻擋永久刪除：{_dependency_count(active_archives, '筆')}啟用中考古題仍屬於此課程" if active_archives else "",
+        f"一併永久刪除：{_dependency_count(trashed_archives, '筆')}已刪除考古題屬於此課程" if trashed_archives else "",
     ]
 
 
@@ -214,9 +206,9 @@ async def _get_archive_dependency_messages(db: SQLModelAsyncSession, archive: Ar
     )
 
     return [
-        f"active comments: {linked_comments}" if linked_comments else "",
-        f"阻擋：{active_linked_submissions} 筆啟用中投稿仍引用此考古題" if active_linked_submissions else "",
-        f"同組已刪除投稿：{trashed_linked_submissions} 筆，永久刪除時會一併清理" if trashed_linked_submissions else "",
+        f"阻擋永久刪除：{_dependency_count(linked_comments, '則')}啟用中留言仍依附此考古題" if linked_comments else "",
+        f"阻擋永久刪除：{_dependency_count(active_linked_submissions, '筆')}啟用中投稿仍連到此考古題" if active_linked_submissions else "",
+        f"一併永久刪除：{_dependency_count(trashed_linked_submissions, '筆')}已刪除投稿連到此考古題" if trashed_linked_submissions else "",
     ]
 
 
@@ -261,10 +253,10 @@ async def _get_user_dependency_messages(db: SQLModelAsyncSession, user: User) ->
     )
 
     return [
-        f"active uploads: {active_archives}" if active_archives else "",
-        f"trashed uploads: {trashed_archives}" if trashed_archives else "",
-        f"active archive submissions: {active_submissions}" if active_submissions else "",
-        f"trashed archive submissions: {trashed_submissions}" if trashed_submissions else "",
+        f"阻擋永久刪除：{_dependency_count(active_archives, '筆')}啟用中考古題仍屬於此使用者" if active_archives else "",
+        f"一併永久刪除：{_dependency_count(trashed_archives, '筆')}已刪除考古題屬於此使用者" if trashed_archives else "",
+        f"阻擋永久刪除：{_dependency_count(active_submissions, '筆')}啟用中投稿仍屬於此使用者" if active_submissions else "",
+        f"一併永久刪除：{_dependency_count(trashed_submissions, '筆')}已刪除投稿屬於此使用者" if trashed_submissions else "",
     ]
 
 
@@ -316,10 +308,10 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
 
     return [
         *archive_status,
-        f"active comments: {linked_comments}" if linked_comments else "",
-        f"trashed comments: {trashed_comments}" if trashed_comments else "",
-        f"同組啟用中投稿：{linked_other_submissions} 筆" if linked_other_submissions else "",
-        f"同組已刪除投稿：{trashed_submissions} 筆，永久刪除時會一併清理" if trashed_submissions else "",
+        f"阻擋永久刪除：{_dependency_count(linked_comments, '則')}啟用中留言仍依附關聯考古題" if linked_comments else "",
+        f"一併永久刪除：{_dependency_count(trashed_comments, '則')}已刪除留言依附關聯考古題" if trashed_comments else "",
+        f"阻擋永久刪除：{_dependency_count(linked_other_submissions, '筆')}啟用中投稿仍連到關聯考古題" if linked_other_submissions else "",
+        f"一併永久刪除：{_dependency_count(trashed_submissions, '筆')}已刪除投稿連到關聯考古題" if trashed_submissions else "",
     ]
 
 
@@ -811,6 +803,21 @@ async def list_trash_items(
                 )
 
     if normalized_item_type in (None, TrashEntityType.COURSE):
+        category_keys = {
+            category_key
+            for category_key in (
+                await db.execute(select(Course.category).where(Course.deleted_at.is_not(None)))
+            ).scalars()
+            if category_key
+        }
+        course_categories = {}
+        if category_keys:
+            course_categories = {
+                category.key: category
+                for category in (
+                    await db.execute(select(CourseCategoryConfig).where(CourseCategoryConfig.key.in_(category_keys)))
+                ).scalars().all()
+            }
         courses = (
             await db.execute(
                 select(Course)
@@ -819,6 +826,7 @@ async def list_trash_items(
             )
         ).scalars().all()
         for course in courses:
+            category = course_categories.get(course.category)
             try:
                 items.append(
                     _to_trash_item(
@@ -830,7 +838,8 @@ async def list_trash_items(
                         deleted_by_name=_format_deleted_by(users_by_id, course.deleted_by_id),
                         status="deleted",
                         parent_type="course_category",
-                        parent_name=course.category,
+                        parent_id=category.id if category else None,
+                        parent_name=category.name if category else course.category,
                         dependencies=await _get_course_dependency_messages(db, course),
                     )
                 )
