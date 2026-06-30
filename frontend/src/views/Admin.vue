@@ -840,6 +840,9 @@
                       >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
+                      <small v-if="getReviewTrashNote(data)" class="text-xs text-500">
+                        {{ getReviewTrashNote(data) }}
+                      </small>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -958,6 +961,9 @@
                       >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
+                      <small v-if="getReviewTrashNote(data)" class="text-xs text-500">
+                        {{ getReviewTrashNote(data) }}
+                      </small>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -2322,9 +2328,30 @@ const getReviewRowActions = (item) => {
     return [reviewActionDefinitions.approve, reviewActionDefinitions.delete]
   }
   if (status === 'takedown') {
+    if (isReviewBlockedByCourseTrash(item)) {
+      return [reviewActionDefinitions.delete]
+    }
     return [reviewActionDefinitions.republish, reviewActionDefinitions.delete]
   }
   return []
+}
+
+const isReviewBlockedByCourseTrash = (item) => {
+  return getReviewItemStatus(item) === 'takedown' &&
+    (item?.lifecycle_reason === 'course_trashed' || item?.linked_course_deleted === true) &&
+    !item?.requested_course_name
+}
+
+const getReviewTrashNote = (item) => {
+  if (getReviewItemStatus(item) !== 'takedown') return ''
+  if (item?.lifecycle_reason === 'linked_archive_permanently_deleted') return '無法復原：關聯考古題已永久刪除。'
+  if (item?.lifecycle_reason === 'course_trashed' || item?.linked_course_deleted === true) {
+    return '原課程在垃圾桶，請先復原課程。'
+  }
+  if (item?.lifecycle_reason === 'archive_trashed' || item?.linked_archive_deleted === true) {
+    return '關聯考古題在垃圾桶，請先復原考古題。'
+  }
+  return ''
 }
 
 const runReviewRowAction = (item, action) => {
@@ -3295,7 +3322,7 @@ const reviewArchiveSubmission = async (submissionId, action) => {
   } catch (error) {
     console.error('審核考古題投稿失敗:', error)
     if (isUnauthorizedError(error)) return
-    toast.add({ severity: 'error', summary: '錯誤', detail: '審核考古題投稿失敗', life: 3000 })
+    toast.add({ severity: 'error', summary: '錯誤', detail: getTrashErrorMessage(error, '審核考古題投稿失敗'), life: 3000 })
   }
 }
 

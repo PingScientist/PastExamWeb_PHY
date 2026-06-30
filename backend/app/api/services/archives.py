@@ -468,6 +468,8 @@ async def list_archive_submissions_for_admin(
                 ) AS is_admin_upload,
                 archive_submissions.created_archive_id,
                 archive_submissions.lifecycle_reason,
+                (archives.deleted_at IS NOT NULL) AS linked_archive_deleted,
+                (courses.deleted_at IS NOT NULL) AS linked_course_deleted,
                 archive_submissions.created_at,
                 archive_submissions.reviewed_at,
                 users.name AS requester_name,
@@ -475,6 +477,10 @@ async def list_archive_submissions_for_admin(
             FROM archive_submissions
             LEFT JOIN users
                 ON users.id = archive_submissions.requester_id
+            LEFT JOIN archives
+                ON archives.id = archive_submissions.created_archive_id
+            LEFT JOIN courses
+                ON courses.id = archives.course_id
             ORDER BY
                 CASE LOWER(CAST(archive_submissions.status AS TEXT))
                     WHEN 'pending' THEN 1

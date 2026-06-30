@@ -1300,20 +1300,19 @@ async def delete_course(
             status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
         )
 
-    archives_query = select(Archive).where(
-        Archive.course_id == course_id, Archive.deleted_at.is_(None)
-    )
+    archives_query = select(Archive).where(Archive.course_id == course_id)
     archives_result = await db.execute(archives_query)
-    archives = archives_result.scalars().all()
+    all_course_archives = archives_result.scalars().all()
+    active_archives = [archive for archive in all_course_archives if archive.deleted_at is None]
 
     # Soft delete all associated archives and the course
     current_time = datetime.now(timezone.utc)
-    for archive in archives:
+    for archive in active_archives:
         archive.deleted_at = current_time
         archive.deleted_by_id = current_user.user_id
         archive.deleted_reason = "course deleted"
 
-    archive_ids = [archive.id for archive in archives if archive.id is not None]
+    archive_ids = [archive.id for archive in all_course_archives if archive.id is not None]
     if archive_ids:
         linked_submissions = (
             await db.execute(
@@ -1321,6 +1320,7 @@ async def delete_course(
                     ArchiveSubmission.created_archive_id.in_(archive_ids),
                     ArchiveSubmission.deleted_at.is_(None),
                     ArchiveSubmission.status != SubmissionStatus.DELETED,
+                    ArchiveSubmission.status != SubmissionStatus.REJECTED,
                     ArchiveSubmission.status != SubmissionStatus.TAKEDOWN,
                 )
             )
@@ -1339,7 +1339,7 @@ async def delete_course(
 
     return {
         "message": (
-            f"Course '{course.name}' and {len(archives)} associated "
+            f"Course '{course.name}' and {len(active_archives)} associated "
             f"archives deleted successfully"
         )
     }

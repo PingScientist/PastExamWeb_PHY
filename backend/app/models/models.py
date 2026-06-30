@@ -529,6 +529,8 @@ class ArchiveSubmissionRead(BaseModel):
     review_note: Optional[str] = None
     created_archive_id: Optional[int] = None
     lifecycle_reason: Optional[str] = None
+    linked_archive_deleted: bool = False
+    linked_course_deleted: bool = False
     created_at: datetime
     reviewed_at: Optional[datetime] = None
 
