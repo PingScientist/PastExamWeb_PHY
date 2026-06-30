@@ -24,6 +24,7 @@ from app.models.models import (
     SubmissionStatus,
     User,
 )
+from app.api.services.archive_submission_lifecycle import soft_delete_archive_submission_group
 from app.utils.auth import get_current_user
 from app.utils.storage import get_minio_client
 
@@ -407,20 +408,12 @@ async def delete_my_archive_submission(
             detail="Only approved submissions can be deleted by users",
         )
 
-    now = datetime.now(timezone.utc)
-    submission.status = SubmissionStatus.DELETED
-    submission.deleted_at = now
-    submission.deleted_by_id = current_user.user_id
-    submission.delete_reason = "user deleted"
-
-    if submission.created_archive_id:
-        archive = await db.get(Archive, submission.created_archive_id)
-        if archive and archive.deleted_at is None:
-            archive.deleted_at = now
-            archive.deleted_by_id = current_user.user_id
-            archive.deleted_reason = "user deleted"
-            archive.restored_at = None
-            archive.restored_by_id = None
+    result = await soft_delete_archive_submission_group(
+        db,
+        submission=submission,
+        user_id=current_user.user_id,
+        reason="user deleted",
+    )
 
     await db.commit()
 
@@ -428,6 +421,7 @@ async def delete_my_archive_submission(
         "success": True,
         "id": submission.id,
         "status": submission.status,
+        "deleted": result,
         "message": "已刪除，管理員可於垃圾桶中恢復",
     }
 
@@ -820,10 +814,12 @@ async def delete_archive_submission_for_admin(
     if submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED:
         return {"success": True}
 
-    now = datetime.now(timezone.utc)
-    submission.status = SubmissionStatus.DELETED
-    submission.deleted_at = now
-    submission.deleted_by_id = current_user.user_id
-    submission.reviewed_at = now
+    result = await soft_delete_archive_submission_group(
+        db,
+        submission=submission,
+        user_id=current_user.user_id,
+        reason="admin deleted",
+    )
+    submission.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
-    return {"success": True, "id": submission.id}
+    return {"success": True, "id": submission.id, "deleted": result}

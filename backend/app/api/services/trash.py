@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -22,10 +23,17 @@ from app.models.models import (
     TrashItem,
     User,
 )
+from app.api.services.archive_submission_lifecycle import (
+    collect_archive_submission_group,
+    hard_delete_archive_submission_group,
+    is_archive_submission_trashed,
+    restore_archive_submission_group,
+)
 from app.utils.auth import get_current_user
 from app.utils.storage import get_minio_client
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class TrashActionRequest(BaseModel):
@@ -44,6 +52,12 @@ def _to_trash_item(
     status: Optional[str] = None,
     academic_year: Optional[int] = None,
     academic_term: Optional[str] = None,
+    parent_type: Optional[str] = None,
+    parent_id: Optional[int] = None,
+    parent_name: Optional[str] = None,
+    created_archive_id: Optional[int] = None,
+    course_id: Optional[int] = None,
+    course_name: Optional[str] = None,
     dependencies: Optional[list[str]] = None,
 ) -> TrashItem:
     return TrashItem(
@@ -56,6 +70,12 @@ def _to_trash_item(
         deleted_by_id=deleted_by_id,
         deleted_by_name=deleted_by_name,
         status=status,
+        parent_type=parent_type,
+        parent_id=parent_id,
+        parent_name=parent_name,
+        created_archive_id=created_archive_id,
+        course_id=course_id,
+        course_name=course_name,
         reason=None,
         dependencies=_build_dependencies(dependencies or []),
     )
@@ -195,8 +215,8 @@ async def _get_archive_dependency_messages(db: SQLModelAsyncSession, archive: Ar
 
     return [
         f"active comments: {linked_comments}" if linked_comments else "",
-        f"active linked submissions: {active_linked_submissions}" if active_linked_submissions else "",
-        f"trashed linked submissions: {trashed_linked_submissions}" if trashed_linked_submissions else "",
+        f"阻擋：{active_linked_submissions} 筆啟用中投稿仍引用此考古題" if active_linked_submissions else "",
+        f"同組已刪除投稿：{trashed_linked_submissions} 筆，永久刪除時會一併清理" if trashed_linked_submissions else "",
     ]
 
 
@@ -254,7 +274,7 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
 
     linked_archive = await db.get(Archive, submission.created_archive_id)
     if not linked_archive:
-        return ["linked archive: missing"]
+        return [f"關聯考古題：#{submission.created_archive_id} 不存在"]
 
     linked_comments = await _count_rows(
         db,
@@ -290,16 +310,16 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
             ),
         ),
     )
-    archive_status = [f"linked archive: {1 if linked_archive else 0}"]
-    if linked_archive and linked_archive.deleted_at is None:
-        archive_status.append("linked archive: active")
+    archive_status = [f"關聯考古題：#{linked_archive.id} / {linked_archive.name}"]
+    if linked_archive.deleted_at is None:
+        archive_status.append("關聯考古題仍啟用中")
 
     return [
         *archive_status,
         f"active comments: {linked_comments}" if linked_comments else "",
         f"trashed comments: {trashed_comments}" if trashed_comments else "",
-        f"active linked archive submissions: {linked_other_submissions}" if linked_other_submissions else "",
-        f"trashed linked archive submissions: {trashed_submissions}" if trashed_submissions else "",
+        f"同組啟用中投稿：{linked_other_submissions} 筆" if linked_other_submissions else "",
+        f"同組已刪除投稿：{trashed_submissions} 筆，永久刪除時會一併清理" if trashed_submissions else "",
     ]
 
 
@@ -312,7 +332,7 @@ def _build_trash_error(item_label: str, dependencies: list[str]) -> str:
 
 
 def _is_submission_trashed(submission: ArchiveSubmission) -> bool:
-    return submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED
+    return is_archive_submission_trashed(submission)
 
 
 def _blocker(item_type: str, item_id: int | None, name: str, status_value: str = "active") -> dict:
@@ -378,7 +398,7 @@ def _delete_result(
         "failed": 0,
         "failed_count": 0,
         "skipped": 0,
-        "message": "永久刪除完成",
+        "message": details[0].get("message") if details and details[0].get("message") else "永久刪除完成",
         "details": details
         or [
             {
@@ -489,24 +509,38 @@ async def _remove_storage_object_if_unreferenced(
     if not object_name:
         return 0
 
-    archive_query = select(func.count(Archive.id)).where(
+    archive_query = select(func.count(Archive.id)).where(Archive.object_name == object_name)
+    if exclude_archive_id is not None:
+        archive_query = archive_query.where(Archive.id != exclude_archive_id)
+
+    submission_query = select(func.count(ArchiveSubmission.id)).where(ArchiveSubmission.object_name == object_name)
+    if exclude_submission_ids:
+        submission_query = submission_query.where(~ArchiveSubmission.id.in_(exclude_submission_ids))
+
+    # Count references only used for message context.
+    live_archive_query = select(func.count(Archive.id)).where(
         Archive.object_name == object_name,
         Archive.deleted_at.is_(None),
     )
     if exclude_archive_id is not None:
-        archive_query = archive_query.where(Archive.id != exclude_archive_id)
+        live_archive_query = live_archive_query.where(Archive.id != exclude_archive_id)
 
-    submission_query = select(func.count(ArchiveSubmission.id)).where(
+    live_submission_query = select(func.count(ArchiveSubmission.id)).where(
         ArchiveSubmission.object_name == object_name,
         ArchiveSubmission.deleted_at.is_(None),
         ArchiveSubmission.status != SubmissionStatus.DELETED,
     )
     if exclude_submission_ids:
-        submission_query = submission_query.where(~ArchiveSubmission.id.in_(exclude_submission_ids))
+        live_submission_query = live_submission_query.where(~ArchiveSubmission.id.in_(exclude_submission_ids))
+    live_refs = await _count_rows(db, live_archive_query) + await _count_rows(db, live_submission_query)
+    all_refs = await _count_rows(db, archive_query) + await _count_rows(db, submission_query)
+    trashed_refs = all_refs - live_refs
 
-    active_refs = await _count_rows(db, archive_query) + await _count_rows(db, submission_query)
-    if active_refs:
-        warnings.append(f"Storage object kept because active records still reference it: {object_name}")
+    if live_refs:
+        warnings.append(f"Storage object kept because live records still reference it: {object_name}")
+        return 0
+    if trashed_refs:
+        warnings.append(f"Storage object kept because trashed records still reference it: {object_name}")
         return 0
 
     try:
@@ -533,80 +567,7 @@ async def _hard_delete_archive(
             "仍有未刪除的考古題依附於此項目",
             [_blocker("archive", archive.id, archive.name)],
         )
-
-    messages = (
-        await db.execute(
-            select(ArchiveDiscussionMessage).where(ArchiveDiscussionMessage.archive_id == archive.id)
-        )
-    ).scalars().all()
-    submissions = (
-        await db.execute(
-            select(ArchiveSubmission).where(ArchiveSubmission.created_archive_id == archive.id)
-        )
-    ).scalars().all()
-
-    deleted_submission_ids = [
-        item.id for item in submissions if item is not None and _is_submission_trashed(item) and item.id is not None
-    ]
-    active_submission_ids = [
-        item.id for item in submissions if item is not None and not _is_submission_trashed(item)
-    ]
-    if active_submission_ids:
-        if not _is_created_archive_id_nullable():
-            blockers = [
-                _blocker_with_reason(
-                    "archive_submission",
-                    submission.id,
-                    f"{submission.subject} / {submission.name}",
-                    submission.status.value,
-                    reason="活躍投稿仍參照此考古題，且 created_archive_id 欄位不可為空",
-                )
-                for submission in submissions
-                if submission and not _is_submission_trashed(submission)
-            ]
-            raise _blocked(
-                "仍有活躍投稿仍參照此考古題，請先行處理後再刪除",
-                blockers,
-            )
-        for submission in submissions:
-            if not _is_submission_trashed(submission):
-                submission.created_archive_id = None
-                warnings.append(
-                    f"已移除投稿 {submission.id} 的 created_archive_id 關聯: archive #{archive.id}"
-                )
-
-    deleted_submissions = 0
-    unlinked_submissions = len(active_submission_ids)
-    for submission in submissions:
-        if _is_submission_trashed(submission):
-            await db.delete(submission)
-            deleted_submissions += 1
-
-    deleted_objects = await _remove_storage_object_if_unreferenced(
-        db,
-        archive.object_name,
-        warnings,
-        exclude_archive_id=archive.id,
-        exclude_submission_ids=deleted_submission_ids,
-    )
-
-    for message in messages:
-        await db.delete(message)
-    await db.delete(archive)
-
-    deleted_count = 1 + len(messages) + deleted_submissions
-    return {
-        "type": "archive",
-        "id": archive.id,
-        "name": archive.name,
-        "deletedChildren": {
-            "comments": len(messages),
-            "linkedSubmissionsDeleted": deleted_submissions,
-            "linkedSubmissionsUnlinked": unlinked_submissions,
-            "files": deleted_objects,
-        },
-        "deleted": deleted_count,
-    }
+    return await hard_delete_archive_submission_group(db, archive=archive, warnings=warnings)
 
 
 async def _hard_delete_submission(
@@ -619,28 +580,7 @@ async def _hard_delete_submission(
             "仍有未刪除的投稿資料依附於此項目",
             [_blocker("archive_submission", submission.id, f"{submission.subject} / {submission.name}", submission.status.value)],
         )
-
-    if submission.created_archive_id:
-        archive = await db.get(Archive, submission.created_archive_id)
-        if archive and archive.deleted_at is not None:
-            return await _hard_delete_archive(db, archive, warnings)
-
-    deleted_objects = await _remove_storage_object_if_unreferenced(
-        db,
-        submission.object_name,
-        warnings,
-        exclude_submission_ids=[submission.id] if submission.id is not None else [],
-    )
-    await db.delete(submission)
-    return {
-        "type": "archive_submission",
-        "id": submission.id,
-        "name": f"{submission.subject} / {submission.name}",
-        "deletedChildren": {
-            "files": deleted_objects,
-        },
-        "deleted": 1,
-    }
+    return await hard_delete_archive_submission_group(db, submission=submission, warnings=warnings)
 
 
 async def _hard_delete_course(
@@ -816,12 +756,23 @@ async def _hard_delete_user(
 
 @router.get("", response_model=List[TrashItem])
 async def list_trash_items(
-    item_type: Optional[TrashEntityType] = Query(default=None),
+    item_type: Optional[str] = Query(default=None),
     current_user=Depends(get_current_user),
     db: SQLModelAsyncSession = Depends(get_session),
 ):
     if not getattr(current_user, "is_admin", False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    normalized_item_type = item_type
+    if isinstance(item_type, str):
+        if item_type.lower() == "all":
+            normalized_item_type = None
+        else:
+            try:
+                normalized_item_type = TrashEntityType(item_type)
+            except ValueError:
+                logger.warning("Unknown trash item_type filter received: %s", item_type)
+                normalized_item_type = None
 
     users_by_id = {
         user.id: user
@@ -830,7 +781,7 @@ async def list_trash_items(
     }
     items: list[TrashItem] = []
 
-    if item_type in (None, TrashEntityType.COURSE_CATEGORY):
+    if normalized_item_type in (None, TrashEntityType.COURSE_CATEGORY):
         categories = (
             await db.execute(
                 select(CourseCategoryConfig)
@@ -839,20 +790,27 @@ async def list_trash_items(
             )
         ).scalars().all()
         for category in categories:
-            items.append(
-                _to_trash_item(
-                    item_type=TrashEntityType.COURSE_CATEGORY,
-                    item_id=category.id,
-                    display_name=f"{category.name} ({category.key})",
-                    deleted_at=category.deleted_at,
-                    deleted_by_id=category.deleted_by_id,
-                    deleted_by_name=_format_deleted_by(users_by_id, category.deleted_by_id),
-                    status="deleted",
-                    dependencies=await _get_category_dependency_messages(db, category),
+            try:
+                items.append(
+                    _to_trash_item(
+                        item_type=TrashEntityType.COURSE_CATEGORY,
+                        item_id=category.id,
+                        display_name=f"{category.name} ({category.key})",
+                        deleted_at=category.deleted_at,
+                        deleted_by_id=category.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(users_by_id, category.deleted_by_id),
+                        status="deleted",
+                        dependencies=await _get_category_dependency_messages(db, category),
+                    )
                 )
-            )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to build trashed course category item (id=%s): %s",
+                    getattr(category, "id", None),
+                    exc,
+                )
 
-    if item_type in (None, TrashEntityType.COURSE):
+    if normalized_item_type in (None, TrashEntityType.COURSE):
         courses = (
             await db.execute(
                 select(Course)
@@ -861,20 +819,44 @@ async def list_trash_items(
             )
         ).scalars().all()
         for course in courses:
-            items.append(
-                _to_trash_item(
-                    item_type=TrashEntityType.COURSE,
-                    item_id=course.id,
-                    display_name=f"{course.name} ({course.category})",
-                    deleted_at=course.deleted_at,
-                    deleted_by_id=course.deleted_by_id,
-                    deleted_by_name=_format_deleted_by(users_by_id, course.deleted_by_id),
-                    status="deleted",
-                    dependencies=await _get_course_dependency_messages(db, course),
+            try:
+                items.append(
+                    _to_trash_item(
+                        item_type=TrashEntityType.COURSE,
+                        item_id=course.id,
+                        display_name=f"{course.name} ({course.category})",
+                        deleted_at=course.deleted_at,
+                        deleted_by_id=course.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(users_by_id, course.deleted_by_id),
+                        status="deleted",
+                        parent_type="course_category",
+                        parent_name=course.category,
+                        dependencies=await _get_course_dependency_messages(db, course),
+                    )
                 )
-            )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to build trashed course item (id=%s): %s",
+                    getattr(course, "id", None),
+                    exc,
+                )
 
-    if item_type in (None, TrashEntityType.ARCHIVE):
+    if normalized_item_type in (None, TrashEntityType.ARCHIVE):
+        archive_course_ids = {
+            archive_course_id
+            for archive_course_id in (
+                await db.execute(select(Archive.course_id).where(Archive.deleted_at.is_not(None)))
+            ).scalars()
+            if archive_course_id is not None
+        }
+        archive_courses = {}
+        if archive_course_ids:
+            archive_courses = {
+                course.id: course
+                for course in (
+                    await db.execute(select(Course).where(Course.id.in_(archive_course_ids)))
+                ).scalars().all()
+            }
         archives = (
             await db.execute(
                 select(Archive)
@@ -883,22 +865,35 @@ async def list_trash_items(
             )
         ).scalars().all()
         for archive in archives:
-            items.append(
-                _to_trash_item(
-                    item_type=TrashEntityType.ARCHIVE,
-                    item_id=archive.id,
-                    display_name=archive.name,
-                    academic_year=archive.academic_year,
-                    academic_term=_format_academic_term(archive.academic_year),
-                    deleted_at=archive.deleted_at,
-                    deleted_by_id=archive.deleted_by_id,
-                    deleted_by_name=_format_deleted_by(users_by_id, archive.deleted_by_id),
-                    status="deleted",
-                    dependencies=await _get_archive_dependency_messages(db, archive),
+            course = archive_courses.get(archive.course_id)
+            try:
+                items.append(
+                    _to_trash_item(
+                        item_type=TrashEntityType.ARCHIVE,
+                        item_id=archive.id,
+                        display_name=archive.name,
+                        academic_year=archive.academic_year,
+                        academic_term=_format_academic_term(archive.academic_year),
+                        deleted_at=archive.deleted_at,
+                        deleted_by_id=archive.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(users_by_id, archive.deleted_by_id),
+                        status="deleted",
+                        parent_type="course",
+                        parent_id=archive.course_id,
+                        parent_name=course.name if course else None,
+                        course_id=archive.course_id,
+                        course_name=course.name if course else None,
+                        dependencies=await _get_archive_dependency_messages(db, archive),
+                    )
                 )
-            )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to build trashed archive item (id=%s): %s",
+                    getattr(archive, "id", None),
+                    exc,
+                )
 
-    if item_type in (None, TrashEntityType.NOTIFICATION):
+    if normalized_item_type in (None, TrashEntityType.NOTIFICATION):
         notifications = (
             await db.execute(
                 select(Notification)
@@ -907,40 +902,54 @@ async def list_trash_items(
             )
         ).scalars().all()
         for notification in notifications:
-            items.append(
-                _to_trash_item(
-                    item_type=TrashEntityType.NOTIFICATION,
-                    item_id=notification.id,
-                    display_name=notification.title,
-                    deleted_at=notification.deleted_at,
-                    deleted_by_id=None,
-                    deleted_by_name=None,
-                    status="deleted",
-                    dependencies=[],
+            try:
+                items.append(
+                    _to_trash_item(
+                        item_type=TrashEntityType.NOTIFICATION,
+                        item_id=notification.id,
+                        display_name=notification.title,
+                        deleted_at=notification.deleted_at,
+                        deleted_by_id=None,
+                        deleted_by_name=None,
+                        status="deleted",
+                        dependencies=[],
+                    )
                 )
-            )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to build trashed notification item (id=%s): %s",
+                    getattr(notification, "id", None),
+                    exc,
+                )
 
-    if item_type in (None, TrashEntityType.USER):
+    if normalized_item_type in (None, TrashEntityType.USER):
         users = (
             await db.execute(
                 select(User).where(User.deleted_at.is_not(None)).order_by(User.deleted_at.desc())
             )
         ).scalars().all()
         for user in users:
-            items.append(
-                _to_trash_item(
-                    item_type=TrashEntityType.USER,
-                    item_id=user.id,
-                    display_name=f"{user.name} ({user.email})",
-                    deleted_at=user.deleted_at,
-                    deleted_by_id=None,
-                    deleted_by_name=None,
-                    status="deleted",
-                    dependencies=await _get_user_dependency_messages(db, user),
+            try:
+                items.append(
+                    _to_trash_item(
+                        item_type=TrashEntityType.USER,
+                        item_id=user.id,
+                        display_name=f"{user.name} ({user.email})",
+                        deleted_at=user.deleted_at,
+                        deleted_by_id=None,
+                        deleted_by_name=None,
+                        status="deleted",
+                        dependencies=await _get_user_dependency_messages(db, user),
+                    )
                 )
-            )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to build trashed user item (id=%s): %s",
+                    getattr(user, "id", None),
+                    exc,
+                )
 
-    if item_type in (None, TrashEntityType.ARCHIVE_SUBMISSION):
+    if normalized_item_type in (None, TrashEntityType.ARCHIVE_SUBMISSION):
         trashed_archive_ids = {
             archive_id
             for archive_id in (
@@ -962,24 +971,51 @@ async def list_trash_items(
                 .order_by(ArchiveSubmission.deleted_at.desc(), ArchiveSubmission.reviewed_at.desc(), ArchiveSubmission.created_at.desc())
             )
         ).scalars().all()
-        for submission in submissions:
-            if submission.created_archive_id and submission.created_archive_id in trashed_archive_ids:
-                continue
-            deleted_at = submission.deleted_at or submission.reviewed_at or submission.created_at
-            items.append(
-                _to_trash_item(
-                    item_type=TrashEntityType.ARCHIVE_SUBMISSION,
-                    item_id=submission.id,
-                    display_name=f"{submission.subject} / {submission.name}",
-                    academic_year=submission.academic_year,
-                    academic_term=_format_academic_term(submission.academic_year),
-                    deleted_at=deleted_at,
-                    deleted_by_id=submission.deleted_by_id,
-                    deleted_by_name=_format_deleted_by(users_by_id, submission.deleted_by_id),
-                    status=submission.status.value,
-                    dependencies=await _get_submission_dependency_messages(db, submission),
+        archive_map = {}
+        created_archive_ids = {
+            submission.created_archive_id
+            for submission in submissions
+            if submission.created_archive_id is not None
+        }
+        if created_archive_ids:
+            archive_rows = (
+                await db.execute(
+                    select(Archive).where(Archive.id.in_(created_archive_ids))
                 )
+            ).scalars().all()
+            archive_map = {archive.id: archive for archive in archive_rows if archive.id is not None}
+        for submission in submissions:
+            deleted_at = submission.deleted_at or submission.reviewed_at or submission.created_at
+            linked_archive = (
+                archive_map.get(submission.created_archive_id)
+                if submission.created_archive_id is not None else None
             )
+            try:
+                items.append(
+                    _to_trash_item(
+                        item_type=TrashEntityType.ARCHIVE_SUBMISSION,
+                        item_id=submission.id,
+                        display_name=f"{submission.subject} / {submission.name}",
+                        academic_year=submission.academic_year,
+                        academic_term=_format_academic_term(submission.academic_year),
+                        deleted_at=deleted_at,
+                        deleted_by_id=submission.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(users_by_id, submission.deleted_by_id),
+                        status=submission.status.value,
+                        parent_type="archive" if submission.created_archive_id else None,
+                        parent_id=submission.created_archive_id,
+                        parent_name=linked_archive.name if linked_archive else None,
+                        created_archive_id=submission.created_archive_id,
+                        course_name=submission.requested_course_name,
+                        dependencies=await _get_submission_dependency_messages(db, submission),
+                    )
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to build trashed archive submission item (id=%s): %s",
+                    getattr(submission, "id", None),
+                    exc,
+                )
 
     return sorted(items, key=lambda item: item.deleted_at, reverse=True)
 
@@ -1061,51 +1097,24 @@ async def restore_trash_item(
         if not archive or archive.deleted_at is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archive not found")
 
-        course = await db.get(Course, archive.course_id)
-        if not course or course.deleted_at is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Course is deleted; restore course before restoring this archive.",
-            )
-
-        archive.deleted_at = None
-        archive.deleted_by_id = None
-        archive.deleted_reason = None
-        archive.restored_at = now
-        archive.restored_by_id = current_user.user_id
-        archive.uploader_id = current_user.user_id
-
-        linked_submission = (
-            await db.execute(
-                select(ArchiveSubmission)
-                .where(
-                    ArchiveSubmission.created_archive_id == archive.id,
-                    or_(
-                        ArchiveSubmission.deleted_at.is_not(None),
-                        ArchiveSubmission.status == SubmissionStatus.DELETED,
-                    ),
+        group = await collect_archive_submission_group(db, archive=archive)
+        for linked_archive in group.archives:
+            course = await db.get(Course, linked_archive.course_id)
+            if not course or course.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Course is deleted; restore course before restoring this archive.",
                 )
-                .order_by(
-                    ArchiveSubmission.reviewed_at.desc(),
-                    ArchiveSubmission.deleted_at.desc(),
-                    ArchiveSubmission.created_at.desc(),
-                )
-            )
-        ).scalars().first()
 
-        if linked_submission:
-            linked_submission.deleted_at = None
-            linked_submission.delete_reason = None
-            linked_submission.deleted_by_id = None
-            linked_submission.owner_id = current_user.user_id
-            linked_submission.reviewed_at = now
-            linked_submission.reviewer_id = current_user.user_id
-            linked_submission.restored_at = now
-            linked_submission.restored_by_id = current_user.user_id
-            linked_submission.status = SubmissionStatus.APPROVED
+        result = await restore_archive_submission_group(
+            db,
+            archive=archive,
+            user_id=current_user.user_id,
+            now=now,
+        )
 
         await db.commit()
-        return {"message": "Archive restored"}
+        return {"message": "Archive restored", "restored": result}
 
     if payload.item_type == TrashEntityType.USER:
         user = await db.get(User, payload.item_id)
@@ -1118,44 +1127,27 @@ async def restore_trash_item(
 
     if payload.item_type == TrashEntityType.ARCHIVE_SUBMISSION:
         submission = await db.get(ArchiveSubmission, payload.item_id)
-        if not submission or submission.deleted_at is None:
+        if not submission or (submission.deleted_at is None and submission.status != SubmissionStatus.DELETED):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-        linked_archive = None
-        if submission.created_archive_id:
-            linked_archive = await db.get(Archive, submission.created_archive_id)
-            if linked_archive and linked_archive.deleted_at is not None:
-                course = await db.get(Course, linked_archive.course_id)
-                if course and course.deleted_at is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail="Cannot restore: linked course is deleted. Restore course first.",
-                    )
+        group = await collect_archive_submission_group(db, submission=submission)
+        for linked_archive in group.archives:
+            course = await db.get(Course, linked_archive.course_id)
+            if not course or course.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Cannot restore: linked course is deleted. Restore course first.",
+                )
 
-                linked_archive.deleted_at = None
-                linked_archive.deleted_by_id = None
-                linked_archive.deleted_reason = None
-                linked_archive.restored_at = now
-                # ownership transfer to reviewer/admin
-                linked_archive.uploader_id = current_user.user_id
-                linked_archive.restored_by_id = current_user.user_id
-
-        submission.deleted_at = None
-        submission.delete_reason = None
-        submission.deleted_by_id = None
-        submission.owner_id = current_user.user_id
-        submission.reviewed_at = now if submission.created_archive_id else None
-        submission.reviewer_id = current_user.user_id
-        submission.restored_at = now
-        submission.restored_by_id = current_user.user_id
-
-        if submission.created_archive_id:
-            submission.status = SubmissionStatus.APPROVED
-        else:
-            submission.status = SubmissionStatus.PENDING
+        result = await restore_archive_submission_group(
+            db,
+            submission=submission,
+            user_id=current_user.user_id,
+            now=now,
+        )
 
         await db.commit()
-        return {"message": "Submission restored"}
+        return {"message": "Submission restored", "restored": result}
 
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported trash item type")
 

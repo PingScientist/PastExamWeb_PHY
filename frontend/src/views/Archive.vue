@@ -255,6 +255,9 @@
                                 <i class="pi pi-download"></i>
                                 {{ formatDownloadCount(data.downloadCount) }} 次下載
                               </span>
+                              <span v-if="isAdmin && formatSourceSubmissionIds(data)">
+                                投稿編號：{{ formatSourceSubmissionIds(data) }}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -888,6 +891,14 @@ function formatAcademicTerm(value) {
   return `${numericValue} 年`
 }
 
+function formatSourceSubmissionIds(archive) {
+  const ids = Array.isArray(archive?.sourceSubmissionIds)
+    ? archive.sourceSubmissionIds.filter((id) => id !== null && id !== undefined)
+    : []
+  if (!ids.length) return ''
+  return ids.map((id) => `#${id}`).join(', ')
+}
+
 async function fetchCourses() {
   try {
     loading.value = true
@@ -1104,6 +1115,7 @@ async function fetchArchives() {
       subject: selectedSubject.value,
       uploader_id: archive.uploader_id,
       downloadCount: archive.download_count,
+      sourceSubmissionIds: Array.isArray(archive.source_submission_ids) ? archive.source_submission_ids : [],
     }))
 
     const uniqueYears = new Set()

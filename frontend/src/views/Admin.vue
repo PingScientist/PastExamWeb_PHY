@@ -2076,7 +2076,7 @@ const getTrashContextLine = (item) => {
   if (item.item_type === 'archive' && item.course_name) return `課程：${item.course_name}`
   if (item.item_type === 'course' && item.parent_name) return `隸屬分類：${item.parent_name}`
   if (item.item_type === 'archive_submission') {
-    if (item.created_archive_id && item.parent_name) return `連結考古題：${item.parent_name}`
+    if (item.created_archive_id && item.parent_name) return `關聯考古題：#${item.created_archive_id} / ${item.parent_name}`
     if (item.course_name) return `課程：${item.course_name}`
   }
   return ''
@@ -2708,6 +2708,36 @@ const formatTrashDependency = (dependency, itemType = '') => {
 
   const raw = String(dependency || '').trim()
   if (!raw) return null
+
+  if (raw.startsWith('阻擋：') || raw.startsWith('同組啟用中投稿：')) {
+    return {
+      key: `blocking-${raw}`,
+      label: raw,
+      severity: 'danger',
+      blocking: true,
+      kindOrder: 0,
+    }
+  }
+
+  if (raw.startsWith('同組已刪除投稿：')) {
+    return {
+      key: `trashed-${raw}`,
+      label: raw,
+      severity: 'info',
+      blocking: false,
+      kindOrder: 1,
+    }
+  }
+
+  if (raw.startsWith('關聯考古題：') || raw === '關聯考古題仍啟用中') {
+    return {
+      key: `relation-${raw}`,
+      label: raw,
+      severity: 'secondary',
+      blocking: false,
+      kindOrder: 2,
+    }
+  }
 
   const value = raw.toLowerCase()
   const countMatch = raw.match(/(\d+)/)

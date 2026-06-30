@@ -18,6 +18,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_session
+from app.api.services.archive_submission_lifecycle import soft_delete_archive_submission_group
 from app.models.models import (
     Archive,
     ArchiveDiscussionMessage,
@@ -461,7 +462,28 @@ async def get_course_archives(
     result = await db.execute(query)
     archives = result.scalars().all()
 
-    return archives
+    source_submission_ids_by_archive: dict[int, list[int]] = {}
+    archive_ids = [archive.id for archive in archives if archive.id is not None]
+    if current_user.is_admin and archive_ids:
+        linked_submissions = (
+            await db.execute(
+                select(ArchiveSubmission.id, ArchiveSubmission.created_archive_id).where(
+                    ArchiveSubmission.created_archive_id.in_(archive_ids),
+                    ArchiveSubmission.deleted_at.is_(None),
+                    ArchiveSubmission.status != SubmissionStatus.DELETED,
+                )
+            )
+        ).all()
+        for submission_id, created_archive_id in linked_submissions:
+            if submission_id is not None and created_archive_id is not None:
+                source_submission_ids_by_archive.setdefault(created_archive_id, []).append(submission_id)
+
+    return [
+        ArchiveRead.model_validate(archive).model_copy(
+            update={"source_submission_ids": source_submission_ids_by_archive.get(archive.id, [])}
+        )
+        for archive in archives
+    ]
 
 
 @router.get("/{course_id}/archives/{archive_id}/preview")
@@ -1068,10 +1090,15 @@ async def delete_archive(
             detail="You don't have permission to delete this archive",
         )
 
-    archive.deleted_at = datetime.now(timezone.utc)
+    result = await soft_delete_archive_submission_group(
+        db,
+        archive=archive,
+        user_id=current_user.user_id,
+        reason="archive deleted",
+    )
     await db.commit()
 
-    return {"message": "Archive deleted successfully"}
+    return {"message": "Archive deleted successfully", "deleted": result}
 
 
 @router.post("/admin/courses", response_model=CourseRead)

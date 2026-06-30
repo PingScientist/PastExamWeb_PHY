@@ -393,6 +393,7 @@ class ArchiveRead(BaseModel):
     created_at: datetime
     uploader_id: Optional[int] = None
     download_count: int = 0
+    source_submission_ids: List[int] = []
 
     class Config:
         from_attributes = True
@@ -562,5 +563,11 @@ class TrashItem(BaseModel):
     deleted_by_id: Optional[int] = None
     deleted_by_name: Optional[str] = None
     status: Optional[str] = None
+    parent_type: Optional[str] = None
+    parent_id: Optional[int] = None
+    parent_name: Optional[str] = None
+    created_archive_id: Optional[int] = None
+    course_id: Optional[int] = None
+    course_name: Optional[str] = None
     reason: Optional[str] = None
     dependencies: List[str] = []
