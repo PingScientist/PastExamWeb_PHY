@@ -781,6 +781,7 @@
                     </template>
                     <template #body="{ data }">
                       <span class="mobile-metadata-text review-card-meta-text">{{ data.name }}</span>
+                      <small class="text-xs text-500">投稿編號：{{ formatSubmissionLabel(data) }}</small>
                     </template>
                   </Column>
                   <Column field="professor">
@@ -895,6 +896,7 @@
                     </template>
                     <template #body="{ data }">
                       <span class="mobile-metadata-text review-card-meta-text">{{ data.name }}</span>
+                      <small class="text-xs text-500">投稿編號：{{ formatSubmissionLabel(data) }}</small>
                     </template>
                   </Column>
                   <Column field="professor">
@@ -1033,8 +1035,15 @@
                 <Column field="display_name" header="名稱">
                   <template #body="{ data }">
                     <span class="trash-name-cell">
-                      <strong>{{ data.display_name }}</strong>
+                      <strong :style="{ paddingLeft: `${Math.max(0, (data?.trash_depth || 0) * 1.25)}rem` }">
+                        <span v-if="(data?.trash_depth || 0) > 0" aria-hidden="true">└─ </span>
+                        {{ data.display_name }}
+                      </strong>
+                      <small v-if="data.item_type === 'archive_submission' && data.id">投稿編號：#{{ data.id }}</small>
                       <small v-if="getTrashSemesterText(data)">{{ getTrashSemesterText(data) }}</small>
+                      <small v-if="getTrashContextLine(data)" class="text-secondary">
+                        {{ getTrashContextLine(data) }}
+                      </small>
                     </span>
                   </template>
                 </Column>
@@ -1055,10 +1064,10 @@
                     <div class="trash-dependencies">
                       <Tag
                         v-for="dependency in getTrashDependencies(data)"
-                        :key="dependency"
+                        :key="dependency.key"
                         :severity="getTrashDependencySeverity(dependency)"
                       >
-                        {{ dependency }}
+                        {{ dependency.label }}
                       </Tag>
                       <span v-if="!getTrashDependencies(data).length" class="text-sm text-500">無阻擋</span>
                     </div>
@@ -1204,10 +1213,11 @@
         :draggable="false"
         :style="{ width: '760px', maxWidth: '96vw' }"
       >
-        <div class="request-summary mb-4">
+      <div class="request-summary mb-4">
           <Tag :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)">
             {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
           </Tag>
+          <small class="text-500">{{ formatSubmissionLabel(selectedArchiveRequest) }}</small>
           <span v-if="selectedArchiveRequest?.requested_course_name">
             這筆投稿通過後會建立或使用新課程「{{ selectedArchiveRequest.requested_course_name }}」。
           </span>
@@ -1330,6 +1340,7 @@
           >
             <span class="review-history-title">
               {{ item.title }}
+              <small>投稿編號：{{ formatSubmissionLabel(item) }}</small>
               <small>投稿：{{ item.requester }}</small>
             </span>
             <Tag
@@ -1634,20 +1645,24 @@
               <strong>無阻擋</strong>：表示目前沒有會阻止還原或永久刪除的依賴。
             </li>
             <li>
-              <strong>active ...</strong>：代表仍有正常啟用中的資料依附在此項目上，通常會阻擋永久刪除。<br />
-              例如：active linked submissions: 1
+              <strong>阻擋</strong>：代表有「啟用中」的關聯資料，通常會阻擋永久刪除。<br />
+              例如：阻擋：啟用中投稿 1 筆
             </li>
             <li>
-              <strong>trashed ...</strong>：代表依附資料已進入垃圾桶，通常不視為阻擋，可依系統規則一併清理。
+              <strong>已刪除依賴</strong>：代表關聯資料也在垃圾桶中，通常不視為阻擋，會依規則一起處理。
             </li>
             <li>
-              <strong>linked archive / linked submissions</strong>：表示關聯到考古題或投稿。若關聯仍為 active，需先處理再刪除。
+              <strong>關聯</strong>：表示有關聯到其他資料，僅供參考，不一定會阻擋刪除。
             </li>
             <li>
               <strong>永久刪除</strong>：不可復原。active 依賴會阻擋，已在垃圾桶中的依賴通常不會阻擋。
             </li>
             <li>
               <strong>還原</strong>：若父層仍在垃圾桶，子項目可能需先還原父層後才能單獨還原。
+            </li>
+            <li>
+              <strong>考古題 / 考古題投稿關係</strong>：<br />
+              若考古題投稿有 <em>created_archive_id</em>，表示這筆投稿已對應到考古題，會作為該考古題的子項目顯示。
             </li>
           </ul>
         </div>
@@ -1773,7 +1788,8 @@ const reviewLoadError = ref('')
 const archiveRequests = ref([])
 const trashLoading = ref(false)
 const trashItems = ref([])
-const trashFilterType = ref(null)
+const TRASH_FILTER_ALL_VALUE = 'all'
+const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
 const courseCategories = ref([])
 const reviewEditLoading = ref(false)
 const showArchiveRequestDialog = ref(false)
@@ -1821,7 +1837,7 @@ const submissionStatusPriority = {
   deleted: 5,
 }
 const trashFilterOptions = [
-  { label: '全部', value: null },
+  { label: '全部', value: TRASH_FILTER_ALL_VALUE },
   { label: '考古題', value: 'archive' },
   { label: '考古題投稿', value: 'archive_submission' },
   { label: '課程分類', value: 'course_category' },
@@ -1951,8 +1967,107 @@ const existingCourseArchiveRequests = computed(() =>
   )
 )
 const sortedTrashItems = computed(() =>
-  [...trashItems.value].sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
+  buildTrashHierarchy(trashItems.value, getValidTrashFilterType(trashFilterType.value))
 )
+
+const getTrashItemKey = (item, fallbackIndex = 0) => {
+  const type = item?.item_type || 'unknown'
+  if (item?.id === null || item?.id === undefined) {
+    return `${type}:tmp:${fallbackIndex}`
+  }
+  return `${type}:${item.id}`
+}
+
+const getTrashParentKey = (item) => {
+  if (!item?.parent_type || item?.parent_id === null || item?.parent_id === undefined) return null
+  return `${item.parent_type}:${item.parent_id}`
+}
+
+const getValidTrashFilterType = (value) => {
+  const validFilterValues = new Set(trashFilterOptions.map((option) => option.value))
+  if (value === TRASH_FILTER_ALL_VALUE) return null
+  return validFilterValues.has(value) ? value : null
+}
+
+const getTrashFilterApiValue = (value) => getValidTrashFilterType(value)
+
+
+const buildTrashHierarchy = (items, filterType) => {
+  const normalizedFilterType = getValidTrashFilterType(filterType)
+  const rows = [...(Array.isArray(items) ? items : [])]
+    .map((item, index) => ({
+      ...(item && typeof item === 'object' ? item : {}),
+      _trashRowIndex: index,
+      trash_depth: 0,
+    }))
+    .filter((item) => item && item.item_type)
+    .sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
+
+  if (normalizedFilterType !== null && normalizedFilterType !== undefined) {
+    return rows
+      .sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
+      .map((item) => ({ ...item, trash_depth: 0 }))
+  }
+
+  if (!rows.length) return []
+
+  const itemMap = new Map()
+  const childrenMap = new Map()
+  const roots = []
+
+  for (const row of rows) {
+    const key = getTrashItemKey(row, row._trashRowIndex)
+    itemMap.set(key, row)
+    childrenMap.set(key, [])
+  }
+  for (const row of rows) {
+    const parentKey = getTrashParentKey(row)
+    if (parentKey && itemMap.has(parentKey)) {
+      childrenMap.get(parentKey)?.push(row)
+    } else {
+      roots.push(row)
+    }
+  }
+
+  for (const children of childrenMap.values()) {
+    children.sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
+  }
+  roots.sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
+
+  const visited = new Set()
+  const result = []
+  const walk = (node, depth) => {
+    const key = getTrashItemKey(node, node._trashRowIndex)
+    if (visited.has(key)) return
+    visited.add(key)
+
+    result.push({ ...node, trash_depth: depth })
+    const children = childrenMap.get(key) || []
+    for (const child of children) {
+      walk(child, depth + 1)
+    }
+  }
+  for (const root of roots) {
+    walk(root, 0)
+  }
+
+  if (!result.length && rows.length) {
+    return rows.map((item) => ({ ...item, trash_depth: 0 }))
+  }
+
+  return result
+}
+
+const getTrashContextLine = (item) => {
+  if (!item) return ''
+  if (item.item_type === 'archive' && item.course_name) return `課程：${item.course_name}`
+  if (item.item_type === 'course' && item.parent_name) return `隸屬分類：${item.parent_name}`
+  if (item.item_type === 'archive_submission') {
+    if (item.created_archive_id && item.parent_name) return `連結考古題：${item.parent_name}`
+    if (item.course_name) return `課程：${item.course_name}`
+  }
+  return ''
+}
 
 const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
 
@@ -2463,8 +2578,14 @@ const loadReviewItems = async () => {
 const loadTrashItems = async () => {
   trashLoading.value = true
   try {
-    const { data } = await archiveService.listTrashItems(trashFilterType.value)
-    trashItems.value = Array.isArray(data) ? data : []
+    const rawFilterType = getTrashFilterApiValue(trashFilterType.value)
+    const filterType = rawFilterType === null ? null : rawFilterType
+    if ((rawFilterType === null && trashFilterType.value !== TRASH_FILTER_ALL_VALUE) || rawFilterType !== null && rawFilterType !== trashFilterType.value) {
+      trashFilterType.value = rawFilterType === null ? TRASH_FILTER_ALL_VALUE : rawFilterType
+    }
+    const { data } = await archiveService.listTrashItems(filterType)
+    const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
+    trashItems.value = items.filter((item) => item && typeof item === 'object')
   } catch (error) {
     console.error('載入垃圾桶失敗:', error)
     if (isUnauthorizedError(error)) return
@@ -2514,14 +2635,112 @@ const getTrashDeletedByLabel = (item) => {
 }
 
 const getTrashDependencies = (item) => {
-  return Array.isArray(item?.dependencies) ? item.dependencies.filter(Boolean) : []
+  const dependencies = Array.isArray(item?.dependencies) ? item.dependencies.filter(Boolean) : []
+  return dependencies
+    .map((dependency) => formatTrashDependency(dependency))
+    .filter((item) => item?.label)
+    .sort((a, b) => {
+      if (a.blocking !== b.blocking) {
+        return a.blocking ? -1 : 1
+      }
+      if (a.kindOrder !== b.kindOrder) {
+        return a.kindOrder - b.kindOrder
+      }
+      return a.label.localeCompare(b.label)
+    })
 }
 
 const getTrashDependencySeverity = (dependency) => {
-  const value = String(dependency || '').toLowerCase()
-  if (value.includes('active') || value.includes('未刪除')) return 'danger'
-  if (value.includes('trashed') || value.includes('deleted')) return 'info'
-  return 'secondary'
+  return dependency?.severity || 'secondary'
+}
+
+const formatSubmissionLabel = (item) => {
+  if (!item || item.id === null || item.id === undefined) {
+    return '投稿編號：—'
+  }
+  return `投稿編號：#${item.id}`
+}
+
+const formatTrashDependency = (dependency) => {
+  if (!dependency) return null
+
+  if (typeof dependency === 'object') {
+    const count = Number(dependency.count || 0) || 1
+    const normalizedKind = String(dependency.kind || '').toLowerCase()
+    const typeRaw = String(dependency.type || '').toLowerCase()
+    const typeLabel = String(dependency.label || '').trim() || ''
+
+    if (['active', 'blocking', 'blocking_live', 'blockingActive'].includes(normalizedKind)) {
+      const label = typeLabel || (typeRaw.includes('submission') ? '啟用中投稿' : typeRaw.includes('course') ? '啟用中課程' : '啟用中關聯')
+      return {
+        key: `blocking-${typeRaw || 'dependency'}-${count}`,
+        label: `阻擋：${label} ${count} 筆`,
+        severity: 'danger',
+        blocking: true,
+        kindOrder: 0,
+      }
+    }
+
+    if (['trashed', 'deleted', 'soft_deleted'].includes(normalizedKind)) {
+      const label = typeLabel || (typeRaw.includes('submission') ? '已刪除投稿' : typeRaw.includes('course') ? '已刪除課程' : typeRaw.includes('archive') ? '已刪除考古題' : '已刪除關聯')
+      return {
+        key: `trashed-${typeRaw || 'dependency'}-${count}`,
+        label: `已刪除依賴：${label} ${count} 筆`,
+        severity: 'info',
+        blocking: false,
+        kindOrder: 1,
+      }
+    }
+  }
+
+  const raw = String(dependency || '').trim()
+  if (!raw) return null
+
+  const value = raw.toLowerCase()
+  const countMatch = raw.match(/(\d+)/)
+  const count = countMatch ? Number(countMatch[1]) : 1
+
+  const isActive = value.includes('active') || value.includes('啟用')
+  const isTrashed =
+    value.includes('trashed') || value.includes('deleted') || value.includes('已刪除') || value.includes('刪除')
+  const isSubmission = value.includes('submission')
+  const isCourse = value.includes('course') || value.includes('課程')
+  const isArchive = value.includes('archive') || value.includes('考古題')
+
+  const relationType = isCourse
+    ? '課程'
+    : isSubmission
+      ? '投稿'
+      : isArchive
+        ? '考古題'
+        : '關聯'
+
+  if (isActive) {
+    return {
+      key: `blocking-${raw}`,
+      label: `阻擋：啟用中${relationType} ${count} 筆`,
+      severity: 'danger',
+      blocking: true,
+      kindOrder: 0,
+    }
+  }
+  if (isTrashed) {
+    return {
+      key: `trashed-${raw}`,
+      label: `已刪除依賴：${relationType} ${count} 筆`,
+      severity: 'info',
+      blocking: false,
+      kindOrder: 1,
+    }
+  }
+
+  return {
+    key: `relation-${raw}`,
+    label: `關聯：${relationType} ${count} 筆`,
+    severity: 'secondary',
+    blocking: false,
+    kindOrder: 2,
+  }
 }
 
 const getTrashErrorMessage = (error, fallback = '操作失敗') => {
@@ -2611,7 +2830,8 @@ const confirmBulkDeleteTrash = () => {
 
 const bulkDeleteTrashScope = async () => {
   try {
-    const { data } = await archiveService.permanentlyDeleteTrashScope(trashFilterType.value)
+    const scopeType = getTrashFilterApiValue(trashFilterType.value)
+    const { data } = await archiveService.permanentlyDeleteTrashScope(scopeType)
     const deletedCount = Number(data?.deleted_count ?? data?.deleted ?? 0)
     const failedCount = Number(data?.failed_count ?? data?.failed ?? 0)
     if (deletedCount > 0) {
