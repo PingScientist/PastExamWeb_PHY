@@ -3,6 +3,7 @@ import os
 import re
 import logging
 import uuid
+from typing import Optional
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
@@ -26,8 +27,8 @@ from app.models.models import (
 )
 from app.api.services.archive_submission_lifecycle import (
     LIFECYCLE_ARCHIVE_TRASHED,
-    LIFECYCLE_COURSE_TRASHED,
     LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED,
+    is_course_trash_lifecycle_reason,
     soft_delete_submission_with_linked_archive,
 )
 from app.utils.auth import get_current_user
@@ -86,6 +87,10 @@ def _normalize_submission_status(raw_status):
     return normalized_status
 
 
+def _normalize_course_name(value: Optional[str]) -> str:
+    return (value or "").strip()
+
+
 def _is_admin_upload_submission(submission_data) -> bool:
     flag = getattr(submission_data, "is_admin_upload", None)
     if isinstance(submission_data, dict):
@@ -128,6 +133,35 @@ async def _ensure_or_create_requested_category(
     await db.commit()
     await db.refresh(category)
     return category
+
+
+async def _ensure_or_create_requested_category_for_approval(
+    db: AsyncSession,
+    key: str,
+    name: str | None,
+    label: str | None,
+    icon: str | None,
+) -> CourseCategoryConfig:
+    category_key = _normalize_category_key(key)
+    result = await db.execute(
+        select(CourseCategoryConfig).where(CourseCategoryConfig.key == category_key)
+    )
+    category = result.scalar_one_or_none()
+    if category:
+        if category.deleted_at is not None or not category.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="已有同名分類在垃圾桶，請先復原或永久刪除後再通過。",
+            )
+        return category
+
+    return await _ensure_or_create_requested_category(
+        db,
+        key=key,
+        name=name,
+        label=label,
+        icon=icon,
+    )
 
 
 @router.post("/upload")
@@ -662,11 +696,17 @@ async def approve_archive_submission(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    course_name = submission.requested_course_name or submission.subject
+    course_name = _normalize_course_name(submission.requested_course_name or submission.subject)
     category_key = submission.requested_category_key or submission.category
 
+    if not course_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid course name",
+        )
+
     if submission.requested_category_key:
-        await _ensure_or_create_requested_category(
+        await _ensure_or_create_requested_category_for_approval(
             db,
             submission.requested_category_key,
             submission.requested_category_name,
@@ -687,6 +727,21 @@ async def approve_archive_submission(
     ).scalar_one_or_none()
 
     if not course:
+        deleted_course = (
+            await db.execute(
+                select(Course).where(
+                    Course.name == course_name,
+                    Course.category == category_key,
+                    Course.deleted_at.is_not(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if deleted_course:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="已有同名課程在垃圾桶，請先復原或永久刪除後再通過。",
+            )
+
         course = Course(name=course_name, category=category_key)
         db.add(course)
         await db.commit()
@@ -824,7 +879,7 @@ async def republish_archive_submission(
             archive.restored_at = datetime.now(timezone.utc)
             archive.restored_by_id = current_user.user_id
 
-    if submission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED:
+    if is_course_trash_lifecycle_reason(submission.lifecycle_reason):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="無法重新上架，請先至垃圾桶復原原課程",
