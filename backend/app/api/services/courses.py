@@ -127,6 +127,18 @@ async def _category_order_map(db: AsyncSession) -> dict[str, int]:
     return {category.key: index for index, category in enumerate(categories)}
 
 
+async def _admin_category_order_map(db: AsyncSession) -> dict[str, int]:
+    result = await db.execute(
+        select(CourseCategoryConfig)
+        .where(CourseCategoryConfig.deleted_at.is_(None))
+        .order_by(CourseCategoryConfig.order_index, CourseCategoryConfig.id)
+    )
+    categories = result.scalars().all()
+    if not categories:
+        return DEFAULT_CATEGORY_ORDER.copy()
+    return {category.key: index for index, category in enumerate(categories)}
+
+
 async def _ensure_category(db: AsyncSession, category_key: str) -> CourseCategoryConfig:
     result = await db.execute(
         select(CourseCategoryConfig).where(
@@ -1298,7 +1310,7 @@ async def list_all_courses(
 
     query = select(Course).where(Course.deleted_at.is_(None))
     result = await db.execute(query)
-    category_order = await _category_order_map(db)
+    category_order = await _admin_category_order_map(db)
     courses = _visible_courses(result.scalars().all(), category_order)
 
     return courses
@@ -1312,7 +1324,9 @@ async def list_admin_course_categories(
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     result = await db.execute(
-        select(CourseCategoryConfig).order_by(
+        select(CourseCategoryConfig)
+        .where(CourseCategoryConfig.deleted_at.is_(None))
+        .order_by(
             CourseCategoryConfig.order_index,
             CourseCategoryConfig.id,
         )
@@ -1471,35 +1485,19 @@ async def delete_course_category(
             )
         )
     ).scalars().all()
-    related_course_submissions = (
-        await db.execute(select(CourseSubmission).where(CourseSubmission.category == category.key))
-    ).scalars().all()
-    related_archive_submissions = (
-        await db.execute(
-            select(ArchiveSubmission).where(
-                (ArchiveSubmission.category == category.key)
-                | (ArchiveSubmission.requested_category_key == category.key)
-            )
-        )
-    ).scalars().all()
 
-    blockers = []
     if active_courses:
-        course_names = ", ".join(course.name for course in active_courses[:5])
         if len(active_courses) > 5:
-            course_names += f", and {len(active_courses) - 5} more"
-        blockers.append(f"active courses: {course_names}")
-    if related_course_submissions:
-        blockers.append(f"course submissions: {len(related_course_submissions)}")
-    if related_archive_submissions:
-        blockers.append(f"archive submissions: {len(related_archive_submissions)}")
-
-    if blockers:
+            sample_names = ", ".join(course.name for course in active_courses[:5]) + f" 等 {len(active_courses)} 門課程"
+        else:
+            sample_names = ", ".join(course.name for course in active_courses)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Category cannot be deleted because it is still referenced by {'; '.join(blockers)}.",
+            detail=f"此分類仍有啟用中的課程，請先刪除或移動這些課程後再刪除分類。({len(active_courses)} 門，包含：{sample_names})",
         )
 
-    await db.delete(category)
+    category.deleted_at = datetime.now(timezone.utc)
+    category.deleted_by_id = current_user.user_id
+
     await db.commit()
     return {"message": "Category deleted successfully"}

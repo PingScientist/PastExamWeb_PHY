@@ -1971,11 +1971,21 @@ const getInitialTab = () => {
 const currentTab = ref(getInitialTab())
 
 const categoryOptions = computed(() =>
-  courseCategories.value.filter((category) => category.is_active).map((category) => ({
-    name: category.name,
+  courseCategories.value
+    .filter((category) => !category.deleted_at)
+    .map((category) => ({
+    name: category.is_active ? category.name : `${category.name}（已停用）`,
     value: category.key,
     label: category.label,
   }))
+)
+const categoryInfoMap = computed(() =>
+  courseCategories.value.reduce((acc, category) => {
+    if (!category.deleted_at) {
+      acc[category.key] = category
+    }
+    return acc
+  }, {})
 )
 
 const userTypeFilterOptions = [
@@ -1984,7 +1994,11 @@ const userTypeFilterOptions = [
 ]
 
 const getCategoryName = (category) => {
-  return courseCategories.value.find((item) => item.key === category)?.name || category
+  return categoryInfoMap.value[category]?.name || category
+}
+
+const getCategoryDisplayLabel = (category) => {
+  return categoryInfoMap.value[category]?.label || categoryInfoMap.value[category]?.name || ''
 }
 
 const getCategorySeverity = (category) => {
@@ -2181,7 +2195,18 @@ const filteredCourses = computed(() => {
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter((course) => course.name.toLowerCase().includes(query))
+    filtered = filtered.filter((course) => {
+      const courseName = (course.name || '').toLowerCase()
+      const categoryName = (getCategoryName(course.category) || '').toLowerCase()
+      const categoryLabel = getCategoryDisplayLabel(course.category).toLowerCase()
+      const categoryKey = (course.category || '').toLowerCase()
+      return (
+        courseName.includes(query) ||
+        categoryName.includes(query) ||
+        categoryLabel.includes(query) ||
+        categoryKey.includes(query)
+      )
+    })
   }
 
   if (filterCategory.value) {
@@ -2343,7 +2368,7 @@ const loadCourses = async () => {
   try {
     const [categoryResponse, courseResponse] = await Promise.all([
       courseService.listAdminCategories(),
-      getCourses(),
+      courseService.getAllCourses(),
     ])
     courseCategories.value = Array.isArray(categoryResponse.data) ? categoryResponse.data : []
     const response = courseResponse
@@ -3116,7 +3141,7 @@ const toggleCategoryActive = async (category, isActive) => {
 
 const confirmDeleteCategory = (category) => {
   confirm.require({
-    message: `確定要永久刪除分類「${category.name}」嗎？只有完全沒有課程或投稿引用的分類才能刪除。`,
+    message: `確定要刪除分類「${category.name}」嗎？刪除後將進入垃圾桶。`,
     header: '刪除分類',
     icon: 'pi pi-exclamation-triangle',
     rejectClass: 'p-button-secondary p-button-outlined',
@@ -3130,7 +3155,7 @@ const confirmDeleteCategory = (category) => {
 const deleteCategoryAction = async (category) => {
   try {
     await courseService.deleteCategory(category.id)
-    toast.add({ severity: 'success', summary: '成功', detail: '分類已刪除', life: 3000 })
+    toast.add({ severity: 'success', summary: '成功', detail: '分類已移到垃圾桶', life: 3000 })
     await loadCourses()
   } catch (error) {
     console.error('刪除分類失敗:', error)
