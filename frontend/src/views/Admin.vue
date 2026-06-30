@@ -729,6 +729,9 @@
 
           <TabPanel value="3">
             <div class="p-2 md:p-4 review-center">
+              <div v-if="reviewLoadError" class="review-load-error">
+                {{ reviewLoadError }}
+              </div>
               <div class="review-section">
                 <div class="review-section-header">
                   <h3>新課程 / 新分類考古申請</h3>
@@ -1576,6 +1579,7 @@ const notificationForm = ref({
 })
 const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
+const reviewLoadError = ref('')
 const archiveRequests = ref([])
 const courseCategories = ref([])
 const reviewEditLoading = ref(false)
@@ -1616,11 +1620,33 @@ const archiveTypeOptions = [
 
 const currentUserId = computed(() => getCurrentUser()?.id)
 const canEditSelectedArchiveRequest = computed(() => Boolean(selectedArchiveRequest.value))
+const submissionStatusPriority = {
+  pending: 1,
+  approved: 2,
+  rejected: 3,
+  takedown: 4,
+  deleted: 5,
+}
+const normalizeSubmissionStatus = (status) => String(status || '').trim().toLowerCase()
+const getSubmissionStatusPriority = (status) => {
+  return submissionStatusPriority[normalizeSubmissionStatus(status)] || 99
+}
+const sortArchiveReviewItems = (items) => {
+  return [...items].sort((a, b) => {
+    const statusDiff = getSubmissionStatusPriority(a.status) - getSubmissionStatusPriority(b.status)
+    if (statusDiff !== 0) return statusDiff
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  })
+}
 const newCourseArchiveRequests = computed(() =>
-  archiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key)
+  sortArchiveReviewItems(
+    archiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key)
+  )
 )
 const existingCourseArchiveRequests = computed(() =>
-  archiveRequests.value.filter((item) => !item.requested_course_name && !item.requested_category_key)
+  sortArchiveReviewItems(
+    archiveRequests.value.filter((item) => !item.requested_course_name && !item.requested_category_key)
+  )
 )
 
 const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
@@ -1743,24 +1769,27 @@ const getSubmissionLabel = (status) => {
     pending: '待審核',
     approved: '已通過',
     rejected: '未通過',
-    PENDING: '待審核',
-    APPROVED: '已通過',
-    REJECTED: '未通過',
+    takedown: '已下架',
+    deleted: '已刪除',
   }
-  return labels[status] || status
+  return labels[normalizeSubmissionStatus(status)] || '未知狀態'
 }
 
 const getSubmissionSeverity = (status) => {
-  const normalized = String(status || '').toLowerCase()
+  const normalized = normalizeSubmissionStatus(status)
   if (normalized === 'approved') return 'success'
   if (normalized === 'rejected') return 'danger'
+  if (normalized === 'deleted') return 'danger'
+  if (normalized === 'takedown') return 'secondary'
   return 'warning'
 }
 
 const getSubmissionStatusClass = (status) => {
-  const normalized = String(status || '').toLowerCase()
+  const normalized = normalizeSubmissionStatus(status)
   if (normalized === 'approved') return 'review-status-approved'
   if (normalized === 'rejected') return 'review-status-rejected'
+  if (normalized === 'takedown') return 'review-status-takedown'
+  if (normalized === 'deleted') return 'review-status-deleted'
   return 'review-status-pending'
 }
 
@@ -2038,6 +2067,7 @@ const loadNotifications = async () => {
 
 const loadReviewItems = async () => {
   reviewLoading.value = true
+  reviewLoadError.value = ''
   try {
     const [categoryResponse, allCoursesResponse, archiveResponse] = await Promise.all([
       courseService.listAdminCategories(),
@@ -2049,6 +2079,7 @@ const loadReviewItems = async () => {
     archiveRequests.value = Array.isArray(archiveResponse.data) ? archiveResponse.data : []
   } catch (error) {
     console.error('載入審核資料失敗:', error)
+    reviewLoadError.value = '審核資料載入失敗，請稍後再試或查看伺服器日誌。'
     if (isUnauthorizedError(error)) {
       return
     }
@@ -3079,6 +3110,15 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
 }
 
+.review-load-error {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fecaca;
+}
+
 :deep(.review-status-chip.review-status-pending) {
   background: rgba(245, 158, 11, 0.2);
   color: #fbbf24;
@@ -3095,6 +3135,18 @@ onBeforeUnmount(() => {
   background: rgba(239, 68, 68, 0.18);
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.38);
+}
+
+:deep(.review-status-chip.review-status-takedown) {
+  background: rgba(100, 116, 139, 0.22);
+  color: #cbd5e1;
+  border-color: rgba(100, 116, 139, 0.42);
+}
+
+:deep(.review-status-chip.review-status-deleted) {
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+  border-color: rgba(127, 29, 29, 0.5);
 }
 
 .compare-preview-grid {

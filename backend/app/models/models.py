@@ -33,6 +33,8 @@ class SubmissionStatus(str, PyEnum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    DELETED = "deleted"
+    TAKEDOWN = "takedown"
 
 
 class User(SQLModel, table=True):

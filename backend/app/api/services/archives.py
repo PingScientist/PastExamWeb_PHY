@@ -1,12 +1,13 @@
 import io
 import os
 import re
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -27,6 +28,7 @@ from app.utils.auth import get_current_user
 from app.utils.storage import get_minio_client
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _ensure_category(db: AsyncSession, category_key: str) -> None:
@@ -57,6 +59,25 @@ def _unwrap_form_default(value, default=None):
     if hasattr(value, "default"):
         return default if value.default is Ellipsis else value.default
     return value
+
+
+def _normalize_submission_status(raw_status):
+    if raw_status is None:
+        return None
+
+    value = raw_status.value if hasattr(raw_status, "value") else raw_status
+    normalized = str(value).strip().lower()
+    status_by_value = {
+        "pending": SubmissionStatus.PENDING,
+        "approved": SubmissionStatus.APPROVED,
+        "rejected": SubmissionStatus.REJECTED,
+        "deleted": SubmissionStatus.DELETED,
+        "takedown": SubmissionStatus.TAKEDOWN,
+    }
+    normalized_status = status_by_value.get(normalized)
+    if normalized_status is None:
+        logger.warning("Unsupported submission status encountered: %s", value)
+    return normalized_status
 
 
 async def _ensure_or_create_requested_category(
@@ -319,22 +340,71 @@ async def list_archive_submissions_for_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     result = await db.execute(
-        select(ArchiveSubmission, User.name, User.email)
-        .join(User, User.id == ArchiveSubmission.requester_id, isouter=True)
-        .order_by(
-            ArchiveSubmission.status.asc(),
-            ArchiveSubmission.created_at.desc(),
-        )
+        text("""
+            SELECT
+                archive_submissions.id,
+                archive_submissions.subject,
+                archive_submissions.category,
+                archive_submissions.name,
+                archive_submissions.academic_year,
+                LOWER(CAST(archive_submissions.archive_type AS TEXT)) AS archive_type,
+                archive_submissions.professor,
+                archive_submissions.has_answers,
+                archive_submissions.requested_course_name,
+                archive_submissions.requested_category_key,
+                archive_submissions.requested_category_name,
+                archive_submissions.requested_category_label,
+                archive_submissions.requested_category_icon,
+                LOWER(CAST(archive_submissions.status AS TEXT)) AS status,
+                archive_submissions.requester_id,
+                archive_submissions.reviewer_id,
+                archive_submissions.review_note,
+                archive_submissions.created_archive_id,
+                archive_submissions.created_at,
+                archive_submissions.reviewed_at,
+                users.name AS requester_name,
+                users.email AS requester_email
+            FROM archive_submissions
+            LEFT JOIN users
+                ON users.id = archive_submissions.requester_id
+            ORDER BY
+                CASE LOWER(CAST(archive_submissions.status AS TEXT))
+                    WHEN 'pending' THEN 1
+                    WHEN 'approved' THEN 2
+                    WHEN 'rejected' THEN 3
+                    WHEN 'takedown' THEN 4
+                    WHEN 'deleted' THEN 5
+                    ELSE 99
+                END,
+                archive_submissions.created_at DESC
+        """)
     )
-    return [
-        ArchiveSubmissionRead.model_validate(submission).model_copy(
-            update={
-                "requester_name": requester_name,
-                "requester_email": requester_email,
-            }
+    archive_submissions = []
+    skipped_submission_count = 0
+    for row in result.all():
+        row_dict = dict(row._mapping)
+        normalized_status = _normalize_submission_status(row_dict.get("status"))
+        if normalized_status is None:
+            skipped_submission_count += 1
+            continue
+
+        row_dict["status"] = normalized_status
+        try:
+            archive_submissions.append(ArchiveSubmissionRead.model_validate(row_dict))
+        except Exception as exc:
+            skipped_submission_count += 1
+            logger.warning(
+                "Skipping archive submission %s due to invalid payload: %s",
+                row_dict.get("id"),
+                exc,
+            )
+
+    if skipped_submission_count:
+        logger.info(
+            "Skipped %s archive submissions in admin list due to unsupported/invalid status",
+            skipped_submission_count,
         )
-        for submission, requester_name, requester_email in result.all()
-    ]
+    return archive_submissions
 
 
 @router.get("/admin/submissions/{submission_id}/preview-file")
