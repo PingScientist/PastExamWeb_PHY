@@ -689,11 +689,66 @@ async def reject_archive_submission(
     submission.reviewer_id = current_user.user_id
     submission.review_note = decision.note if decision else None
     submission.reviewed_at = datetime.now(timezone.utc)
-    if submission.created_archive_id:
-        archive = await db.get(Archive, submission.created_archive_id)
-        if archive and archive.deleted_at is None:
-            archive.deleted_at = datetime.now(timezone.utc)
-            db.add(archive)
+    await db.commit()
+    await db.refresh(submission)
+    return submission
+
+
+@router.post("/admin/submissions/{submission_id}/takedown", response_model=ArchiveSubmissionRead)
+async def takedown_archive_submission(
+    submission_id: int,
+    decision: SubmissionDecision | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+
+    normalized_status = _normalize_submission_status(submission.status)
+    if normalized_status in {SubmissionStatus.DELETED, SubmissionStatus.TAKEDOWN}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Submission cannot be taken down from its current status",
+        )
+
+    submission.status = SubmissionStatus.TAKEDOWN
+    submission.reviewer_id = current_user.user_id
+    submission.review_note = decision.note if decision else submission.review_note
+    submission.reviewed_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(submission)
+    return submission
+
+
+@router.post("/admin/submissions/{submission_id}/republish", response_model=ArchiveSubmissionRead)
+async def republish_archive_submission(
+    submission_id: int,
+    decision: SubmissionDecision | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+
+    normalized_status = _normalize_submission_status(submission.status)
+    if normalized_status != SubmissionStatus.TAKEDOWN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only taken down submissions can be republished",
+        )
+
+    submission.status = SubmissionStatus.APPROVED
+    submission.reviewer_id = current_user.user_id
+    submission.review_note = decision.note if decision else submission.review_note
+    submission.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(submission)
     return submission

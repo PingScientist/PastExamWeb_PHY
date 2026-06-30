@@ -840,37 +840,18 @@
 	                          outlined
 	                          @click="openArchiveRequestDialog(data)"
 	                        />
-	                        <Button
-	                          label="通過"
-                          icon="pi pi-check"
-                          aria-label="通過"
-                          title="通過"
-                          size="small"
-                          severity="success"
-                          v-if="canShowReviewAction(data, 'approve')"
-                          @click="reviewArchiveSubmission(data.id, 'approve')"
-                        />
                         <Button
-                          label="退回"
-                          icon="pi pi-ban"
-                          aria-label="退回"
-                          title="退回"
+                          v-for="action in getReviewRowActions(data)"
+                          :key="action.key"
+                          :label="action.label"
+                          :icon="action.icon"
+                          :aria-label="action.label"
+                          :title="action.label"
                           size="small"
-                          severity="danger"
-                          outlined
-                          v-if="canShowReviewAction(data, 'reject')"
-                          @click="reviewArchiveSubmission(data.id, 'reject')"
-                        />
-                        <Button
-                          label="刪除"
-                          icon="pi pi-trash"
-                          aria-label="刪除"
-                          title="刪除"
-                          size="small"
-                          severity="danger"
-                          text
-                          v-if="canShowReviewAction(data, 'delete')"
-                          @click="confirmDeleteArchiveSubmission(data)"
+                          :severity="action.severity"
+                          :outlined="action.outlined"
+                          :text="action.text"
+                          @click="runReviewRowAction(data, action.key)"
                         />
                       </div>
                     </template>
@@ -974,36 +955,17 @@
                           @click="openArchiveRequestDialog(data)"
                         />
                         <Button
-                          label="通過"
-                          icon="pi pi-check"
-                          aria-label="通過"
-                          title="通過"
+                          v-for="action in getReviewRowActions(data)"
+                          :key="action.key"
+                          :label="action.label"
+                          :icon="action.icon"
+                          :aria-label="action.label"
+                          :title="action.label"
                           size="small"
-                          severity="success"
-                          v-if="canShowReviewAction(data, 'approve')"
-                          @click="reviewArchiveSubmission(data.id, 'approve')"
-                        />
-                        <Button
-                          label="退回"
-                          icon="pi pi-ban"
-                          aria-label="退回"
-                          title="退回"
-                          size="small"
-                          severity="danger"
-                          outlined
-                          v-if="canShowReviewAction(data, 'reject')"
-                          @click="reviewArchiveSubmission(data.id, 'reject')"
-                        />
-                        <Button
-                          label="刪除"
-                          icon="pi pi-trash"
-                          aria-label="刪除"
-                          title="刪除"
-                          size="small"
-                          severity="danger"
-                          text
-                          v-if="canShowReviewAction(data, 'delete')"
-                          @click="confirmDeleteArchiveSubmission(data)"
+                          :severity="action.severity"
+                          :outlined="action.outlined"
+                          :text="action.text"
+                          @click="runReviewRowAction(data, action.key)"
                         />
                       </div>
                     </template>
@@ -1292,30 +1254,16 @@
             @click="saveArchiveRequestEdit"
           />
           <Button
-            label="通過"
-            icon="pi pi-check"
-            aria-label="通過"
-            severity="success"
-            :disabled="!canEditSelectedArchiveRequest"
-            @click="reviewArchiveSubmission(selectedArchiveRequest.id, 'approve')"
-          />
-          <Button
-            label="退回"
-            icon="pi pi-ban"
-            aria-label="退回"
-            severity="danger"
-            outlined
-            :disabled="!canEditSelectedArchiveRequest"
-            @click="reviewArchiveSubmission(selectedArchiveRequest.id, 'reject')"
-          />
-          <Button
-            label="刪除"
-            icon="pi pi-trash"
-            aria-label="刪除"
-            severity="danger"
-            text
+            v-for="action in getReviewRowActions(selectedArchiveRequest)"
+            :key="action.key"
+            :label="action.label"
+            :icon="action.icon"
+            :aria-label="action.label"
+            :severity="action.severity"
+            :outlined="action.outlined"
+            :text="action.text"
             :disabled="!selectedArchiveRequest"
-            @click="confirmDeleteArchiveSubmission(selectedArchiveRequest)"
+            @click="runReviewRowAction(selectedArchiveRequest, action.key)"
           />
         </div>
       </Dialog>
@@ -1718,13 +1666,33 @@ const submissionStatusPriority = {
   takedown: 4,
   deleted: 5,
 }
+const submissionStatusAliases = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  takedown: 'takedown',
+  deleted: 'deleted',
+  '待審核': 'pending',
+  '已通過': 'approved',
+  '未通過': 'rejected',
+  '已下架': 'takedown',
+  '已刪除': 'deleted',
+}
 const reviewSortState = ref({
   new: { key: 'status', direction: 'asc' },
   existing: { key: 'status', direction: 'asc' },
 })
-const normalizeSubmissionStatus = (status) => String(status || '').trim().toLowerCase()
-const getSubmissionStatusPriority = (status) => {
-  return submissionStatusPriority[normalizeSubmissionStatus(status)] || 99
+const normalizeSubmissionStatus = (status) => {
+  const raw = String(status || '').trim()
+  const normalized = raw.toLowerCase()
+  return submissionStatusAliases[normalized] || submissionStatusAliases[raw] || normalized
+}
+const getReviewItemStatus = (item) => {
+  if (item?.deletedAt || item?.deleted_at) return 'deleted'
+  return normalizeSubmissionStatus(item?.status)
+}
+const getReviewItemStatusPriority = (item) => {
+  return submissionStatusPriority[getReviewItemStatus(item)] || 99
 }
 const getReviewSubmissionTimeValue = (item) => {
   const value = item?.submittedAt ?? item?.submitted_at ?? item?.createdAt ?? item?.created_at ?? item?.uploadedAt ?? item?.uploaded_at
@@ -1749,36 +1717,47 @@ const formatReviewSubmissionTime = (item) => {
   return formatRelativeTime(value)
 }
 const getReviewSortValue = (item, key) => {
-  if (key === 'status') return getSubmissionStatusPriority(item.status)
+  if (key === 'status') return getReviewItemStatusPriority(item)
   if (key === 'submitted_at') return getReviewTimestamp(item)
-  if (key === 'academic_year') return Number(item.academic_year) || 0
+  if (key === 'academic_year') return Number(item.academic_year) || null
   if (key === 'kind') return getArchiveSubmissionKind(item)
   return String(item?.[key] || '').trim()
 }
-const compareReviewSortValues = (a, b, key) => {
+const isMissingReviewSortValue = (value, key) => {
+  return value === null || value === undefined || value === '' || (key === 'status' && value >= 99)
+}
+const compareReviewSortValues = (a, b, key, direction) => {
   const aValue = getReviewSortValue(a, key)
   const bValue = getReviewSortValue(b, key)
+  const aMissing = isMissingReviewSortValue(aValue, key)
+  const bMissing = isMissingReviewSortValue(bValue, key)
+  if (aMissing && bMissing) return 0
+  if (aMissing) return 1
+  if (bMissing) return -1
+  const directionFactor = direction === 'desc' ? -1 : 1
   if (typeof aValue === 'number' && typeof bValue === 'number') {
-    return aValue - bValue
+    return (aValue - bValue) * directionFactor
   }
-  return String(aValue).localeCompare(String(bValue), 'zh-TW')
+  return String(aValue).localeCompare(String(bValue), 'zh-TW') * directionFactor
 }
 const sortArchiveReviewItems = (items, section) => {
   const { key, direction } = reviewSortState.value[section]
-  const directionFactor = direction === 'desc' ? -1 : 1
   return [...items].sort((a, b) => {
-    const primaryDiff = compareReviewSortValues(a, b, key)
-    if (primaryDiff !== 0) return primaryDiff * directionFactor
-    const statusDiff = getSubmissionStatusPriority(a.status) - getSubmissionStatusPriority(b.status)
+    const primaryDiff = compareReviewSortValues(a, b, key, direction)
+    if (primaryDiff !== 0) return primaryDiff
+    const statusDiff = getReviewItemStatusPriority(a) - getReviewItemStatusPriority(b)
     if (statusDiff !== 0) return statusDiff
-    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    return getReviewTimestamp(b) - getReviewTimestamp(a)
   })
 }
 const toggleReviewSort = (section, key) => {
   const current = reviewSortState.value[section]
-  reviewSortState.value[section] = {
-    key,
-    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+  reviewSortState.value = {
+    ...reviewSortState.value,
+    [section]: {
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    },
   }
 }
 const getReviewSortIndicator = (section, key) => {
@@ -1943,18 +1922,38 @@ const getSubmissionStatusClass = (status) => {
   return 'review-status-pending'
 }
 
-const canShowReviewAction = (item, action) => {
-  const status = normalizeSubmissionStatus(item?.status)
-  if (action === 'approve') {
-    return status === 'pending' || status === 'rejected'
+const reviewActionDefinitions = {
+  approve: { key: 'approve', label: '通過', icon: 'pi pi-check', severity: 'success' },
+  reject: { key: 'reject', label: '退回', icon: 'pi pi-ban', severity: 'danger', outlined: true },
+  takedown: { key: 'takedown', label: '下架', icon: 'pi pi-eye-slash', severity: 'secondary', outlined: true },
+  republish: { key: 'republish', label: '重新上架', icon: 'pi pi-refresh', severity: 'success', outlined: true },
+  delete: { key: 'delete', label: '刪除', icon: 'pi pi-trash', severity: 'danger', text: true },
+}
+
+const getReviewRowActions = (item) => {
+  const status = getReviewItemStatus(item)
+  if (status === 'pending') {
+    return [reviewActionDefinitions.approve, reviewActionDefinitions.reject, reviewActionDefinitions.delete]
   }
-  if (action === 'reject') {
-    return status === 'pending' || status === 'approved'
+  if (status === 'approved') {
+    return [reviewActionDefinitions.takedown, reviewActionDefinitions.reject, reviewActionDefinitions.delete]
   }
+  if (status === 'rejected') {
+    return [reviewActionDefinitions.approve, reviewActionDefinitions.delete]
+  }
+  if (status === 'takedown') {
+    return [reviewActionDefinitions.republish, reviewActionDefinitions.delete]
+  }
+  return []
+}
+
+const runReviewRowAction = (item, action) => {
+  if (!item?.id) return
   if (action === 'delete') {
-    return status === 'pending' || status === 'approved' || status === 'rejected' || status === 'takedown'
+    confirmDeleteArchiveSubmission(item)
+    return
   }
-  return false
+  reviewArchiveSubmission(item.id, action)
 }
 
 const getArchiveSubmissionKind = (item) => {
@@ -2441,13 +2440,23 @@ const reviewArchiveSubmission = async (submissionId, action) => {
   try {
     if (action === 'approve') {
       await archiveService.approveSubmission(submissionId)
+    } else if (action === 'takedown') {
+      await archiveService.takedownSubmission(submissionId)
+    } else if (action === 'republish') {
+      await archiveService.republishSubmission(submissionId)
     } else {
       await archiveService.rejectSubmission(submissionId)
+    }
+    const actionMessages = {
+      approve: '考古題投稿已通過',
+      reject: '考古題投稿已退回',
+      takedown: '考古題投稿已下架',
+      republish: '考古題投稿已重新上架',
     }
     toast.add({
       severity: 'success',
       summary: '完成',
-      detail: action === 'approve' ? '考古題投稿已通過' : '考古題投稿已退回',
+      detail: actionMessages[action] || '考古題投稿狀態已更新',
       life: 3000,
     })
     await loadReviewItems()
