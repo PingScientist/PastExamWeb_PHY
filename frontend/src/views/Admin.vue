@@ -1638,21 +1638,21 @@
       >
         <div class="flex flex-column gap-3">
           <p class="m-0">
-            依賴欄位用來說明垃圾桶項目在還原／永久刪除前，是否仍有關聯資料會影響操作。
+            依賴欄位用來說明每筆垃圾桶項目在還原／永久刪除前，還與哪些資料有關係，以及這些關係是否會阻擋永久刪除。
           </p>
           <ul class="m-0 pl-4">
             <li>
-              <strong>無阻擋</strong>：表示目前沒有會阻止還原或永久刪除的依賴。
+              <strong>無阻擋</strong>：表示目前這筆資料沒有會阻止還原／永久刪除的阻擋依賴。
             </li>
             <li>
-              <strong>阻擋</strong>：代表有「啟用中」的關聯資料，通常會阻擋永久刪除。<br />
-              例如：阻擋：啟用中投稿 1 筆
+              <strong>阻擋永久刪除</strong>：代表仍有啟用中的資料引用這筆資料，系統會阻擋直接永久刪除。<br />
+              例如：阻擋永久刪除：1 筆啟用中投稿引用此考古題
             </li>
             <li>
-              <strong>已刪除依賴</strong>：代表關聯資料也在垃圾桶中，通常不視為阻擋，會依規則一起處理。
+              <strong>可一併清理</strong>：代表關聯資料也在垃圾桶中，通常不阻擋永久刪除，可在永久刪除時依規則一起處理。
             </li>
             <li>
-              <strong>關聯</strong>：表示有關聯到其他資料，僅供參考，不一定會阻擋刪除。
+              <strong>關聯</strong>：表示有關聯到其他資料，僅供參考，通常不阻擋刪除。
             </li>
             <li>
               <strong>永久刪除</strong>：不可復原。active 依賴會阻擋，已在垃圾桶中的依賴通常不會阻擋。
@@ -1661,8 +1661,21 @@
               <strong>還原</strong>：若父層仍在垃圾桶，子項目可能需先還原父層後才能單獨還原。
             </li>
             <li>
-              <strong>考古題 / 考古題投稿關係</strong>：<br />
-              若考古題投稿有 <em>created_archive_id</em>，表示這筆投稿已對應到考古題，會作為該考古題的子項目顯示。
+              <strong>考古題與考古題投稿</strong>：
+              <ul class="mt-1 pl-4">
+                <li>考古題投稿若有 <em>created_archive_id</em>，表示這筆投稿已對應到正式考古題，會作為該考古題的子項目/來源紀錄。</li>
+                <li>考古題刪除時，投稿不一定會同步軟刪，因為投稿用於保留上傳者歷史、審核紀錄與來源脈絡。</li>
+                <li>若此投稿為「啟用中」且仍引用此考古題，會阻擋考古題的永久刪除。</li>
+                <li>若投稿已進垃圾桶，通常可在永久刪除流程中一併清理。</li>
+              </ul>
+            </li>
+            <li>
+              <strong>課程與考古題</strong>：
+              <ul class="mt-1 pl-4">
+                <li>考古題是課程的內容項目，課程會持有考古題。</li>
+                <li>已刪除課程下的考古題可在課程刪除時一併清理。</li>
+                <li>啟用中的考古題會阻擋課程永久刪除。</li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -2637,7 +2650,7 @@ const getTrashDeletedByLabel = (item) => {
 const getTrashDependencies = (item) => {
   const dependencies = Array.isArray(item?.dependencies) ? item.dependencies.filter(Boolean) : []
   return dependencies
-    .map((dependency) => formatTrashDependency(dependency))
+    .map((dependency) => formatTrashDependency(dependency, item?.item_type))
     .filter((item) => item?.label)
     .sort((a, b) => {
       if (a.blocking !== b.blocking) {
@@ -2661,7 +2674,7 @@ const formatSubmissionLabel = (item) => {
   return `投稿編號：#${item.id}`
 }
 
-const formatTrashDependency = (dependency) => {
+const formatTrashDependency = (dependency, itemType = '') => {
   if (!dependency) return null
 
   if (typeof dependency === 'object') {
@@ -2671,10 +2684,10 @@ const formatTrashDependency = (dependency) => {
     const typeLabel = String(dependency.label || '').trim() || ''
 
     if (['active', 'blocking', 'blocking_live', 'blockingActive'].includes(normalizedKind)) {
-      const label = typeLabel || (typeRaw.includes('submission') ? '啟用中投稿' : typeRaw.includes('course') ? '啟用中課程' : '啟用中關聯')
+      const label = typeLabel || getFallbackRelationLabel(typeRaw, 'active', itemType)
       return {
         key: `blocking-${typeRaw || 'dependency'}-${count}`,
-        label: `阻擋：${label} ${count} 筆`,
+        label: `阻擋永久刪除：${label} ${count} 筆`,
         severity: 'danger',
         blocking: true,
         kindOrder: 0,
@@ -2682,10 +2695,10 @@ const formatTrashDependency = (dependency) => {
     }
 
     if (['trashed', 'deleted', 'soft_deleted'].includes(normalizedKind)) {
-      const label = typeLabel || (typeRaw.includes('submission') ? '已刪除投稿' : typeRaw.includes('course') ? '已刪除課程' : typeRaw.includes('archive') ? '已刪除考古題' : '已刪除關聯')
+      const label = typeLabel || getFallbackRelationLabel(typeRaw, 'trashed', itemType)
       return {
         key: `trashed-${typeRaw || 'dependency'}-${count}`,
-        label: `已刪除依賴：${label} ${count} 筆`,
+        label: `可一併清理：${label} ${count} 筆`,
         severity: 'info',
         blocking: false,
         kindOrder: 1,
@@ -2706,19 +2719,103 @@ const formatTrashDependency = (dependency) => {
   const isSubmission = value.includes('submission')
   const isCourse = value.includes('course') || value.includes('課程')
   const isArchive = value.includes('archive') || value.includes('考古題')
+  const isCategory = value.includes('category') || value.includes('分類')
+  const isComment = value.includes('comment') || value.includes('留言')
 
-  const relationType = isCourse
-    ? '課程'
-    : isSubmission
-      ? '投稿'
-      : isArchive
-        ? '考古題'
-        : '關聯'
+  const relationLabel = (() => {
+    if (isSubmission) {
+      return isActive || isTrashed ? '投稿' : '相關投稿'
+    }
+    if (isCourse) return '課程'
+    if (isArchive) return '考古題'
+    if (isCategory) return '分類'
+    if (isComment) return '留言'
+    return '關聯資料'
+  })()
+
+  if (value.includes('linked archive')) {
+    if (isActive) {
+      return {
+        key: `relation-${raw}`,
+        label: '關聯：此項目仍關聯到考古題（未刪除）',
+        severity: 'secondary',
+        blocking: false,
+        kindOrder: 2,
+      }
+    }
+    if (isTrashed) {
+      return {
+        key: `relation-${raw}`,
+        label: '可一併清理：關聯考古題已刪除',
+        severity: 'info',
+        blocking: false,
+        kindOrder: 1,
+      }
+    }
+  }
+
+  if (value.includes('linked archive submissions')) {
+    return {
+      key: `relation-${raw}`,
+      label: `關聯：此項目與考古題的其他投稿有 ${count} 筆關聯（不一定阻擋）`,
+      severity: 'secondary',
+      blocking: false,
+      kindOrder: 2,
+    }
+  }
+
+  const blockerLabel = (() => {
+    if (itemType === 'archive') {
+      return isSubmission
+        ? `1 筆啟用中投稿引用此考古題`
+        : isCourse
+          ? `啟用中課程依附此課程`
+        : isArchive
+            ? `啟用中考古題依附`
+            : `啟用中${relationLabel}`
+    }
+    if (itemType === 'course') {
+      return isArchive
+        ? `啟用中考古題依附此課程`
+        : isSubmission
+          ? `啟用中投稿依附此分類`
+          : `啟用中${relationLabel}`
+    }
+    if (itemType === 'course_category') {
+      return isCourse
+        ? `啟用中課程依附此分類`
+        : isSubmission
+          ? `啟用中投稿依附此分類`
+          : `啟用中${relationLabel}`
+    }
+    return `啟用中${relationLabel}`
+  })()
+
+  const cascadeLabel = (() => {
+    if (itemType === 'archive') {
+      return isSubmission
+        ? `1 筆已刪除投稿連到此考古題`
+        : isComment
+          ? `考古題留言 ${count} 筆已在垃圾桶`
+          : `已刪除${relationLabel}`
+    }
+    if (itemType === 'course') {
+      return isArchive
+        ? `${count} 筆已刪除考古題屬於此課程`
+        : `已刪除${relationLabel}`
+    }
+    if (itemType === 'course_category') {
+      return isCourse
+        ? `${count} 門已刪除課程屬於此分類`
+        : `已刪除${relationLabel}`
+    }
+    return `已刪除${relationLabel} ${count} 筆`
+  })()
 
   if (isActive) {
     return {
       key: `blocking-${raw}`,
-      label: `阻擋：啟用中${relationType} ${count} 筆`,
+      label: `阻擋永久刪除：${blockerLabel.replace('1 筆', `${count} 筆`)}`,
       severity: 'danger',
       blocking: true,
       kindOrder: 0,
@@ -2727,7 +2824,7 @@ const formatTrashDependency = (dependency) => {
   if (isTrashed) {
     return {
       key: `trashed-${raw}`,
-      label: `已刪除依賴：${relationType} ${count} 筆`,
+      label: `可一併清理：${cascadeLabel}`,
       severity: 'info',
       blocking: false,
       kindOrder: 1,
@@ -2736,11 +2833,29 @@ const formatTrashDependency = (dependency) => {
 
   return {
     key: `relation-${raw}`,
-    label: `關聯：${relationType} ${count} 筆`,
+    label: `關聯：${relationLabel}${count ? ` ${count} 筆` : ''}`,
     severity: 'secondary',
     blocking: false,
     kindOrder: 2,
   }
+}
+
+const getFallbackRelationLabel = (typeRaw, kind, itemType) => {
+  const t = typeRaw.toLowerCase()
+  const isSubmission = t.includes('submission') || t.includes('投稿')
+  const isCourse = t.includes('course') || t.includes('課程')
+  const isArchive = t.includes('archive') || t.includes('考古題')
+
+  if (isSubmission) return kind === 'active' ? '啟用中投稿' : '已刪除投稿'
+  if (isCourse) return kind === 'active' ? '啟用中課程' : '已刪除課程'
+  if (isArchive) return kind === 'active' ? '啟用中考古題' : '已刪除考古題'
+
+  if (kind === 'active') {
+    if (itemType === 'archive') return '啟用中字項關聯'
+    if (itemType === 'course') return '啟用中關聯課程項目'
+    if (itemType === 'course_category') return '啟用中關聯投稿/課程'
+  }
+  return kind === 'active' ? '啟用中關聯資料' : '已刪除關聯資料'
 }
 
 const getTrashErrorMessage = (error, fallback = '操作失敗') => {
