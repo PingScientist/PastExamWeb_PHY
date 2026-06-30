@@ -519,8 +519,6 @@ const subjectOptions = computed(() =>
     .sort((a, b) => {
       const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0)
       if (orderDiff !== 0) return orderDiff
-      const nameDiff = String(a.name || '').localeCompare(String(b.name || ''), 'zh-TW')
-      if (nameDiff !== 0) return nameDiff
       return (a.id ?? 0) - (b.id ?? 0)
     })
     .map((course) => ({
