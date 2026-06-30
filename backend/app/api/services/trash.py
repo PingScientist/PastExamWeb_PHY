@@ -614,7 +614,7 @@ async def _hard_delete_archive(
         db,
         archive.object_name,
         warnings,
-        exclude_archive_ids={archive.id} if archive.id is not None else None,
+        exclude_archive_id=archive.id,
     )
     messages = (
         await db.execute(
@@ -725,7 +725,9 @@ async def _hard_delete_submission_archive_pair(
     for message in messages:
         await db.delete(message)
     for item in submissions_to_delete:
+        item.created_archive_id = None
         await db.delete(item)
+    await db.flush()
     await db.delete(archive)
     return {
         "type": "archive_submission_group",
@@ -1573,6 +1575,7 @@ async def permanently_delete_trash_item(
         raise
     except Exception as error:
         await db.rollback()
+        logger.exception("Failed to permanently delete trash item %s/%s", item_type, item_id)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
