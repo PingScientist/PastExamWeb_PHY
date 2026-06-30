@@ -373,6 +373,17 @@
                     </div>
                   </div>
                   <div class="submission-status-meta">
+                    <Button
+                      v-if="canUserDeleteSubmission(item)"
+                      icon="pi pi-trash"
+                      label="刪除"
+                      severity="danger"
+                      outlined
+                      size="small"
+                      @click="confirmDeleteSubmission(item)"
+                    />
+                  </div>
+                  <div class="submission-status-meta">
                     <span><i class="pi pi-send"></i>{{ getArchiveSubmissionKind(item) }}</span>
                     <span><i class="pi pi-calendar"></i>{{ formatAcademicTerm(item.academic_year) }}</span>
                     <span><i class="pi pi-user"></i>{{ item.professor }}</span>
@@ -925,25 +936,83 @@ function getSubmissionLabel(status) {
     pending: '待審核',
     approved: '已通過',
     rejected: '未通過',
+    deleted: '已刪除',
+    takedown: '已下架',
     PENDING: '待審核',
     APPROVED: '已通過',
     REJECTED: '未通過',
+    DELETED: '已刪除',
+    TAKEDOWN: '已下架',
   }
   return labels[status] || status
 }
 
+function getNormalizedSubmissionStatus(status) {
+  return String(status || '').toLowerCase()
+}
+
 function getSubmissionSeverity(status) {
-  const normalized = String(status || '').toLowerCase()
+  const normalized = getNormalizedSubmissionStatus(status)
   if (normalized === 'approved') return 'success'
   if (normalized === 'rejected') return 'danger'
+  if (normalized === 'deleted') return 'danger'
+  if (normalized === 'takedown') return 'secondary'
   return 'warning'
 }
 
 function getSubmissionStatusClass(status) {
-  const normalized = String(status || '').toLowerCase()
+  const normalized = getNormalizedSubmissionStatus(status)
   if (normalized === 'approved') return 'submission-status-approved'
   if (normalized === 'rejected') return 'submission-status-rejected'
+  if (normalized === 'deleted') return 'submission-status-deleted'
+  if (normalized === 'takedown') return 'submission-status-takedown'
   return 'submission-status-pending'
+}
+
+function canUserDeleteSubmission(item) {
+  const currentUser = getCurrentUser()
+  const normalizedStatus = getNormalizedSubmissionStatus(item?.status)
+  return (
+    !isAdmin.value &&
+    Boolean(currentUser) &&
+    (item?.requester_id === currentUser.id || item?.owner_id === currentUser.id) &&
+    normalizedStatus === 'approved'
+  )
+}
+
+async function deleteMySubmission(item) {
+  try {
+    await archiveService.deleteMySubmission(item.id)
+    await loadSubmissionStatus()
+    toast.add({
+      severity: 'success',
+      summary: '刪除成功',
+      detail: '已刪除，管理員可於垃圾桶恢復',
+      life: 3000,
+    })
+  } catch (error) {
+    console.error('Delete my submission error:', error)
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    toast.add({
+      severity: 'error',
+      summary: '刪除失敗',
+      detail: '無法刪除投稿',
+      life: 3000,
+    })
+  }
+}
+
+function confirmDeleteSubmission(item) {
+  confirm.require({
+    message: '確定要刪除此投稿嗎？刪除後可由管理員於垃圾桶中恢復。',
+    header: '確認刪除',
+    icon: 'pi pi-exclamation-triangle',
+    accept: () => {
+      deleteMySubmission(item)
+    },
+  })
 }
 
 function getArchiveSubmissionKind(item) {
@@ -2644,6 +2713,18 @@ const mobileMenuItems = computed(() => {
   background: rgba(239, 68, 68, 0.18);
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.38);
+}
+
+:deep(.submission-status-badge.submission-status-deleted) {
+  background: rgba(127, 29, 29, 0.2);
+  color: #fca5a5;
+  border-color: rgba(127, 29, 29, 0.4);
+}
+
+:deep(.submission-status-badge.submission-status-takedown) {
+  background: rgba(71, 85, 105, 0.24);
+  color: #cbd5e1;
+  border-color: rgba(71, 85, 105, 0.45);
 }
 
 :deep(.submission-admin-badge) {

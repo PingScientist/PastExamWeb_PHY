@@ -60,6 +60,10 @@ export const archiveService = {
     return api.get('/archives/admin/submissions')
   },
 
+  deleteMySubmission(submissionId) {
+    return api.delete(`/archives/submissions/${submissionId}`)
+  },
+
   approveSubmission(submissionId, note = '') {
     return api.post(`/archives/admin/submissions/${submissionId}/approve`, { note })
   },

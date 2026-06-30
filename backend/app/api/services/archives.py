@@ -382,6 +382,46 @@ async def list_my_archive_submissions(
     ]
 
 
+@router.delete("/submissions/{submission_id}")
+async def delete_my_archive_submission(
+    submission_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+
+    if submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED:
+        return {"success": True, "id": submission.id}
+
+    is_owner = submission.requester_id == current_user.user_id or (
+        submission.owner_id is not None and submission.owner_id == current_user.user_id
+    )
+    if not is_owner:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    if submission.status != SubmissionStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only approved submissions can be deleted by users",
+        )
+
+    now = datetime.now(timezone.utc)
+    submission.status = SubmissionStatus.DELETED
+    submission.deleted_at = now
+    submission.deleted_by_id = current_user.user_id
+    submission.delete_reason = "user deleted"
+    await db.commit()
+
+    return {
+        "success": True,
+        "id": submission.id,
+        "status": submission.status,
+        "message": "已刪除，管理員可於垃圾桶中恢復",
+    }
+
+
 @router.get("/admin/submissions", response_model=list[ArchiveSubmissionRead])
 async def list_archive_submissions_for_admin(
     current_user: User = Depends(get_current_user),
@@ -767,6 +807,13 @@ async def delete_archive_submission_for_admin(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    await db.delete(submission)
+    if submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED:
+        return {"success": True}
+
+    now = datetime.now(timezone.utc)
+    submission.status = SubmissionStatus.DELETED
+    submission.deleted_at = now
+    submission.deleted_by_id = current_user.user_id
+    submission.reviewed_at = now
     await db.commit()
-    return {"success": True}
+    return {"success": True, "id": submission.id}
