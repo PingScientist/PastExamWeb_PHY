@@ -13,6 +13,54 @@ from app.utils.storage import get_minio_client
 LIFECYCLE_ARCHIVE_TRASHED = "archive_trashed"
 LIFECYCLE_COURSE_TRASHED = "course_trashed"
 LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED = "linked_archive_permanently_deleted"
+COURSE_TRASH_LIFECYCLE_PREFIX = f"{LIFECYCLE_COURSE_TRASHED}|"
+COURSE_TRASH_PREVIOUS_STATUS_KEY = "previous_status"
+COURSE_TRASH_COURSE_ID_KEY = "course_id"
+COURSE_TRASH_ARCHIVE_ID_KEY = "archive_id"
+
+
+def make_course_trash_lifecycle_reason(
+    *,
+    previous_status: SubmissionStatus,
+    course_id: Optional[int],
+    archive_id: Optional[int],
+) -> str:
+    fields: list[str] = [
+        f"{COURSE_TRASH_PREVIOUS_STATUS_KEY}={previous_status.value}"
+    ]
+    if course_id is not None:
+        fields.append(f"{COURSE_TRASH_COURSE_ID_KEY}={course_id}")
+    if archive_id is not None:
+        fields.append(f"{COURSE_TRASH_ARCHIVE_ID_KEY}={archive_id}")
+    return f"{COURSE_TRASH_LIFECYCLE_PREFIX}{'|'.join(fields)}"
+
+
+def is_course_trash_lifecycle_reason(reason: Optional[str]) -> bool:
+    if reason is None:
+        return False
+    return reason == LIFECYCLE_COURSE_TRASHED or reason.startswith(COURSE_TRASH_LIFECYCLE_PREFIX)
+
+
+def get_course_trash_previous_status(reason: Optional[str]) -> Optional[SubmissionStatus]:
+    if reason is None:
+        return None
+    marker_fields = reason.split("|")
+    if not marker_fields:
+        return None
+    if marker_fields[0] != LIFECYCLE_COURSE_TRASHED:
+        return None
+
+    marker_data = {}
+    for item in marker_fields[1:]:
+        if "=" not in item:
+            continue
+        key, value = item.split("=", 1)
+        marker_data[key] = value
+
+    raw_status = marker_data.get(COURSE_TRASH_PREVIOUS_STATUS_KEY)
+    if raw_status not in {SubmissionStatus.APPROVED.value, SubmissionStatus.PENDING.value, SubmissionStatus.TAKEDOWN.value, SubmissionStatus.REJECTED.value, SubmissionStatus.DELETED.value}:
+        return None
+    return SubmissionStatus(raw_status)
 
 
 @dataclass

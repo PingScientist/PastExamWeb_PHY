@@ -27,6 +27,7 @@ from app.api.services.archive_submission_lifecycle import (
     LIFECYCLE_ARCHIVE_TRASHED,
     LIFECYCLE_COURSE_TRASHED,
     LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED,
+    get_course_trash_previous_status,
     collect_archive_submission_group,
     hard_delete_archive_submission_group,
     is_archive_submission_trashed,
@@ -214,6 +215,10 @@ async def _get_archive_dependency_messages(
     archive: Archive,
     source_submission: Optional[ArchiveSubmission] = None,
 ) -> list[str]:
+    is_course_trash_reason = or_(
+        ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
+        ArchiveSubmission.lifecycle_reason.like(f"{LIFECYCLE_COURSE_TRASHED}|%"),
+    )
     linked_comments = await _count_rows(
         db,
         select(func.count(ArchiveDiscussionMessage.id)).where(
@@ -229,7 +234,10 @@ async def _get_archive_dependency_messages(
             ArchiveSubmission.status != SubmissionStatus.DELETED,
             or_(
                 ArchiveSubmission.status != SubmissionStatus.TAKEDOWN,
-                ~ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED, LIFECYCLE_COURSE_TRASHED]),
+                ~or_(
+                    ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED]),
+                    is_course_trash_reason,
+                ),
                 ArchiveSubmission.lifecycle_reason.is_(None),
             ),
         ),
@@ -240,7 +248,10 @@ async def _get_archive_dependency_messages(
             ArchiveSubmission.created_archive_id == archive.id,
             ArchiveSubmission.deleted_at.is_(None),
             ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
-            ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED, LIFECYCLE_COURSE_TRASHED]),
+            or_(
+                ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED]),
+                is_course_trash_reason,
+            ),
         ),
     )
     temp_submission_ids = [
@@ -251,7 +262,10 @@ async def _get_archive_dependency_messages(
                     ArchiveSubmission.created_archive_id == archive.id,
                     ArchiveSubmission.deleted_at.is_(None),
                     ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
-                    ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED, LIFECYCLE_COURSE_TRASHED]),
+                    or_(
+                        ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED]),
+                        is_course_trash_reason,
+                    ),
                 )
             )
         ).scalars().all()
@@ -1294,12 +1308,25 @@ async def restore_trash_item(
                     select(ArchiveSubmission).where(
                         ArchiveSubmission.created_archive_id.in_(archive_ids),
                         ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
-                        ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
+                        or_(
+                            ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
+                            ArchiveSubmission.lifecycle_reason.like(f"{LIFECYCLE_COURSE_TRASHED}|%"),
+                        ),
                     )
                 )
             ).scalars().all()
             for submission in submissions:
-                submission.status = SubmissionStatus.APPROVED
+                previous_status = get_course_trash_previous_status(submission.lifecycle_reason)
+                if previous_status == SubmissionStatus.REJECTED:
+                    previous_status = None
+                if previous_status not in {
+                    SubmissionStatus.APPROVED,
+                    SubmissionStatus.PENDING,
+                    SubmissionStatus.TAKEDOWN,
+                }:
+                    previous_status = SubmissionStatus.TAKEDOWN
+
+                submission.status = previous_status
                 submission.lifecycle_reason = None
                 submission.reviewer_id = current_user.user_id
                 submission.reviewed_at = now

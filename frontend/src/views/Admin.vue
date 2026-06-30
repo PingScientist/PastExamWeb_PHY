@@ -2361,15 +2361,20 @@ const getReviewRowActions = (item) => {
   return []
 }
 
+const isCourseTrashLifecycleReason = (reason) => {
+  if (!reason) return false
+  return reason === 'course_trashed' || reason.startsWith('course_trashed|')
+}
+
 const isReviewBlockedByCourseTrash = (item) => {
   return getReviewItemStatus(item) === 'takedown' &&
-    (item?.lifecycle_reason === 'course_trashed' || item?.linked_course_deleted === true)
+    (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true)
 }
 
 const getReviewTrashNote = (item) => {
   if (getReviewItemStatus(item) !== 'takedown') return ''
   if (item?.lifecycle_reason === 'linked_archive_permanently_deleted') return '無法復原：關聯考古題已永久刪除。'
-  if (item?.lifecycle_reason === 'course_trashed' || item?.linked_course_deleted === true) {
+  if (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true) {
     return '原課程在垃圾桶，請先至垃圾桶復原課程。'
   }
   if (item?.lifecycle_reason === 'archive_trashed' || item?.linked_archive_deleted === true) {

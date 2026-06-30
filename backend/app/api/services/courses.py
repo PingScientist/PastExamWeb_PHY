@@ -19,7 +19,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_session
 from app.api.services.archive_submission_lifecycle import (
-    LIFECYCLE_COURSE_TRASHED,
+    make_course_trash_lifecycle_reason,
     soft_delete_archive_with_submission_takedown,
 )
 from app.models.models import (
@@ -1326,8 +1326,13 @@ async def delete_course(
             )
         ).scalars().all()
         for submission in linked_submissions:
+            previous_status = submission.status
             submission.status = SubmissionStatus.TAKEDOWN
-            submission.lifecycle_reason = LIFECYCLE_COURSE_TRASHED
+            submission.lifecycle_reason = make_course_trash_lifecycle_reason(
+                previous_status=previous_status,
+                course_id=course.id,
+                archive_id=submission.created_archive_id,
+            )
             submission.reviewer_id = current_user.user_id
             submission.reviewed_at = current_time
 
