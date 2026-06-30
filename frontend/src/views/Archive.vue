@@ -360,6 +360,13 @@
                     >
                       {{ getSubmissionLabel(item.status) }}
                     </Tag>
+                    <Tag
+                      v-if="item.is_admin_upload"
+                      class="submission-admin-badge"
+                      severity="secondary"
+                    >
+                      管理員投稿
+                    </Tag>
                     <div class="submission-status-title">
                       <strong>{{ item.subject }}</strong>
                       <span>{{ item.name }}</span>
@@ -375,7 +382,7 @@
                     <strong>{{ item.requested_category_name }}</strong>
                     <small>{{ item.requested_category_key }}</small>
                   </div>
-                  <div v-if="item.review_note" class="submission-status-note is-review">
+                  <div v-if="shouldShowReviewNote(item)" class="submission-status-note is-review">
                     <span>審核備註</span>
                     <strong>{{ item.review_note }}</strong>
                   </div>
@@ -940,9 +947,19 @@ function getSubmissionStatusClass(status) {
 }
 
 function getArchiveSubmissionKind(item) {
+  if (item?.is_admin_upload) return '管理員投稿'
   if (item?.requested_category_key) return '新分類與新課程申請'
   if (item?.requested_course_name) return '新課程申請'
   return '既有課程投稿'
+}
+
+function isBoilerplateReviewNote(note) {
+  const normalized = String(note || '').trim().toLowerCase()
+  return !normalized || normalized === '管理員上傳' || normalized === 'admin upload' || normalized.startsWith('takedown_target:')
+}
+
+function shouldShowReviewNote(item) {
+  return Boolean(item?.review_note) && !isBoilerplateReviewNote(item.review_note)
 }
 
 async function loadSubmissionStatus() {
@@ -2627,6 +2644,12 @@ const mobileMenuItems = computed(() => {
   background: rgba(239, 68, 68, 0.18);
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.38);
+}
+
+:deep(.submission-admin-badge) {
+  background: rgba(100, 116, 139, 0.2);
+  color: #cbd5e1;
+  border-color: rgba(100, 116, 139, 0.4);
 }
 
 .submission-status-title {

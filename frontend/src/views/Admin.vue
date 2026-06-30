@@ -780,6 +780,9 @@
                       >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
+                      <Tag v-if="data.is_admin_upload" class="review-card-chip" severity="secondary">
+                        管理員投稿
+                      </Tag>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -869,6 +872,9 @@
                         :severity="getSubmissionSeverity(data.status)"
                       >
                         {{ getSubmissionLabel(data.status) }}
+                      </Tag>
+                      <Tag v-if="data.is_admin_upload" class="review-card-chip" severity="secondary">
+                        管理員投稿
                       </Tag>
                     </template>
                   </Column>
@@ -1794,12 +1800,14 @@ const getSubmissionStatusClass = (status) => {
 }
 
 const getArchiveSubmissionKind = (item) => {
+  if (item?.is_admin_upload) return '管理員投稿'
   if (item?.requested_category_key) return '新分類 + 新課程'
   if (item?.requested_course_name) return '新課程'
   return '既有課程'
 }
 
 const getArchiveSubmissionKindSeverity = (item) => {
+  if (item?.is_admin_upload) return 'secondary'
   if (item?.requested_category_key) return 'warning'
   if (item?.requested_course_name) return 'info'
   return 'secondary'

@@ -483,6 +483,7 @@ class ArchiveSubmissionRead(BaseModel):
     requester_id: int
     requester_name: Optional[str] = None
     requester_email: Optional[str] = None
+    is_admin_upload: bool = False
     reviewer_id: Optional[int] = None
     review_note: Optional[str] = None
     created_archive_id: Optional[int] = None

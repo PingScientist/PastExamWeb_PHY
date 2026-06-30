@@ -80,6 +80,13 @@ def _normalize_submission_status(raw_status):
     return normalized_status
 
 
+def _is_admin_upload_submission(submission_data) -> bool:
+    review_note = getattr(submission_data, "review_note", None)
+    if isinstance(submission_data, dict):
+        review_note = submission_data.get("review_note")
+    return str(review_note or "").strip().lower() in {"管理員上傳", "admin upload"}
+
+
 async def _ensure_or_create_requested_category(
     db: AsyncSession,
     key: str,
@@ -269,6 +276,7 @@ async def upload_archive(
             return {
                 "success": True,
                 "message": "File submitted for review",
+                "is_admin_upload": False,
                 "submission": {
                     "id": submission.id,
                     "name": submission.name,
@@ -278,6 +286,7 @@ async def upload_archive(
                     "status": submission.status,
                     "created_at": submission.created_at,
                     "file_size": file_size,
+                    "is_admin_upload": False,
                 },
             }
 
@@ -295,9 +304,35 @@ async def upload_archive(
         await db.commit()
         await db.refresh(archive)
 
+        submission = ArchiveSubmission(
+            subject=subject,
+            category=category,
+            name=filename,
+            professor=professor,
+            archive_type=archive_type,
+            has_answers=has_answers,
+            object_name=object_name,
+            academic_year=academic_year,
+            requested_course_name=requested_course_name if request_new_course else None,
+            requested_category_key=requested_category_key if request_new_category else None,
+            requested_category_name=requested_category_name if request_new_category else None,
+            requested_category_label=requested_category_label if request_new_category else None,
+            requested_category_icon=requested_category_icon if request_new_category else None,
+            status=SubmissionStatus.APPROVED,
+            requester_id=current_user.user_id,
+            reviewer_id=current_user.user_id,
+            review_note="管理員上傳",
+            created_archive_id=archive.id,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+        db.add(submission)
+        await db.commit()
+        await db.refresh(submission)
+
         return {
             "success": True,
             "message": "File uploaded successfully",
+            "is_admin_upload": True,
             "archive": {
                 "id": archive.id,
                 "name": archive.name,
@@ -306,6 +341,17 @@ async def upload_archive(
                 "has_answers": archive.has_answers,
                 "created_at": archive.created_at,
                 "file_size": file_size,
+            },
+            "submission": {
+                "id": submission.id,
+                "name": submission.name,
+                "professor": submission.professor,
+                "archive_type": submission.archive_type,
+                "has_answers": submission.has_answers,
+                "status": submission.status,
+                "created_at": submission.created_at,
+                "file_size": file_size,
+                "is_admin_upload": True,
             },
         }
 
@@ -328,7 +374,12 @@ async def list_my_archive_submissions(
         .where(ArchiveSubmission.requester_id == current_user.user_id)
         .order_by(ArchiveSubmission.created_at.desc())
     )
-    return result.scalars().all()
+    return [
+        ArchiveSubmissionRead.model_validate(submission).model_copy(
+            update={"is_admin_upload": _is_admin_upload_submission(submission)}
+        )
+        for submission in result.scalars().all()
+    ]
 
 
 @router.get("/admin/submissions", response_model=list[ArchiveSubmissionRead])
@@ -363,7 +414,12 @@ async def list_archive_submissions_for_admin(
                 archive_submissions.created_at,
                 archive_submissions.reviewed_at,
                 users.name AS requester_name,
-                users.email AS requester_email
+                users.email AS requester_email,
+                CASE
+                    WHEN LOWER(TRIM(COALESCE(archive_submissions.review_note, ''))) IN ('管理員上傳', 'admin upload')
+                    THEN TRUE
+                    ELSE FALSE
+                END AS is_admin_upload
             FROM archive_submissions
             LEFT JOIN users
                 ON users.id = archive_submissions.requester_id
@@ -390,6 +446,7 @@ async def list_archive_submissions_for_admin(
 
         row_dict["status"] = normalized_status
         try:
+            row_dict["is_admin_upload"] = bool(row_dict.get("is_admin_upload"))
             archive_submissions.append(ArchiveSubmissionRead.model_validate(row_dict))
         except Exception as exc:
             skipped_submission_count += 1

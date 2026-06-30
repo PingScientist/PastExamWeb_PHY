@@ -724,15 +724,22 @@ const handleUpload = async () => {
       formData.append('requested_category_icon', 'pi pi-fw pi-book')
     }
 
-    await archiveService.uploadArchive(formData)
+    const response = await archiveService.uploadArchive(formData)
+    const uploadResult = response?.data || {}
+    const uploadedSubmission = uploadResult.submission || {}
+    const isAdminUpload =
+      uploadResult.is_admin_upload === true ||
+      uploadedSubmission.is_admin_upload === true
 
     emit('update:modelValue', false)
     emit('upload-success')
 
     toast.add({
       severity: 'success',
-      summary: '已送出審核',
-      detail: '考古題投稿已送至管理者審核，通過後才會公開',
+      summary: isAdminUpload ? '管理員投稿成功' : '已送出審核',
+      detail: isAdminUpload
+        ? '考古題已直接建立，不需再經審核。'
+        : '考古題投稿已送至管理者審核，通過後才會公開',
       life: 3000,
     })
   } catch (error) {
