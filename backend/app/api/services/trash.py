@@ -61,6 +61,7 @@ def _to_trash_item(
     parent_id: Optional[int] = None,
     parent_name: Optional[str] = None,
     created_archive_id: Optional[int] = None,
+    source_submission_id: Optional[int] = None,
     course_id: Optional[int] = None,
     course_name: Optional[str] = None,
     dependencies: Optional[list[str]] = None,
@@ -79,6 +80,7 @@ def _to_trash_item(
         parent_id=parent_id,
         parent_name=parent_name,
         created_archive_id=created_archive_id,
+        source_submission_id=source_submission_id,
         course_id=course_id,
         course_name=course_name,
         reason=None,
@@ -183,7 +185,11 @@ async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Cour
     ]
 
 
-async def _get_archive_dependency_messages(db: SQLModelAsyncSession, archive: Archive) -> list[str]:
+async def _get_archive_dependency_messages(
+    db: SQLModelAsyncSession,
+    archive: Archive,
+    source_submission: Optional[ArchiveSubmission] = None,
+) -> list[str]:
     linked_comments = await _count_rows(
         db,
         select(func.count(ArchiveDiscussionMessage.id)).where(
@@ -213,22 +219,32 @@ async def _get_archive_dependency_messages(db: SQLModelAsyncSession, archive: Ar
             ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED, LIFECYCLE_COURSE_TRASHED]),
         ),
     )
-    trashed_linked_submissions = await _count_rows(
-        db,
-        select(func.count(ArchiveSubmission.id)).where(
-            ArchiveSubmission.created_archive_id == archive.id,
-            or_(
-                ArchiveSubmission.deleted_at.is_not(None),
-                ArchiveSubmission.status == SubmissionStatus.DELETED,
-            ),
-        ),
-    )
+    temp_submission_ids = [
+        item
+        for item in (
+            await db.execute(
+                select(ArchiveSubmission.id).where(
+                    ArchiveSubmission.created_archive_id == archive.id,
+                    ArchiveSubmission.deleted_at.is_(None),
+                    ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
+                    ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED, LIFECYCLE_COURSE_TRASHED]),
+                )
+            )
+        ).scalars().all()
+        if item is not None
+    ]
 
     return [
         f"阻擋永久刪除：{_dependency_count(linked_comments, '則')}啟用中留言仍依附此考古題" if linked_comments else "",
         f"阻擋永久刪除：{_dependency_count(active_linked_submissions, '筆')}啟用中投稿仍連到此考古題" if active_linked_submissions else "",
-        f"關聯投稿：{_dependency_count(temporarily_takedown_submissions, '筆')}投稿已因考古題進垃圾桶而暫時下架" if temporarily_takedown_submissions else "",
-        f"一併永久刪除：{_dependency_count(trashed_linked_submissions, '筆')}已刪除投稿連到此考古題" if trashed_linked_submissions else "",
+        f"關聯投稿：投稿編號 #{source_submission.id}" if source_submission and source_submission.id else "",
+        (
+            f"關聯投稿：投稿編號 #{temp_submission_ids[0]} 已暫時下架"
+            if len(temp_submission_ids) == 1
+            else f"關聯投稿：{_dependency_count(temporarily_takedown_submissions, '筆')}投稿已暫時下架"
+            if temporarily_takedown_submissions
+            else ""
+        ),
     ]
 
 
@@ -289,7 +305,13 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
 
     linked_archive = await db.get(Archive, submission.created_archive_id)
     if not linked_archive:
-        return [f"關聯考古題：#{submission.created_archive_id} 不存在"]
+        return ["關聯考古題：不存在"]
+
+    if linked_archive.deleted_at is not None:
+        return [
+            f"關聯考古題：{linked_archive.name}",
+            f"一併永久刪除：關聯考古題 {linked_archive.name} 會跟著永久刪除",
+        ]
 
     linked_comments = await _count_rows(
         db,
@@ -325,7 +347,7 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
             ),
         ),
     )
-    archive_status = [f"關聯考古題：#{linked_archive.id} / {linked_archive.name}"]
+    archive_status = [f"關聯考古題：{linked_archive.name}"]
     if linked_archive.deleted_at is None:
         archive_status.append("關聯考古題仍啟用中")
 
@@ -622,7 +644,103 @@ async def _hard_delete_submission(
             "仍有未刪除的投稿資料依附於此項目",
             [_blocker("archive_submission", submission.id, f"{submission.subject} / {submission.name}", submission.status.value)],
         )
+    linked_archive = await db.get(Archive, submission.created_archive_id) if submission.created_archive_id else None
+    if linked_archive and linked_archive.deleted_at is not None:
+        return await _hard_delete_submission_archive_pair(db, submission, linked_archive, warnings)
     return await hard_delete_archive_submission_group(db, submission=submission, warnings=warnings)
+
+
+async def _get_deleted_submission_parent_for_archive(
+    db: SQLModelAsyncSession,
+    archive_id: int | None,
+) -> Optional[ArchiveSubmission]:
+    if archive_id is None:
+        return None
+    return (
+        await db.execute(
+            select(ArchiveSubmission)
+            .where(
+                ArchiveSubmission.created_archive_id == archive_id,
+                or_(
+                    ArchiveSubmission.deleted_at.is_not(None),
+                    ArchiveSubmission.status == SubmissionStatus.DELETED,
+                ),
+            )
+            .order_by(
+                ArchiveSubmission.deleted_at.desc(),
+                ArchiveSubmission.reviewed_at.desc(),
+                ArchiveSubmission.created_at.desc(),
+            )
+        )
+    ).scalars().first()
+
+
+async def _hard_delete_submission_archive_pair(
+    db: SQLModelAsyncSession,
+    submission: ArchiveSubmission,
+    archive: Archive,
+    warnings: list[str],
+) -> dict:
+    timestamp = datetime.now(timezone.utc)
+    linked_submissions = (
+        await db.execute(
+            select(ArchiveSubmission).where(ArchiveSubmission.created_archive_id == archive.id)
+        )
+    ).scalars().all()
+    submissions_to_delete: list[ArchiveSubmission] = []
+    marked_unrecoverable = 0
+    for item in linked_submissions:
+        if is_archive_submission_trashed(item):
+            submissions_to_delete.append(item)
+            continue
+        item.status = SubmissionStatus.DELETED
+        item.deleted_at = timestamp
+        item.deleted_by_id = item.deleted_by_id or archive.deleted_by_id
+        item.delete_reason = "linked archive permanently deleted"
+        item.lifecycle_reason = LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED
+        item.created_archive_id = None
+        item.restored_at = None
+        item.restored_by_id = None
+        marked_unrecoverable += 1
+    if submission not in submissions_to_delete:
+        submissions_to_delete.append(submission)
+
+    submission_ids = [item.id for item in submissions_to_delete if item.id is not None]
+    object_names = {item for item in [submission.object_name, archive.object_name] if item}
+    deleted_objects = 0
+    for object_name in object_names:
+        deleted_objects += await _remove_storage_object_if_unreferenced(
+            db,
+            object_name,
+            warnings,
+            exclude_archive_id=archive.id,
+            exclude_submission_ids=submission_ids,
+        )
+
+    messages = (
+        await db.execute(
+            select(ArchiveDiscussionMessage).where(ArchiveDiscussionMessage.archive_id == archive.id)
+        )
+    ).scalars().all()
+    for message in messages:
+        await db.delete(message)
+    for item in submissions_to_delete:
+        await db.delete(item)
+    await db.delete(archive)
+    return {
+        "type": "archive_submission_group",
+        "id": submission.id,
+        "name": f"{submission.subject} / {submission.name}",
+        "deletedChildren": {
+            "archives": 1,
+            "linkedSubmissionsDeleted": len(submissions_to_delete),
+            "linkedSubmissionsMarkedDeleted": marked_unrecoverable,
+            "comments": len(messages),
+            "files": deleted_objects,
+        },
+        "deleted": 1 + len(submissions_to_delete) + len(messages),
+        "message": "已永久刪除考古題投稿與關聯考古題，並清除相關檔案。",
+    }
 
 
 async def _hard_delete_course(
@@ -888,29 +1006,31 @@ async def list_trash_items(
             )
         ).scalars().all()
         archive_parent_submissions = {}
+        archive_source_submissions = {}
         trashed_archive_ids = [archive.id for archive in archives if archive.id is not None]
         if trashed_archive_ids:
-            linked_deleted_submissions = (
+            linked_submissions = (
                 await db.execute(
                     select(ArchiveSubmission).where(
                         ArchiveSubmission.created_archive_id.in_(trashed_archive_ids),
-                        or_(
-                            ArchiveSubmission.deleted_at.is_not(None),
-                            ArchiveSubmission.status == SubmissionStatus.DELETED,
-                        ),
+                    )
+                    .order_by(
+                        ArchiveSubmission.deleted_at.desc(),
+                        ArchiveSubmission.reviewed_at.desc(),
+                        ArchiveSubmission.created_at.desc(),
                     )
                 )
             ).scalars().all()
-            for submission in linked_deleted_submissions:
-                if submission.created_archive_id not in archive_parent_submissions:
-                    archive_parent_submissions[submission.created_archive_id] = submission
+            for submission in linked_submissions:
+                if submission.created_archive_id is None:
+                    continue
+                archive_source_submissions.setdefault(submission.created_archive_id, submission)
+                if is_archive_submission_trashed(submission):
+                    archive_parent_submissions.setdefault(submission.created_archive_id, submission)
         for archive in archives:
             course = archive_courses.get(archive.course_id)
-            parent_submission = (
-                archive_parent_submissions.get(archive.id)
-                if archive.deleted_reason in {"user deleted", "admin deleted"}
-                else None
-            )
+            parent_submission = archive_parent_submissions.get(archive.id)
+            source_submission = parent_submission or archive_source_submissions.get(archive.id)
             try:
                 items.append(
                     _to_trash_item(
@@ -931,7 +1051,8 @@ async def list_trash_items(
                         ),
                         course_id=archive.course_id,
                         course_name=course.name if course else None,
-                        dependencies=await _get_archive_dependency_messages(db, archive),
+                        source_submission_id=source_submission.id if source_submission else None,
+                        dependencies=await _get_archive_dependency_messages(db, archive, source_submission),
                     )
                 )
             except Exception as exc:
@@ -1065,6 +1186,7 @@ async def list_trash_items(
                         ),
                         parent_name=linked_archive.name if linked_archive else None,
                         created_archive_id=submission.created_archive_id,
+                        source_submission_id=submission.id,
                         course_name=submission.requested_course_name,
                         dependencies=await _get_submission_dependency_messages(db, submission),
                     )
@@ -1377,7 +1499,12 @@ async def _permanently_delete_trash_item(
         if not archive or archive.deleted_at is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archive not found")
 
-        detail = await _hard_delete_archive(db, archive, warnings)
+        parent_submission = await _get_deleted_submission_parent_for_archive(db, archive.id)
+        detail = (
+            await _hard_delete_submission_archive_pair(db, parent_submission, archive, warnings)
+            if parent_submission
+            else await _hard_delete_archive(db, archive, warnings)
+        )
         return _delete_result(
             item_type=item_type,
             item_id=item_id,

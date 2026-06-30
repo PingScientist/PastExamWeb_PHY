@@ -570,6 +570,7 @@ class TrashItem(BaseModel):
     parent_id: Optional[int] = None
     parent_name: Optional[str] = None
     created_archive_id: Optional[int] = None
+    source_submission_id: Optional[int] = None
     course_id: Optional[int] = None
     course_name: Optional[str] = None
     reason: Optional[str] = None

@@ -1060,7 +1060,7 @@
                         </span>
                         {{ data.display_name }}
                       </strong>
-                      <small v-if="data.item_type === 'archive_submission' && data.id">投稿編號：#{{ data.id }}</small>
+                      <small v-if="getTrashSubmissionLabel(data)">{{ getTrashSubmissionLabel(data) }}</small>
                       <small v-if="getTrashSemesterText(data)">{{ getTrashSemesterText(data) }}</small>
                       <small v-if="getTrashContextLine(data)" class="text-secondary">
                         {{ getTrashContextLine(data) }}
@@ -2138,7 +2138,7 @@ const getTrashContextLine = (item) => {
   if (item.item_type === 'archive' && item.course_name) return `課程：${item.course_name}`
   if (item.item_type === 'course' && item.parent_name) return `隸屬分類：${item.parent_name}`
   if (item.item_type === 'archive_submission') {
-    if (item.created_archive_id && item.parent_name) return `關聯考古題：#${item.created_archive_id} / ${item.parent_name}`
+    if (item.parent_name) return `關聯考古題：${item.parent_name}`
     if (item.course_name) return `課程：${item.course_name}`
   }
   return ''
@@ -2734,6 +2734,12 @@ const formatSubmissionLabel = (item) => {
   return `投稿編號：#${item.id}`
 }
 
+const getTrashSubmissionLabel = (item) => {
+  if (!['archive', 'archive_submission'].includes(item?.item_type)) return ''
+  const submissionId = item?.source_submission_id || (item?.item_type === 'archive_submission' ? item?.id : null)
+  return submissionId ? `投稿編號：#${submissionId}` : '投稿編號：—'
+}
+
 const applyDependencyCount = (label, count) => {
   if (label.includes('{count}')) return label.replace('{count}', count)
   return `${count} 筆${label}`
@@ -2794,7 +2800,12 @@ const formatTrashDependency = (dependency, itemType = '') => {
     }
   }
 
-  if (raw.startsWith('關聯考古題：') || raw === '關聯考古題仍啟用中') {
+  if (
+    raw.startsWith('關聯考古題：') ||
+    raw.startsWith('關聯投稿：') ||
+    raw.startsWith('隨投稿永久刪除：') ||
+    raw === '關聯考古題仍啟用中'
+  ) {
     return {
       key: `relation-${raw}`,
       label: raw,
