@@ -82,10 +82,13 @@ def _normalize_submission_status(raw_status):
 
 
 def _is_admin_upload_submission(submission_data) -> bool:
+    flag = getattr(submission_data, "is_admin_upload", None)
+    if isinstance(submission_data, dict):
+        flag = submission_data.get("is_admin_upload")
     review_note = getattr(submission_data, "review_note", None)
     if isinstance(submission_data, dict):
         review_note = submission_data.get("review_note")
-    return str(review_note or "").strip().lower() in {"管理員上傳", "admin upload"}
+    return bool(flag) or str(review_note or "").strip().lower() in {"管理員上傳", "admin upload"}
 
 
 async def _ensure_or_create_requested_category(
@@ -322,7 +325,7 @@ async def upload_archive(
             status=SubmissionStatus.APPROVED,
             requester_id=current_user.user_id,
             reviewer_id=current_user.user_id,
-            review_note="管理員上傳",
+            is_admin_upload=True,
             created_archive_id=archive.id,
             reviewed_at=datetime.now(timezone.utc),
         )
@@ -454,16 +457,15 @@ async def list_archive_submissions_for_admin(
                 archive_submissions.requester_id,
                 archive_submissions.reviewer_id,
                 archive_submissions.review_note,
+                (
+                    archive_submissions.is_admin_upload
+                    OR LOWER(TRIM(COALESCE(archive_submissions.review_note, ''))) IN ('管理員上傳', 'admin upload')
+                ) AS is_admin_upload,
                 archive_submissions.created_archive_id,
                 archive_submissions.created_at,
                 archive_submissions.reviewed_at,
                 users.name AS requester_name,
-                users.email AS requester_email,
-                CASE
-                    WHEN LOWER(TRIM(COALESCE(archive_submissions.review_note, ''))) IN ('管理員上傳', 'admin upload')
-                    THEN TRUE
-                    ELSE FALSE
-                END AS is_admin_upload
+                users.email AS requester_email
             FROM archive_submissions
             LEFT JOIN users
                 ON users.id = archive_submissions.requester_id

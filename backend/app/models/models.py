@@ -208,6 +208,7 @@ class ArchiveSubmission(SQLModel, table=True):
     owner_id: Optional[int] = Field(default=None)
     reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
     review_note: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    is_admin_upload: bool = Field(default=False)
     created_archive_id: Optional[int] = Field(default=None, foreign_key="archives.id")
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)

@@ -733,6 +733,16 @@
               <div v-if="reviewLoadError" class="review-load-error">
                 {{ reviewLoadError }}
               </div>
+              <div class="review-search-toolbar">
+                <div class="relative w-full md:w-24rem">
+                  <i class="pi pi-search search-icon"></i>
+                  <InputText
+                    v-model="reviewSearchQuery"
+                    placeholder="搜尋投稿編號、標題、課程、投稿者…"
+                    class="w-full pl-6"
+                  />
+                </div>
+              </div>
               <div class="review-section">
                 <div class="review-section-header">
                   <h3>新課程 / 新分類考古申請</h3>
@@ -746,6 +756,9 @@
                   responsiveLayout="stack"
                   breakpoint="768px"
                 >
+                  <template #empty>
+                    <div class="review-empty-state">沒有符合搜尋條件的投稿。</div>
+                  </template>
                   <Column field="subject">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'subject')">
@@ -873,6 +886,9 @@
                   responsiveLayout="stack"
                   breakpoint="768px"
                 >
+                  <template #empty>
+                    <div class="review-empty-state">沒有符合搜尋條件的投稿。</div>
+                  </template>
                   <Column field="subject">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'subject')">
@@ -1802,6 +1818,7 @@ const notificationForm = ref({
 const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const reviewLoadError = ref('')
+const reviewSearchQuery = ref('')
 const archiveRequests = ref([])
 const trashLoading = ref(false)
 const trashItems = ref([])
@@ -1956,6 +1973,39 @@ const sortArchiveReviewItems = (items, section) => {
     return getReviewTimestamp(b) - getReviewTimestamp(a)
   })
 }
+
+const normalizeReviewSearchText = (value) => String(value ?? '').trim().toLowerCase()
+
+const getReviewSearchHaystack = (item) => {
+  const fields = [
+    item?.id,
+    item?.id ? `#${item.id}` : '',
+    item?.name,
+    item?.subject,
+    item?.course_name,
+    item?.course_code,
+    item?.category,
+    item?.requested_course_name,
+    item?.requested_category_key,
+    item?.requested_category_name,
+    item?.requested_category_label,
+    item?.requester_name,
+    item?.requester_email,
+    item?.professor,
+    item?.academic_year,
+    formatAcademicTerm(item?.academic_year),
+    getSubmissionLabel(item?.status),
+    getArchiveSubmissionKind(item),
+  ]
+  return fields.map(normalizeReviewSearchText).filter(Boolean).join(' ')
+}
+
+const filteredArchiveRequests = computed(() => {
+  const query = normalizeReviewSearchText(reviewSearchQuery.value)
+  if (!query) return archiveRequests.value
+  return archiveRequests.value.filter((item) => getReviewSearchHaystack(item).includes(query))
+})
+
 const toggleReviewSort = (section, key) => {
   const current = reviewSortState.value[section]
   reviewSortState.value = {
@@ -1973,13 +2023,13 @@ const getReviewSortIndicator = (section, key) => {
 }
 const newCourseArchiveRequests = computed(() =>
   sortArchiveReviewItems(
-    archiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key),
+    filteredArchiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key),
     'new'
   )
 )
 const existingCourseArchiveRequests = computed(() =>
   sortArchiveReviewItems(
-    archiveRequests.value.filter((item) => !item.requested_course_name && !item.requested_category_key),
+    filteredArchiveRequests.value.filter((item) => !item.requested_course_name && !item.requested_category_key),
     'existing'
   )
 )
@@ -2287,14 +2337,12 @@ const runReviewRowAction = (item, action) => {
 }
 
 const getArchiveSubmissionKind = (item) => {
-  if (item?.is_admin_upload) return '管理員投稿'
   if (item?.requested_category_key) return '新分類 + 新課程'
   if (item?.requested_course_name) return '新課程'
-  return '既有課程'
+  return '考古題投稿'
 }
 
 const getArchiveSubmissionKindSeverity = (item) => {
-  if (item?.is_admin_upload) return 'secondary'
   if (item?.requested_category_key) return 'warning'
   if (item?.requested_course_name) return 'info'
   return 'secondary'
@@ -4024,6 +4072,17 @@ onBeforeUnmount(() => {
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.review-search-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
+.review-empty-state {
+  padding: 1rem;
+  color: var(--text-secondary);
 }
 
 .review-history {
