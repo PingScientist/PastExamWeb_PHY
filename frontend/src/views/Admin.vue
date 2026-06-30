@@ -745,43 +745,85 @@
                   responsiveLayout="stack"
                   breakpoint="768px"
                 >
-                  <Column field="subject" header="課程">
+                  <Column field="subject">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'subject')">
+                        課程 {{ getReviewSortIndicator('new', 'subject') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
-                      <span class="mobile-primary-text review-card-title">{{ data.subject }}</span>
+                      <span class="mobile-primary-text review-card-title review-course-cell">
+                        <span>{{ data.subject }}</span>
+                        <Tag v-if="data.is_admin_upload" class="review-admin-upload-chip" severity="info">
+                          管理員投稿
+                        </Tag>
+                      </span>
                     </template>
                   </Column>
-                  <Column header="投稿類型">
+                  <Column>
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'kind')">
+                        投稿類型 {{ getReviewSortIndicator('new', 'kind') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <Tag class="review-card-chip" :severity="getArchiveSubmissionKindSeverity(data)">
                         {{ getArchiveSubmissionKind(data) }}
                       </Tag>
                     </template>
                   </Column>
-                  <Column field="name" header="考試名稱">
+                  <Column field="name">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'name')">
+                        考試名稱 {{ getReviewSortIndicator('new', 'name') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <span class="mobile-metadata-text review-card-meta-text">{{ data.name }}</span>
                     </template>
                   </Column>
-                  <Column field="professor" header="授課教師">
+                  <Column field="professor">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'professor')">
+                        授課教師 {{ getReviewSortIndicator('new', 'professor') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <span class="mobile-metadata-text review-card-meta-text">{{ data.professor }}</span>
                     </template>
                   </Column>
-                  <Column field="academic_year" header="學期">
+                  <Column field="academic_year">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'academic_year')">
+                        學期 {{ getReviewSortIndicator('new', 'academic_year') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <span class="review-card-meta-text">{{ formatAcademicTerm(data.academic_year) }}</span>
                     </template>
                   </Column>
-                  <Column field="status" header="狀態">
+                  <Column>
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'submitted_at')">
+                        申請時間 {{ getReviewSortIndicator('new', 'submitted_at') }}
+                      </button>
+                    </template>
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatReviewSubmissionTime(data) }}</span>
+                    </template>
+                  </Column>
+                  <Column field="status">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'status')">
+                        狀態 {{ getReviewSortIndicator('new', 'status') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <Tag
                         :class="['review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
                         :severity="getSubmissionSeverity(data.status)"
                       >
                         {{ getSubmissionLabel(data.status) }}
-                      </Tag>
-                      <Tag v-if="data.is_admin_upload" class="review-card-chip" severity="secondary">
-                        管理員投稿
                       </Tag>
                     </template>
                   </Column>
@@ -805,6 +847,7 @@
                           title="通過"
                           size="small"
                           severity="success"
+                          v-if="canShowReviewAction(data, 'approve')"
                           @click="reviewArchiveSubmission(data.id, 'approve')"
                         />
                         <Button
@@ -815,6 +858,7 @@
                           size="small"
                           severity="danger"
                           outlined
+                          v-if="canShowReviewAction(data, 'reject')"
                           @click="reviewArchiveSubmission(data.id, 'reject')"
                         />
                         <Button
@@ -825,6 +869,7 @@
                           size="small"
                           severity="danger"
                           text
+                          v-if="canShowReviewAction(data, 'delete')"
                           @click="confirmDeleteArchiveSubmission(data)"
                         />
                       </div>
@@ -845,36 +890,73 @@
                   responsiveLayout="stack"
                   breakpoint="768px"
                 >
-                  <Column field="subject" header="課程">
+                  <Column field="subject">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'subject')">
+                        課程 {{ getReviewSortIndicator('existing', 'subject') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
-                      <span class="mobile-primary-text review-card-title">{{ data.subject }}</span>
+                      <span class="mobile-primary-text review-card-title review-course-cell">
+                        <span>{{ data.subject }}</span>
+                        <Tag v-if="data.is_admin_upload" class="review-admin-upload-chip" severity="info">
+                          管理員投稿
+                        </Tag>
+                      </span>
                     </template>
                   </Column>
-                  <Column field="name" header="考試名稱">
+                  <Column field="name">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'name')">
+                        考試名稱 {{ getReviewSortIndicator('existing', 'name') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <span class="mobile-metadata-text review-card-meta-text">{{ data.name }}</span>
                     </template>
                   </Column>
-                  <Column field="professor" header="授課教師">
+                  <Column field="professor">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'professor')">
+                        授課教師 {{ getReviewSortIndicator('existing', 'professor') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <span class="mobile-metadata-text review-card-meta-text">{{ data.professor }}</span>
                     </template>
                   </Column>
-                  <Column field="academic_year" header="學期">
+                  <Column field="academic_year">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'academic_year')">
+                        學期 {{ getReviewSortIndicator('existing', 'academic_year') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <span class="review-card-meta-text">{{ formatAcademicTerm(data.academic_year) }}</span>
                     </template>
                   </Column>
-                  <Column field="status" header="狀態">
+                  <Column>
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'submitted_at')">
+                        投稿時間 {{ getReviewSortIndicator('existing', 'submitted_at') }}
+                      </button>
+                    </template>
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatReviewSubmissionTime(data) }}</span>
+                    </template>
+                  </Column>
+                  <Column field="status">
+                    <template #header>
+                      <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'status')">
+                        狀態 {{ getReviewSortIndicator('existing', 'status') }}
+                      </button>
+                    </template>
                     <template #body="{ data }">
                       <Tag
                         :class="['review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
                         :severity="getSubmissionSeverity(data.status)"
                       >
                         {{ getSubmissionLabel(data.status) }}
-                      </Tag>
-                      <Tag v-if="data.is_admin_upload" class="review-card-chip" severity="secondary">
-                        管理員投稿
                       </Tag>
                     </template>
                   </Column>
@@ -898,6 +980,7 @@
                           title="通過"
                           size="small"
                           severity="success"
+                          v-if="canShowReviewAction(data, 'approve')"
                           @click="reviewArchiveSubmission(data.id, 'approve')"
                         />
                         <Button
@@ -908,6 +991,7 @@
                           size="small"
                           severity="danger"
                           outlined
+                          v-if="canShowReviewAction(data, 'reject')"
                           @click="reviewArchiveSubmission(data.id, 'reject')"
                         />
                         <Button
@@ -918,6 +1002,7 @@
                           size="small"
                           severity="danger"
                           text
+                          v-if="canShowReviewAction(data, 'delete')"
                           @click="confirmDeleteArchiveSubmission(data)"
                         />
                       </div>
@@ -1633,25 +1718,84 @@ const submissionStatusPriority = {
   takedown: 4,
   deleted: 5,
 }
+const reviewSortState = ref({
+  new: { key: 'status', direction: 'asc' },
+  existing: { key: 'status', direction: 'asc' },
+})
 const normalizeSubmissionStatus = (status) => String(status || '').trim().toLowerCase()
 const getSubmissionStatusPriority = (status) => {
   return submissionStatusPriority[normalizeSubmissionStatus(status)] || 99
 }
-const sortArchiveReviewItems = (items) => {
+const getReviewSubmissionTimeValue = (item) => {
+  const value = item?.submittedAt ?? item?.submitted_at ?? item?.createdAt ?? item?.created_at ?? item?.uploadedAt ?? item?.uploaded_at
+  if (!value) return null
+  if (typeof value === 'object') {
+    return value.raw ?? value.value ?? value.date ?? value.display ?? value.label ?? null
+  }
+  return value
+}
+const getReviewTimestamp = (item) => {
+  const timeValue = getReviewSubmissionTimeValue(item)
+  if (!timeValue) return 0
+  const time = new Date(timeValue).getTime()
+  return Number.isNaN(time) ? 0 : time
+}
+const formatReviewSubmissionTime = (item) => {
+  const value = getReviewSubmissionTimeValue(item)
+  if (!value) return '—'
+  if (typeof value === 'object') {
+    return value.display || value.label || '—'
+  }
+  return formatRelativeTime(value)
+}
+const getReviewSortValue = (item, key) => {
+  if (key === 'status') return getSubmissionStatusPriority(item.status)
+  if (key === 'submitted_at') return getReviewTimestamp(item)
+  if (key === 'academic_year') return Number(item.academic_year) || 0
+  if (key === 'kind') return getArchiveSubmissionKind(item)
+  return String(item?.[key] || '').trim()
+}
+const compareReviewSortValues = (a, b, key) => {
+  const aValue = getReviewSortValue(a, key)
+  const bValue = getReviewSortValue(b, key)
+  if (typeof aValue === 'number' && typeof bValue === 'number') {
+    return aValue - bValue
+  }
+  return String(aValue).localeCompare(String(bValue), 'zh-TW')
+}
+const sortArchiveReviewItems = (items, section) => {
+  const { key, direction } = reviewSortState.value[section]
+  const directionFactor = direction === 'desc' ? -1 : 1
   return [...items].sort((a, b) => {
+    const primaryDiff = compareReviewSortValues(a, b, key)
+    if (primaryDiff !== 0) return primaryDiff * directionFactor
     const statusDiff = getSubmissionStatusPriority(a.status) - getSubmissionStatusPriority(b.status)
     if (statusDiff !== 0) return statusDiff
     return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
   })
 }
+const toggleReviewSort = (section, key) => {
+  const current = reviewSortState.value[section]
+  reviewSortState.value[section] = {
+    key,
+    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+  }
+}
+const getReviewSortIndicator = (section, key) => {
+  const current = reviewSortState.value[section]
+  if (current.key !== key) return ''
+  return current.direction === 'asc' ? '↑' : '↓'
+}
 const newCourseArchiveRequests = computed(() =>
   sortArchiveReviewItems(
-    archiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key)
+    archiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key),
+    'new'
   )
 )
 const existingCourseArchiveRequests = computed(() =>
   sortArchiveReviewItems(
-    archiveRequests.value.filter((item) => !item.requested_course_name && !item.requested_category_key)
+    archiveRequests.value.filter((item) => !item.requested_course_name && !item.requested_category_key),
+    'existing'
   )
 )
 
@@ -1797,6 +1941,20 @@ const getSubmissionStatusClass = (status) => {
   if (normalized === 'takedown') return 'review-status-takedown'
   if (normalized === 'deleted') return 'review-status-deleted'
   return 'review-status-pending'
+}
+
+const canShowReviewAction = (item, action) => {
+  const status = normalizeSubmissionStatus(item?.status)
+  if (action === 'approve') {
+    return status === 'pending' || status === 'rejected'
+  }
+  if (action === 'reject') {
+    return status === 'pending' || status === 'approved'
+  }
+  if (action === 'delete') {
+    return status === 'pending' || status === 'approved' || status === 'rejected' || status === 'takedown'
+  }
+  return false
 }
 
 const getArchiveSubmissionKind = (item) => {
@@ -3116,6 +3274,32 @@ onBeforeUnmount(() => {
 
 .review-history-title small {
   color: var(--text-secondary);
+}
+
+.review-sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.review-course-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+:deep(.review-admin-upload-chip) {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
 .review-load-error {
