@@ -412,6 +412,16 @@ async def delete_my_archive_submission(
     submission.deleted_at = now
     submission.deleted_by_id = current_user.user_id
     submission.delete_reason = "user deleted"
+
+    if submission.created_archive_id:
+        archive = await db.get(Archive, submission.created_archive_id)
+        if archive and archive.deleted_at is None:
+            archive.deleted_at = now
+            archive.deleted_by_id = current_user.user_id
+            archive.deleted_reason = "user deleted"
+            archive.restored_at = None
+            archive.restored_by_id = None
+
     await db.commit()
 
     return {

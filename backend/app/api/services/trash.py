@@ -941,6 +941,15 @@ async def list_trash_items(
             )
 
     if item_type in (None, TrashEntityType.ARCHIVE_SUBMISSION):
+        trashed_archive_ids = {
+            archive_id
+            for archive_id in (
+                await db.execute(
+                    select(Archive.id).where(Archive.deleted_at.is_not(None))
+                )
+            ).scalars()
+            if archive_id is not None
+        }
         submissions = (
             await db.execute(
                 select(ArchiveSubmission)
@@ -954,6 +963,8 @@ async def list_trash_items(
             )
         ).scalars().all()
         for submission in submissions:
+            if submission.created_archive_id and submission.created_archive_id in trashed_archive_ids:
+                continue
             deleted_at = submission.deleted_at or submission.reviewed_at or submission.created_at
             items.append(
                 _to_trash_item(
@@ -1062,6 +1073,37 @@ async def restore_trash_item(
         archive.deleted_reason = None
         archive.restored_at = now
         archive.restored_by_id = current_user.user_id
+        archive.uploader_id = current_user.user_id
+
+        linked_submission = (
+            await db.execute(
+                select(ArchiveSubmission)
+                .where(
+                    ArchiveSubmission.created_archive_id == archive.id,
+                    or_(
+                        ArchiveSubmission.deleted_at.is_not(None),
+                        ArchiveSubmission.status == SubmissionStatus.DELETED,
+                    ),
+                )
+                .order_by(
+                    ArchiveSubmission.reviewed_at.desc(),
+                    ArchiveSubmission.deleted_at.desc(),
+                    ArchiveSubmission.created_at.desc(),
+                )
+            )
+        ).scalars().first()
+
+        if linked_submission:
+            linked_submission.deleted_at = None
+            linked_submission.delete_reason = None
+            linked_submission.deleted_by_id = None
+            linked_submission.owner_id = current_user.user_id
+            linked_submission.reviewed_at = now
+            linked_submission.reviewer_id = current_user.user_id
+            linked_submission.restored_at = now
+            linked_submission.restored_by_id = current_user.user_id
+            linked_submission.status = SubmissionStatus.APPROVED
+
         await db.commit()
         return {"message": "Archive restored"}
 
