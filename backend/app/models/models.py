@@ -29,6 +29,15 @@ class NotificationSeverity(str, PyEnum):
     DANGER = "danger"
 
 
+class TrashEntityType(str, PyEnum):
+    ARCHIVE = "archive"
+    ARCHIVE_SUBMISSION = "archive_submission"
+    COURSE_CATEGORY = "course_category"
+    COURSE = "course"
+    NOTIFICATION = "notification"
+    USER = "user"
+
+
 class SubmissionStatus(str, PyEnum):
     PENDING = "pending"
     APPROVED = "approved"
@@ -84,6 +93,14 @@ class CourseCategoryConfig(SQLModel, table=True):
             nullable=False,
         )
     )
+    deleted_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    deleted_by_id: Optional[int] = Field(default=None)
+    restored_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    restored_by_id: Optional[int] = Field(default=None)
 
 
 class Course(SQLModel, table=True):
@@ -95,6 +112,11 @@ class Course(SQLModel, table=True):
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
+    deleted_by_id: Optional[int] = Field(default=None)
+    restored_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    restored_by_id: Optional[int] = Field(default=None)
 
     archives: List["Archive"] = Relationship(back_populates="course")
 
@@ -135,6 +157,12 @@ class Archive(SQLModel, table=True):
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
+    deleted_by_id: Optional[int] = Field(default=None)
+    deleted_reason: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    restored_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    restored_by_id: Optional[int] = Field(default=None)
 
 
 class CourseSubmission(SQLModel, table=True):
@@ -177,9 +205,19 @@ class ArchiveSubmission(SQLModel, table=True):
     requested_category_icon: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING, index=True)
     requester_id: int = Field(foreign_key="users.id", index=True)
+    owner_id: Optional[int] = Field(default=None)
     reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
     review_note: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     created_archive_id: Optional[int] = Field(default=None, foreign_key="archives.id")
+    deleted_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    deleted_by_id: Optional[int] = Field(default=None)
+    delete_reason: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    restored_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    restored_by_id: Optional[int] = Field(default=None)
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -512,3 +550,17 @@ class ArchiveSubmissionUpdate(BaseModel):
     requested_category_name: Optional[str] = None
     requested_category_label: Optional[str] = None
     requested_category_icon: Optional[str] = None
+
+
+class TrashItem(BaseModel):
+    item_type: TrashEntityType
+    id: int
+    display_name: str
+    academic_year: Optional[int] = None
+    academic_term: Optional[str] = None
+    deleted_at: datetime
+    deleted_by_id: Optional[int] = None
+    deleted_by_name: Optional[str] = None
+    status: Optional[str] = None
+    reason: Optional[str] = None
+    dependencies: List[str] = []

@@ -7,6 +7,7 @@
           <Tab value="1">使用者管理</Tab>
           <Tab value="2">公告管理</Tab>
           <Tab value="3">審核中心</Tab>
+          <Tab value="4">垃圾桶</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="0">
@@ -974,6 +975,112 @@
               </div>
             </div>
           </TabPanel>
+
+          <TabPanel value="4">
+            <div class="p-2 md:p-4 trash-center">
+              <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center gap-3 mb-4">
+                <div>
+                  <h3 class="m-0">垃圾桶</h3>
+                  <p class="m-0 text-sm text-500">還原或永久刪除管理中心已刪除項目</p>
+                </div>
+                <div class="flex flex-column md:flex-row gap-2 w-full md:w-auto">
+                  <Select
+                    v-model="trashFilterType"
+                    :options="trashFilterOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    class="w-full md:w-12rem"
+                    @change="loadTrashItems"
+                  />
+                  <Button icon="pi pi-refresh" label="重新整理" outlined @click="loadTrashItems" />
+                  <Button
+                    icon="pi pi-times-circle"
+                    label="清空目前範圍"
+                    severity="danger"
+                    outlined
+                    :disabled="!trashItems.length || trashLoading"
+                    @click="confirmBulkDeleteTrash"
+                  />
+                </div>
+              </div>
+
+              <DataTable
+                :value="sortedTrashItems"
+                :loading="trashLoading"
+                class="admin-data-table trash-table"
+                tableStyle="min-width: 72rem"
+                responsiveLayout="stack"
+                breakpoint="768px"
+              >
+                <Column field="deleted_at" header="刪除時間">
+                  <template #body="{ data }">
+                    <span>{{ formatTrashDeletedAt(data.deleted_at) }}</span>
+                  </template>
+                </Column>
+                <Column field="item_type" header="類型">
+                  <template #body="{ data }">
+                    <Tag severity="secondary">{{ getTrashTypeLabel(data.item_type) }}</Tag>
+                  </template>
+                </Column>
+                <Column field="display_name" header="名稱">
+                  <template #body="{ data }">
+                    <span class="trash-name-cell">
+                      <strong>{{ data.display_name }}</strong>
+                      <small v-if="getTrashSemesterText(data)">{{ getTrashSemesterText(data) }}</small>
+                    </span>
+                  </template>
+                </Column>
+                <Column field="status" header="狀態">
+                  <template #body="{ data }">
+                    <Tag :severity="getTrashStatusSeverity(data.status)">
+                      {{ getTrashStatusLabel(data.status) }}
+                    </Tag>
+                  </template>
+                </Column>
+                <Column field="deleted_by_name" header="刪除者">
+                  <template #body="{ data }">
+                    <span>{{ getTrashDeletedByLabel(data) }}</span>
+                  </template>
+                </Column>
+                <Column header="依賴與阻擋">
+                  <template #body="{ data }">
+                    <div class="trash-dependencies">
+                      <Tag
+                        v-for="dependency in getTrashDependencies(data)"
+                        :key="dependency"
+                        :severity="getTrashDependencySeverity(dependency)"
+                      >
+                        {{ dependency }}
+                      </Tag>
+                      <span v-if="!getTrashDependencies(data).length" class="text-sm text-500">無阻擋</span>
+                    </div>
+                  </template>
+                </Column>
+                <Column header="操作">
+                  <template #body="{ data }">
+                    <div class="admin-card-actions">
+                      <Button
+                        icon="pi pi-undo"
+                        label="還原"
+                        size="small"
+                        severity="success"
+                        outlined
+                        @click="confirmRestoreTrashItem(data)"
+                      />
+                      <Button
+                        icon="pi pi-trash"
+                        label="永久刪除"
+                        size="small"
+                        severity="danger"
+                        text
+                        @click="confirmPermanentDeleteTrashItem(data)"
+                      />
+                    </div>
+                  </template>
+                </Column>
+              </DataTable>
+            </div>
+          </TabPanel>
         </TabPanels>
       </Tabs>
 
@@ -1620,6 +1727,9 @@ const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const reviewLoadError = ref('')
 const archiveRequests = ref([])
+const trashLoading = ref(false)
+const trashItems = ref([])
+const trashFilterType = ref(null)
 const courseCategories = ref([])
 const reviewEditLoading = ref(false)
 const showArchiveRequestDialog = ref(false)
@@ -1665,6 +1775,24 @@ const submissionStatusPriority = {
   rejected: 3,
   takedown: 4,
   deleted: 5,
+}
+const trashFilterOptions = [
+  { label: '全部', value: null },
+  { label: '考古題', value: 'archive' },
+  { label: '考古題投稿', value: 'archive_submission' },
+  { label: '課程分類', value: 'course_category' },
+  { label: '課程', value: 'course' },
+  { label: '公告', value: 'notification' },
+  { label: '使用者', value: 'user' },
+]
+const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
+  if (option.value) acc[option.value] = option.label
+  return acc
+}, {})
+const getTrashTypeLabel = (itemType) => trashTypeLabels[itemType] || itemType || '未知'
+const getTrashDeletedTimestamp = (item) => {
+  const time = new Date(item?.deleted_at || 0).getTime()
+  return Number.isNaN(time) ? 0 : time
 }
 const submissionStatusAliases = {
   pending: 'pending',
@@ -1777,13 +1905,16 @@ const existingCourseArchiveRequests = computed(() =>
     'existing'
   )
 )
+const sortedTrashItems = computed(() =>
+  [...trashItems.value].sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
+)
 
 const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
 
 const getInitialTab = () => {
   try {
     const savedTab = getLocalItem(TAB_STORAGE_KEY)
-    if (savedTab && ['0', '1', '2', '3'].includes(savedTab)) {
+    if (savedTab && ['0', '1', '2', '3', '4'].includes(savedTab)) {
       return savedTab
     }
   } catch (e) {
@@ -2256,6 +2387,188 @@ const loadReviewItems = async () => {
     })
   } finally {
     reviewLoading.value = false
+  }
+}
+
+const loadTrashItems = async () => {
+  trashLoading.value = true
+  try {
+    const { data } = await archiveService.listTrashItems(trashFilterType.value)
+    trashItems.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.error('載入垃圾桶失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: getTrashErrorMessage(error, '垃圾桶載入失敗'),
+      life: 3500,
+    })
+  } finally {
+    trashLoading.value = false
+  }
+}
+
+const formatTrashDeletedAt = (value) => {
+  return value ? formatRelativeTime(value) : '—'
+}
+
+const getTrashSemesterText = (item) => {
+  if (!['archive', 'archive_submission'].includes(item?.item_type)) return ''
+  if (!item.academic_term) return '學期：—'
+  return `學期：${item.academic_term}`
+}
+
+const getTrashStatusLabel = (statusValue) => {
+  const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
+  const labels = {
+    pending: '待審核',
+    approved: '已通過',
+    rejected: '未通過',
+    takedown: '已下架',
+    deleted: '已刪除',
+  }
+  return labels[normalized] || '已刪除'
+}
+
+const getTrashStatusSeverity = (statusValue) => {
+  const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
+  if (normalized === 'approved') return 'success'
+  if (normalized === 'pending') return 'warning'
+  if (normalized === 'takedown') return 'secondary'
+  return 'danger'
+}
+
+const getTrashDeletedByLabel = (item) => {
+  return item?.deleted_by_name || (item?.deleted_by_id ? `使用者 #${item.deleted_by_id}` : '—')
+}
+
+const getTrashDependencies = (item) => {
+  return Array.isArray(item?.dependencies) ? item.dependencies.filter(Boolean) : []
+}
+
+const getTrashDependencySeverity = (dependency) => {
+  const value = String(dependency || '').toLowerCase()
+  if (value.includes('active') || value.includes('未刪除')) return 'danger'
+  if (value.includes('trashed') || value.includes('deleted')) return 'info'
+  return 'secondary'
+}
+
+const getTrashErrorMessage = (error, fallback = '操作失敗') => {
+  const detail = error?.response?.data?.detail
+  if (!detail) return fallback
+  if (typeof detail === 'string') return detail
+  if (detail.message) return detail.message
+  if (Array.isArray(detail.blockingDependencies) && detail.blockingDependencies.length) {
+    return '仍有依賴資料阻擋此操作'
+  }
+  return fallback
+}
+
+const getTrashBulkResultMessage = (data) => {
+  const deletedCount = Number(data?.deleted_count ?? data?.deleted ?? 0)
+  const failedCount = Number(data?.failed_count ?? data?.failed ?? 0)
+  if (deletedCount > 0 && failedCount > 0) return `已永久刪除 ${deletedCount} 筆，${failedCount} 筆失敗`
+  if (deletedCount > 0) return `已永久刪除 ${deletedCount} 筆`
+  if (failedCount > 0) return `${failedCount} 筆永久刪除失敗`
+  return '沒有可永久刪除的項目'
+}
+
+const confirmRestoreTrashItem = (item) => {
+  confirm.require({
+    message: `確定要還原「${item.display_name}」嗎？`,
+    header: '確認還原',
+    icon: 'pi pi-undo',
+    accept: () => restoreTrashItem(item),
+  })
+}
+
+const restoreTrashItem = async (item) => {
+  try {
+    await archiveService.restoreTrashItem(item.item_type, item.id)
+    toast.add({ severity: 'success', summary: '已還原', detail: '項目已還原', life: 3000 })
+    await loadTrashItems()
+  } catch (error) {
+    console.error('還原垃圾桶項目失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '還原失敗',
+      detail: getTrashErrorMessage(error, '項目還原失敗'),
+      life: 4000,
+    })
+  }
+}
+
+const confirmPermanentDeleteTrashItem = (item) => {
+  confirm.require({
+    message: `確定要永久刪除「${item.display_name}」嗎？此動作無法復原。`,
+    header: '確認永久刪除',
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: () => permanentlyDeleteTrashItem(item),
+  })
+}
+
+const permanentlyDeleteTrashItem = async (item) => {
+  try {
+    const { data } = await archiveService.permanentlyDeleteTrashItem(item.item_type, item.id)
+    const deletedCount = Number(data?.deleted_count ?? data?.deleted ?? 1)
+    toast.add({ severity: 'success', summary: '已永久刪除', detail: `已永久刪除 ${deletedCount} 筆`, life: 3000 })
+    await loadTrashItems()
+  } catch (error) {
+    console.error('永久刪除垃圾桶項目失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '永久刪除失敗',
+      detail: getTrashErrorMessage(error, '永久刪除失敗'),
+      life: 4500,
+    })
+  }
+}
+
+const confirmBulkDeleteTrash = () => {
+  const scopeLabel = trashFilterOptions.find((option) => option.value === trashFilterType.value)?.label || '全部'
+  confirm.require({
+    message: `確定要永久刪除「${scopeLabel}」範圍內的垃圾桶項目嗎？此動作無法復原。`,
+    header: '確認清空目前範圍',
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: bulkDeleteTrashScope,
+  })
+}
+
+const bulkDeleteTrashScope = async () => {
+  try {
+    const { data } = await archiveService.permanentlyDeleteTrashScope(trashFilterType.value)
+    const deletedCount = Number(data?.deleted_count ?? data?.deleted ?? 0)
+    const failedCount = Number(data?.failed_count ?? data?.failed ?? 0)
+    if (deletedCount > 0) {
+      toast.add({
+        severity: failedCount ? 'warn' : 'success',
+        summary: failedCount ? '部分完成' : '已清空',
+        detail: getTrashBulkResultMessage(data),
+        life: 4500,
+      })
+    } else {
+      toast.add({
+        severity: failedCount ? 'error' : 'info',
+        summary: failedCount ? '清空失敗' : '沒有項目',
+        detail: getTrashBulkResultMessage(data),
+        life: 4500,
+      })
+    }
+    await loadTrashItems()
+  } catch (error) {
+    console.error('清空垃圾桶範圍失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({
+      severity: 'error',
+      summary: '清空失敗',
+      detail: getTrashErrorMessage(error, '清空目前範圍失敗'),
+      life: 4500,
+    })
   }
 }
 
@@ -3125,6 +3438,11 @@ const loadTabData = async (value) => {
 
   if (tab === '3') {
     await loadReviewItems()
+    return
+  }
+
+  if (tab === '4') {
+    await loadTrashItems()
   }
 }
 
@@ -3138,6 +3456,7 @@ const handleTabChange = (value) => {
     1: 'users',
     2: 'notifications',
     3: 'reviews',
+    4: 'trash',
   }
 
   trackEvent(EVENTS.SWITCH_TAB, {
@@ -3318,6 +3637,22 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: rgba(239, 68, 68, 0.12);
   color: #fecaca;
+}
+
+.trash-name-cell {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.trash-name-cell small {
+  color: var(--text-secondary);
+}
+
+.trash-dependencies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 :deep(.review-status-chip.review-status-pending) {

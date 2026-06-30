@@ -89,4 +89,27 @@ export const archiveService = {
       responseType: 'blob',
     })
   },
+
+  listTrashItems(itemType = null) {
+    return api.get('/trash', {
+      params: itemType ? { item_type: itemType } : {},
+    })
+  },
+
+  restoreTrashItem(itemType, itemId) {
+    return api.post('/trash/restore', {
+      item_type: itemType,
+      item_id: itemId,
+    })
+  },
+
+  permanentlyDeleteTrashItem(itemType, itemId) {
+    return api.delete(`/trash/${itemType}/${itemId}`)
+  },
+
+  permanentlyDeleteTrashScope(itemType = null) {
+    return api.delete('/trash/bulk', {
+      params: itemType ? { item_type: itemType } : {},
+    })
+  },
 }
