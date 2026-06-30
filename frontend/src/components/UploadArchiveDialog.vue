@@ -501,19 +501,32 @@ const uploadPreviewError = ref(false)
 const availableProfessors = ref([])
 
 const categoryOptions = computed(() =>
-  props.courseCategories.map((category) => ({
-    name: category.name,
-    value: category.key,
-  }))
+  [...props.courseCategories]
+    .sort((a, b) => {
+      const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0)
+      if (orderDiff !== 0) return orderDiff
+      return (a.id ?? 0) - (b.id ?? 0)
+    })
+    .map((category) => ({
+      name: category.name,
+      value: category.key,
+    }))
 )
 
 const subjectOptions = computed(() =>
   (props.coursesList[form.value.category] || [])
+    .filter((course) => !course.deleted_at)
+    .sort((a, b) => {
+      const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0)
+      if (orderDiff !== 0) return orderDiff
+      const nameDiff = String(a.name || '').localeCompare(String(b.name || ''), 'zh-TW')
+      if (nameDiff !== 0) return nameDiff
+      return (a.id ?? 0) - (b.id ?? 0)
+    })
     .map((course) => ({
       name: course.name,
       code: course.id,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name))
 )
 
 const examNumberOptions = Array.from({ length: 20 }, (_, index) => ({

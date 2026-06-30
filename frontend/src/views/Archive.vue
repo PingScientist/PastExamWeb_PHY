@@ -1344,11 +1344,27 @@ function getCategoryName(code) {
 const availableEditProfessors = ref([])
 
 const categoryOptions = computed(() =>
-  courseCategories.value.map((category) => ({
-    name: category.name,
-    value: category.key,
-  }))
+  [...courseCategories.value]
+    .sort((a, b) => {
+      const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0)
+      if (orderDiff !== 0) return orderDiff
+      return (a.id ?? 0) - (b.id ?? 0)
+    })
+    .map((category) => ({
+      name: category.name,
+      value: category.key,
+    }))
 )
+
+const sortCourseOptionsByManagementOrder = (courseList) => {
+  return [...courseList].sort((a, b) => {
+    const orderDiff = (a.order_index ?? 0) - (b.order_index ?? 0)
+    if (orderDiff !== 0) return orderDiff
+    const nameDiff = String(a.name || '').localeCompare(String(b.name || ''), 'zh-TW')
+    if (nameDiff !== 0) return nameDiff
+    return (a.id ?? 0) - (b.id ?? 0)
+  })
+}
 
 watch(
   () => groupedArchives.value,
@@ -1402,13 +1418,12 @@ const allAvailableCoursesForTransfer = computed(() => {
     return []
   }
 
-  return categoryData
+  return sortCourseOptionsByManagementOrder(categoryData)
     .filter((course) => course.id !== selectedCourse.value)
     .map((course) => ({
       id: course.id,
       label: course.name,
     }))
-    .sort((a, b) => a.label.localeCompare(b.label))
 })
 
 const availableCoursesForTransfer = ref([])
