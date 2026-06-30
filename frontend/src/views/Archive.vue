@@ -1105,18 +1105,24 @@ async function fetchArchives() {
   try {
     loading.value = true
     const response = await courseService.getCourseArchives(selectedCourse.value)
-    archives.value = response.data.map((archive) => ({
-      id: archive.id,
-      year: archive.academic_year,
-      name: archive.name,
-      type: archive.archive_type,
-      professor: archive.professor,
-      hasAnswers: archive.has_answers,
-      subject: selectedSubject.value,
-      uploader_id: archive.uploader_id,
-      downloadCount: archive.download_count,
-      sourceSubmissionIds: Array.isArray(archive.source_submission_ids) ? archive.source_submission_ids : [],
-    }))
+    const archiveRows = Array.isArray(response.data) ? response.data : []
+    if (!Array.isArray(response.data)) {
+      throw new Error('Archive list response is not an array')
+    }
+    archives.value = archiveRows
+      .filter((archive) => archive && archive.id !== null && archive.id !== undefined)
+      .map((archive) => ({
+        id: archive.id,
+        year: archive.academic_year || '',
+        name: archive.name || '未命名考古題',
+        type: archive.archive_type || 'other',
+        professor: archive.professor || '—',
+        hasAnswers: Boolean(archive.has_answers),
+        subject: selectedSubject.value,
+        uploader_id: archive.uploader_id || null,
+        downloadCount: Number(archive.download_count || 0),
+        sourceSubmissionIds: Array.isArray(archive.source_submission_ids) ? archive.source_submission_ids : [],
+      }))
 
     const uniqueYears = new Set()
     const uniqueProfessors = new Set()
@@ -1150,6 +1156,10 @@ async function fetchArchives() {
       }))
   } catch (error) {
     console.error('Error fetching archives:', error)
+    archives.value = []
+    years.value = []
+    professors.value = []
+    archiveTypes.value = []
     if (isUnauthorizedError(error)) {
       return
     }
