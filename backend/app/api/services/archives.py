@@ -26,6 +26,7 @@ from app.models.models import (
 )
 from app.api.services.archive_submission_lifecycle import (
     LIFECYCLE_ARCHIVE_TRASHED,
+    LIFECYCLE_COURSE_TRASHED,
     LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED,
     soft_delete_submission_with_linked_archive,
 )
@@ -816,6 +817,63 @@ async def republish_archive_submission(
             archive.deleted_reason = None
             archive.restored_at = datetime.now(timezone.utc)
             archive.restored_by_id = current_user.user_id
+
+    if submission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED:
+        if not submission.requested_course_name:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="無法重新上架，請先至垃圾桶復原原課程",
+            )
+
+        archive = await db.get(Archive, submission.created_archive_id) if submission.created_archive_id else None
+        course = await db.get(Course, archive.course_id) if archive else None
+        if course and course.deleted_at is not None:
+            category = (
+                await db.execute(
+                    select(CourseCategoryConfig).where(CourseCategoryConfig.key == course.category)
+                )
+            ).scalar_one_or_none()
+            if not category or category.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="無法重新上架，請先至垃圾桶復原分類",
+                )
+
+            now = datetime.now(timezone.utc)
+            course.deleted_at = None
+            course.deleted_by_id = None
+            course.restored_at = now
+            course.restored_by_id = current_user.user_id
+            archives = (
+                await db.execute(
+                    select(Archive).where(
+                        Archive.course_id == course.id,
+                        Archive.deleted_at.is_not(None),
+                    )
+                )
+            ).scalars().all()
+            for item in archives:
+                item.deleted_at = None
+                item.deleted_by_id = None
+                item.deleted_reason = None
+                item.restored_at = now
+                item.restored_by_id = current_user.user_id
+            archive_ids = [item.id for item in archives if item.id is not None]
+            if archive_ids:
+                linked_submissions = (
+                    await db.execute(
+                        select(ArchiveSubmission).where(
+                            ArchiveSubmission.created_archive_id.in_(archive_ids),
+                            ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
+                            ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
+                        )
+                    )
+                ).scalars().all()
+                for item in linked_submissions:
+                    item.status = SubmissionStatus.APPROVED
+                    item.lifecycle_reason = None
+                    item.reviewer_id = current_user.user_id
+                    item.reviewed_at = now
 
     submission.status = SubmissionStatus.APPROVED
     submission.lifecycle_reason = None

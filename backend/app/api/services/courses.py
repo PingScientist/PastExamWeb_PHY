@@ -18,7 +18,10 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_session
-from app.api.services.archive_submission_lifecycle import soft_delete_archive_with_submission_takedown
+from app.api.services.archive_submission_lifecycle import (
+    LIFECYCLE_COURSE_TRASHED,
+    soft_delete_archive_with_submission_takedown,
+)
 from app.models.models import (
     Archive,
     ArchiveDiscussionMessage,
@@ -1307,9 +1310,30 @@ async def delete_course(
     current_time = datetime.now(timezone.utc)
     for archive in archives:
         archive.deleted_at = current_time
+        archive.deleted_by_id = current_user.user_id
+        archive.deleted_reason = "course deleted"
+
+    archive_ids = [archive.id for archive in archives if archive.id is not None]
+    if archive_ids:
+        linked_submissions = (
+            await db.execute(
+                select(ArchiveSubmission).where(
+                    ArchiveSubmission.created_archive_id.in_(archive_ids),
+                    ArchiveSubmission.deleted_at.is_(None),
+                    ArchiveSubmission.status != SubmissionStatus.DELETED,
+                    ArchiveSubmission.status != SubmissionStatus.TAKEDOWN,
+                )
+            )
+        ).scalars().all()
+        for submission in linked_submissions:
+            submission.status = SubmissionStatus.TAKEDOWN
+            submission.lifecycle_reason = LIFECYCLE_COURSE_TRASHED
+            submission.reviewer_id = current_user.user_id
+            submission.reviewed_at = current_time
 
     # Soft delete the course
     course.deleted_at = current_time
+    course.deleted_by_id = current_user.user_id
 
     await db.commit()
 

@@ -25,6 +25,7 @@ from app.models.models import (
 )
 from app.api.services.archive_submission_lifecycle import (
     LIFECYCLE_ARCHIVE_TRASHED,
+    LIFECYCLE_COURSE_TRASHED,
     LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED,
     collect_archive_submission_group,
     hard_delete_archive_submission_group,
@@ -152,9 +153,9 @@ async def _get_category_dependency_messages(db: SQLModelAsyncSession, category: 
             ArchiveSubmission.deleted_at.is_(None),
         ),
     )
+    course_count = active_courses + trashed_courses
     return [
-        f"阻擋永久刪除：{_dependency_count(active_courses, '門')}啟用中課程仍屬於此分類" if active_courses else "",
-        f"一併永久刪除：{_dependency_count(trashed_courses, '門')}已刪除課程屬於此分類" if trashed_courses else "",
+        f"阻擋永久刪除：{_dependency_count(course_count, '門')}課程仍屬於此分類，請先永久刪除課程" if course_count else "",
         f"阻擋永久刪除：{_dependency_count(course_submissions, '筆')}啟用中課程投稿仍屬於此分類" if course_submissions else "",
         f"阻擋永久刪除：{_dependency_count(active_archive_submissions, '筆')}啟用中投稿仍屬於此分類" if active_archive_submissions else "",
     ]
@@ -198,7 +199,7 @@ async def _get_archive_dependency_messages(db: SQLModelAsyncSession, archive: Ar
             ArchiveSubmission.status != SubmissionStatus.DELETED,
             or_(
                 ArchiveSubmission.status != SubmissionStatus.TAKEDOWN,
-                ArchiveSubmission.lifecycle_reason != LIFECYCLE_ARCHIVE_TRASHED,
+                ~ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED, LIFECYCLE_COURSE_TRASHED]),
                 ArchiveSubmission.lifecycle_reason.is_(None),
             ),
         ),
@@ -209,7 +210,7 @@ async def _get_archive_dependency_messages(db: SQLModelAsyncSession, archive: Ar
             ArchiveSubmission.created_archive_id == archive.id,
             ArchiveSubmission.deleted_at.is_(None),
             ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
-            ArchiveSubmission.lifecycle_reason == LIFECYCLE_ARCHIVE_TRASHED,
+            ArchiveSubmission.lifecycle_reason.in_([LIFECYCLE_ARCHIVE_TRASHED, LIFECYCLE_COURSE_TRASHED]),
         ),
     )
     trashed_linked_submissions = await _count_rows(
@@ -667,67 +668,31 @@ async def _hard_delete_category(
     category: CourseCategoryConfig,
     warnings: list[str],
 ) -> dict:
+    existing_courses = (
+        await db.execute(
+            select(Course).where(Course.category == category.key)
+        )
+    ).scalars().all()
+    if existing_courses:
+        raise _blocked(
+            f"阻擋永久刪除：{_dependency_count(len(existing_courses), '門')}課程仍屬於此分類，請先永久刪除課程",
+            [_blocker("course", course.id, course.name) for course in existing_courses if course.id is not None],
+        )
+
     blockers = [
-        *(await _get_active_course_blockers(db, category)),
         *(await _get_active_category_submission_blockers(db, category)),
     ]
     if blockers:
-        raise _blocked("仍有未刪除的課程或投稿依附於此分類", blockers)
-
-    trashed_courses = (
-        await db.execute(
-            select(Course).where(
-                Course.category == category.key,
-                Course.deleted_at.is_not(None),
-            )
-        )
-    ).scalars().all()
-    trashed_submissions = (
-        await db.execute(
-            select(ArchiveSubmission).where(
-                or_(
-                    ArchiveSubmission.category == category.key,
-                    ArchiveSubmission.requested_category_key == category.key,
-                ),
-                or_(
-                    ArchiveSubmission.deleted_at.is_not(None),
-                    ArchiveSubmission.status == SubmissionStatus.DELETED,
-                ),
-            )
-        )
-    ).scalars().all()
-
-    details = []
-    deleted_count = 1
-    for submission in trashed_submissions:
-        if submission.id is None:
-            continue
-        current_submission = await db.get(ArchiveSubmission, submission.id)
-        if not current_submission:
-            continue
-        detail = await _hard_delete_submission(db, current_submission, warnings)
-        details.append(detail)
-        deleted_count += detail.get("deleted", 0)
-
-    for course in trashed_courses:
-        current_course = await db.get(Course, course.id)
-        if not current_course:
-            continue
-        detail = await _hard_delete_course(db, current_course, warnings)
-        details.append(detail)
-        deleted_count += detail.get("deleted", 0)
+        raise _blocked("仍有未刪除的投稿依附於此分類", blockers)
 
     await db.delete(category)
     return {
         "type": "course_category",
         "id": category.id,
         "name": category.name,
-        "deletedChildren": {
-            "courses": len(trashed_courses),
-            "submissions": len(trashed_submissions),
-        },
-        "children": details,
-        "deleted": deleted_count,
+        "deletedChildren": {},
+        "children": [],
+        "deleted": 1,
     }
 
 
@@ -1074,6 +1039,8 @@ async def list_trash_items(
                 if submission.created_archive_id is not None else None
             )
             is_direct_deleted_submission = submission.delete_reason in {"user deleted", "admin deleted"}
+            direct_submission_parent_type = "course" if is_direct_deleted_submission and linked_archive else None
+            direct_submission_parent_id = linked_archive.course_id if direct_submission_parent_type else None
             try:
                 items.append(
                     _to_trash_item(
@@ -1089,9 +1056,13 @@ async def list_trash_items(
                         parent_type=(
                             "archive"
                             if submission.created_archive_id and not is_direct_deleted_submission
-                            else None
+                            else direct_submission_parent_type
                         ),
-                        parent_id=submission.created_archive_id if not is_direct_deleted_submission else None,
+                        parent_id=(
+                            submission.created_archive_id
+                            if not is_direct_deleted_submission
+                            else direct_submission_parent_id
+                        ),
                         parent_name=linked_archive.name if linked_archive else None,
                         created_archive_id=submission.created_archive_id,
                         course_name=submission.requested_course_name,
@@ -1167,6 +1138,23 @@ async def restore_trash_item(
             archive.deleted_reason = None
             archive.restored_at = now
             archive.restored_by_id = current_user.user_id
+
+        archive_ids = [archive.id for archive in archives if archive.id is not None]
+        if archive_ids:
+            submissions = (
+                await db.execute(
+                    select(ArchiveSubmission).where(
+                        ArchiveSubmission.created_archive_id.in_(archive_ids),
+                        ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
+                        ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
+                    )
+                )
+            ).scalars().all()
+            for submission in submissions:
+                submission.status = SubmissionStatus.APPROVED
+                submission.lifecycle_reason = None
+                submission.reviewer_id = current_user.user_id
+                submission.reviewed_at = now
 
         await db.commit()
         return {"message": "Course restored"}
