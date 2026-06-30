@@ -2363,15 +2363,14 @@ const getReviewRowActions = (item) => {
 
 const isReviewBlockedByCourseTrash = (item) => {
   return getReviewItemStatus(item) === 'takedown' &&
-    (item?.lifecycle_reason === 'course_trashed' || item?.linked_course_deleted === true) &&
-    !item?.requested_course_name
+    (item?.lifecycle_reason === 'course_trashed' || item?.linked_course_deleted === true)
 }
 
 const getReviewTrashNote = (item) => {
   if (getReviewItemStatus(item) !== 'takedown') return ''
   if (item?.lifecycle_reason === 'linked_archive_permanently_deleted') return '無法復原：關聯考古題已永久刪除。'
   if (item?.lifecycle_reason === 'course_trashed' || item?.linked_course_deleted === true) {
-    return '原課程在垃圾桶，請先復原課程。'
+    return '原課程在垃圾桶，請先至垃圾桶復原課程。'
   }
   if (item?.lifecycle_reason === 'archive_trashed' || item?.linked_archive_deleted === true) {
     return '關聯考古題在垃圾桶，請先復原考古題。'
