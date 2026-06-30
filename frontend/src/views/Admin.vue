@@ -2075,13 +2075,38 @@ const getTrashFilterApiValue = (value) => getValidTrashFilterType(value)
 
 const buildTrashHierarchy = (items, filterType) => {
   const normalizedFilterType = getValidTrashFilterType(filterType)
-  const rows = [...(Array.isArray(items) ? items : [])]
-    .map((item, index) => ({
-      ...(item && typeof item === 'object' ? item : {}),
+  const rowMap = new Map()
+  for (const [index, rawItem] of (Array.isArray(items) ? items : []).entries()) {
+    if (!rawItem || typeof rawItem !== 'object' || !rawItem.item_type) continue
+    const row = {
+      ...rawItem,
       _trashRowIndex: index,
       trash_depth: 0,
+    }
+    const key = getTrashItemKey(row, index)
+    const existing = rowMap.get(key)
+    if (!existing) {
+      rowMap.set(key, row)
+      continue
+    }
+    const dependencies = [...(existing.dependencies || [])]
+    for (const dependency of row.dependencies || []) {
+      if (!dependencies.includes(dependency)) dependencies.push(dependency)
+    }
+    rowMap.set(key, {
+      ...existing,
+      dependencies,
+      deleted_at: getTrashDeletedTimestamp(row) > getTrashDeletedTimestamp(existing) ? row.deleted_at : existing.deleted_at,
+      deleted_by_id: getTrashDeletedTimestamp(row) > getTrashDeletedTimestamp(existing) ? row.deleted_by_id : existing.deleted_by_id,
+      deleted_by_name: getTrashDeletedTimestamp(row) > getTrashDeletedTimestamp(existing) ? row.deleted_by_name : existing.deleted_by_name,
+    })
+  }
+  const rows = [...rowMap.values()]
+    .map((item, index) => ({
+      ...item,
+      _trashRowIndex: item._trashRowIndex ?? index,
+      trash_depth: 0,
     }))
-    .filter((item) => item && item.item_type)
     .sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
 
   if (normalizedFilterType !== null && normalizedFilterType !== undefined) {

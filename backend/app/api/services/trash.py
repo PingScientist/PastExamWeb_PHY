@@ -92,6 +92,30 @@ def _build_dependencies(messages: list[str]) -> list[str]:
     return [item for item in messages if item]
 
 
+def _dedupe_trash_items(items: list[TrashItem]) -> list[TrashItem]:
+    deduped: dict[tuple[TrashEntityType, int], TrashItem] = {}
+    passthrough: list[TrashItem] = []
+    for item in items:
+        if item.id is None:
+            passthrough.append(item)
+            continue
+        key = (item.item_type, item.id)
+        existing = deduped.get(key)
+        if existing is None:
+            deduped[key] = item
+            continue
+        existing_dependencies = list(existing.dependencies or [])
+        for dependency in item.dependencies or []:
+            if dependency not in existing_dependencies:
+                existing_dependencies.append(dependency)
+        existing.dependencies = existing_dependencies
+        if item.deleted_at and item.deleted_at > existing.deleted_at:
+            existing.deleted_at = item.deleted_at
+            existing.deleted_by_id = item.deleted_by_id
+            existing.deleted_by_name = item.deleted_by_name
+    return [*deduped.values(), *passthrough]
+
+
 def _format_academic_term(value: Optional[int]) -> Optional[str]:
     if not value:
         return None
@@ -1200,7 +1224,7 @@ async def list_trash_items(
                     exc,
                 )
 
-    return sorted(items, key=lambda item: item.deleted_at, reverse=True)
+    return sorted(_dedupe_trash_items(items), key=lambda item: item.deleted_at, reverse=True)
 
 
 @router.post("/restore")
