@@ -3,10 +3,10 @@
     <div class="card h-full flex flex-col">
       <Tabs :value="currentTab" class="flex-1" @update:value="handleTabChange">
         <TabList>
-          <Tab value="0">課程管理</Tab>
-          <Tab value="1">使用者管理</Tab>
-          <Tab value="2">公告管理</Tab>
           <Tab value="3">審核中心</Tab>
+          <Tab value="0">課程管理</Tab>
+          <Tab value="2">公告管理</Tab>
+          <Tab value="1">使用者管理</Tab>
           <Tab value="4">垃圾桶</Tab>
         </TabList>
         <TabPanels>
@@ -994,6 +994,14 @@
                   />
                   <Button icon="pi pi-refresh" label="重新整理" outlined @click="loadTrashItems" />
                   <Button
+                    icon="pi pi-info-circle"
+                    label="依賴與阻擋說明"
+                    outlined
+                    aria-label="依賴與阻擋說明"
+                    title="依賴與阻擋說明"
+                    @click="showTrashDependencyHelpDialog = true"
+                  />
+                  <Button
                     icon="pi pi-times-circle"
                     label="清空目前範圍"
                     severity="danger"
@@ -1608,6 +1616,42 @@
           />
         </div>
       </Dialog>
+
+      <Dialog
+        v-model:visible="showTrashDependencyHelpDialog"
+        :modal="true"
+        :draggable="false"
+        :closeOnEscape="true"
+        header="如何閱讀「依賴與阻擋」"
+        :style="{ width: '40rem', maxWidth: '92vw' }"
+      >
+        <div class="flex flex-column gap-3">
+          <p class="m-0">
+            依賴欄位用來說明垃圾桶項目在還原／永久刪除前，是否仍有關聯資料會影響操作。
+          </p>
+          <ul class="m-0 pl-4">
+            <li>
+              <strong>無阻擋</strong>：表示目前沒有會阻止還原或永久刪除的依賴。
+            </li>
+            <li>
+              <strong>active ...</strong>：代表仍有正常啟用中的資料依附在此項目上，通常會阻擋永久刪除。<br />
+              例如：active linked submissions: 1
+            </li>
+            <li>
+              <strong>trashed ...</strong>：代表依附資料已進入垃圾桶，通常不視為阻擋，可依系統規則一併清理。
+            </li>
+            <li>
+              <strong>linked archive / linked submissions</strong>：表示關聯到考古題或投稿。若關聯仍為 active，需先處理再刪除。
+            </li>
+            <li>
+              <strong>永久刪除</strong>：不可復原。active 依賴會阻擋，已在垃圾桶中的依賴通常不會阻擋。
+            </li>
+            <li>
+              <strong>還原</strong>：若父層仍在垃圾桶，子項目可能需先還原父層後才能單獨還原。
+            </li>
+          </ul>
+        </div>
+      </Dialog>
     </div>
   </div>
 </template>
@@ -1810,6 +1854,7 @@ const reviewSortState = ref({
   new: { key: 'status', direction: 'asc' },
   existing: { key: 'status', direction: 'asc' },
 })
+const showTrashDependencyHelpDialog = ref(false)
 const normalizeSubmissionStatus = (status) => {
   const raw = String(status || '').trim()
   const normalized = raw.toLowerCase()
