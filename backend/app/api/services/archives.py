@@ -24,7 +24,11 @@ from app.models.models import (
     SubmissionStatus,
     User,
 )
-from app.api.services.archive_submission_lifecycle import soft_delete_archive_submission_group
+from app.api.services.archive_submission_lifecycle import (
+    LIFECYCLE_ARCHIVE_TRASHED,
+    LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED,
+    soft_delete_submission_with_linked_archive,
+)
 from app.utils.auth import get_current_user
 from app.utils.storage import get_minio_client
 
@@ -411,7 +415,7 @@ async def delete_my_archive_submission(
             detail="Only approved submissions can be deleted by users",
         )
 
-    result = await soft_delete_archive_submission_group(
+    result = await soft_delete_submission_with_linked_archive(
         db,
         submission=submission,
         user_id=current_user.user_id,
@@ -462,6 +466,7 @@ async def list_archive_submissions_for_admin(
                     OR LOWER(TRIM(COALESCE(archive_submissions.review_note, ''))) IN ('管理員上傳', 'admin upload')
                 ) AS is_admin_upload,
                 archive_submissions.created_archive_id,
+                archive_submissions.lifecycle_reason,
                 archive_submissions.created_at,
                 archive_submissions.reviewed_at,
                 users.name AS requester_name,
@@ -791,7 +796,29 @@ async def republish_archive_submission(
             detail="Only taken down submissions can be republished",
         )
 
+    if submission.lifecycle_reason == LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="無法復原：關聯考古題已永久刪除",
+        )
+
+    if submission.lifecycle_reason == LIFECYCLE_ARCHIVE_TRASHED and submission.created_archive_id:
+        archive = await db.get(Archive, submission.created_archive_id)
+        if archive and archive.deleted_at is not None:
+            course = await db.get(Course, archive.course_id)
+            if not course or course.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="無法重新上架，請先至垃圾桶復原原課程",
+                )
+            archive.deleted_at = None
+            archive.deleted_by_id = None
+            archive.deleted_reason = None
+            archive.restored_at = datetime.now(timezone.utc)
+            archive.restored_by_id = current_user.user_id
+
     submission.status = SubmissionStatus.APPROVED
+    submission.lifecycle_reason = None
     submission.reviewer_id = current_user.user_id
     submission.review_note = decision.note if decision else submission.review_note
     submission.reviewed_at = datetime.now(timezone.utc)
@@ -816,7 +843,7 @@ async def delete_archive_submission_for_admin(
     if submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED:
         return {"success": True}
 
-    result = await soft_delete_archive_submission_group(
+    result = await soft_delete_submission_with_linked_archive(
         db,
         submission=submission,
         user_id=current_user.user_id,

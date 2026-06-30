@@ -10,6 +10,10 @@ from app.core.config import settings
 from app.models.models import Archive, ArchiveDiscussionMessage, ArchiveSubmission, SubmissionStatus
 from app.utils.storage import get_minio_client
 
+LIFECYCLE_ARCHIVE_TRASHED = "archive_trashed"
+LIFECYCLE_COURSE_TRASHED = "course_trashed"
+LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED = "linked_archive_permanently_deleted"
+
 
 @dataclass
 class ArchiveSubmissionGroup:
@@ -92,9 +96,143 @@ def _soft_delete_submission(
     submission.deleted_at = now
     submission.deleted_by_id = user_id
     submission.delete_reason = reason
+    submission.lifecycle_reason = None
     submission.restored_at = None
     submission.restored_by_id = None
     return True
+
+
+def _temporarily_takedown_submission(
+    submission: ArchiveSubmission,
+    *,
+    reason: str,
+    reviewer_id: Optional[int],
+    now: datetime,
+) -> bool:
+    if is_archive_submission_trashed(submission):
+        return False
+    if submission.status == SubmissionStatus.TAKEDOWN:
+        return False
+    submission.status = SubmissionStatus.TAKEDOWN
+    submission.lifecycle_reason = reason
+    submission.reviewer_id = reviewer_id
+    submission.reviewed_at = now
+    return True
+
+
+async def soft_delete_archive_with_submission_takedown(
+    db: SQLModelAsyncSession,
+    *,
+    archive: Archive,
+    user_id: Optional[int],
+    reason: str,
+    now: Optional[datetime] = None,
+) -> dict:
+    timestamp = now or datetime.now(timezone.utc)
+    archive_count = 1 if _soft_delete_archive(archive, now=timestamp, user_id=user_id, reason=reason) else 0
+    submissions = (
+        await db.execute(
+            select(ArchiveSubmission).where(
+                ArchiveSubmission.created_archive_id == archive.id,
+                ArchiveSubmission.deleted_at.is_(None),
+                ArchiveSubmission.status != SubmissionStatus.DELETED,
+            )
+        )
+    ).scalars().all()
+    submission_count = sum(
+        1
+        for item in submissions
+        if _temporarily_takedown_submission(
+            item,
+            reason=LIFECYCLE_ARCHIVE_TRASHED,
+            reviewer_id=user_id,
+            now=timestamp,
+        )
+    )
+    return {"archives": archive_count, "submissions_takedown": submission_count, "warnings": []}
+
+
+async def soft_delete_submission_with_linked_archive(
+    db: SQLModelAsyncSession,
+    *,
+    submission: ArchiveSubmission,
+    user_id: Optional[int],
+    reason: str,
+    now: Optional[datetime] = None,
+) -> dict:
+    timestamp = now or datetime.now(timezone.utc)
+    submission_count = 1 if _soft_delete_submission(submission, now=timestamp, user_id=user_id, reason=reason) else 0
+    archive_count = 0
+    warnings: list[str] = []
+    if submission.created_archive_id:
+        archive = await db.get(Archive, submission.created_archive_id)
+        if archive:
+            archive_count = 1 if _soft_delete_archive(archive, now=timestamp, user_id=user_id, reason=reason) else 0
+        else:
+            warnings.append(f"關聯考古題 #{submission.created_archive_id} 已不存在")
+    return {"archives": archive_count, "submissions": submission_count, "warnings": warnings}
+
+
+async def restore_archive_with_temporary_submissions(
+    db: SQLModelAsyncSession,
+    *,
+    archive: Archive,
+    user_id: Optional[int],
+    now: Optional[datetime] = None,
+) -> dict:
+    timestamp = now or datetime.now(timezone.utc)
+    restored_archives = 0
+    if archive.deleted_at is not None:
+        archive.deleted_at = None
+        archive.deleted_by_id = None
+        archive.deleted_reason = None
+        archive.restored_at = timestamp
+        archive.restored_by_id = user_id
+        restored_archives = 1
+
+    submissions = (
+        await db.execute(
+            select(ArchiveSubmission).where(
+                ArchiveSubmission.created_archive_id == archive.id,
+                ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
+                ArchiveSubmission.lifecycle_reason == LIFECYCLE_ARCHIVE_TRASHED,
+            )
+        )
+    ).scalars().all()
+    for item in submissions:
+        item.status = SubmissionStatus.APPROVED
+        item.lifecycle_reason = None
+        item.reviewer_id = user_id
+        item.reviewed_at = timestamp
+
+    return {"archives": restored_archives, "submissions_restored": len(submissions), "warnings": []}
+
+
+async def mark_linked_submissions_archive_permanently_deleted(
+    db: SQLModelAsyncSession,
+    *,
+    archive: Archive,
+    user_id: Optional[int],
+    now: Optional[datetime] = None,
+) -> int:
+    timestamp = now or datetime.now(timezone.utc)
+    submissions = (
+        await db.execute(
+            select(ArchiveSubmission).where(ArchiveSubmission.created_archive_id == archive.id)
+        )
+    ).scalars().all()
+    for item in submissions:
+        item.status = SubmissionStatus.DELETED
+        item.deleted_at = item.deleted_at or timestamp
+        item.deleted_by_id = item.deleted_by_id or user_id
+        item.delete_reason = "linked archive permanently deleted"
+        item.lifecycle_reason = LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED
+        item.created_archive_id = None
+        item.restored_at = None
+        item.restored_by_id = None
+        item.reviewed_at = timestamp
+        item.reviewer_id = user_id
+    return len(submissions)
 
 
 async def soft_delete_archive_submission_group(
@@ -152,6 +290,7 @@ async def restore_archive_submission_group(
         item.deleted_at = None
         item.deleted_by_id = None
         item.delete_reason = None
+        item.lifecycle_reason = None
         item.restored_at = timestamp
         item.restored_by_id = user_id
         item.status = SubmissionStatus.APPROVED if item.created_archive_id else SubmissionStatus.PENDING

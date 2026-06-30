@@ -16,16 +16,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute(
+            "ALTER TABLE archive_submissions "
+            "ADD COLUMN IF NOT EXISTS is_admin_upload BOOLEAN NOT NULL DEFAULT false"
+        )
+        return
+
     op.add_column(
         "archive_submissions",
-        sa.Column(
-            "is_admin_upload",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.false(),
-        ),
+        sa.Column("is_admin_upload", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
 
 
 def downgrade() -> None:
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute("ALTER TABLE archive_submissions DROP COLUMN IF EXISTS is_admin_upload")
+        return
+
     op.drop_column("archive_submissions", "is_admin_upload")

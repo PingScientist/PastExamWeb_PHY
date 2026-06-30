@@ -209,6 +209,7 @@ class ArchiveSubmission(SQLModel, table=True):
     reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
     review_note: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     is_admin_upload: bool = Field(default=False)
+    lifecycle_reason: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     created_archive_id: Optional[int] = Field(default=None, foreign_key="archives.id")
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
@@ -527,6 +528,7 @@ class ArchiveSubmissionRead(BaseModel):
     reviewer_id: Optional[int] = None
     review_note: Optional[str] = None
     created_archive_id: Optional[int] = None
+    lifecycle_reason: Optional[str] = None
     created_at: datetime
     reviewed_at: Optional[datetime] = None
 

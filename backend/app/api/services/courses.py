@@ -18,7 +18,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_session
-from app.api.services.archive_submission_lifecycle import soft_delete_archive_submission_group
+from app.api.services.archive_submission_lifecycle import soft_delete_archive_with_submission_takedown
 from app.models.models import (
     Archive,
     ArchiveDiscussionMessage,
@@ -1090,7 +1090,7 @@ async def delete_archive(
             detail="You don't have permission to delete this archive",
         )
 
-    result = await soft_delete_archive_submission_group(
+    result = await soft_delete_archive_with_submission_takedown(
         db,
         archive=archive,
         user_id=current_user.user_id,
