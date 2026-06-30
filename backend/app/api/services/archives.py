@@ -164,6 +164,14 @@ async def _ensure_or_create_requested_category_for_approval(
     )
 
 
+async def _acquire_course_approval_lock(db: AsyncSession, *, category_key: str, course_name: str) -> None:
+    scope_key = f"archive_approval:{category_key}:{course_name.lower().strip()}"
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:scope_key))"),
+        {"scope_key": scope_key},
+    )
+
+
 @router.post("/upload")
 async def upload_archive(
     file: UploadFile,
@@ -704,6 +712,8 @@ async def approve_archive_submission(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid course name",
         )
+
+    await _acquire_course_approval_lock(db, category_key=category_key, course_name=course_name)
 
     if submission.requested_category_key:
         await _ensure_or_create_requested_category_for_approval(
