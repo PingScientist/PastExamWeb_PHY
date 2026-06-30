@@ -840,24 +840,21 @@
                       >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
-                      <small v-if="getReviewTrashNote(data)" class="text-xs text-500">
-                        {{ getReviewTrashNote(data) }}
-                      </small>
                     </template>
                   </Column>
                   <Column header="操作">
                     <template #body="{ data }">
-	                      <div class="admin-card-actions review-card-actions">
-	                        <Button
-	                          label="查看/編輯"
-	                          icon="pi pi-search"
-                            aria-label="查看/編輯"
-                            title="查看/編輯"
-	                          size="small"
-	                          severity="secondary"
-	                          outlined
-	                          @click="openArchiveRequestDialog(data)"
-	                        />
+                      <div class="admin-card-actions review-card-actions">
+                        <Button
+                          label="查看/編輯"
+                          icon="pi pi-search"
+                          aria-label="查看/編輯"
+                          title="查看/編輯"
+                          size="small"
+                          severity="secondary"
+                          outlined
+                          @click="openArchiveRequestDialog(data)"
+                        />
                         <Button
                           v-for="action in getReviewRowActions(data)"
                           :key="action.key"
@@ -871,6 +868,9 @@
                           :text="action.text"
                           @click="runReviewRowAction(data, action.key)"
                         />
+                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note">
+                          {{ getReviewTrashNote(data) }}
+                        </small>
                       </div>
                     </template>
                   </Column>
@@ -961,9 +961,6 @@
                       >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
-                      <small v-if="getReviewTrashNote(data)" class="text-xs text-500">
-                        {{ getReviewTrashNote(data) }}
-                      </small>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -992,6 +989,9 @@
                           :text="action.text"
                           @click="runReviewRowAction(data, action.key)"
                         />
+                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note">
+                          {{ getReviewTrashNote(data) }}
+                        </small>
                       </div>
                     </template>
                   </Column>
@@ -5179,6 +5179,14 @@ onBeforeUnmount(() => {
     gap: 0.45rem;
   }
 
+  :deep(.review-card-action-note) {
+    grid-column: 1 / -1;
+    color: var(--text-color-secondary);
+    font-size: 0.75rem;
+    line-height: 1.25;
+    margin-top: 0.2rem;
+  }
+
   :deep(.review-card-actions .p-button) {
     width: 100%;
     min-width: 0;
@@ -5320,6 +5328,14 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
+  }
+
+  :deep(.review-card-action-note) {
+    width: 100%;
+    color: var(--text-color-secondary);
+    font-size: 0.75rem;
+    line-height: 1.25;
+    margin-top: 0.2rem;
   }
 
   /* Ensure buttons don't wrap on desktop */
