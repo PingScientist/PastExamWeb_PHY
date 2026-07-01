@@ -1401,23 +1401,31 @@ async def restore_trash_item(
             )
         ).scalars().all()
         restored_archives_count = 0
+        skipped_submission_archive_count = 0
+        restored_archive_ids = []
         for archive in archives:
+            parent_submission = await _get_deleted_submission_parent_for_archive(db, archive.id)
+            if parent_submission:
+                skipped_submission_archive_count += 1
+                continue
+
             archive.deleted_at = None
             archive.deleted_by_id = None
             archive.deleted_reason = None
             archive.restored_at = now
             archive.restored_by_id = current_user.user_id
             restored_archives_count += 1
+            if archive.id is not None:
+                restored_archive_ids.append(archive.id)
 
-        archive_ids = [archive.id for archive in archives if archive.id is not None]
         restored_submission_count = 0
         skipped_submission_count = 0
         course_submission_match_conditions = _build_course_trash_submission_match_conditions(
             course.name, course.category
         )
         all_submission_match_conditions = []
-        if archive_ids:
-            all_submission_match_conditions.append(ArchiveSubmission.created_archive_id.in_(archive_ids))
+        if restored_archive_ids:
+            all_submission_match_conditions.append(ArchiveSubmission.created_archive_id.in_(restored_archive_ids))
         all_submission_match_conditions.extend(course_submission_match_conditions)
 
         if all_submission_match_conditions:
@@ -1463,11 +1471,16 @@ async def restore_trash_item(
             message += (
                 f"{skipped_submission_count} 筆投稿因缺少原本狀態仍維持已下架。"
             )
+        if skipped_submission_archive_count:
+            message += (
+                f"另有 {skipped_submission_archive_count} 筆考古題仍屬於已刪除投稿，需還原投稿後才會復原。"
+            )
         return {
             "message": message,
             "restoredArchivesCount": restored_archives_count,
             "restoredSubmissionsCount": restored_submission_count,
             "skippedSubmissionsCount": skipped_submission_count,
+            "skippedSubmissionArchiveCount": skipped_submission_archive_count,
         }
 
     if payload.item_type == TrashEntityType.NOTIFICATION:
