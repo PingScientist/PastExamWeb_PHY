@@ -2573,9 +2573,16 @@ const isReviewBlockedByCourseTrash = (item) => {
 }
 
 const getReviewTrashNote = (item, fullText = false) => {
-  if (getReviewItemStatus(item) !== 'takedown') return ''
+  const status = getReviewItemStatus(item)
+  if (!['takedown', 'deleted'].includes(status)) return ''
   if (item?.lifecycle_reason === 'linked_archive_permanently_deleted') return '無法復原：關聯考古題已永久刪除。'
   if (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true) {
+    if (status === 'deleted') {
+      const shortText = '原課程在垃圾桶，請至垃圾桶處理。'
+      const fullTextMessage =
+        '此投稿已刪除；其原課程仍在垃圾桶，請到垃圾桶查看關聯項目。'
+      return fullText ? fullTextMessage : shortText
+    }
     const shortText = '原課程在垃圾桶，復原後會回到原狀。'
     const fullTextMessage =
       '原課程已在垃圾桶，此投稿暫時下架。請先到垃圾桶復原原課程，復原後會回到原本狀態。'
