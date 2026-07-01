@@ -762,7 +762,8 @@
                   <Column field="subject">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'subject')">
-                        課程 {{ getReviewSortIndicator('new', 'subject') }}
+                        課程
+                        <i :class="getReviewSortHeaderIcon('new', 'subject')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -777,7 +778,8 @@
                   <Column>
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'kind')">
-                        投稿類型 {{ getReviewSortIndicator('new', 'kind') }}
+                        投稿類型
+                        <i :class="getReviewSortHeaderIcon('new', 'kind')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -789,7 +791,8 @@
                   <Column field="name">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'name')">
-                        考試名稱 {{ getReviewSortIndicator('new', 'name') }}
+                        考試名稱
+                        <i :class="getReviewSortHeaderIcon('new', 'name')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -800,7 +803,8 @@
                   <Column field="professor">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'professor')">
-                        授課教師 {{ getReviewSortIndicator('new', 'professor') }}
+                        授課教師
+                        <i :class="getReviewSortHeaderIcon('new', 'professor')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -810,7 +814,8 @@
                   <Column field="academic_year">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'academic_year')">
-                        學期 {{ getReviewSortIndicator('new', 'academic_year') }}
+                        學期
+                        <i :class="getReviewSortHeaderIcon('new', 'academic_year')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -820,7 +825,8 @@
                   <Column>
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'submitted_at')">
-                        申請時間 {{ getReviewSortIndicator('new', 'submitted_at') }}
+                        申請時間
+                        <i :class="getReviewSortHeaderIcon('new', 'submitted_at')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -830,7 +836,8 @@
                   <Column field="status">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'status')">
-                        狀態 {{ getReviewSortIndicator('new', 'status') }}
+                        狀態
+                        <i :class="getReviewSortHeaderIcon('new', 'status')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -895,7 +902,8 @@
                   <Column field="subject">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'subject')">
-                        課程 {{ getReviewSortIndicator('existing', 'subject') }}
+                        課程
+                        <i :class="getReviewSortHeaderIcon('existing', 'subject')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -910,7 +918,8 @@
                   <Column field="name">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'name')">
-                        考試名稱 {{ getReviewSortIndicator('existing', 'name') }}
+                        考試名稱
+                        <i :class="getReviewSortHeaderIcon('existing', 'name')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -921,7 +930,8 @@
                   <Column field="professor">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'professor')">
-                        授課教師 {{ getReviewSortIndicator('existing', 'professor') }}
+                        授課教師
+                        <i :class="getReviewSortHeaderIcon('existing', 'professor')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -931,7 +941,8 @@
                   <Column field="academic_year">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'academic_year')">
-                        學期 {{ getReviewSortIndicator('existing', 'academic_year') }}
+                        學期
+                        <i :class="getReviewSortHeaderIcon('existing', 'academic_year')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -941,7 +952,8 @@
                   <Column>
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'submitted_at')">
-                        投稿時間 {{ getReviewSortIndicator('existing', 'submitted_at') }}
+                        投稿時間
+                        <i :class="getReviewSortHeaderIcon('existing', 'submitted_at')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -951,7 +963,8 @@
                   <Column field="status">
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'status')">
-                        狀態 {{ getReviewSortIndicator('existing', 'status') }}
+                        狀態
+                        <i :class="getReviewSortHeaderIcon('existing', 'status')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -1056,7 +1069,8 @@
                 <Column field="deleted_at">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_at')">
-                      刪除時間 {{ getTrashSortIndicator('deleted_at') }}
+                      刪除時間
+                      <i :class="getTrashSortHeaderIcon('deleted_at')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1077,16 +1091,21 @@
                 <Column field="display_name">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('name')">
-                      名稱 {{ getTrashSortIndicator('name') }}
+                      名稱
+                      <i :class="getTrashSortHeaderIcon('name')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
                     <span class="trash-name-cell">
-                      <strong
-                        class="trash-name-title"
-                        :style="{ paddingLeft: `${getTrashNameIndent(data)}rem` }"
-                      >
-                        <span v-if="(data?.trash_depth || 0) > 0" class="trash-tree-prefix" aria-hidden="true">
+                    <strong
+                      class="trash-name-title"
+                      :style="{ paddingLeft: `${isTrashRelationHierarchyEnabled ? getTrashNameIndent(data) : 0}rem` }"
+                    >
+                        <span
+                          v-if="isTrashRelationHierarchyEnabled && (data?.trash_depth || 0) > 0"
+                          class="trash-tree-prefix"
+                          aria-hidden="true"
+                        >
                           {{ getTrashTreePrefix(data) }}
                         </span>
                         {{ data.display_name }}
@@ -1102,7 +1121,8 @@
                 <Column field="status">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('status')">
-                      狀態 {{ getTrashSortIndicator('status') }}
+                      狀態
+                      <i :class="getTrashSortHeaderIcon('status')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
