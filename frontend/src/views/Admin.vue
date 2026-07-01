@@ -1044,7 +1044,7 @@
                 responsiveLayout="stack"
                 breakpoint="768px"
               >
-                <Column field="deleted_at" header="刪除時間">
+                <Column field="deleted_at">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_at')">
                       刪除時間 {{ getTrashSortIndicator('deleted_at') }}
@@ -1054,7 +1054,7 @@
                     <span>{{ formatTrashDeletedAt(data.deleted_at) }}</span>
                   </template>
                 </Column>
-                <Column field="item_type" header="類型">
+                <Column field="item_type">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('type')">
                       類型 {{ getTrashSortIndicator('type') }}
@@ -1064,7 +1064,7 @@
                     <Tag severity="secondary">{{ getTrashTypeLabel(data.item_type) }}</Tag>
                   </template>
                 </Column>
-                <Column field="display_name" header="名稱">
+                <Column field="display_name">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('name')">
                       名稱 {{ getTrashSortIndicator('name') }}
@@ -1089,7 +1089,7 @@
                     </span>
                   </template>
                 </Column>
-                <Column field="status" header="狀態">
+                <Column field="status">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('status')">
                       狀態 {{ getTrashSortIndicator('status') }}
@@ -1101,7 +1101,7 @@
                     </Tag>
                   </template>
                 </Column>
-                <Column field="deleted_by_name" header="刪除者">
+                <Column field="deleted_by_name">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_by')">
                       刪除者 {{ getTrashSortIndicator('deleted_by') }}
@@ -2077,7 +2077,7 @@ const getReviewSortIndicator = (section, key) => {
   return current.direction === 'asc' ? '↑' : '↓'
 }
 const getTrashSortIndicator = (key) => {
-  if (trashSortState.value.key !== key) return ''
+  if (trashSortState.value.key !== key) return '↕'
   return trashSortState.value.direction === 'asc' ? '↑' : '↓'
 }
 const newCourseArchiveRequests = computed(() =>
