@@ -433,9 +433,8 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
     if linked_archive.deleted_at is not None:
         return [
             linked_course_blocker,
-            f"關聯考古題：{linked_archive.name}",
-            f"一併永久刪除：關聯考古題 {linked_archive.name} 會跟著永久刪除",
-        ] if linked_course_blocker else [f"關聯考古題：{linked_archive.name}", f"一併永久刪除：關聯考古題 {linked_archive.name} 會跟著永久刪除"]
+            "一併永久刪除：1 筆關聯考古題",
+        ] if linked_course_blocker else ["一併永久刪除：1 筆關聯考古題"]
 
     linked_comments = await _count_rows(
         db,
@@ -1294,15 +1293,18 @@ async def list_trash_items(
             if linked_archive is None and submission.id is not None:
                 linked_archive = submission_linked_archive_map[submission.id]
             linked_archive_id = linked_archive.id if linked_archive and linked_archive.id is not None else None
-            is_direct_deleted_submission = submission.delete_reason in {"user deleted", "admin deleted"}
-            direct_submission_parent_type = "course" if is_direct_deleted_submission and not linked_archive else None
-            direct_submission_parent_id = linked_archive.course_id if direct_submission_parent_type and linked_archive else None
-            parent_type = (
-                "archive"
-                if linked_archive_id is not None
-                else direct_submission_parent_type
+            linked_course = (
+                await db.get(Course, linked_archive.course_id)
+                if linked_archive and linked_archive.course_id is not None
+                else None
             )
-            parent_id = linked_archive_id if linked_archive_id is not None else direct_submission_parent_id
+            parent_type = (
+                "course"
+                if linked_course is not None and linked_course.deleted_at is not None
+                else None
+            )
+            parent_id = linked_course.id if parent_type == "course" else None
+            parent_name = linked_course.name if parent_type == "course" else linked_archive.name if linked_archive else None
             try:
                 items.append(
                     _to_trash_item(
@@ -1317,10 +1319,11 @@ async def list_trash_items(
                         status=submission.status.value,
                         parent_type=parent_type,
                         parent_id=parent_id,
-                        parent_name=linked_archive.name if linked_archive else None,
+                        parent_name=parent_name,
                         created_archive_id=linked_archive_id,
                         source_submission_id=submission.id,
-                        course_name=submission.requested_course_name,
+                        course_id=linked_archive.course_id if linked_archive else None,
+                        course_name=linked_course.name if linked_course else submission.requested_course_name,
                         dependencies=await _get_submission_dependency_messages(db, submission),
                     )
                 )
