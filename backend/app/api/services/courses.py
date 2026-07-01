@@ -13,13 +13,14 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_session
 from app.api.services.archive_submission_lifecycle import (
     make_course_trash_lifecycle_reason,
+    is_course_trash_lifecycle_reason,
     soft_delete_archive_with_submission_takedown,
 )
 from app.models.models import (
@@ -117,6 +118,56 @@ def _visible_courses(courses: list[Course], category_order: dict[str, int] | Non
         seen.add(key)
         selected.append(course)
     return selected
+
+
+def _course_related_submission_columns() -> list:
+    submission_table = ArchiveSubmission.__table__
+    return [
+        submission_table.c[name]
+        for name in ("course_id", "requested_course_id", "created_course_id")
+        if name in submission_table.c
+    ]
+
+
+async def _find_submissions_related_to_course(
+    db: AsyncSession,
+    *,
+    course_id: int,
+    archive_ids: list[int],
+) -> list[ArchiveSubmission]:
+    archive_id_set = set(archive_ids)
+    conditions = []
+
+    if archive_id_set:
+        conditions.append(ArchiveSubmission.created_archive_id.in_(archive_id_set))
+
+    for column in _course_related_submission_columns():
+        conditions.append(column == course_id)
+
+    if not conditions:
+        return []
+
+    linked_submissions = (
+        await db.execute(
+            select(ArchiveSubmission).where(
+                or_(*conditions),
+                ArchiveSubmission.deleted_at.is_(None),
+                ArchiveSubmission.status != SubmissionStatus.DELETED,
+            )
+        )
+    ).scalars().all()
+
+    result = []
+    seen_ids: set[int] = set()
+    for submission in linked_submissions:
+        if submission.id is None:
+            continue
+        if submission.id in seen_ids:
+            continue
+        seen_ids.add(submission.id)
+        result.append(submission)
+
+    return result
 
 
 async def _category_order_map(db: AsyncSession) -> dict[str, int]:
@@ -1313,28 +1364,25 @@ async def delete_course(
         archive.deleted_reason = "course deleted"
 
     archive_ids = [archive.id for archive in all_course_archives if archive.id is not None]
-    if archive_ids:
-        linked_submissions = (
-            await db.execute(
-                select(ArchiveSubmission).where(
-                    ArchiveSubmission.created_archive_id.in_(archive_ids),
-                    ArchiveSubmission.deleted_at.is_(None),
-                    ArchiveSubmission.status != SubmissionStatus.DELETED,
-                    ArchiveSubmission.status != SubmissionStatus.REJECTED,
-                    ArchiveSubmission.status != SubmissionStatus.TAKEDOWN,
-                )
-            )
-        ).scalars().all()
-        for submission in linked_submissions:
-            previous_status = submission.status
-            submission.status = SubmissionStatus.TAKEDOWN
-            submission.lifecycle_reason = make_course_trash_lifecycle_reason(
-                previous_status=previous_status,
-                course_id=course.id,
-                archive_id=submission.created_archive_id,
-            )
-            submission.reviewer_id = current_user.user_id
-            submission.reviewed_at = current_time
+    linked_submissions = await _find_submissions_related_to_course(
+        db,
+        course_id=course.id,
+        archive_ids=archive_ids,
+    )
+    for submission in linked_submissions:
+        if is_course_trash_lifecycle_reason(submission.lifecycle_reason):
+            continue
+
+        previous_status = submission.status
+
+        submission.status = SubmissionStatus.TAKEDOWN
+        submission.lifecycle_reason = make_course_trash_lifecycle_reason(
+            previous_status=previous_status,
+            course_id=course.id,
+            archive_id=submission.created_archive_id,
+        )
+        submission.reviewer_id = current_user.user_id
+        submission.reviewed_at = current_time
 
     # Soft delete the course
     course.deleted_at = current_time

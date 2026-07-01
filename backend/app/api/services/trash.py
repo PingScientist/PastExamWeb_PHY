@@ -273,7 +273,7 @@ async def _get_archive_dependency_messages(
     ]
 
     return [
-        f"阻擋永久刪除：{_dependency_count(linked_comments, '則')}啟用中留言仍依附此考古題" if linked_comments else "",
+        f"一併永久刪除：{_dependency_count(linked_comments, '則')}留言將在考古題永久刪除時一併刪除" if linked_comments else "",
         f"阻擋永久刪除：{_dependency_count(active_linked_submissions, '筆')}啟用中投稿仍連到此考古題" if active_linked_submissions else "",
         f"關聯投稿：投稿編號 #{source_submission.id}" if source_submission and source_submission.id else "",
         (
@@ -391,8 +391,8 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
 
     return [
         *archive_status,
-        f"阻擋永久刪除：{_dependency_count(linked_comments, '則')}啟用中留言仍依附關聯考古題" if linked_comments else "",
-        f"一併永久刪除：{_dependency_count(trashed_comments, '則')}已刪除留言依附關聯考古題" if trashed_comments else "",
+        f"一併永久刪除：{_dependency_count(linked_comments, '則')}留言將在關聯考古題永久刪除時一併刪除" if linked_comments else "",
+        f"一併永久刪除：{_dependency_count(trashed_comments, '則')}已刪除留言將一併刪除" if trashed_comments else "",
         f"阻擋永久刪除：{_dependency_count(linked_other_submissions, '筆')}啟用中投稿仍連到關聯考古題" if linked_other_submissions else "",
         f"一併永久刪除：{_dependency_count(trashed_submissions, '筆')}已刪除投稿連到關聯考古題" if trashed_submissions else "",
     ]
@@ -1317,11 +1317,10 @@ async def restore_trash_item(
             ).scalars().all()
             for submission in submissions:
                 previous_status = get_course_trash_previous_status(submission.lifecycle_reason)
-                if previous_status == SubmissionStatus.REJECTED:
-                    previous_status = None
                 if previous_status not in {
                     SubmissionStatus.APPROVED,
                     SubmissionStatus.PENDING,
+                    SubmissionStatus.REJECTED,
                     SubmissionStatus.TAKEDOWN,
                 }:
                     previous_status = SubmissionStatus.TAKEDOWN
