@@ -136,6 +136,33 @@ def _format_deleted_by(users_by_id: dict[int, User], user_id: Optional[int]) -> 
     return user.nickname or user.name or user.email or f"使用者 #{user_id}"
 
 
+def _normalize_course_lookup_value(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def _build_course_trash_submission_match_conditions(
+    course_name: str,
+    course_category: str,
+) -> list:
+    normalized_course_name = _normalize_course_lookup_value(course_name)
+    if not normalized_course_name:
+        return []
+
+    requested_name_match = func.lower(func.trim(ArchiveSubmission.requested_course_name)) == normalized_course_name
+    subject_match = func.lower(func.trim(ArchiveSubmission.subject)) == normalized_course_name
+    name_match = or_(requested_name_match, subject_match)
+
+    normalized_category = _normalize_course_lookup_value(course_category)
+    if normalized_category:
+        category_match = or_(
+            func.lower(func.trim(ArchiveSubmission.requested_category_key)) == normalized_category,
+            func.lower(func.trim(ArchiveSubmission.category)) == normalized_category,
+        )
+        return [and_(name_match, category_match)]
+
+    return [name_match]
+
+
 def _dependency_count(count: int, unit: str, singular_unit: Optional[str] = None) -> str:
     if count == 1 and singular_unit:
         return f"1 {singular_unit}"
@@ -1263,7 +1290,10 @@ async def restore_trash_item(
         category.deleted_by_id = None
         category.is_active = True
         await db.commit()
-        return {"message": "Category restored"}
+        return {
+            "message": "已復原分類「" + category.name + "」，課程不會自動復原，若需要請另外復原課程。",
+            "restoredCourses": 0,
+        }
 
     if payload.item_type == TrashEntityType.COURSE:
         course = await db.get(Course, payload.item_id)
@@ -1294,44 +1324,75 @@ async def restore_trash_item(
                 )
             )
         ).scalars().all()
+        restored_archives_count = 0
         for archive in archives:
             archive.deleted_at = None
             archive.deleted_by_id = None
             archive.deleted_reason = None
             archive.restored_at = now
             archive.restored_by_id = current_user.user_id
+            restored_archives_count += 1
 
         archive_ids = [archive.id for archive in archives if archive.id is not None]
+        restored_submission_count = 0
+        skipped_submission_count = 0
+        course_submission_match_conditions = _build_course_trash_submission_match_conditions(
+            course.name, course.category
+        )
+        all_submission_match_conditions = []
         if archive_ids:
+            all_submission_match_conditions.append(ArchiveSubmission.created_archive_id.in_(archive_ids))
+        all_submission_match_conditions.extend(course_submission_match_conditions)
+
+        if all_submission_match_conditions:
+            course_id_pattern = f"course_id={course.id}"
             submissions = (
                 await db.execute(
                     select(ArchiveSubmission).where(
-                        ArchiveSubmission.created_archive_id.in_(archive_ids),
-                        ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
+                        ArchiveSubmission.deleted_at.is_(None),
+                        ArchiveSubmission.status != SubmissionStatus.DELETED,
+                        or_(*all_submission_match_conditions),
                         or_(
                             ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
                             ArchiveSubmission.lifecycle_reason.like(f"{LIFECYCLE_COURSE_TRASHED}|%"),
+                            ArchiveSubmission.lifecycle_reason.like(f"%|{course_id_pattern}|%"),
+                            ArchiveSubmission.lifecycle_reason.like(f"%|{course_id_pattern}"),
                         ),
                     )
                 )
             ).scalars().all()
             for submission in submissions:
                 previous_status = get_course_trash_previous_status(submission.lifecycle_reason)
-                if previous_status not in {
+                if previous_status in {
                     SubmissionStatus.APPROVED,
                     SubmissionStatus.PENDING,
                     SubmissionStatus.REJECTED,
                     SubmissionStatus.TAKEDOWN,
                 }:
-                    previous_status = SubmissionStatus.TAKEDOWN
+                    submission.status = previous_status
+                    restored_submission_count += 1
+                else:
+                    skipped_submission_count += 1
 
-                submission.status = previous_status
                 submission.lifecycle_reason = None
                 submission.reviewer_id = current_user.user_id
                 submission.reviewed_at = now
 
         await db.commit()
-        return {"message": "Course restored"}
+        message = (
+            f"已復原課程「{course.name}」，並復原 {restored_archives_count} 筆考古題；"
+        )
+        message += f"{restored_submission_count} 筆投稿已回到原本狀態。"
+        if skipped_submission_count:
+            message += (
+                f"{skipped_submission_count} 筆投稿因缺少原本狀態仍維持已下架。"
+            )
+        return {
+            "message": message,
+            "restoredArchivesCount": restored_archives_count,
+            "restoredSubmissionsCount": restored_submission_count,
+            "skippedSubmissionsCount": skipped_submission_count,
+        }
 
     if payload.item_type == TrashEntityType.NOTIFICATION:
         notification = await db.get(Notification, payload.item_id)
@@ -1364,7 +1425,19 @@ async def restore_trash_item(
         )
 
         await db.commit()
-        return {"message": "Archive restored", "restored": result}
+        restored_archives = int(result.get("archives", 0))
+        restored_submissions = int(result.get("submissions_restored", 0))
+        message = f"已復原考古題「{archive.name}」"
+        if restored_submissions:
+            message += f"；已恢復 {restored_submissions} 筆投稿可用狀態。"
+        elif restored_archives:
+            message += "；未找到因下架而停用的投稿。"
+        return {
+            "message": message,
+            "restoredArchivesCount": restored_archives,
+            "restoredSubmissionsCount": restored_submissions,
+            "restored": result,
+        }
 
     if payload.item_type == TrashEntityType.USER:
         user = await db.get(User, payload.item_id)
@@ -1402,7 +1475,15 @@ async def restore_trash_item(
         )
 
         await db.commit()
-        return {"message": "Submission restored", "restored": result}
+        restored_submissions = int(result.get("submissions", 0))
+        message = f"已復原投稿 #{submission.id}"
+        if restored_submissions:
+            message += "，關聯投稿已一併復原。"
+        return {
+            "message": message,
+            "restoredSubmissionsCount": restored_submissions,
+            "restored": result,
+        }
 
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported trash item type")
 

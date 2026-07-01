@@ -13,7 +13,7 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -120,19 +120,37 @@ def _visible_courses(courses: list[Course], category_order: dict[str, int] | Non
     return selected
 
 
-def _course_related_submission_columns() -> list:
-    submission_table = ArchiveSubmission.__table__
-    return [
-        submission_table.c[name]
-        for name in ("course_id", "requested_course_id", "created_course_id")
-        if name in submission_table.c
-    ]
+def _normalize_course_lookup_value(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def _build_course_submission_match_conditions(
+    course_name: str,
+    course_category: str,
+) -> list:
+    conditions = []
+    normalized_course_name = _normalize_course_lookup_value(course_name)
+    if normalized_course_name:
+        requested_name_match = func.lower(func.trim(ArchiveSubmission.requested_course_name)) == normalized_course_name
+        subject_match = func.lower(func.trim(ArchiveSubmission.subject)) == normalized_course_name
+        name_match = or_(requested_name_match, subject_match)
+        normalized_category = (course_category or "").strip().lower()
+        if normalized_category:
+            category_match = or_(
+                func.lower(func.trim(ArchiveSubmission.requested_category_key)) == normalized_category,
+                func.lower(func.trim(ArchiveSubmission.category)) == normalized_category,
+            )
+            conditions.append(and_(name_match, category_match))
+        else:
+            conditions.append(name_match)
+    return conditions
 
 
 async def _find_submissions_related_to_course(
     db: AsyncSession,
     *,
-    course_id: int,
+    course_name: str,
+    course_category: str,
     archive_ids: list[int],
 ) -> list[ArchiveSubmission]:
     archive_id_set = set(archive_ids)
@@ -141,8 +159,7 @@ async def _find_submissions_related_to_course(
     if archive_id_set:
         conditions.append(ArchiveSubmission.created_archive_id.in_(archive_id_set))
 
-    for column in _course_related_submission_columns():
-        conditions.append(column == course_id)
+    conditions.extend(_build_course_submission_match_conditions(course_name, course_category))
 
     if not conditions:
         return []
@@ -1366,7 +1383,8 @@ async def delete_course(
     archive_ids = [archive.id for archive in all_course_archives if archive.id is not None]
     linked_submissions = await _find_submissions_related_to_course(
         db,
-        course_id=course.id,
+        course_name=course.name,
+        course_category=course.category,
         archive_ids=archive_ids,
     )
     for submission in linked_submissions:

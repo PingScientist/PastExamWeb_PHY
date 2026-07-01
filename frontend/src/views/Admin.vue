@@ -1908,7 +1908,7 @@ const reviewSearchQuery = ref('')
 const archiveRequests = ref([])
 const trashLoading = ref(false)
 const trashItems = ref([])
-const showTrashRelationHierarchy = ref(false)
+const showTrashRelationHierarchy = ref(true)
 const TRASH_FILTER_ALL_VALUE = 'all'
 const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
 const courseCategories = ref([])
@@ -2228,7 +2228,10 @@ watch(
   (nextFilterType) => {
     if (nextFilterType !== TRASH_FILTER_ALL_VALUE) {
       showTrashRelationHierarchy.value = false
+      return
     }
+    showTrashRelationHierarchy.value = true
+    trashSortState.value = { key: null, direction: 'asc' }
   }
 )
 
@@ -2901,6 +2904,11 @@ const loadTrashItems = async () => {
   try {
     const rawFilterType = getTrashFilterApiValue(trashFilterType.value)
     const filterType = rawFilterType === null ? null : rawFilterType
+    const isDefaultFilter = filterType === null
+    showTrashRelationHierarchy.value = isDefaultFilter
+    if (isDefaultFilter) {
+      trashSortState.value = { key: null, direction: 'asc' }
+    }
     if ((rawFilterType === null && trashFilterType.value !== TRASH_FILTER_ALL_VALUE) || rawFilterType !== null && rawFilterType !== trashFilterType.value) {
       trashFilterType.value = rawFilterType === null ? TRASH_FILTER_ALL_VALUE : rawFilterType
     }
@@ -3250,8 +3258,13 @@ const confirmRestoreTrashItem = (item) => {
 
 const restoreTrashItem = async (item) => {
   try {
-    await archiveService.restoreTrashItem(item.item_type, item.id)
-    toast.add({ severity: 'success', summary: '已還原', detail: '項目已還原', life: 3000 })
+    const { data } = await archiveService.restoreTrashItem(item.item_type, item.id)
+    toast.add({
+      severity: 'success',
+      summary: '已還原',
+      detail: data?.message || '項目已還原',
+      life: 3500,
+    })
     await loadTrashItems()
   } catch (error) {
     console.error('還原垃圾桶項目失敗:', error)
