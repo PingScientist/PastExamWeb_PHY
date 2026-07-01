@@ -1164,6 +1164,7 @@
                   <template #body="{ data }">
                     <div class="admin-card-actions">
                       <Button
+                        v-if="canRestoreTrashItem(data)"
                         icon="pi pi-undo"
                         label="還原"
                         size="small"
@@ -1172,6 +1173,7 @@
                         @click="confirmRestoreTrashItem(data)"
                       />
                       <Button
+                        v-if="canPermanentDeleteTrashItem(data)"
                         icon="pi pi-trash"
                         label="永久刪除"
                         size="small"
@@ -1179,6 +1181,12 @@
                         text
                         @click="confirmPermanentDeleteTrashItem(data)"
                       />
+                      <span
+                        v-if="!canRestoreTrashItem(data) && !canPermanentDeleteTrashItem(data)"
+                        class="text-xs text-500"
+                      >
+                        目前無可用操作
+                      </span>
                     </div>
                   </template>
                 </Column>
@@ -1725,16 +1733,26 @@
       >
         <div class="trash-dependency-help">
           <p class="trash-dependency-help-intro">
-            這一欄位用來快速判斷資料是否可刪除、是否可復原，以及刪除時會不會帶走關聯資料。
+            這一欄會告訴你：目前項目能不能復原、能不能永久刪除，以及哪些資料會一起處理。
           </p>
 
           <section class="trash-dependency-help-section">
             <h4 class="trash-dependency-help-title">常見標籤</h4>
             <ul class="trash-dependency-help-list">
-              <li><strong>無阻擋</strong>：目前沒有會影響永久刪除或復原的啟用中依賴。</li>
-              <li><strong>無法永久刪除</strong>：仍有啟用中資料連到此項目，需先處理後再刪除。</li>
-              <li><strong>一併永久刪除</strong>：已在垃圾桶中的子項會跟著刪除。</li>
-              <li><strong>關聯</strong>：與其他資料有關係，通常不一定阻擋。</li>
+              <li><strong>阻擋還原</strong>：目前不能復原，通常是父層仍在垃圾桶或必要關聯已缺失。</li>
+              <li><strong>阻擋永久刪除</strong>：目前不能永久刪除，通常仍有啟用中的資料依附。</li>
+              <li><strong>一併永久刪除</strong>：永久刪除此項目時，列出的資料也會一起刪除。</li>
+              <li><strong>關聯</strong>：只表示資料有關係，通常不會直接阻擋。</li>
+              <li><strong>無阻擋</strong>：目前沒有會影響還原或永久刪除的阻擋。</li>
+            </ul>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">按鈕規則</h4>
+            <ul class="trash-dependency-help-list">
+              <li>有「阻擋還原」時，不會顯示還原。</li>
+              <li>有「阻擋永久刪除」時，不會顯示永久刪除。</li>
+              <li>只有「一併永久刪除」或「關聯」時，不會自動隱藏按鈕。</li>
             </ul>
           </section>
 
@@ -1773,15 +1791,6 @@
             <ul class="trash-dependency-help-list">
               <li>留言不再阻擋考古題永久刪除。</li>
               <li>考古題永久刪除時，關聯留言會一併永久刪除。</li>
-            </ul>
-          </section>
-
-          <section class="trash-dependency-help-section trash-dependency-help-note">
-            <h4 class="trash-dependency-help-title">操作建議</h4>
-            <ul class="trash-dependency-help-list">
-              <li>看到「無法永久刪除」：先處理被提示的啟用中資料。</li>
-              <li>看到「一併永久刪除」：確認子項目可一起處理。</li>
-              <li>看到「無法復原」：先復原父層，或確認關聯資料已處理。</li>
             </ul>
           </section>
         </div>
@@ -2968,15 +2977,43 @@ const getTrashDependencies = (item) => {
   return dependencies
     .map((dependency) => formatTrashDependency(dependency, item?.item_type))
     .filter((item) => item?.label)
+    .filter((dependency) => String(dependency?.label || '').trim())
     .sort((a, b) => {
-      if (a.blocking !== b.blocking) {
-        return a.blocking ? -1 : 1
+      if (a.restoreBlocking !== b.restoreBlocking) {
+        return a.restoreBlocking ? -1 : 1
+      }
+      if (a.deleteBlocking !== b.deleteBlocking) {
+        return a.deleteBlocking ? -1 : 1
       }
       if (a.kindOrder !== b.kindOrder) {
         return a.kindOrder - b.kindOrder
       }
       return a.label.localeCompare(b.label)
     })
+}
+
+const canRestoreTrashItem = (item) => {
+  if (item?.canRestore === false) return false
+  if (item?.canRestore === true) return true
+  return !getTrashDependencyHasRestoreBlocker(item)
+}
+
+const canPermanentDeleteTrashItem = (item) => {
+  if (item?.canPermanentDelete === false) return false
+  if (item?.canPermanentDelete === true) return true
+  return !getTrashDependencyHasPermanentDeleteBlocker(item)
+}
+
+const getTrashDependencyHasRestoreBlocker = (item) => {
+  return getTrashDependencies(item).some((dependency) =>
+    String(dependency?.label || '').startsWith('阻擋還原：'),
+  )
+}
+
+const getTrashDependencyHasPermanentDeleteBlocker = (item) => {
+  return getTrashDependencies(item).some((dependency) =>
+    String(dependency?.label || '').startsWith('阻擋永久刪除：'),
+  )
 }
 
 const getTrashDependencySeverity = (dependency) => {
@@ -3017,7 +3054,9 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: `阻擋永久刪除：${applyDependencyCount(label, count)}`,
         severity: 'danger',
         blocking: true,
-        kindOrder: 0,
+        deleteBlocking: true,
+        restoreBlocking: false,
+        kindOrder: 1,
       }
     }
 
@@ -3028,6 +3067,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: `一併永久刪除：${applyDependencyCount(label, count)}`,
         severity: 'info',
         blocking: false,
+        restoreBlocking: false,
+        deleteBlocking: false,
         kindOrder: 1,
       }
     }
@@ -3042,6 +3083,32 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: raw,
       severity: 'danger',
       blocking: true,
+      restoreBlocking: false,
+      deleteBlocking: true,
+      kindOrder: 1,
+    }
+  }
+
+  if (raw.startsWith('阻擋還原：')) {
+    return {
+      key: `restore-blocking-${raw}`,
+      label: raw,
+      severity: 'warning',
+      blocking: true,
+      restoreBlocking: true,
+      deleteBlocking: false,
+      kindOrder: 0,
+    }
+  }
+
+  if (raw.startsWith('無法復原：')) {
+    return {
+      key: `restore-blocking-${raw}`,
+      label: `阻擋還原：${raw.replace('無法復原：', '')}`,
+      severity: 'warning',
+      blocking: true,
+      restoreBlocking: true,
+      deleteBlocking: false,
       kindOrder: 0,
     }
   }
@@ -3052,6 +3119,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: raw,
       severity: 'info',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 1,
     }
   }
@@ -3067,6 +3136,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: raw,
       severity: 'secondary',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 2,
     }
   }
@@ -3102,6 +3173,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: '關聯：此項目仍關聯到考古題（未刪除）',
         severity: 'secondary',
         blocking: false,
+        restoreBlocking: false,
+        deleteBlocking: false,
         kindOrder: 2,
       }
     }
@@ -3111,6 +3184,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: '一併永久刪除：關聯考古題已刪除',
         severity: 'info',
         blocking: false,
+        restoreBlocking: false,
+        deleteBlocking: false,
         kindOrder: 1,
       }
     }
@@ -3122,6 +3197,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: `關聯：此項目與考古題的其他投稿有 ${count} 筆關聯（不一定阻擋）`,
       severity: 'secondary',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 2,
     }
   }
@@ -3180,15 +3257,20 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: `阻擋永久刪除：${blockerLabel.replace('1 筆', `${count} 筆`)}`,
       severity: 'danger',
       blocking: true,
-      kindOrder: 0,
+      restoreBlocking: false,
+      deleteBlocking: true,
+      kindOrder: 1,
     }
   }
+
   if (isTrashed) {
     return {
       key: `trashed-${raw}`,
       label: `一併永久刪除：${cascadeLabel}`,
       severity: 'info',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 1,
     }
   }
@@ -3198,6 +3280,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
     label: `關聯：${relationLabel}${count ? ` ${count} 筆` : ''}`,
     severity: 'secondary',
     blocking: false,
+    restoreBlocking: false,
+    deleteBlocking: false,
     kindOrder: 2,
   }
 }

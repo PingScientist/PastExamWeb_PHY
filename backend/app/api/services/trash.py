@@ -216,6 +216,14 @@ async def _get_category_dependency_messages(db: SQLModelAsyncSession, category: 
 
 
 async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Course) -> list[str]:
+    category_is_trashed = await _count_rows(
+        db,
+        select(func.count(CourseCategoryConfig.id)).where(
+            CourseCategoryConfig.key == course.category,
+            CourseCategoryConfig.deleted_at.is_not(None),
+        ),
+    )
+
     active_archives = await _count_rows(
         db,
         select(func.count(Archive.id)).where(
@@ -231,7 +239,12 @@ async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Cour
         ),
     )
 
+    restore_blockers = [
+        f"阻擋還原：原分類仍在垃圾桶" if category_is_trashed else "",
+    ]
+
     return [
+        *restore_blockers,
         f"阻擋永久刪除：{_dependency_count(active_archives, '筆')}啟用中考古題仍屬於此課程" if active_archives else "",
         f"一併永久刪除：{_dependency_count(trashed_archives, '筆')}已刪除考古題屬於此課程" if trashed_archives else "",
     ]
@@ -242,6 +255,17 @@ async def _get_archive_dependency_messages(
     archive: Archive,
     source_submission: Optional[ArchiveSubmission] = None,
 ) -> list[str]:
+    course_is_trashed = await _count_rows(
+        db,
+        select(func.count(Course.id)).where(
+            Course.id == archive.course_id,
+            Course.deleted_at.is_not(None),
+        ),
+    )
+    restore_blockers = [
+        "阻擋還原：原課程仍在垃圾桶" if course_is_trashed else "",
+    ]
+
     is_course_trash_reason = or_(
         ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
         ArchiveSubmission.lifecycle_reason.like(f"{LIFECYCLE_COURSE_TRASHED}|%"),
@@ -300,6 +324,7 @@ async def _get_archive_dependency_messages(
     ]
 
     return [
+        *restore_blockers,
         f"一併永久刪除：{_dependency_count(linked_comments, '則')}留言將在考古題永久刪除時一併刪除" if linked_comments else "",
         f"阻擋永久刪除：{_dependency_count(active_linked_submissions, '筆')}啟用中投稿仍連到此考古題" if active_linked_submissions else "",
         f"關聯投稿：投稿編號 #{source_submission.id}" if source_submission and source_submission.id else "",
@@ -363,7 +388,7 @@ async def _get_user_dependency_messages(db: SQLModelAsyncSession, user: User) ->
 
 async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submission: ArchiveSubmission) -> list[str]:
     if submission.lifecycle_reason == LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED:
-        return ["無法復原：關聯考古題已永久刪除"]
+        return ["阻擋還原：關聯考古題已永久刪除"]
 
     if not submission.created_archive_id:
         return []
@@ -372,11 +397,19 @@ async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submissi
     if not linked_archive:
         return ["關聯考古題：不存在"]
 
+    linked_course = await db.get(Course, linked_archive.course_id) if linked_archive.course_id is not None else None
+    linked_course_blocker = (
+        "阻擋還原：原課程仍在垃圾桶"
+        if linked_course is not None and linked_course.deleted_at is not None
+        else ""
+    )
+
     if linked_archive.deleted_at is not None:
         return [
+            linked_course_blocker,
             f"關聯考古題：{linked_archive.name}",
             f"一併永久刪除：關聯考古題 {linked_archive.name} 會跟著永久刪除",
-        ]
+        ] if linked_course_blocker else [f"關聯考古題：{linked_archive.name}", f"一併永久刪除：關聯考古題 {linked_archive.name} 會跟著永久刪除"]
 
     linked_comments = await _count_rows(
         db,
