@@ -254,6 +254,7 @@ async def _get_archive_dependency_messages(
     db: SQLModelAsyncSession,
     archive: Archive,
     source_submission: Optional[ArchiveSubmission] = None,
+    restore_parent_submission: Optional[ArchiveSubmission] = None,
 ) -> list[str]:
     course_is_trashed = await _count_rows(
         db,
@@ -324,6 +325,7 @@ async def _get_archive_dependency_messages(
     ]
 
     return [
+        "阻擋還原：請先還原上層投稿" if restore_parent_submission else "",
         *restore_blockers,
         f"一併永久刪除：{_dependency_count(linked_comments, '則')}留言將在考古題永久刪除時一併刪除" if linked_comments else "",
         f"阻擋永久刪除：{_dependency_count(active_linked_submissions, '筆')}啟用中投稿仍連到此考古題" if active_linked_submissions else "",
@@ -1177,7 +1179,12 @@ async def list_trash_items(
                         course_id=archive.course_id,
                         course_name=course.name if course else None,
                         source_submission_id=source_submission.id if source_submission else None,
-                        dependencies=await _get_archive_dependency_messages(db, archive, source_submission),
+                        dependencies=await _get_archive_dependency_messages(
+                            db,
+                            archive,
+                            source_submission,
+                            restore_parent_submission=parent_submission,
+                        ),
                     )
                 )
             except Exception as exc:
@@ -1476,6 +1483,13 @@ async def restore_trash_item(
         archive = await db.get(Archive, payload.item_id)
         if not archive or archive.deleted_at is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archive not found")
+
+        parent_submission = await _get_deleted_submission_parent_for_archive(db, archive.id)
+        if parent_submission:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="此考古題需隨上層投稿一起還原，請先還原投稿。",
+            )
 
         group = await collect_archive_submission_group(db, archive=archive)
         for linked_archive in group.archives:
