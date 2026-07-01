@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, text
+from sqlalchemy import func, or_, text
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -85,6 +85,24 @@ def _normalize_submission_status(raw_status):
     if normalized_status is None:
         logger.warning("Unsupported submission status encountered: %s", value)
     return normalized_status
+
+
+async def _get_deleted_course_id_for_submission(
+    db: AsyncSession,
+    submission: ArchiveSubmission,
+) -> int | None:
+    if not submission.created_archive_id:
+        return None
+
+    archive = await db.get(Archive, submission.created_archive_id)
+    if not archive or archive.deleted_at is None:
+        return None
+
+    course = await db.get(Course, archive.course_id)
+    if not course or course.deleted_at is None:
+        return None
+
+    return course.id
 
 
 def _normalize_course_name(value: Optional[str]) -> str:
@@ -920,6 +938,18 @@ async def delete_archive_submission_for_admin(
 
     if submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED:
         return {"success": True}
+
+    if submission.status == SubmissionStatus.TAKEDOWN:
+        is_course_trash_blocked = is_course_trash_lifecycle_reason(submission.lifecycle_reason)
+        if not is_course_trash_blocked:
+            blocked_course_id = await _get_deleted_course_id_for_submission(db, submission)
+            is_course_trash_blocked = blocked_course_id is not None
+
+        if is_course_trash_blocked:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="原課程仍在垃圾桶，請先復原原課程後再處理此投稿。",
+            )
 
     result = await soft_delete_submission_with_linked_archive(
         db,

@@ -216,6 +216,25 @@ async def soft_delete_submission_with_linked_archive(
         archive = await db.get(Archive, submission.created_archive_id)
         if archive:
             archive_count = 1 if _soft_delete_archive(archive, now=timestamp, user_id=user_id, reason=reason) else 0
+            linked_submissions = (
+                await db.execute(
+                    select(ArchiveSubmission).where(
+                        ArchiveSubmission.created_archive_id == archive.id,
+                        ArchiveSubmission.id != submission.id,
+                        ArchiveSubmission.deleted_at.is_(None),
+                        ArchiveSubmission.status != SubmissionStatus.DELETED,
+                    )
+                )
+            ).scalars().all()
+            for linked in linked_submissions:
+                if linked.status in {SubmissionStatus.REJECTED, SubmissionStatus.TAKEDOWN}:
+                    continue
+                _temporarily_takedown_submission(
+                    linked,
+                    reason=LIFECYCLE_ARCHIVE_TRASHED,
+                    reviewer_id=user_id,
+                    now=timestamp,
+                )
         else:
             warnings.append(f"關聯考古題 #{submission.created_archive_id} 已不存在")
     return {"archives": archive_count, "submissions": submission_count, "warnings": warnings}

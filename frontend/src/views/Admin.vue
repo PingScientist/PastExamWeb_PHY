@@ -1045,16 +1045,31 @@
                 breakpoint="768px"
               >
                 <Column field="deleted_at" header="刪除時間">
+                  <template #header>
+                    <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_at')">
+                      刪除時間 {{ getTrashSortIndicator('deleted_at') }}
+                    </button>
+                  </template>
                   <template #body="{ data }">
                     <span>{{ formatTrashDeletedAt(data.deleted_at) }}</span>
                   </template>
                 </Column>
                 <Column field="item_type" header="類型">
+                  <template #header>
+                    <button type="button" class="review-sort-header" @click="toggleTrashSort('type')">
+                      類型 {{ getTrashSortIndicator('type') }}
+                    </button>
+                  </template>
                   <template #body="{ data }">
                     <Tag severity="secondary">{{ getTrashTypeLabel(data.item_type) }}</Tag>
                   </template>
                 </Column>
                 <Column field="display_name" header="名稱">
+                  <template #header>
+                    <button type="button" class="review-sort-header" @click="toggleTrashSort('name')">
+                      名稱 {{ getTrashSortIndicator('name') }}
+                    </button>
+                  </template>
                   <template #body="{ data }">
                     <span class="trash-name-cell">
                       <strong
@@ -1075,6 +1090,11 @@
                   </template>
                 </Column>
                 <Column field="status" header="狀態">
+                  <template #header>
+                    <button type="button" class="review-sort-header" @click="toggleTrashSort('status')">
+                      狀態 {{ getTrashSortIndicator('status') }}
+                    </button>
+                  </template>
                   <template #body="{ data }">
                     <Tag :severity="getTrashStatusSeverity(data.status)">
                       {{ getTrashStatusLabel(data.status) }}
@@ -1082,6 +1102,11 @@
                   </template>
                 </Column>
                 <Column field="deleted_by_name" header="刪除者">
+                  <template #header>
+                    <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_by')">
+                      刪除者 {{ getTrashSortIndicator('deleted_by') }}
+                    </button>
+                  </template>
                   <template #body="{ data }">
                     <span>{{ getTrashDeletedByLabel(data) }}</span>
                   </template>
@@ -1663,47 +1688,67 @@
         header="如何閱讀「依賴與阻擋」"
         :style="{ width: '40rem', maxWidth: '92vw' }"
       >
-        <div class="flex flex-column gap-3">
-          <p class="m-0">
-            依賴欄位用來說明每筆垃圾桶項目在還原／永久刪除前，還與哪些資料有關係，以及這些關係是否會阻擋永久刪除。
+        <div class="trash-dependency-help">
+          <p class="trash-dependency-help-intro">
+            這一欄位用來快速判斷資料是否可刪除、是否可復原，以及刪除時會不會帶走關聯資料。
           </p>
-          <ul class="m-0 pl-4">
-            <li>
-              <strong>無阻擋</strong>：表示目前這筆資料沒有會阻止永久刪除的啟用中依賴，也沒有需要提示的一併永久刪除子項。
-            </li>
-            <li>
-              <strong>阻擋永久刪除</strong>：代表仍有啟用中／未刪除資料連到這筆資料，系統會禁止永久刪除目前這一列。<br />
-              例如：阻擋永久刪除：1 筆啟用中投稿仍連到此考古題
-            </li>
-            <li>
-              <strong>一併永久刪除</strong>：代表下轄或關聯項目已在垃圾桶中，永久刪除此父項時會跟著一起永久刪除。
-            </li>
-            <li>
-              <strong>關聯</strong>：表示有關聯到其他資料，僅供參考，通常不阻擋刪除。
-            </li>
-            <li>
-              <strong>永久刪除</strong>：不可復原。啟用中依賴會阻擋，已在垃圾桶中的子項才會被列為一併永久刪除。
-            </li>
-            <li>
-              <strong>還原</strong>：若父層仍在垃圾桶，子項目可能需先還原父層後才能單獨還原。
-            </li>
-            <li>
-              <strong>考古題與考古題投稿</strong>：
-              <ul class="mt-1 pl-4">
-                <li>考古題投稿若有 <em>created_archive_id</em>，表示這筆投稿已對應到正式考古題，會作為該考古題的子項目/來源紀錄。</li>
-                <li>若此投稿為「啟用中」且仍引用此考古題，會阻擋考古題的永久刪除。</li>
-                <li>若投稿已進垃圾桶，會在「全部」篩選中縮排顯示於考古題底下，並標示為一併永久刪除。</li>
-              </ul>
-            </li>
-            <li>
-              <strong>課程與考古題</strong>：
-              <ul class="mt-1 pl-4">
-                <li>考古題是課程的內容項目，課程會持有考古題。</li>
-                <li>已刪除課程下的考古題會縮排顯示於課程底下，並在永久刪除課程時一併永久刪除。</li>
-                <li>啟用中的考古題會阻擋課程永久刪除。</li>
-              </ul>
-            </li>
-          </ul>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">常見標籤</h4>
+            <ul class="trash-dependency-help-list">
+              <li><strong>無阻擋</strong>：目前沒有會影響永久刪除或復原的啟用中依賴。</li>
+              <li><strong>無法永久刪除</strong>：仍有啟用中資料連到此項目，需先處理後再刪除。</li>
+              <li><strong>一併永久刪除</strong>：已在垃圾桶中的子項會跟著刪除。</li>
+              <li><strong>關聯</strong>：與其他資料有關係，通常不一定阻擋。</li>
+            </ul>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">縮排判斷</h4>
+            <p class="trash-dependency-help-note">在「全部」篩選中，縮排代表垃圾桶中的父子關係。</p>
+            <ul class="trash-dependency-help-list">
+              <li>刪除父項時，標示為一併永久刪除的子項也會被一起刪除。</li>
+            </ul>
+            <p class="trash-dependency-help-rule">課程 → 考古題</p>
+            <p class="trash-dependency-help-rule">考古題投稿 → 考古題</p>
+            <p class="trash-dependency-help-rule">課程分類 → 課程 → 考古題</p>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">考古題與投稿</h4>
+            <ul class="trash-dependency-help-list">
+              <li>考古題投稿通過後可能建立正式考古題，兩者會互相關聯。</li>
+              <li>刪除投稿：投稿進垃圾桶，關聯考古題會列在投稿底下。</li>
+              <li>刪除考古題：考古題進垃圾桶，相關投稿會暫時下架，但不一定進垃圾桶。</li>
+              <li>若投稿仍啟用並連到考古題，考古題可能被阻擋永久刪除。</li>
+            </ul>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">課程與考古題</h4>
+            <ul class="trash-dependency-help-list">
+              <li>刪除課程：課程與下屬考古題會進入垃圾桶。</li>
+              <li>相關投稿會暫時下架，並提示先復原原課程。</li>
+              <li>復原課程時，系統會嘗試還原相關投稿原始狀態。</li>
+            </ul>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">留言</h4>
+            <ul class="trash-dependency-help-list">
+              <li>留言不再阻擋考古題永久刪除。</li>
+              <li>考古題永久刪除時，關聯留言會一併永久刪除。</li>
+            </ul>
+          </section>
+
+          <section class="trash-dependency-help-section trash-dependency-help-note">
+            <h4 class="trash-dependency-help-title">操作建議</h4>
+            <ul class="trash-dependency-help-list">
+              <li>看到「無法永久刪除」：先處理被提示的啟用中資料。</li>
+              <li>看到「一併永久刪除」：確認子項目可一起處理。</li>
+              <li>看到「無法復原」：先復原父層，或確認關聯資料已處理。</li>
+            </ul>
+          </section>
         </div>
       </Dialog>
     </div>
@@ -1910,6 +1955,10 @@ const reviewSortState = ref({
   new: { key: 'status', direction: 'asc' },
   existing: { key: 'status', direction: 'asc' },
 })
+const trashSortState = ref({
+  key: null,
+  direction: 'asc',
+})
 const showTrashDependencyHelpDialog = ref(false)
 const normalizeSubmissionStatus = (status) => {
   const raw = String(status || '').trim()
@@ -2027,6 +2076,10 @@ const getReviewSortIndicator = (section, key) => {
   if (current.key !== key) return ''
   return current.direction === 'asc' ? '↑' : '↓'
 }
+const getTrashSortIndicator = (key) => {
+  if (trashSortState.value.key !== key) return ''
+  return trashSortState.value.direction === 'asc' ? '↑' : '↓'
+}
 const newCourseArchiveRequests = computed(() =>
   sortArchiveReviewItems(
     filteredArchiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key),
@@ -2039,9 +2092,73 @@ const existingCourseArchiveRequests = computed(() =>
     'existing'
   )
 )
-const sortedTrashItems = computed(() =>
-  buildTrashHierarchy(trashItems.value, getValidTrashFilterType(trashFilterType.value))
-)
+const getFilteredTrashRows = () => {
+  const filterType = getValidTrashFilterType(trashFilterType.value)
+  const rows = Array.isArray(trashItems.value) ? trashItems.value : []
+  if (!filterType) {
+    return rows
+  }
+  return rows.filter((item) => item?.item_type === filterType)
+}
+const getTrashSortValue = (item, key) => {
+  if (key === 'deleted_at') return getTrashDeletedTimestamp(item)
+  if (key === 'type') return getTrashTypeLabel(item?.item_type)
+  if (key === 'name') return String(item?.display_name || '')
+  if (key === 'status') return getTrashStatusLabel(item?.status)
+  if (key === 'deleted_by') return item?.deleted_by_name || ''
+  if (key === 'dependencies') return (getTrashDependencies(item).map((dependency) => dependency.label).join(' '))
+  return String(item?.[key] || '')
+}
+const isMissingTrashSortValue = (value) => value === null || value === undefined || value === ''
+const compareTrashSortValues = (a, b) => {
+  const { key, direction } = trashSortState.value
+  const directionFactor = direction === 'desc' ? -1 : 1
+  const aValue = getTrashSortValue(a, key)
+  const bValue = getTrashSortValue(b, key)
+  const aMissing = isMissingTrashSortValue(aValue)
+  const bMissing = isMissingTrashSortValue(bValue)
+  if (aMissing && bMissing) return 0
+  if (aMissing) return 1
+  if (bMissing) return -1
+  if (typeof aValue === 'number' && typeof bValue === 'number') {
+    return (aValue - bValue) * directionFactor
+  }
+  return String(aValue).localeCompare(String(bValue), 'zh-TW') * directionFactor
+}
+const sortTrashItems = (rows) => {
+  const sortKey = trashSortState.value.key
+  if (!sortKey) {
+    return rows
+  }
+  return [...rows].sort((a, b) => {
+    const primaryDiff = compareTrashSortValues(a, b)
+    if (primaryDiff !== 0) return primaryDiff
+    return getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a)
+  })
+}
+const toggleTrashSort = (key) => {
+  const current = trashSortState.value
+  if (current.key === key) {
+    if (current.direction === 'asc') {
+      trashSortState.value = { ...current, direction: 'desc' }
+      return
+    }
+    trashSortState.value = { key: null, direction: 'asc' }
+    return
+  }
+  trashSortState.value = {
+    key,
+    direction: 'asc',
+  }
+}
+const sortedTrashItems = computed(() => {
+  const filteredRows = getFilteredTrashRows()
+  const sortKey = trashSortState.value.key
+  if (!sortKey) {
+    return buildTrashHierarchy(filteredRows, getValidTrashFilterType(trashFilterType.value))
+  }
+  return sortTrashItems(filteredRows)
+})
 
 const getTrashItemKey = (item, fallbackIndex = 0) => {
   const type = item?.item_type || 'unknown'
@@ -2354,7 +2471,7 @@ const getReviewRowActions = (item) => {
   }
   if (status === 'takedown') {
     if (isReviewBlockedByCourseTrash(item)) {
-      return [reviewActionDefinitions.delete]
+      return []
     }
     return [reviewActionDefinitions.republish, reviewActionDefinitions.delete]
   }
@@ -2375,7 +2492,9 @@ const getReviewTrashNote = (item) => {
   if (getReviewItemStatus(item) !== 'takedown') return ''
   if (item?.lifecycle_reason === 'linked_archive_permanently_deleted') return '無法復原：關聯考古題已永久刪除。'
   if (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true) {
-    return '原課程在垃圾桶，請先至垃圾桶復原課程。'
+    return window.innerWidth <= 900
+      ? '原課程在垃圾桶；請先復原原課程，投稿會回到原本狀態。'
+      : '原課程已在垃圾桶，此投稿暫時下架。請先到垃圾桶復原原課程，復原後會回到原本狀態。'
   }
   if (item?.lifecycle_reason === 'archive_trashed' || item?.linked_archive_deleted === true) {
     return '關聯考古題在垃圾桶，請先復原考古題。'
@@ -4254,6 +4373,54 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.trash-dependency-help {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-right: 0.15rem;
+}
+
+.trash-dependency-help-intro {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.trash-dependency-help-section {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  background: color-mix(in srgb, var(--surface-card) 86%, transparent);
+}
+
+.trash-dependency-help-title {
+  margin: 0 0 0.45rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.trash-dependency-help-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-color);
+}
+
+.trash-dependency-help-list li + li {
+  margin-top: 0.3rem;
+}
+
+.trash-dependency-help-rule,
+.trash-dependency-help-note {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.trash-dependency-help-note {
+  border: 1px dashed color-mix(in srgb, var(--border-color) 60%, transparent);
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
 }
 
 :deep(.review-status-chip.review-status-pending) {
