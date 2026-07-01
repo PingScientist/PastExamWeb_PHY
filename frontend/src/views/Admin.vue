@@ -1018,6 +1018,15 @@
                   />
                   <Button icon="pi pi-refresh" label="重新整理" outlined @click="loadTrashItems" />
                   <Button
+                    icon="pi pi-sitemap"
+                    :label="getTrashRelationButtonLabel()"
+                    outlined
+                    :disabled="!isTrashRelationHierarchyFilterOnly"
+                    :severity="isTrashRelationHierarchyEnabled ? 'primary' : 'secondary'"
+                    :title="isTrashRelationHierarchyFilterOnly ? '' : '相關性顯示僅適用於「全部」篩選。'"
+                    @click="toggleTrashRelationHierarchy"
+                  />
+                  <Button
                     icon="pi pi-info-circle"
                     label="依賴與阻擋說明"
                     outlined
@@ -1057,7 +1066,8 @@
                 <Column field="item_type">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('type')">
-                      類型 {{ getTrashSortIndicator('type') }}
+                      類型
+                      <i :class="getTrashSortHeaderIcon('type')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1104,7 +1114,8 @@
                 <Column field="deleted_by_name">
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_by')">
-                      刪除者 {{ getTrashSortIndicator('deleted_by') }}
+                      刪除者
+                      <i :class="getTrashSortHeaderIcon('deleted_by')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1873,6 +1884,7 @@ const reviewSearchQuery = ref('')
 const archiveRequests = ref([])
 const trashLoading = ref(false)
 const trashItems = ref([])
+const showTrashRelationHierarchy = ref(false)
 const TRASH_FILTER_ALL_VALUE = 'all'
 const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
 const courseCategories = ref([])
@@ -1935,6 +1947,8 @@ const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
   return acc
 }, {})
 const getTrashTypeLabel = (itemType) => trashTypeLabels[itemType] || itemType || '未知'
+const getReviewSortDirectionIcon = (direction) => (direction === 'asc' ? 'pi pi-sort-up' : 'pi pi-sort-down')
+const getReviewSortNeutralIcon = () => 'pi pi-sort'
 const getTrashDeletedTimestamp = (item) => {
   const time = new Date(item?.deleted_at || 0).getTime()
   return Number.isNaN(time) ? 0 : time
@@ -2074,12 +2088,31 @@ const toggleReviewSort = (section, key) => {
 const getReviewSortIndicator = (section, key) => {
   const current = reviewSortState.value[section]
   if (current.key !== key) return ''
-  return current.direction === 'asc' ? '↑' : '↓'
+  return getReviewSortDirectionIcon(current.direction)
 }
 const getTrashSortIndicator = (key) => {
-  if (trashSortState.value.key !== key) return '↕'
-  return trashSortState.value.direction === 'asc' ? '↑' : '↓'
+  if (trashSortState.value.key !== key) return getReviewSortNeutralIcon()
+  return getReviewSortDirectionIcon(trashSortState.value.direction)
 }
+const getReviewSortHeaderIcon = (section, key) => {
+  return getReviewSortIndicator(section, key) || getReviewSortNeutralIcon()
+}
+const getTrashSortHeaderIcon = (key) => {
+  return getTrashSortIndicator(key) || getReviewSortNeutralIcon()
+}
+const isTrashRelationHierarchyFilterOnly = computed(() => trashFilterType.value === TRASH_FILTER_ALL_VALUE)
+const isTrashRelationHierarchyEnabled = computed(() => showTrashRelationHierarchy.value && isTrashRelationHierarchyFilterOnly.value)
+const toggleTrashRelationHierarchy = () => {
+  if (!isTrashRelationHierarchyFilterOnly.value) {
+    showTrashRelationHierarchy.value = false
+    return
+  }
+  showTrashRelationHierarchy.value = !showTrashRelationHierarchy.value
+  if (showTrashRelationHierarchy.value) {
+    trashSortState.value = { key: null, direction: 'asc' }
+  }
+}
+const getTrashRelationButtonLabel = () => (isTrashRelationHierarchyEnabled.value ? '隱藏相關性' : '相關性顯示')
 const newCourseArchiveRequests = computed(() =>
   sortArchiveReviewItems(
     filteredArchiveRequests.value.filter((item) => item.requested_course_name || item.requested_category_key),
@@ -2137,6 +2170,9 @@ const sortTrashItems = (rows) => {
   })
 }
 const toggleTrashSort = (key) => {
+  if (isTrashRelationHierarchyEnabled.value) {
+    showTrashRelationHierarchy.value = false
+  }
   const current = trashSortState.value
   if (current.key === key) {
     if (current.direction === 'asc') {
@@ -2154,11 +2190,23 @@ const toggleTrashSort = (key) => {
 const sortedTrashItems = computed(() => {
   const filteredRows = getFilteredTrashRows()
   const sortKey = trashSortState.value.key
-  if (!sortKey) {
+  if (isTrashRelationHierarchyEnabled.value) {
     return buildTrashHierarchy(filteredRows, getValidTrashFilterType(trashFilterType.value))
+  }
+  if (!sortKey) {
+    return filteredRows
   }
   return sortTrashItems(filteredRows)
 })
+
+watch(
+  trashFilterType,
+  (nextFilterType) => {
+    if (nextFilterType !== TRASH_FILTER_ALL_VALUE) {
+      showTrashRelationHierarchy.value = false
+    }
+  }
+)
 
 const getTrashItemKey = (item, fallbackIndex = 0) => {
   const type = item?.item_type || 'unknown'
