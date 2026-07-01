@@ -763,7 +763,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'subject')">
                         課程
-                        <i :class="getReviewSortHeaderIcon('new', 'subject')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('new', 'subject')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -779,7 +779,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'kind')">
                         投稿類型
-                        <i :class="getReviewSortHeaderIcon('new', 'kind')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('new', 'kind')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -792,7 +792,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'name')">
                         考試名稱
-                        <i :class="getReviewSortHeaderIcon('new', 'name')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('new', 'name')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -804,7 +804,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'professor')">
                         授課教師
-                        <i :class="getReviewSortHeaderIcon('new', 'professor')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('new', 'professor')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -815,7 +815,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'academic_year')">
                         學期
-                        <i :class="getReviewSortHeaderIcon('new', 'academic_year')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('new', 'academic_year')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -826,7 +826,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'submitted_at')">
                         申請時間
-                        <i :class="getReviewSortHeaderIcon('new', 'submitted_at')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('new', 'submitted_at')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -837,7 +837,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('new', 'status')">
                         狀態
-                        <i :class="getReviewSortHeaderIcon('new', 'status')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('new', 'status')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -851,7 +851,8 @@
                   </Column>
                   <Column header="操作">
                     <template #body="{ data }">
-                      <div class="admin-card-actions review-card-actions">
+                      <div class="review-row-action-area">
+                        <div class="admin-card-actions review-card-actions">
                         <Button
                           label="查看/編輯"
                           icon="pi pi-search"
@@ -875,7 +876,8 @@
                           :text="action.text"
                           @click="runReviewRowAction(data, action.key)"
                         />
-                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note">
+                        </div>
+                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note" :title="getReviewTrashNote(data, true)">
                           {{ getReviewTrashNote(data) }}
                         </small>
                       </div>
@@ -903,7 +905,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'subject')">
                         課程
-                        <i :class="getReviewSortHeaderIcon('existing', 'subject')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('existing', 'subject')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -919,7 +921,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'name')">
                         考試名稱
-                        <i :class="getReviewSortHeaderIcon('existing', 'name')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('existing', 'name')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -931,7 +933,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'professor')">
                         授課教師
-                        <i :class="getReviewSortHeaderIcon('existing', 'professor')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('existing', 'professor')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -942,7 +944,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'academic_year')">
                         學期
-                        <i :class="getReviewSortHeaderIcon('existing', 'academic_year')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('existing', 'academic_year')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -953,7 +955,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'submitted_at')">
                         投稿時間
-                        <i :class="getReviewSortHeaderIcon('existing', 'submitted_at')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('existing', 'submitted_at')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -964,7 +966,7 @@
                     <template #header>
                       <button type="button" class="review-sort-header" @click="toggleReviewSort('existing', 'status')">
                         狀態
-                        <i :class="getReviewSortHeaderIcon('existing', 'status')" aria-hidden="true"></i>
+                        <i class="review-sort-icon" :class="getReviewSortHeaderIcon('existing', 'status')" aria-hidden="true"></i>
                       </button>
                     </template>
                     <template #body="{ data }">
@@ -978,7 +980,8 @@
                   </Column>
                   <Column header="操作">
                     <template #body="{ data }">
-                      <div class="admin-card-actions review-card-actions">
+                      <div class="review-row-action-area">
+                        <div class="admin-card-actions review-card-actions">
                         <Button
                           label="查看/編輯"
                           icon="pi pi-search"
@@ -1002,7 +1005,8 @@
                           :text="action.text"
                           @click="runReviewRowAction(data, action.key)"
                         />
-                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note">
+                        </div>
+                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note" :title="getReviewTrashNote(data, true)">
                           {{ getReviewTrashNote(data) }}
                         </small>
                       </div>
@@ -1070,7 +1074,7 @@
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_at')">
                       刪除時間
-                      <i :class="getTrashSortHeaderIcon('deleted_at')" aria-hidden="true"></i>
+                      <i class="review-sort-icon" :class="getTrashSortHeaderIcon('deleted_at')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1081,7 +1085,7 @@
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('type')">
                       類型
-                      <i :class="getTrashSortHeaderIcon('type')" aria-hidden="true"></i>
+                      <i class="review-sort-icon" :class="getTrashSortHeaderIcon('type')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1092,7 +1096,7 @@
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('name')">
                       名稱
-                      <i :class="getTrashSortHeaderIcon('name')" aria-hidden="true"></i>
+                      <i class="review-sort-icon" :class="getTrashSortHeaderIcon('name')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1122,7 +1126,7 @@
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('status')">
                       狀態
-                      <i :class="getTrashSortHeaderIcon('status')" aria-hidden="true"></i>
+                      <i class="review-sort-icon" :class="getTrashSortHeaderIcon('status')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1135,7 +1139,7 @@
                   <template #header>
                     <button type="button" class="review-sort-header" @click="toggleTrashSort('deleted_by')">
                       刪除者
-                      <i :class="getTrashSortHeaderIcon('deleted_by')" aria-hidden="true"></i>
+                      <i class="review-sort-icon" :class="getTrashSortHeaderIcon('deleted_by')" aria-hidden="true"></i>
                     </button>
                   </template>
                   <template #body="{ data }">
@@ -1967,8 +1971,8 @@ const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
   return acc
 }, {})
 const getTrashTypeLabel = (itemType) => trashTypeLabels[itemType] || itemType || '未知'
-const getReviewSortDirectionIcon = (direction) => (direction === 'asc' ? 'pi pi-sort-up' : 'pi pi-sort-down')
-const getReviewSortNeutralIcon = () => 'pi pi-sort'
+const getReviewSortDirectionIcon = (direction) => (direction === 'asc' ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down')
+const getReviewSortNeutralIcon = () => 'pi pi-sort-alt'
 const getTrashDeletedTimestamp = (item) => {
   const time = new Date(item?.deleted_at || 0).getTime()
   return Number.isNaN(time) ? 0 : time
@@ -2556,13 +2560,14 @@ const isReviewBlockedByCourseTrash = (item) => {
     (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true)
 }
 
-const getReviewTrashNote = (item) => {
+const getReviewTrashNote = (item, fullText = false) => {
   if (getReviewItemStatus(item) !== 'takedown') return ''
   if (item?.lifecycle_reason === 'linked_archive_permanently_deleted') return '無法復原：關聯考古題已永久刪除。'
   if (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true) {
-    return window.innerWidth <= 900
-      ? '原課程在垃圾桶；請先復原原課程，投稿會回到原本狀態。'
-      : '原課程已在垃圾桶，此投稿暫時下架。請先到垃圾桶復原原課程，復原後會回到原本狀態。'
+    const shortText = '原課程在垃圾桶，復原後會回到原狀。'
+    const fullTextMessage =
+      '原課程已在垃圾桶，此投稿暫時下架。請先到垃圾桶復原原課程，復原後會回到原本狀態。'
+    return fullText ? fullTextMessage : shortText
   }
   if (item?.lifecycle_reason === 'archive_trashed' || item?.linked_archive_deleted === true) {
     return '關聯考古題在垃圾桶，請先復原考古題。'
@@ -4387,6 +4392,33 @@ onBeforeUnmount(() => {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.review-row-action-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.review-sort-icon {
+  font-size: 0.8rem;
+  line-height: 1;
+  opacity: 0.8;
+  color: var(--text-color-secondary);
+}
+
+.review-card-action-note {
+  display: block;
+  margin: 0;
+  width: 100%;
+  max-width: 20rem;
+  overflow-wrap: anywhere;
+}
+
+.review-sort-icon.pi-sort-amount-up-alt,
+.review-sort-icon.pi-sort-amount-down {
+  color: var(--primary-color);
+  opacity: 1;
 }
 
 .review-course-cell {
