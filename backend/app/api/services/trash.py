@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from minio.error import S3Error
 from pydantic import BaseModel
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import String, and_, cast, func, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 
 from app.core.config import settings
@@ -1260,7 +1260,7 @@ async def list_trash_items(
                 .where(
                     or_(
                         ArchiveSubmission.deleted_at.is_not(None),
-                        ArchiveSubmission.status == SubmissionStatus.DELETED,
+                        func.lower(cast(ArchiveSubmission.status, String)) == SubmissionStatus.DELETED.value,
                     )
                 )
                 .order_by(ArchiveSubmission.deleted_at.desc(), ArchiveSubmission.reviewed_at.desc(), ArchiveSubmission.created_at.desc())
@@ -1296,7 +1296,7 @@ async def list_trash_items(
             linked_archive_id = linked_archive.id if linked_archive and linked_archive.id is not None else None
             is_direct_deleted_submission = submission.delete_reason in {"user deleted", "admin deleted"}
             direct_submission_parent_type = "course" if is_direct_deleted_submission and not linked_archive else None
-            direct_submission_parent_id = linked_archive.course_id if direct_submission_parent_type else None
+            direct_submission_parent_id = linked_archive.course_id if direct_submission_parent_type and linked_archive else None
             parent_type = (
                 "archive"
                 if linked_archive_id is not None
