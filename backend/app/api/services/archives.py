@@ -936,20 +936,15 @@ async def delete_archive_submission_for_admin(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    if submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED:
-        return {"success": True}
-
-    if submission.status == SubmissionStatus.TAKEDOWN:
-        is_course_trash_blocked = is_course_trash_lifecycle_reason(submission.lifecycle_reason)
-        if not is_course_trash_blocked:
-            blocked_course_id = await _get_deleted_course_id_for_submission(db, submission)
-            is_course_trash_blocked = blocked_course_id is not None
-
-        if is_course_trash_blocked:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="原課程仍在垃圾桶，請先復原原課程後再處理此投稿。",
-            )
+    if submission.status == SubmissionStatus.DELETED:
+        now = datetime.now(timezone.utc)
+        if submission.deleted_at is None:
+            submission.deleted_at = now
+        if submission.deleted_by_id is None:
+            submission.deleted_by_id = current_user.user_id
+        if submission.delete_reason is None:
+            submission.delete_reason = "admin deleted"
+        submission.lifecycle_reason = None
 
     result = await soft_delete_submission_with_linked_archive(
         db,
