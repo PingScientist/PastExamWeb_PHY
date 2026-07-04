@@ -69,6 +69,271 @@ html.dark {
   color-scheme: dark;
 }
 
+.soft-badge,
+.soft-badge.p-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 1.45rem !important;
+  padding: 0.16rem 0.48rem !important;
+  border: 1px solid var(--soft-badge-border, color-mix(in srgb, currentColor 34%, transparent)) !important;
+  border-radius: 999px;
+  background: var(--soft-badge-bg, rgba(100, 116, 139, 0.08)) !important;
+  color: var(--soft-badge-color, #334155) !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+  line-height: 1.25 !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: none !important;
+}
+
+.soft-badge--pending,
+.review-status-pending,
+.submission-status-pending {
+  --soft-badge-bg: rgba(217, 119, 6, 0.1);
+  --soft-badge-border: rgba(217, 119, 6, 0.32);
+  --soft-badge-color: #92400e;
+}
+
+.soft-badge--approved,
+.review-status-approved,
+.submission-status-approved {
+  --soft-badge-bg: rgba(22, 163, 74, 0.1);
+  --soft-badge-border: rgba(22, 163, 74, 0.32);
+  --soft-badge-color: #166534;
+}
+
+.soft-badge--rejected,
+.review-status-rejected,
+.submission-status-rejected {
+  --soft-badge-bg: rgba(220, 38, 38, 0.09);
+  --soft-badge-border: rgba(220, 38, 38, 0.32);
+  --soft-badge-color: #991b1b;
+}
+
+.soft-badge--deleted,
+.review-status-deleted,
+.submission-status-deleted {
+  --soft-badge-bg: rgba(225, 29, 72, 0.09);
+  --soft-badge-border: rgba(225, 29, 72, 0.32);
+  --soft-badge-color: #9f1239;
+}
+
+.soft-badge--archived,
+.review-status-takedown,
+.submission-status-takedown {
+  --soft-badge-bg: rgba(71, 85, 105, 0.09);
+  --soft-badge-border: rgba(71, 85, 105, 0.3);
+  --soft-badge-color: #334155;
+}
+
+.soft-badge--admin {
+  --soft-badge-bg: rgba(37, 99, 235, 0.08);
+  --soft-badge-border: rgba(37, 99, 235, 0.3);
+  --soft-badge-color: #1d4ed8;
+}
+
+.soft-badge--new-course {
+  --soft-badge-bg: rgba(2, 132, 199, 0.08);
+  --soft-badge-border: rgba(2, 132, 199, 0.3);
+  --soft-badge-color: #0369a1;
+}
+
+.soft-badge--new-course-category {
+  --soft-badge-bg: rgba(13, 148, 136, 0.09);
+  --soft-badge-border: rgba(13, 148, 136, 0.32);
+  --soft-badge-color: #0f766e;
+}
+
+.soft-badge--info,
+.soft-badge--type,
+.trash-dependency-chip--relation {
+  --soft-badge-bg: rgba(51, 65, 85, 0.08);
+  --soft-badge-border: rgba(51, 65, 85, 0.26);
+  --soft-badge-color: #334155;
+}
+
+.soft-badge--warning,
+.trash-dependency-chip--restore-blocked {
+  --soft-badge-bg: rgba(217, 119, 6, 0.1);
+  --soft-badge-border: rgba(217, 119, 6, 0.32);
+  --soft-badge-color: #92400e;
+}
+
+.soft-badge--danger,
+.trash-dependency-chip--delete-blocked {
+  --soft-badge-bg: rgba(234, 88, 12, 0.1);
+  --soft-badge-border: rgba(234, 88, 12, 0.32);
+  --soft-badge-color: #9a3412;
+}
+
+.trash-dependency-chip--cascade {
+  --soft-badge-bg: rgba(79, 70, 229, 0.08);
+  --soft-badge-border: rgba(79, 70, 229, 0.3);
+  --soft-badge-color: #4338ca;
+}
+
+.trash-dependency-chip--clear {
+  --soft-badge-bg: rgba(22, 163, 74, 0.09);
+  --soft-badge-border: rgba(22, 163, 74, 0.3);
+  --soft-badge-color: #166534;
+}
+
+.dark .soft-badge,
+.dark .soft-badge.p-tag,
+.archive-dark .soft-badge,
+.archive-dark .soft-badge.p-tag {
+  --soft-badge-bg: rgba(148, 163, 184, 0.1);
+  --soft-badge-border: rgba(148, 163, 184, 0.28);
+  --soft-badge-color: #cbd5e1;
+}
+
+.dark .soft-badge--pending,
+.dark .soft-badge.review-status-pending,
+.dark .soft-badge.submission-status-pending,
+.dark .review-status-pending,
+.dark .submission-status-pending,
+.archive-dark .soft-badge--pending,
+.archive-dark .soft-badge.submission-status-pending,
+.archive-dark .submission-status-pending {
+  --soft-badge-bg: rgba(245, 158, 11, 0.13);
+  --soft-badge-border: rgba(251, 191, 36, 0.34);
+  --soft-badge-color: #f6c65b;
+}
+
+.dark .soft-badge--approved,
+.dark .soft-badge.review-status-approved,
+.dark .soft-badge.submission-status-approved,
+.dark .review-status-approved,
+.dark .submission-status-approved,
+.archive-dark .soft-badge--approved,
+.archive-dark .soft-badge.submission-status-approved,
+.archive-dark .submission-status-approved {
+  --soft-badge-bg: rgba(34, 197, 94, 0.11);
+  --soft-badge-border: rgba(74, 222, 128, 0.32);
+  --soft-badge-color: #8ee6ad;
+}
+
+.dark .soft-badge--rejected,
+.dark .soft-badge.review-status-rejected,
+.dark .soft-badge.submission-status-rejected,
+.dark .review-status-rejected,
+.dark .submission-status-rejected,
+.archive-dark .soft-badge--rejected,
+.archive-dark .soft-badge.submission-status-rejected,
+.archive-dark .submission-status-rejected {
+  --soft-badge-bg: rgba(239, 68, 68, 0.11);
+  --soft-badge-border: rgba(248, 113, 113, 0.32);
+  --soft-badge-color: #f6a6a6;
+}
+
+.dark .soft-badge--deleted,
+.dark .soft-badge.review-status-deleted,
+.dark .soft-badge.submission-status-deleted,
+.dark .review-status-deleted,
+.dark .submission-status-deleted,
+.archive-dark .soft-badge--deleted,
+.archive-dark .soft-badge.submission-status-deleted,
+.archive-dark .submission-status-deleted {
+  --soft-badge-bg: rgba(244, 63, 94, 0.11);
+  --soft-badge-border: rgba(251, 113, 133, 0.32);
+  --soft-badge-color: #f5a5b2;
+}
+
+.dark .soft-badge--archived,
+.dark .soft-badge.review-status-takedown,
+.dark .soft-badge.submission-status-takedown,
+.dark .review-status-takedown,
+.dark .submission-status-takedown,
+.archive-dark .soft-badge--archived,
+.archive-dark .soft-badge.submission-status-takedown,
+.archive-dark .submission-status-takedown {
+  --soft-badge-bg: rgba(148, 163, 184, 0.11);
+  --soft-badge-border: rgba(148, 163, 184, 0.3);
+  --soft-badge-color: #cbd5e1;
+}
+
+.dark .soft-badge--admin,
+.dark .soft-badge.soft-badge--admin,
+.archive-dark .soft-badge.soft-badge--admin,
+.archive-dark .soft-badge--admin {
+  --soft-badge-bg: rgba(59, 130, 246, 0.11);
+  --soft-badge-border: rgba(96, 165, 250, 0.32);
+  --soft-badge-color: #bfd8fb;
+}
+
+.dark .soft-badge--new-course,
+.dark .soft-badge.soft-badge--new-course,
+.archive-dark .soft-badge.soft-badge--new-course,
+.archive-dark .soft-badge--new-course {
+  --soft-badge-bg: rgba(14, 165, 233, 0.11);
+  --soft-badge-border: rgba(56, 189, 248, 0.32);
+  --soft-badge-color: #b7e5fa;
+}
+
+.dark .soft-badge--new-course-category,
+.dark .soft-badge.soft-badge--new-course-category,
+.archive-dark .soft-badge.soft-badge--new-course-category,
+.archive-dark .soft-badge--new-course-category {
+  --soft-badge-bg: rgba(20, 184, 166, 0.11);
+  --soft-badge-border: rgba(45, 212, 191, 0.32);
+  --soft-badge-color: #9beadd;
+}
+
+.dark .soft-badge--info,
+.dark .soft-badge--type,
+.dark .soft-badge.soft-badge--info,
+.dark .soft-badge.soft-badge--type,
+.dark .trash-dependency-chip--relation,
+.archive-dark .soft-badge--info,
+.archive-dark .soft-badge.soft-badge--info,
+.archive-dark .soft-badge.soft-badge--type,
+.archive-dark .soft-badge--type {
+  --soft-badge-bg: rgba(148, 163, 184, 0.1);
+  --soft-badge-border: rgba(148, 163, 184, 0.28);
+  --soft-badge-color: #cbd5e1;
+}
+
+.dark .soft-badge--warning,
+.dark .soft-badge.soft-badge--warning,
+.dark .soft-badge.trash-dependency-chip--restore-blocked,
+.dark .trash-dependency-chip--restore-blocked,
+.archive-dark .soft-badge.soft-badge--warning,
+.archive-dark .soft-badge--warning {
+  --soft-badge-bg: rgba(245, 158, 11, 0.13);
+  --soft-badge-border: rgba(251, 191, 36, 0.34);
+  --soft-badge-color: #f6c65b;
+}
+
+.dark .soft-badge--danger,
+.dark .soft-badge.soft-badge--danger,
+.dark .soft-badge.trash-dependency-chip--delete-blocked,
+.dark .trash-dependency-chip--delete-blocked,
+.archive-dark .soft-badge.soft-badge--danger,
+.archive-dark .soft-badge--danger {
+  --soft-badge-bg: rgba(248, 113, 113, 0.11);
+  --soft-badge-border: rgba(251, 146, 60, 0.34);
+  --soft-badge-color: #f7c291;
+}
+
+.dark .trash-dependency-chip--cascade,
+.dark .soft-badge.trash-dependency-chip--cascade {
+  --soft-badge-bg: rgba(99, 102, 241, 0.11);
+  --soft-badge-border: rgba(129, 140, 248, 0.32);
+  --soft-badge-color: #c7d2fe;
+}
+
+.dark .trash-dependency-chip--clear,
+.dark .soft-badge.trash-dependency-chip--clear {
+  --soft-badge-bg: rgba(34, 197, 94, 0.11);
+  --soft-badge-border: rgba(74, 222, 128, 0.3);
+  --soft-badge-color: #8ee6ad;
+}
+
 .pi:before {
   -webkit-backface-visibility: visible !important;
   backface-visibility: visible !important;

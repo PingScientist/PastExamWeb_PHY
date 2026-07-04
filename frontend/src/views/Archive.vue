@@ -384,14 +384,14 @@
                 <article v-for="item in archiveSubmissions" :key="`archive-${item.id}`" class="submission-status-card">
                   <div class="submission-status-head">
                     <Tag
-                      :class="['submission-status-badge', getSubmissionStatusClass(item.status)]"
+                      :class="['soft-badge', 'submission-status-badge', getSubmissionStatusClass(item.status)]"
                       :severity="getSubmissionSeverity(item.status)"
                     >
                       {{ getSubmissionLabel(item.status) }}
                     </Tag>
                     <Tag
                       v-if="item.is_admin_upload"
-                      class="submission-admin-badge"
+                      class="soft-badge soft-badge--admin submission-admin-badge"
                       severity="secondary"
                     >
                       管理員投稿
@@ -402,12 +402,18 @@
                     </div>
                   </div>
                   <div class="submission-status-meta">
-                    <span><i class="pi pi-send"></i>{{ getArchiveSubmissionKind(item) }}</span>
-                    <span><i class="pi pi-calendar"></i>{{ formatAcademicTerm(item.academic_year) }}</span>
-                    <span><i class="pi pi-user"></i>{{ item.professor }}</span>
+                    <span :class="['soft-badge', 'submission-meta-chip', getArchiveSubmissionKindClass(item)]">
+                      <i class="pi pi-send"></i>{{ getArchiveSubmissionKind(item) }}
+                    </span>
+                    <span class="soft-badge soft-badge--type submission-meta-chip">
+                      <i class="pi pi-calendar"></i>{{ formatAcademicTerm(item.academic_year) }}
+                    </span>
+                    <span class="soft-badge soft-badge--info submission-meta-chip">
+                      <i class="pi pi-user"></i>{{ item.professor }}
+                    </span>
                   </div>
                   <div v-if="item.requested_category_name" class="submission-status-note">
-                    <span>新分類</span>
+                    <span class="soft-badge soft-badge--new-course-category">新分類</span>
                     <strong>{{ item.requested_category_name }}</strong>
                     <small>{{ item.requested_category_key }}</small>
                   </div>
@@ -1017,9 +1023,15 @@ function getSubmissionStatusClass(status) {
 
 function getArchiveSubmissionKind(item) {
   if (item?.is_admin_upload) return '管理員投稿'
-  if (item?.requested_category_key) return '新分類與新課程申請'
+  if (item?.requested_category_key) return '新分類 + 新課程'
   if (item?.requested_course_name) return '新課程申請'
   return '既有課程投稿'
+}
+
+function getArchiveSubmissionKindClass(item) {
+  if (item?.requested_category_key) return 'soft-badge--new-course-category'
+  if (item?.requested_course_name) return 'soft-badge--new-course'
+  return 'soft-badge--type'
 }
 
 function isBoilerplateReviewNote(note) {
@@ -3251,84 +3263,6 @@ const mobileMenuItems = computed(() => {
   gap: 0.75rem;
 }
 
-:deep(.submission-status-badge.submission-status-pending) {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #f59e0b;
-  font-weight: 700;
-}
-
-:deep(.submission-status-badge.submission-status-approved) {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #22c55e;
-  font-weight: 700;
-}
-
-:deep(.submission-status-badge.submission-status-rejected) {
-  background: #fee2e2;
-  color: #991b1b;
-  border-color: #ef4444;
-  font-weight: 700;
-}
-
-:deep(.submission-status-badge.submission-status-deleted) {
-  background: #ffe4e6;
-  color: #9f1239;
-  border-color: #f43f5e;
-  font-weight: 700;
-}
-
-:deep(.submission-status-badge.submission-status-takedown) {
-  background: #e2e8f0;
-  color: #334155;
-  border-color: #64748b;
-  font-weight: 700;
-}
-
-:deep(.submission-admin-badge) {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border-color: #3b82f6;
-  font-weight: 700;
-}
-
-.archive-dark :deep(.submission-status-badge.submission-status-pending) {
-  background: rgba(245, 158, 11, 0.22);
-  color: #fcd34d;
-  border-color: rgba(251, 191, 36, 0.55);
-}
-
-.archive-dark :deep(.submission-status-badge.submission-status-approved) {
-  background: rgba(34, 197, 94, 0.2);
-  color: #86efac;
-  border-color: rgba(74, 222, 128, 0.52);
-}
-
-.archive-dark :deep(.submission-status-badge.submission-status-rejected) {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border-color: rgba(248, 113, 113, 0.54);
-}
-
-.archive-dark :deep(.submission-status-badge.submission-status-deleted) {
-  background: rgba(244, 63, 94, 0.2);
-  color: #fda4af;
-  border-color: rgba(251, 113, 133, 0.54);
-}
-
-.archive-dark :deep(.submission-status-badge.submission-status-takedown) {
-  background: rgba(100, 116, 139, 0.24);
-  color: #cbd5e1;
-  border-color: rgba(148, 163, 184, 0.5);
-}
-
-.archive-dark :deep(.submission-admin-badge) {
-  background: rgba(59, 130, 246, 0.22);
-  color: #bfdbfe;
-  border-color: rgba(96, 165, 250, 0.56);
-}
-
 .submission-status-title {
   display: flex;
   flex-direction: column;
@@ -3353,7 +3287,6 @@ const mobileMenuItems = computed(() => {
   gap: 0.5rem;
 }
 
-.submission-status-meta span,
 .submission-status-note {
   display: inline-flex;
   align-items: center;
@@ -3365,11 +3298,15 @@ const mobileMenuItems = computed(() => {
   border: 1px solid var(--border-color);
 }
 
+.submission-meta-chip {
+  max-width: 100%;
+}
+
 .submission-status-note {
   align-self: flex-start;
 }
 
-.submission-status-note span {
+.submission-status-note span:not(.soft-badge) {
   color: var(--text-secondary);
 }
 

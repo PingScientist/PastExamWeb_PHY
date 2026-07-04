@@ -1185,7 +1185,9 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <Tag severity="secondary">{{ getTrashTypeLabel(data.item_type) }}</Tag>
+                    <Tag class="soft-badge soft-badge--type trash-type-chip" severity="secondary">
+                      {{ getTrashTypeLabel(data.item_type) }}
+                    </Tag>
                   </template>
                 </Column>
                 <Column field="display_name">
@@ -1965,23 +1967,23 @@
             <h4 class="trash-dependency-help-title">快速判斷</h4>
             <div class="trash-dependency-help-label-grid">
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-chip--restore-blocked">阻擋還原</span>
+                <span class="soft-badge trash-dependency-help-chip trash-dependency-chip--restore-blocked">阻擋還原</span>
                 <p>現在不能還原。通常要先復原父層，或必要關聯已不存在。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-chip--delete-blocked">阻擋永久刪除</span>
+                <span class="soft-badge trash-dependency-help-chip trash-dependency-chip--delete-blocked">阻擋永久刪除</span>
                 <p>現在不能永久刪除。通常仍有啟用中的資料依附。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-chip--cascade">一併永久刪除</span>
+                <span class="soft-badge trash-dependency-help-chip trash-dependency-chip--cascade">一併永久刪除</span>
                 <p>刪除此項時，列出的資料會一起永久刪除。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-chip--relation">關聯</span>
+                <span class="soft-badge trash-dependency-help-chip trash-dependency-chip--relation">關聯</span>
                 <p>只是提醒資料有關，通常不會直接阻擋。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-chip--clear">無阻擋</span>
+                <span class="soft-badge trash-dependency-help-chip trash-dependency-chip--clear">無阻擋</span>
                 <p>目前沒有影響還原或永久刪除的限制。</p>
               </article>
             </div>
@@ -5045,7 +5047,7 @@ onBeforeUnmount(() => {
   background: var(--soft-note-bg, color-mix(in srgb, var(--surface-ground) 55%, transparent));
   color: var(--soft-note-color, var(--text-color-secondary));
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.35;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -5073,29 +5075,29 @@ onBeforeUnmount(() => {
 }
 
 .review-card-action-note--info {
-  --soft-note-bg: rgba(71, 85, 105, 0.1);
-  --soft-note-border: rgba(71, 85, 105, 0.28);
+  --soft-note-bg: rgba(71, 85, 105, 0.08);
+  --soft-note-border: rgba(71, 85, 105, 0.26);
   --soft-note-color: #334155;
 }
 
 .review-card-action-note--warning {
-  --soft-note-bg: rgba(234, 88, 12, 0.1);
+  --soft-note-bg: rgba(234, 88, 12, 0.09);
   --soft-note-border: rgba(234, 88, 12, 0.32);
   --soft-note-color: #9a3412;
 }
 
 :global(.dark) .review-card-action-note--info,
 :global(.dark) :deep(.review-card-action-note--info) {
-  --soft-note-bg: rgba(148, 163, 184, 0.12);
-  --soft-note-border: rgba(148, 163, 184, 0.34);
+  --soft-note-bg: rgba(148, 163, 184, 0.1);
+  --soft-note-border: rgba(148, 163, 184, 0.28);
   --soft-note-color: #cbd5e1;
 }
 
 :global(.dark) .review-card-action-note--warning,
 :global(.dark) :deep(.review-card-action-note--warning) {
-  --soft-note-bg: rgba(248, 113, 113, 0.12);
-  --soft-note-border: rgba(251, 146, 60, 0.36);
-  --soft-note-color: #fed7aa;
+  --soft-note-bg: rgba(245, 158, 11, 0.13);
+  --soft-note-border: rgba(251, 191, 36, 0.34);
+  --soft-note-color: #f6c65b;
 }
 
 .review-sort-icon.pi-sort-amount-up-alt,
@@ -5109,224 +5111,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-}
-
-.soft-badge,
-:deep(.soft-badge) {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  max-width: 100%;
-  min-height: 1.55rem;
-  padding: 0.16rem 0.55rem;
-  border: 1px solid var(--soft-badge-border, rgba(100, 116, 139, 0.28)) !important;
-  border-radius: 999px;
-  background: var(--soft-badge-bg, rgba(100, 116, 139, 0.1)) !important;
-  color: var(--soft-badge-color, #334155) !important;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.3;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  box-shadow: none;
-}
-
-.soft-badge--pending,
-:deep(.soft-badge--pending),
-.review-status-pending,
-:deep(.review-status-pending) {
-  --soft-badge-bg: rgba(245, 158, 11, 0.12);
-  --soft-badge-border: rgba(245, 158, 11, 0.34);
-  --soft-badge-color: #92400e;
-}
-
-.soft-badge--approved,
-:deep(.soft-badge--approved),
-.review-status-approved,
-:deep(.review-status-approved) {
-  --soft-badge-bg: rgba(34, 197, 94, 0.12);
-  --soft-badge-border: rgba(34, 197, 94, 0.34);
-  --soft-badge-color: #166534;
-}
-
-.soft-badge--rejected,
-.soft-badge--deleted,
-:deep(.soft-badge--rejected),
-:deep(.soft-badge--deleted),
-.review-status-rejected,
-.review-status-deleted,
-:deep(.review-status-rejected),
-:deep(.review-status-deleted) {
-  --soft-badge-bg: rgba(239, 68, 68, 0.11);
-  --soft-badge-border: rgba(239, 68, 68, 0.34);
-  --soft-badge-color: #991b1b;
-}
-
-.soft-badge--archived,
-:deep(.soft-badge--archived),
-.review-status-takedown,
-:deep(.review-status-takedown) {
-  --soft-badge-bg: rgba(100, 116, 139, 0.12);
-  --soft-badge-border: rgba(100, 116, 139, 0.3);
-  --soft-badge-color: #334155;
-}
-
-.soft-badge--admin,
-:deep(.soft-badge--admin) {
-  --soft-badge-bg: rgba(37, 99, 235, 0.1);
-  --soft-badge-border: rgba(37, 99, 235, 0.3);
-  --soft-badge-color: #1d4ed8;
-}
-
-.soft-badge--new-course,
-:deep(.soft-badge--new-course) {
-  --soft-badge-bg: rgba(14, 165, 233, 0.1);
-  --soft-badge-border: rgba(14, 165, 233, 0.3);
-  --soft-badge-color: #0369a1;
-}
-
-.soft-badge--new-course-category,
-:deep(.soft-badge--new-course-category) {
-  --soft-badge-bg: rgba(20, 184, 166, 0.11);
-  --soft-badge-border: rgba(20, 184, 166, 0.34);
-  --soft-badge-color: #0f766e;
-}
-
-.soft-badge--info,
-:deep(.soft-badge--info),
-.trash-dependency-chip--relation,
-:deep(.trash-dependency-chip--relation) {
-  --soft-badge-bg: rgba(71, 85, 105, 0.1);
-  --soft-badge-border: rgba(71, 85, 105, 0.28);
-  --soft-badge-color: #334155;
-}
-
-.soft-badge--warning,
-:deep(.soft-badge--warning),
-.trash-dependency-chip--restore-blocked,
-.trash-dependency-chip--delete-blocked,
-:deep(.trash-dependency-chip--restore-blocked),
-:deep(.trash-dependency-chip--delete-blocked) {
-  --soft-badge-bg: rgba(234, 88, 12, 0.1);
-  --soft-badge-border: rgba(234, 88, 12, 0.34);
-  --soft-badge-color: #9a3412;
-}
-
-.trash-dependency-chip--cascade,
-:deep(.trash-dependency-chip--cascade) {
-  --soft-badge-bg: rgba(14, 165, 233, 0.1);
-  --soft-badge-border: rgba(14, 165, 233, 0.3);
-  --soft-badge-color: #0369a1;
-}
-
-.trash-dependency-chip--clear,
-:deep(.trash-dependency-chip--clear) {
-  --soft-badge-bg: rgba(34, 197, 94, 0.12);
-  --soft-badge-border: rgba(34, 197, 94, 0.34);
-  --soft-badge-color: #166534;
-}
-
-:global(.dark) .soft-badge,
-:global(.dark) :deep(.soft-badge) {
-  --soft-badge-bg: rgba(148, 163, 184, 0.1);
-  --soft-badge-border: rgba(148, 163, 184, 0.3);
-  --soft-badge-color: #cbd5e1;
-}
-
-:global(.dark) .soft-badge--pending,
-:global(.dark) :deep(.soft-badge--pending),
-:global(.dark) .review-status-pending,
-:global(.dark) :deep(.review-status-pending) {
-  --soft-badge-bg: rgba(245, 158, 11, 0.14);
-  --soft-badge-border: rgba(251, 191, 36, 0.36);
-  --soft-badge-color: #fcd34d;
-}
-
-:global(.dark) .soft-badge--approved,
-:global(.dark) :deep(.soft-badge--approved),
-:global(.dark) .review-status-approved,
-:global(.dark) :deep(.review-status-approved) {
-  --soft-badge-bg: rgba(34, 197, 94, 0.12);
-  --soft-badge-border: rgba(74, 222, 128, 0.34);
-  --soft-badge-color: #86efac;
-}
-
-:global(.dark) .soft-badge--rejected,
-:global(.dark) .soft-badge--deleted,
-:global(.dark) :deep(.soft-badge--rejected),
-:global(.dark) :deep(.soft-badge--deleted),
-:global(.dark) .review-status-rejected,
-:global(.dark) .review-status-deleted,
-:global(.dark) :deep(.review-status-rejected),
-:global(.dark) :deep(.review-status-deleted) {
-  --soft-badge-bg: rgba(239, 68, 68, 0.12);
-  --soft-badge-border: rgba(248, 113, 113, 0.34);
-  --soft-badge-color: #fca5a5;
-}
-
-:global(.dark) .soft-badge--archived,
-:global(.dark) :deep(.soft-badge--archived),
-:global(.dark) .review-status-takedown,
-:global(.dark) :deep(.review-status-takedown) {
-  --soft-badge-bg: rgba(148, 163, 184, 0.12);
-  --soft-badge-border: rgba(148, 163, 184, 0.32);
-  --soft-badge-color: #cbd5e1;
-}
-
-:global(.dark) .soft-badge--admin,
-:global(.dark) :deep(.soft-badge--admin) {
-  --soft-badge-bg: rgba(59, 130, 246, 0.12);
-  --soft-badge-border: rgba(96, 165, 250, 0.34);
-  --soft-badge-color: #bfdbfe;
-}
-
-:global(.dark) .soft-badge--new-course,
-:global(.dark) :deep(.soft-badge--new-course) {
-  --soft-badge-bg: rgba(14, 165, 233, 0.12);
-  --soft-badge-border: rgba(56, 189, 248, 0.34);
-  --soft-badge-color: #bae6fd;
-}
-
-:global(.dark) .soft-badge--new-course-category,
-:global(.dark) :deep(.soft-badge--new-course-category) {
-  --soft-badge-bg: rgba(20, 184, 166, 0.12);
-  --soft-badge-border: rgba(45, 212, 191, 0.34);
-  --soft-badge-color: #99f6e4;
-}
-
-:global(.dark) .soft-badge--info,
-:global(.dark) :deep(.soft-badge--info),
-:global(.dark) .trash-dependency-chip--relation,
-:global(.dark) :deep(.trash-dependency-chip--relation) {
-  --soft-badge-bg: rgba(148, 163, 184, 0.1);
-  --soft-badge-border: rgba(148, 163, 184, 0.3);
-  --soft-badge-color: #cbd5e1;
-}
-
-:global(.dark) .soft-badge--warning,
-:global(.dark) :deep(.soft-badge--warning),
-:global(.dark) .trash-dependency-chip--restore-blocked,
-:global(.dark) .trash-dependency-chip--delete-blocked,
-:global(.dark) :deep(.trash-dependency-chip--restore-blocked),
-:global(.dark) :deep(.trash-dependency-chip--delete-blocked) {
-  --soft-badge-bg: rgba(248, 113, 113, 0.12);
-  --soft-badge-border: rgba(251, 146, 60, 0.36);
-  --soft-badge-color: #fed7aa;
-}
-
-:global(.dark) .trash-dependency-chip--cascade,
-:global(.dark) :deep(.trash-dependency-chip--cascade) {
-  --soft-badge-bg: rgba(14, 165, 233, 0.12);
-  --soft-badge-border: rgba(56, 189, 248, 0.34);
-  --soft-badge-color: #bae6fd;
-}
-
-:global(.dark) .trash-dependency-chip--clear,
-:global(.dark) :deep(.trash-dependency-chip--clear) {
-  --soft-badge-bg: rgba(34, 197, 94, 0.12);
-  --soft-badge-border: rgba(74, 222, 128, 0.34);
-  --soft-badge-color: #86efac;
 }
 
 .category-color-options {
@@ -5619,7 +5403,7 @@ onBeforeUnmount(() => {
   background: var(--soft-badge-bg, rgba(100, 116, 139, 0.1)) !important;
   color: var(--soft-badge-color, #334155) !important;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.35;
   overflow-wrap: anywhere;
