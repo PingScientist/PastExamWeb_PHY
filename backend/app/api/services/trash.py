@@ -29,6 +29,7 @@ from app.api.services.archive_submission_lifecycle import (
     LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED,
     get_course_trash_course_id,
     get_course_trash_previous_status,
+    is_course_trash_lifecycle_reason,
     collect_archive_submission_group,
     hard_delete_archive_submission_group,
     is_archive_submission_trashed,
