@@ -1464,15 +1464,18 @@
           <h4 class="mb-2">同課程同考試比對</h4>
           <div v-if="comparisonLoading" class="text-sm text-500">載入中...</div>
           <div v-else-if="comparisonArchives.length === 0" class="text-sm text-500">
-            沒有找到相同課程、學期與類型的既有考古題。
+            沒有找到相同課程、學期與類型的其他投稿。
           </div>
           <DataTable
             v-else
             :value="comparisonArchives"
-            tableStyle="min-width: 36rem"
+            tableStyle="min-width: 48rem"
             responsiveLayout="stack"
             breakpoint="768px"
           >
+            <Column header="課程">
+              <template #body="{ data }">{{ getComparisonCourseName(data) }}</template>
+            </Column>
             <Column field="name" header="考試名稱" />
             <Column field="professor" header="授課教師" />
             <Column field="academic_year" header="學期">
@@ -1481,16 +1484,40 @@
             <Column field="has_answers" header="解答">
               <template #body="{ data }">{{ data.has_answers ? '有' : '無' }}</template>
             </Column>
-            <Column header="操作" style="width: 10rem">
+            <Column header="狀態">
               <template #body="{ data }">
-                <Button
-                  label="並排預覽"
-                  icon="pi pi-columns"
-                  size="small"
-                  outlined
-                  :loading="comparePreviewLoading && comparePreviewArchive?.id === data.id"
-                  @click="openComparePreview(data)"
-                />
+                <Tag
+                  :class="['review-status-chip', getSubmissionStatusClass(data.status)]"
+                  :severity="getSubmissionSeverity(data.status)"
+                >
+                  {{ getSubmissionLabel(data.status) }}
+                </Tag>
+              </template>
+            </Column>
+            <Column header="投稿帳號">
+              <template #body="{ data }">{{ getRequesterDisplay(data) }}</template>
+            </Column>
+            <Column header="操作" style="width: 14rem">
+              <template #body="{ data }">
+                <div class="comparison-row-actions">
+                  <Button
+                    label="並排預覽"
+                    icon="pi pi-columns"
+                    size="small"
+                    outlined
+                    :loading="comparePreviewLoading && comparePreviewArchive?.id === data.id"
+                    @click="openComparePreview(data)"
+                  />
+                  <Button
+                    v-if="canTakedownComparisonItem(data)"
+                    label="下架"
+                    icon="pi pi-eye-slash"
+                    size="small"
+                    severity="secondary"
+                    outlined
+                    @click="confirmTakedownComparisonItem(data)"
+                  />
+                </div>
               </template>
             </Column>
           </DataTable>
@@ -3835,24 +3862,24 @@ const revokeComparePreviewUrls = () => {
   }
 }
 
-const openComparePreview = async (archive) => {
-  if (!selectedArchiveRequest.value?.id || !archive?.id || !archive?.course_id) return
-  comparePreviewArchive.value = archive
+const openComparePreview = async (comparison) => {
+  if (!selectedArchiveRequest.value?.id || !comparison?.id) return
+  comparePreviewArchive.value = comparison
   comparePreviewLoading.value = true
   comparePreviewError.value = false
   revokeComparePreviewUrls()
   showComparePreview.value = true
 
   try {
-    const [requestResponse, archiveResponse] = await Promise.all([
+    const [requestResponse, comparisonResponse] = await Promise.all([
       archiveService.getSubmissionPreviewFile(selectedArchiveRequest.value.id),
-      archiveService.getArchivePreviewFile(archive.course_id, archive.id),
+      archiveService.getSubmissionPreviewFile(comparison.id),
     ])
     compareRequestPreviewUrl.value = URL.createObjectURL(
       new Blob([requestResponse.data], { type: 'application/pdf' })
     )
     compareArchivePreviewUrl.value = URL.createObjectURL(
-      new Blob([archiveResponse.data], { type: 'application/pdf' })
+      new Blob([comparisonResponse.data], { type: 'application/pdf' })
     )
   } catch (error) {
     console.error('載入比對 PDF 失敗:', error)
@@ -3874,33 +3901,52 @@ const closeComparePreview = () => {
 
 const loadArchiveComparison = async (request) => {
   comparisonArchives.value = []
-  if (!request?.subject || !request?.category) return
+  if (!request?.id) return
 
   comparisonLoading.value = true
   try {
-    const matchingCourse = courses.value.find(
-      (course) => course.name === request.subject && course.category === request.category
-    )
-    if (!matchingCourse) return
-
-    const { data } = await courseService.getCourseArchives(matchingCourse.id)
-    comparisonArchives.value = (Array.isArray(data) ? data : [])
-      .filter(
-        (archive) =>
-          Number(archive.academic_year) === Number(request.academic_year) &&
-          archive.archive_type === request.archive_type &&
-          archive.name === request.name
-      )
-      .map((archive) => ({
-        ...archive,
-        course_id: matchingCourse.id,
-      }))
+    const { data } = await archiveService.listSubmissionComparisons(request.id)
+    comparisonArchives.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入比對資料失敗:', error)
     if (isUnauthorizedError(error)) return
     toast.add({ severity: 'error', summary: '錯誤', detail: '比對資料載入失敗', life: 3000 })
   } finally {
     comparisonLoading.value = false
+  }
+}
+
+const getComparisonCourseName = (item) => {
+  return item?.requested_course_name || item?.subject || '—'
+}
+
+const canTakedownComparisonItem = (item) => {
+  return item?.can_takedown === true && normalizeSubmissionStatus(item?.status) === 'approved'
+}
+
+const confirmTakedownComparisonItem = (item) => {
+  if (!canTakedownComparisonItem(item) || !item?.id) return
+  confirm.require({
+    message: '確定要下架這筆比對項目嗎？',
+    header: '確認下架',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: '下架',
+    rejectLabel: '取消',
+    accept: () => takedownComparisonItem(item),
+  })
+}
+
+const takedownComparisonItem = async (item) => {
+  if (!item?.id) return
+  try {
+    await archiveService.takedownSubmission(item.id)
+    toast.add({ severity: 'success', summary: '完成', detail: '已下架', life: 3000 })
+    await loadReviewItems()
+    await loadArchiveComparison(selectedArchiveRequest.value)
+  } catch (error) {
+    console.error('下架比對項目失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: getTrashErrorMessage(error, '下架比對項目失敗'), life: 3000 })
   }
 }
 
@@ -4872,6 +4918,13 @@ onBeforeUnmount(() => {
 
 .review-history-title small {
   color: var(--text-secondary);
+}
+
+.comparison-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .review-sort-header {

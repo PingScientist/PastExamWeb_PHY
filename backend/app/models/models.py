@@ -557,6 +557,10 @@ class ArchiveSubmissionRead(BaseModel):
         from_attributes = True
 
 
+class ArchiveSubmissionComparisonRead(ArchiveSubmissionRead):
+    can_takedown: bool = False
+
+
 class CourseSubmissionUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None

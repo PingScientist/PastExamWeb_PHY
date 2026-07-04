@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.models.models import (
     Archive,
+    ArchiveSubmissionComparisonRead,
     ArchiveSubmission,
     ArchiveSubmissionRead,
     ArchiveSubmissionUpdate,
@@ -580,6 +581,79 @@ async def list_archive_submissions_for_admin(
             skipped_submission_count,
         )
     return archive_submissions
+
+
+@router.get("/admin/submissions/{submission_id}/comparisons", response_model=list[ArchiveSubmissionComparisonRead])
+async def list_archive_submission_comparisons(
+    submission_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+
+    course_name = _normalize_course_name(submission.requested_course_name or submission.subject)
+    category_key = submission.requested_category_key or submission.category
+    if not course_name or not category_key:
+        return []
+
+    comparable_statuses = [
+        SubmissionStatus.PENDING,
+        SubmissionStatus.APPROVED,
+        SubmissionStatus.TAKEDOWN,
+    ]
+    query = (
+        select(ArchiveSubmission, User.name, User.email)
+        .outerjoin(User, User.id == ArchiveSubmission.requester_id)
+        .where(
+            ArchiveSubmission.id != submission.id,
+            ArchiveSubmission.deleted_at.is_(None),
+            ArchiveSubmission.status.in_(comparable_statuses),
+            func.coalesce(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
+            func.coalesce(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
+            ArchiveSubmission.name == submission.name,
+            ArchiveSubmission.academic_year == submission.academic_year,
+            ArchiveSubmission.archive_type == submission.archive_type,
+        )
+    )
+    if submission.requester_id is not None:
+        query = query.where(
+            or_(
+                ArchiveSubmission.requester_id.is_(None),
+                ArchiveSubmission.requester_id != submission.requester_id,
+            )
+        )
+
+    result = await db.execute(query)
+    status_order = {
+        SubmissionStatus.PENDING: 1,
+        SubmissionStatus.APPROVED: 2,
+        SubmissionStatus.TAKEDOWN: 3,
+    }
+    rows = []
+    for comparison, requester_name, requester_email in result.all():
+        normalized_status = _normalize_submission_status(comparison.status)
+        if normalized_status not in comparable_statuses:
+            continue
+
+        payload = ArchiveSubmissionRead.model_validate(comparison).model_dump()
+        payload["requester_name"] = requester_name
+        payload["requester_email"] = requester_email
+        payload["status"] = normalized_status
+        payload["can_takedown"] = normalized_status == SubmissionStatus.APPROVED
+        rows.append(payload)
+
+    rows.sort(
+        key=lambda item: (
+            status_order.get(item["status"], 99),
+            -(item["created_at"].timestamp() if item.get("created_at") else 0),
+        )
+    )
+    return [ArchiveSubmissionComparisonRead.model_validate(item) for item in rows]
 
 
 @router.get("/admin/submissions/{submission_id}/preview-file")
