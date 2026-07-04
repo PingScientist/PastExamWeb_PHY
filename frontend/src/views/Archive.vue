@@ -310,7 +310,7 @@
                                 outlined
                                 aria-label="刪除"
                                 title="刪除"
-                                class="archive-action-delete archive-action-danger"
+                                class="archive-action-delete archive-action-danger admin-danger-outline-button danger-outline-button"
                               />
                             </div>
                           </div>
@@ -399,6 +399,7 @@
                     <div class="submission-status-title">
                       <strong>{{ item.subject }}</strong>
                       <span>{{ item.name }}</span>
+                      <small class="my-submission-id">投稿編號：{{ formatMySubmissionId(item) }}</small>
                     </div>
                   </div>
                   <div class="submission-status-meta">
@@ -1032,6 +1033,11 @@ function getArchiveSubmissionKindClass(item) {
   if (item?.requested_category_key) return 'soft-badge--new-course-category'
   if (item?.requested_course_name) return 'soft-badge--new-course'
   return 'soft-badge--type'
+}
+
+function formatMySubmissionId(item) {
+  const id = item?.submission_id ?? item?.submissionId ?? item?.id ?? item?.source_submission_id
+  return id !== null && id !== undefined && id !== '' ? `#${id}` : '—'
 }
 
 function isBoilerplateReviewNote(note) {
@@ -2331,20 +2337,10 @@ const mobileMenuItems = computed(() => {
   padding-left: 0;
 }
 
-.archive-record-actions :deep(.archive-action-delete.p-button) {
-  color: #9b3a35;
-  border-color: rgba(155, 58, 53, 0.42);
-  background: rgba(155, 58, 53, 0.03);
-}
-
 .archive-record-actions :deep(.archive-action-edit.p-button) {
   color: #426b61;
   border-color: #c5d8d0;
   background: #fbfdfc;
-}
-
-.archive-record-actions :deep(.archive-action-danger.p-button) {
-  color: #9b3a35;
 }
 
 .archive-dark .archive-filter-bar {
@@ -2375,12 +2371,6 @@ const mobileMenuItems = computed(() => {
   color: #b4cbc3;
   border-color: #29483f;
   background: #0f1a17;
-}
-
-.archive-dark .archive-record-actions :deep(.archive-action-delete.p-button) {
-  color: #f0aaa4;
-  border-color: rgba(240, 170, 164, 0.36);
-  background: rgba(155, 58, 53, 0.06);
 }
 
 @media (max-width: 1199px) {
@@ -3278,6 +3268,14 @@ const mobileMenuItems = computed(() => {
 
 .submission-status-title span {
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.my-submission-id {
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
