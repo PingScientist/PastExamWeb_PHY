@@ -881,9 +881,14 @@
                           @click="runReviewRowAction(data, action.key)"
                         />
                         </div>
-                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note" :title="getReviewTrashNote(data, true)">
-                          {{ getReviewTrashNote(data) }}
-                        </small>
+                        <div
+                          v-if="getReviewTrashNote(data)"
+                          :class="['review-card-action-note', getReviewTrashNoteClass(data)]"
+                          :title="getReviewTrashNote(data, true)"
+                        >
+                          <i :class="getReviewTrashNoteIcon(data)" aria-hidden="true"></i>
+                          <span>{{ getReviewTrashNote(data) }}</span>
+                        </div>
                       </div>
                     </template>
                   </Column>
@@ -1010,9 +1015,14 @@
                           @click="runReviewRowAction(data, action.key)"
                         />
                         </div>
-                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note" :title="getReviewTrashNote(data, true)">
-                          {{ getReviewTrashNote(data) }}
-                        </small>
+                        <div
+                          v-if="getReviewTrashNote(data)"
+                          :class="['review-card-action-note', getReviewTrashNoteClass(data)]"
+                          :title="getReviewTrashNote(data, true)"
+                        >
+                          <i :class="getReviewTrashNoteIcon(data)" aria-hidden="true"></i>
+                          <span>{{ getReviewTrashNote(data) }}</span>
+                        </div>
                       </div>
                     </template>
                   </Column>
@@ -1931,19 +1941,28 @@ const categoryForm = ref({
   name: '',
   label: '',
   icon: 'pi pi-fw pi-book',
-  badge_color: 'blue',
+  badge_color: 'slate',
 })
 const categoryFormErrors = ref({})
-const DEFAULT_CATEGORY_BADGE_COLOR = 'blue'
+const DEFAULT_CATEGORY_BADGE_COLOR = 'slate'
 const categoryBadgeColorOptions = [
-  { label: '藍色', value: 'blue' },
-  { label: '綠色', value: 'green' },
+  { label: '深藍', value: 'navy' },
+  { label: '青綠', value: 'teal' },
+  { label: '森綠', value: 'forest' },
   { label: '琥珀', value: 'amber' },
-  { label: '紫色', value: 'purple' },
-  { label: '玫瑰', value: 'rose' },
+  { label: '酒紅', value: 'burgundy' },
+  { label: '紫色', value: 'violet' },
   { label: '灰色', value: 'slate' },
+  { label: '靛藍', value: 'indigo' },
 ]
 const categoryBadgeColorValues = new Set(categoryBadgeColorOptions.map((option) => option.value))
+const legacyCategoryBadgeColorMap = {
+  blue: 'navy',
+  green: 'forest',
+  purple: 'violet',
+  rose: 'burgundy',
+  gray: 'slate',
+}
 const users = ref([])
 const usersLoading = ref(false)
 const userSearchQuery = ref('')
@@ -2551,7 +2570,8 @@ const getCategoryDisplayLabel = (category) => {
 
 const normalizeCategoryBadgeColor = (color) => {
   const value = (color || DEFAULT_CATEGORY_BADGE_COLOR).toString().trim().toLowerCase()
-  return categoryBadgeColorValues.has(value) ? value : DEFAULT_CATEGORY_BADGE_COLOR
+  const mappedValue = legacyCategoryBadgeColorMap[value] || value
+  return categoryBadgeColorValues.has(mappedValue) ? mappedValue : DEFAULT_CATEGORY_BADGE_COLOR
 }
 
 const getCategoryBadgeColor = (category) => {
@@ -2717,6 +2737,21 @@ const getReviewTrashNote = (item, fullText = false) => {
     return '關聯考古題在垃圾桶，請先復原考古題。'
   }
   return ''
+}
+
+const isReviewTrashWarningNote = (item) => {
+  const note = getReviewTrashNote(item)
+  return note.includes('無法復原') || note.includes('永久刪除')
+}
+
+const getReviewTrashNoteClass = (item) => {
+  return isReviewTrashWarningNote(item)
+    ? 'review-card-action-note--warning'
+    : 'review-card-action-note--info'
+}
+
+const getReviewTrashNoteIcon = (item) => {
+  return isReviewTrashWarningNote(item) ? 'pi pi-exclamation-circle' : 'pi pi-info-circle'
 }
 
 const runReviewRowAction = (item, action) => {
@@ -4650,11 +4685,61 @@ onBeforeUnmount(() => {
 }
 
 .review-card-action-note {
-  display: block;
-  margin: 0;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0;
   width: 100%;
-  max-width: 20rem;
+  max-width: 18rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-ground) 55%, transparent);
+  color: var(--text-color-secondary);
+  font-size: 0.76rem;
+  line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.review-card-action-note .pi {
+  flex: 0 0 auto;
+  margin-top: 0.08rem;
+  font-size: 0.78rem;
+}
+
+.review-card-action-note span {
+  min-width: 0;
+}
+
+.review-card-action-note--info {
+  border-color: #8aa1b8;
+  border-left-color: #3d647e;
+  background: #eef3f6;
+  color: #344b5d;
+}
+
+.review-card-action-note--warning {
+  border-color: #c99a61;
+  border-left-color: #9a5f23;
+  background: #f6eee3;
+  color: #694018;
+}
+
+:global(.dark) .review-card-action-note--info,
+:global(.dark) :deep(.review-card-action-note--info) {
+  border-color: rgba(138, 161, 184, 0.44);
+  border-left-color: rgba(126, 169, 196, 0.72);
+  background: rgba(61, 100, 126, 0.18);
+  color: #c7d3dd;
+}
+
+:global(.dark) .review-card-action-note--warning,
+:global(.dark) :deep(.review-card-action-note--warning) {
+  border-color: rgba(201, 154, 97, 0.46);
+  border-left-color: rgba(225, 171, 95, 0.76);
+  background: rgba(154, 95, 35, 0.18);
+  color: #ead4b8;
 }
 
 .review-sort-icon.pi-sort-amount-up-alt,
@@ -4713,88 +4798,116 @@ onBeforeUnmount(() => {
   white-space: normal;
 }
 
-.category-color-option.category-badge--blue,
-:deep(.category-badge--blue) {
-  background: #dbeafe;
-  border-color: #60a5fa;
-  color: #1d4ed8;
+.category-color-option.category-badge--navy,
+:deep(.category-badge--navy) {
+  background: #dbe4f0;
+  border-color: #475f83;
+  color: #1f3a5f;
 }
 
-.category-color-option.category-badge--green,
-:deep(.category-badge--green) {
-  background: #dcfce7;
-  border-color: #4ade80;
-  color: #166534;
+.category-color-option.category-badge--teal,
+:deep(.category-badge--teal) {
+  background: #d5ebe7;
+  border-color: #2f766e;
+  color: #175e58;
+}
+
+.category-color-option.category-badge--forest,
+:deep(.category-badge--forest) {
+  background: #dce8d8;
+  border-color: #4f7a45;
+  color: #315f2a;
 }
 
 .category-color-option.category-badge--amber,
 :deep(.category-badge--amber) {
-  background: #fef3c7;
-  border-color: #f59e0b;
-  color: #92400e;
+  background: #efe2c8;
+  border-color: #9a6b24;
+  color: #7a4d12;
 }
 
-.category-color-option.category-badge--purple,
-:deep(.category-badge--purple) {
-  background: #ede9fe;
-  border-color: #a78bfa;
-  color: #6d28d9;
+.category-color-option.category-badge--burgundy,
+:deep(.category-badge--burgundy) {
+  background: #eed8dd;
+  border-color: #8f3f50;
+  color: #743041;
 }
 
-.category-color-option.category-badge--rose,
-:deep(.category-badge--rose) {
-  background: #ffe4e6;
-  border-color: #fb7185;
-  color: #be123c;
+.category-color-option.category-badge--violet,
+:deep(.category-badge--violet) {
+  background: #e3dcef;
+  border-color: #6d5599;
+  color: #513f7d;
 }
 
 .category-color-option.category-badge--slate,
 :deep(.category-badge--slate) {
-  background: #e2e8f0;
-  border-color: #94a3b8;
+  background: #dfe4ea;
+  border-color: #64748b;
   color: #334155;
 }
 
-:global(.dark) .category-color-option.category-badge--blue,
-:global(.dark) :deep(.category-badge--blue) {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(96, 165, 250, 0.56);
-  color: #bfdbfe;
+.category-color-option.category-badge--indigo,
+:deep(.category-badge--indigo) {
+  background: #dde1f2;
+  border-color: #5262a3;
+  color: #364381;
 }
 
-:global(.dark) .category-color-option.category-badge--green,
-:global(.dark) :deep(.category-badge--green) {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(74, 222, 128, 0.52);
-  color: #86efac;
+:global(.dark) .category-color-option.category-badge--navy,
+:global(.dark) :deep(.category-badge--navy) {
+  background: rgba(71, 95, 131, 0.28);
+  border-color: rgba(125, 151, 190, 0.58);
+  color: #c7d6ea;
+}
+
+:global(.dark) .category-color-option.category-badge--teal,
+:global(.dark) :deep(.category-badge--teal) {
+  background: rgba(45, 118, 110, 0.26);
+  border-color: rgba(89, 170, 160, 0.52);
+  color: #b7ded8;
+}
+
+:global(.dark) .category-color-option.category-badge--forest,
+:global(.dark) :deep(.category-badge--forest) {
+  background: rgba(79, 122, 69, 0.28);
+  border-color: rgba(128, 174, 116, 0.52);
+  color: #c2dfb9;
 }
 
 :global(.dark) .category-color-option.category-badge--amber,
 :global(.dark) :deep(.category-badge--amber) {
-  background: rgba(245, 158, 11, 0.22);
-  border-color: rgba(251, 191, 36, 0.55);
-  color: #fcd34d;
+  background: rgba(154, 107, 36, 0.28);
+  border-color: rgba(199, 153, 78, 0.56);
+  color: #ead2a3;
 }
 
-:global(.dark) .category-color-option.category-badge--purple,
-:global(.dark) :deep(.category-badge--purple) {
-  background: rgba(139, 92, 246, 0.22);
-  border-color: rgba(167, 139, 250, 0.56);
-  color: #ddd6fe;
+:global(.dark) .category-color-option.category-badge--burgundy,
+:global(.dark) :deep(.category-badge--burgundy) {
+  background: rgba(143, 63, 80, 0.28);
+  border-color: rgba(194, 105, 122, 0.54);
+  color: #e5bec8;
 }
 
-:global(.dark) .category-color-option.category-badge--rose,
-:global(.dark) :deep(.category-badge--rose) {
-  background: rgba(244, 63, 94, 0.2);
-  border-color: rgba(251, 113, 133, 0.54);
-  color: #fecdd3;
+:global(.dark) .category-color-option.category-badge--violet,
+:global(.dark) :deep(.category-badge--violet) {
+  background: rgba(109, 85, 153, 0.28);
+  border-color: rgba(159, 137, 199, 0.56);
+  color: #d9cdef;
 }
 
 :global(.dark) .category-color-option.category-badge--slate,
 :global(.dark) :deep(.category-badge--slate) {
-  background: rgba(100, 116, 139, 0.24);
+  background: rgba(100, 116, 139, 0.26);
   border-color: rgba(148, 163, 184, 0.5);
-  color: #cbd5e1;
+  color: #d1d9e4;
+}
+
+:global(.dark) .category-color-option.category-badge--indigo,
+:global(.dark) :deep(.category-badge--indigo) {
+  background: rgba(82, 98, 163, 0.28);
+  border-color: rgba(131, 146, 205, 0.56);
+  color: #cfd6f1;
 }
 
 :deep(.review-admin-upload-chip) {
@@ -6083,10 +6196,7 @@ onBeforeUnmount(() => {
 
   :deep(.review-card-action-note) {
     grid-column: 1 / -1;
-    color: var(--text-color-secondary);
-    font-size: 0.75rem;
-    line-height: 1.25;
-    margin-top: 0.2rem;
+    max-width: 100%;
   }
 
   :deep(.review-card-actions .p-button) {
@@ -6234,10 +6344,7 @@ onBeforeUnmount(() => {
 
   :deep(.review-card-action-note) {
     width: 100%;
-    color: var(--text-color-secondary);
-    font-size: 0.75rem;
-    line-height: 1.25;
-    margin-top: 0.2rem;
+    max-width: 18rem;
   }
 
   /* Ensure buttons don't wrap on desktop */

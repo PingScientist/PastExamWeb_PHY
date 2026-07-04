@@ -70,14 +70,30 @@ DEFAULT_CATEGORIES = [
     ("math-department", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
 ]
 DEFAULT_CATEGORY_ORDER = {item[0]: index for index, item in enumerate(DEFAULT_CATEGORIES)}
-DEFAULT_CATEGORY_BADGE_COLOR = "blue"
-CATEGORY_BADGE_COLOR_TOKENS = {"blue", "green", "amber", "purple", "rose", "slate"}
+DEFAULT_CATEGORY_BADGE_COLOR = "slate"
+CATEGORY_BADGE_COLOR_TOKENS = {
+    "navy",
+    "teal",
+    "forest",
+    "amber",
+    "burgundy",
+    "violet",
+    "slate",
+    "indigo",
+}
+CATEGORY_BADGE_COLOR_ALIASES = {
+    "blue": "navy",
+    "green": "forest",
+    "purple": "violet",
+    "rose": "burgundy",
+    "gray": "slate",
+}
 DEFAULT_CATEGORY_BADGE_COLORS = {
-    "fundamental": "blue",
-    "required": "green",
+    "fundamental": "navy",
+    "required": "forest",
     "experience": "amber",
-    "optional": "purple",
-    "graduate": "rose",
+    "optional": "violet",
+    "graduate": "burgundy",
     "math-department": "slate",
 }
 LEGACY_CATEGORY_ALIASES = {
@@ -134,6 +150,7 @@ def _normalize_category_badge_color(color: str | None) -> str:
     normalized = (color or DEFAULT_CATEGORY_BADGE_COLOR).strip().lower()
     if not normalized:
         return DEFAULT_CATEGORY_BADGE_COLOR
+    normalized = CATEGORY_BADGE_COLOR_ALIASES.get(normalized, normalized)
     if normalized not in CATEGORY_BADGE_COLOR_TOKENS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
