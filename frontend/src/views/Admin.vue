@@ -74,7 +74,9 @@
                 </Column>
                   <Column field="label" header="科目標籤">
                     <template #body="{ data }">
-                      <Tag severity="secondary">{{ data.label || data.name }}</Tag>
+                      <Tag severity="secondary" :class="getCategoryBadgeClass(data)">
+                        {{ data.label || data.name }}
+                      </Tag>
                     </template>
                   </Column>
                   <Column field="key" header="Key">
@@ -156,14 +158,16 @@
                       </span>
                     </section>
                     <section class="category-card-meta">
-                      <Tag severity="secondary">{{ category.label || category.name }}</Tag>
+                      <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                        {{ category.label || category.name }}
+                      </Tag>
                       <Tag :severity="category.is_active ? 'success' : 'secondary'">
                         {{ category.is_active ? '啟用中' : '已停用' }}
                       </Tag>
                     </section>
                     <section class="admin-card-actions admin-mobile-card-actions category-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
+                    <Button
+                      icon="pi pi-pencil"
                         label="編輯"
                         aria-label="編輯分類"
                         title="編輯分類"
@@ -277,7 +281,7 @@
                 </Column>
                 <Column field="category" header="分類" style="width: 22%">
                   <template #body="{ data }">
-                    <Tag :severity="getCategorySeverity(data.category)" class="text-sm">
+                    <Tag severity="secondary" :class="['text-sm', getCategoryBadgeClass(data.category)]">
                       {{ getCategoryName(data.category) }}
                     </Tag>
                   </template>
@@ -285,8 +289,8 @@
                 <Column header="操作" style="width: 18%">
                   <template #body="{ data }">
                     <div class="admin-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
+                    <Button
+                      icon="pi pi-pencil"
                         severity="warning"
                         size="small"
                         @click="openEditDialog(data)"
@@ -333,7 +337,7 @@
                       :disabled="!canMoveCourse(course, 1) || courseOrderLoading"
                       @click="moveCourse(course, 1)"
                     />
-                    <Tag :severity="getCategorySeverity(course.category)" class="course-card-category">
+                    <Tag severity="secondary" :class="['course-card-category', getCategoryBadgeClass(course.category)]">
                       {{ getCategoryName(course.category) }}
                     </Tag>
                   </section>
@@ -468,30 +472,48 @@
                     <span v-else class="text-sm text-500"> 從未登入 </span>
                   </template>
                 </Column>
-                <Column header="操作" style="width: 20%">
+                <Column field="is_online" header="上線狀態" sortable style="width: 16%">
                   <template #body="{ data }">
-                    <div class="admin-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
-                        severity="warning"
-                        size="small"
-                        @click="openEditUserDialog(data)"
-                        label="編輯"
-                        aria-label="編輯使用者"
-                        title="編輯使用者"
-                      />
-                      <Button
-                        icon="pi pi-trash"
-                        severity="danger"
-                        size="small"
-                        @click="confirmDeleteUser(data)"
-                        label="刪除"
-                        aria-label="刪除使用者"
-                        title="刪除使用者"
-                        :disabled="data.id === currentUserId"
-                      />
-                    </div>
+                    <span class="user-online-badge" :class="getOnlineStatusDotClass(data)">
+                      <i class="pi pi-circle-fill"></i>
+                      <span>{{ getOnlineStatusLabel(data) }}</span>
+                    </span>
                   </template>
+                </Column>
+                <Column header="操作" style="width: 24%; min-width: 17rem">
+                  <template #body="{ data }">
+                    <div class="user-management-table-actions">
+                    <Button
+                      icon="pi pi-pencil"
+                      severity="warning"
+                      size="small"
+                      @click="openEditUserDialog(data)"
+                      label="編輯"
+                      aria-label="編輯使用者"
+                      title="編輯使用者"
+                    />
+                    <Button
+                      icon="pi pi-key"
+                      severity="info"
+                      size="small"
+                      @click="openResetPasswordDialog(data)"
+                      label="重設密碼"
+                      aria-label="重設使用者密碼"
+                      :title="data.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
+                      :disabled="!data.is_local"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      @click="confirmDeleteUser(data)"
+                      label="刪除"
+                      aria-label="刪除使用者"
+                      title="刪除使用者"
+                      :disabled="data.id === currentUserId"
+                    />
+                  </div>
+                    </template>
                 </Column>
               </DataTable>
               <div v-if="!usersLoading" class="admin-mobile-list admin-mobile-list--users">
@@ -510,8 +532,12 @@
                     <span class="admin-card-meta-text">
                       {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
                     </span>
+                    <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
+                      <i class="pi pi-circle-fill"></i>
+                      <span>{{ getOnlineStatusLabel(user) }}</span>
+                    </span>
                   </section>
-                  <section class="admin-card-actions admin-mobile-card-actions">
+                  <section class="admin-card-actions admin-mobile-card-actions user-management-card-actions">
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -520,6 +546,16 @@
                       label="編輯"
                       aria-label="編輯使用者"
                       title="編輯使用者"
+                    />
+                    <Button
+                      icon="pi pi-key"
+                      severity="info"
+                      size="small"
+                      @click="openResetPasswordDialog(user)"
+                      label="重設密碼"
+                      aria-label="重設使用者密碼"
+                      :title="user.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
+                      :disabled="!user.is_local"
                     />
                     <Button
                       icon="pi pi-trash"
@@ -658,8 +694,8 @@
                 <Column header="操作" style="width: 20%">
                   <template #body="{ data }">
                     <div class="admin-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
+                    <Button
+                      icon="pi pi-pencil"
                         severity="warning"
                         size="small"
                         @click="openNotificationEditDialog(data)"
@@ -877,9 +913,14 @@
                           @click="runReviewRowAction(data, action.key)"
                         />
                         </div>
-                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note" :title="getReviewTrashNote(data, true)">
-                          {{ getReviewTrashNote(data) }}
-                        </small>
+                        <div
+                          v-if="getReviewTrashNote(data)"
+                          :class="['review-card-action-note', getReviewTrashNoteClass(data)]"
+                          :title="getReviewTrashNote(data, true)"
+                        >
+                          <i :class="getReviewTrashNoteIcon(data)" aria-hidden="true"></i>
+                          <span class="review-card-action-note__text">{{ getReviewTrashNote(data) }}</span>
+                        </div>
                       </div>
                     </template>
                   </Column>
@@ -1006,9 +1047,14 @@
                           @click="runReviewRowAction(data, action.key)"
                         />
                         </div>
-                        <small v-if="getReviewTrashNote(data)" class="review-card-action-note" :title="getReviewTrashNote(data, true)">
-                          {{ getReviewTrashNote(data) }}
-                        </small>
+                        <div
+                          v-if="getReviewTrashNote(data)"
+                          :class="['review-card-action-note', getReviewTrashNoteClass(data)]"
+                          :title="getReviewTrashNote(data, true)"
+                        >
+                          <i :class="getReviewTrashNoteIcon(data)" aria-hidden="true"></i>
+                          <span class="review-card-action-note__text">{{ getReviewTrashNote(data) }}</span>
+                        </div>
                       </div>
                     </template>
                   </Column>
@@ -1069,6 +1115,7 @@
                 tableStyle="min-width: 72rem"
                 responsiveLayout="stack"
                 breakpoint="768px"
+                :rowClass="getTrashRowClass"
               >
                 <Column field="deleted_at">
                   <template #header>
@@ -1130,7 +1177,10 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <Tag :severity="getTrashStatusSeverity(data.status)">
+                    <Tag
+                      :class="['review-status-chip', getSubmissionStatusClass(data.status)]"
+                      :severity="getTrashStatusSeverity(data.status)"
+                    >
                       {{ getTrashStatusLabel(data.status) }}
                     </Tag>
                   </template>
@@ -1153,10 +1203,11 @@
                         v-for="dependency in getTrashDependencies(data)"
                         :key="dependency.key"
                         :severity="getTrashDependencySeverity(dependency)"
+                        :class="['trash-dependency-chip', getTrashDependencyChipClass(dependency)]"
                       >
                         {{ dependency.label }}
                       </Tag>
-                      <span v-if="!getTrashDependencies(data).length" class="text-sm text-500">無阻擋</span>
+                      <span v-if="!getTrashDependencies(data).length" class="trash-dependency-chip trash-dependency-chip--clear">無阻擋</span>
                     </div>
                   </template>
                 </Column>
@@ -1164,6 +1215,7 @@
                   <template #body="{ data }">
                     <div class="admin-card-actions">
                       <Button
+                        v-if="canRestoreTrashItem(data)"
                         icon="pi pi-undo"
                         label="還原"
                         size="small"
@@ -1172,6 +1224,7 @@
                         @click="confirmRestoreTrashItem(data)"
                       />
                       <Button
+                        v-if="canPermanentDeleteTrashItem(data)"
                         icon="pi pi-trash"
                         label="永久刪除"
                         size="small"
@@ -1179,6 +1232,12 @@
                         text
                         @click="confirmPermanentDeleteTrashItem(data)"
                       />
+                      <span
+                        v-if="!canRestoreTrashItem(data) && !canPermanentDeleteTrashItem(data)"
+                        class="text-xs text-500"
+                      >
+                        目前無可用操作
+                      </span>
                     </div>
                   </template>
                 </Column>
@@ -1279,6 +1338,32 @@
             <label>PrimeIcons class</label>
             <InputText v-model="categoryForm.icon" placeholder="pi pi-fw pi-book" class="w-full" />
           </div>
+          <div class="flex flex-column gap-2">
+            <label>分類標籤顏色</label>
+            <div class="category-color-options" role="radiogroup" aria-label="分類標籤顏色">
+              <button
+                v-for="option in categoryBadgeColorOptions"
+                :key="option.value"
+                type="button"
+                class="category-color-option"
+                :class="[
+                  getCategoryBadgeClass({ badge_color: option.value }),
+                  { 'is-selected': categoryForm.badge_color === option.value },
+                ]"
+                role="radio"
+                :aria-checked="categoryForm.badge_color === option.value"
+                @click="categoryForm.badge_color = option.value"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <div class="category-badge-preview">
+              <span>預覽</span>
+              <Tag severity="secondary" :class="getCategoryBadgeClass(categoryForm)">
+                {{ categoryForm.label || categoryForm.name || '分類標籤' }}
+              </Tag>
+            </div>
+          </div>
         </div>
 
         <div class="flex pt-6 justify-end gap-2.5">
@@ -1377,9 +1462,12 @@
 
         <div class="mt-4">
           <h4 class="mb-2">同課程同考試比對</h4>
+          <div class="comparison-basis mb-2">
+            {{ getComparisonBasisText(selectedArchiveRequest) }}
+          </div>
           <div v-if="comparisonLoading" class="text-sm text-500">載入中...</div>
           <div v-else-if="comparisonArchives.length === 0" class="text-sm text-500">
-            沒有找到相同課程、學期與類型的既有考古題。
+            沒有找到同課程、同教師、同學期、同考試名稱的其他投稿。
           </div>
           <DataTable
             v-else
@@ -1388,24 +1476,46 @@
             responsiveLayout="stack"
             breakpoint="768px"
           >
-            <Column field="name" header="考試名稱" />
-            <Column field="professor" header="授課教師" />
-            <Column field="academic_year" header="學期">
-              <template #body="{ data }">{{ formatAcademicTerm(data.academic_year) }}</template>
+            <Column header="投稿編號">
+              <template #body="{ data }">{{ formatComparisonSubmissionId(data) }}</template>
             </Column>
             <Column field="has_answers" header="解答">
               <template #body="{ data }">{{ data.has_answers ? '有' : '無' }}</template>
             </Column>
-            <Column header="操作" style="width: 10rem">
+            <Column header="狀態">
               <template #body="{ data }">
-                <Button
-                  label="並排預覽"
-                  icon="pi pi-columns"
-                  size="small"
-                  outlined
-                  :loading="comparePreviewLoading && comparePreviewArchive?.id === data.id"
-                  @click="openComparePreview(data)"
-                />
+                <Tag
+                  :class="['review-status-chip', getSubmissionStatusClass(data.status)]"
+                  :severity="getSubmissionSeverity(data.status)"
+                >
+                  {{ getSubmissionLabel(data.status) }}
+                </Tag>
+              </template>
+            </Column>
+            <Column header="投稿帳號">
+              <template #body="{ data }">{{ getRequesterDisplay(data) }}</template>
+            </Column>
+            <Column header="操作" style="width: 14rem">
+              <template #body="{ data }">
+                <div class="comparison-row-actions">
+                  <Button
+                    label="並排預覽"
+                    icon="pi pi-columns"
+                    size="small"
+                    outlined
+                    :loading="comparePreviewLoading && comparePreviewArchive?.id === data.id"
+                    @click="openComparePreview(data)"
+                  />
+                  <Button
+                    v-if="canTakedownComparisonItem(data)"
+                    label="下架"
+                    icon="pi pi-eye-slash"
+                    size="small"
+                    severity="secondary"
+                    outlined
+                    @click="confirmTakedownComparisonItem(data)"
+                  />
+                </div>
               </template>
             </Column>
           </DataTable>
@@ -1612,6 +1722,72 @@
       </Dialog>
 
       <Dialog
+        :visible="showResetPasswordDialog"
+        @update:visible="showResetPasswordDialog = $event"
+        @hide="closeResetPasswordDialog"
+        :modal="true"
+        :draggable="false"
+        :closeOnEscape="false"
+        header="重設密碼"
+        :style="{ width: '460px', maxWidth: '92vw' }"
+        :autoFocus="false"
+      >
+        <div class="flex flex-column gap-3">
+          <div class="flex flex-column gap-1">
+            <label class="font-semibold">使用者</label>
+            <div class="text-sm">
+              {{ getResetPasswordTargetLabel(resetPasswordUser) }}
+              <span v-if="resetPasswordUser?.email" class="text-500">（{{ resetPasswordUser.email }}）</span>
+            </div>
+          </div>
+
+          <div class="flex flex-column gap-2">
+            <label>新密碼</label>
+            <Password
+              v-model="resetPasswordForm.newPassword"
+              placeholder="輸入新密碼"
+              class="w-full"
+              inputClass="w-full"
+              :class="{ 'p-invalid': resetPasswordFormErrors.newPassword }"
+              toggleMask
+              :feedback="false"
+              :maxlength="128"
+            />
+            <small v-if="resetPasswordFormErrors.newPassword" class="p-error">
+              {{ resetPasswordFormErrors.newPassword }}
+            </small>
+          </div>
+
+          <div class="flex flex-column gap-2">
+            <label>確認新密碼</label>
+            <Password
+              v-model="resetPasswordForm.confirmPassword"
+              placeholder="再次輸入新密碼"
+              class="w-full"
+              inputClass="w-full"
+              :class="{ 'p-invalid': resetPasswordFormErrors.confirmPassword }"
+              toggleMask
+              :feedback="false"
+              :maxlength="128"
+            />
+            <small v-if="resetPasswordFormErrors.confirmPassword" class="p-error">
+              {{ resetPasswordFormErrors.confirmPassword }}
+            </small>
+          </div>
+        </div>
+
+        <div class="flex pt-6 justify-end gap-2.5">
+          <Button label="取消" icon="pi pi-times" severity="secondary" @click="closeResetPasswordDialog" />
+          <Button
+            label="確認重設"
+            icon="pi pi-key"
+            severity="success"
+            @click="resetPassword"
+            :loading="resetPasswordLoading"
+          />
+        </div>
+      </Dialog>
+      <Dialog
         :visible="showNotificationDialog"
         @update:visible="showNotificationDialog = $event"
         :modal="true"
@@ -1721,68 +1897,109 @@
         :draggable="false"
         :closeOnEscape="true"
         header="如何閱讀「依賴與阻擋」"
-        :style="{ width: '40rem', maxWidth: '92vw' }"
+        :style="{ width: '44rem', maxWidth: '92vw' }"
       >
         <div class="trash-dependency-help">
           <p class="trash-dependency-help-intro">
-            這一欄位用來快速判斷資料是否可刪除、是否可復原，以及刪除時會不會帶走關聯資料。
+            這一欄會告訴你：能不能還原、能不能永久刪除，以及哪些資料會一起處理。
           </p>
 
           <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">常見標籤</h4>
-            <ul class="trash-dependency-help-list">
-              <li><strong>無阻擋</strong>：目前沒有會影響永久刪除或復原的啟用中依賴。</li>
-              <li><strong>無法永久刪除</strong>：仍有啟用中資料連到此項目，需先處理後再刪除。</li>
-              <li><strong>一併永久刪除</strong>：已在垃圾桶中的子項會跟著刪除。</li>
-              <li><strong>關聯</strong>：與其他資料有關係，通常不一定阻擋。</li>
-            </ul>
+            <h4 class="trash-dependency-help-title">快速判斷</h4>
+            <div class="trash-dependency-help-label-grid">
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-chip--restore-blocked">阻擋還原</span>
+                <p>現在不能還原。通常要先復原父層，或必要關聯已不存在。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-chip--delete-blocked">阻擋永久刪除</span>
+                <p>現在不能永久刪除。通常仍有啟用中的資料依附。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-chip--cascade">一併永久刪除</span>
+                <p>刪除此項時，列出的資料會一起永久刪除。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-chip--relation">關聯</span>
+                <p>只是提醒資料有關，通常不會直接阻擋。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-chip--clear">無阻擋</span>
+                <p>目前沒有影響還原或永久刪除的限制。</p>
+              </article>
+            </div>
           </section>
 
           <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">縮排判斷</h4>
-            <p class="trash-dependency-help-note">在「全部」篩選中，縮排代表垃圾桶中的父子關係。</p>
-            <ul class="trash-dependency-help-list">
-              <li>刪除父項時，標示為一併永久刪除的子項也會被一起刪除。</li>
-            </ul>
-            <p class="trash-dependency-help-rule">課程 → 考古題</p>
-            <p class="trash-dependency-help-rule">考古題投稿 → 考古題</p>
-            <p class="trash-dependency-help-rule">課程分類 → 課程 → 考古題</p>
+            <h4 class="trash-dependency-help-title">按鈕規則</h4>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 有「阻擋還原」 → 不顯示還原。</p>
+              <p><span aria-hidden="true">-</span> 有「阻擋永久刪除」 → 不顯示永久刪除。</p>
+              <p><span aria-hidden="true">-</span> 只有「一併永久刪除」或「關聯」 → 按鈕不會自動隱藏。</p>
+            </div>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">縮排怎麼看</h4>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 只有「已在垃圾桶」的項目會出現在縮排中。</p>
+              <p><span aria-hidden="true">-</span> 只是暫時下架的投稿，仍留在審核中心，不會出現在垃圾桶縮排。</p>
+            </div>
+            <p class="trash-dependency-help-note">縮排只代表目前垃圾桶中的父子關係，不代表所有歷史關聯都會出現。</p>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">兩種常見流程</h4>
+            <div class="trash-dependency-help-flow-grid">
+              <article class="trash-dependency-help-flow-card">
+                <h5>先刪投稿，再刪課程 / 分類</h5>
+                <div class="trash-dependency-help-flow" aria-label="課程分類 到 課程 到 考古題投稿 到 考古題">
+                  <span>課程分類</span>
+                  <i aria-hidden="true">→</i>
+                  <span>課程</span>
+                  <i aria-hidden="true">→</i>
+                  <span>考古題投稿</span>
+                  <i aria-hidden="true">→</i>
+                  <span>考古題</span>
+                </div>
+                <p>投稿已從審核中心按「刪除」，所以投稿本身也是垃圾桶項目。關聯考古題會列在投稿底下。</p>
+              </article>
+              <article class="trash-dependency-help-flow-card">
+                <h5>直接刪課程 / 分類</h5>
+                <div class="trash-dependency-help-flow" aria-label="課程分類 到 課程 到 考古題">
+                  <span>課程分類</span>
+                  <i aria-hidden="true">→</i>
+                  <span>課程</span>
+                  <i aria-hidden="true">→</i>
+                  <span>考古題</span>
+                </div>
+                <p>投稿只是因原課程刪除而暫時下架，仍留在審核中心，所以不會出現在垃圾桶縮排。</p>
+                <div class="trash-dependency-help-note">
+                  <p>若之後永久刪除此課程，底下考古題會一併永久刪除。</p>
+                  <p>相關投稿會進入垃圾桶並標示無法復原。</p>
+                  <p>因父層課程與考古題已不存在，投稿會以獨立項目顯示。</p>
+                </div>
+              </article>
+            </div>
           </section>
 
           <section class="trash-dependency-help-section">
             <h4 class="trash-dependency-help-title">考古題與投稿</h4>
-            <ul class="trash-dependency-help-list">
-              <li>考古題投稿通過後可能建立正式考古題，兩者會互相關聯。</li>
-              <li>刪除投稿：投稿進垃圾桶，關聯考古題會列在投稿底下。</li>
-              <li>刪除考古題：考古題進垃圾桶，相關投稿會暫時下架，但不一定進垃圾桶。</li>
-              <li>若投稿仍啟用並連到考古題，考古題可能被阻擋永久刪除。</li>
-            </ul>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 刪除投稿：投稿進垃圾桶，關聯考古題也會被帶入。</p>
+              <p><span aria-hidden="true">-</span> 刪除考古題：考古題進垃圾桶，相關投稿通常只會暫時下架。</p>
+              <p><span aria-hidden="true">-</span> 考古題顯示在投稿底下時，通常要先還原投稿。</p>
+            </div>
           </section>
 
           <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">課程與考古題</h4>
-            <ul class="trash-dependency-help-list">
-              <li>刪除課程：課程與下屬考古題會進入垃圾桶。</li>
-              <li>相關投稿會暫時下架，並提示先復原原課程。</li>
-              <li>復原課程時，系統會嘗試還原相關投稿原始狀態。</li>
-            </ul>
-          </section>
-
-          <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">留言</h4>
-            <ul class="trash-dependency-help-list">
-              <li>留言不再阻擋考古題永久刪除。</li>
-              <li>考古題永久刪除時，關聯留言會一併永久刪除。</li>
-            </ul>
-          </section>
-
-          <section class="trash-dependency-help-section trash-dependency-help-note">
-            <h4 class="trash-dependency-help-title">操作建議</h4>
-            <ul class="trash-dependency-help-list">
-              <li>看到「無法永久刪除」：先處理被提示的啟用中資料。</li>
-              <li>看到「一併永久刪除」：確認子項目可一起處理。</li>
-              <li>看到「無法復原」：先復原父層，或確認關聯資料已處理。</li>
-            </ul>
+            <h4 class="trash-dependency-help-title">課程、分類與留言</h4>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 刪除課程：課程與下轄考古題會進垃圾桶，相關投稿會暫時下架。</p>
+              <p><span aria-hidden="true">-</span> 復原課程：只復原因課程刪除而進垃圾桶的考古題；因刪投稿而進垃圾桶的考古題仍需還原投稿。</p>
+              <p><span aria-hidden="true">-</span> 復原分類：只復原分類本身，不會自動復原課程。</p>
+              <p><span aria-hidden="true">-</span> 留言：不再阻擋考古題永久刪除，會隨考古題一併永久刪除。</p>
+            </div>
           </section>
         </div>
       </Dialog>
@@ -1811,6 +2028,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  resetUserPassword,
   notificationService,
   courseService,
   archiveService,
@@ -1847,8 +2065,28 @@ const categoryForm = ref({
   name: '',
   label: '',
   icon: 'pi pi-fw pi-book',
+  badge_color: 'slate',
 })
 const categoryFormErrors = ref({})
+const DEFAULT_CATEGORY_BADGE_COLOR = 'slate'
+const categoryBadgeColorOptions = [
+  { label: '深藍', value: 'navy' },
+  { label: '青綠', value: 'teal' },
+  { label: '森綠', value: 'forest' },
+  { label: '琥珀', value: 'amber' },
+  { label: '酒紅', value: 'burgundy' },
+  { label: '紫色', value: 'violet' },
+  { label: '灰色', value: 'slate' },
+  { label: '靛藍', value: 'indigo' },
+]
+const categoryBadgeColorValues = new Set(categoryBadgeColorOptions.map((option) => option.value))
+const legacyCategoryBadgeColorMap = {
+  blue: 'navy',
+  green: 'forest',
+  purple: 'violet',
+  rose: 'burgundy',
+  gray: 'slate',
+}
 const users = ref([])
 const usersLoading = ref(false)
 const userSearchQuery = ref('')
@@ -1858,10 +2096,46 @@ const userSortMeta = ref([
   { field: 'is_admin', order: -1 },
   { field: 'name', order: 1 },
 ])
+const USER_PASSWORD_MIN_LENGTH = 8
+const NON_LOCAL_PASSWORD_RESET_HINT = '此帳號不是本地帳號，無法由系統重設密碼。'
+
+const getResetPasswordTargetLabel = (user) => {
+  return user?.name || user?.email || '該使用者'
+}
+
+const getOnlineStatusLabel = (user) => {
+  if (user?.online_status_label) {
+    return user.online_status_label
+  }
+
+  if (user?.is_online === true) {
+    return '在線'
+  }
+
+  if (!user || !user.last_login_at) {
+    return '從未登入'
+  }
+
+  return '離線'
+}
+
+const getOnlineStatusDotClass = (user) => {
+  return user?.is_online ? 'user-online-dot--online' : 'user-online-dot--offline'
+}
 
 const showUserDialog = ref(false)
 const editingUser = ref(null)
 const userSaveLoading = ref(false)
+
+const showResetPasswordDialog = ref(false)
+const resetPasswordUser = ref(null)
+const resetPasswordLoading = ref(false)
+const resetPasswordForm = ref({
+  newPassword: "",
+  confirmPassword: "",
+})
+const resetPasswordFormErrors = ref({})
+
 
 const userForm = ref({
   name: '',
@@ -2256,6 +2530,17 @@ const getTrashTreePrefix = (item) => {
   return `${'│  '.repeat(Math.max(0, depth - 1))}└─`
 }
 
+const getTrashRowClass = (item) => {
+  if (!isTrashRelationHierarchyEnabled.value) return ''
+  const groupIndex = item?.trash_relation_group_index
+  const groupSize = Number(item?.trash_relation_group_size || 0)
+  if (groupIndex === null || groupIndex === undefined || groupSize <= 1) return ''
+  const bandClass = Number(groupIndex) % 2 === 0
+    ? 'trash-row--relation-group-even'
+    : 'trash-row--relation-group-odd'
+  return `trash-row--relation-group ${bandClass}`
+}
+
 const getValidTrashFilterType = (value) => {
   const validFilterValues = new Set(trashFilterOptions.map((option) => option.value))
   if (value === TRASH_FILTER_ALL_VALUE) return null
@@ -2298,13 +2583,20 @@ const buildTrashHierarchy = (items, filterType) => {
       ...item,
       _trashRowIndex: item._trashRowIndex ?? index,
       trash_depth: 0,
+      trash_relation_group_index: null,
+      trash_relation_group_size: 1,
     }))
     .sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
 
   if (normalizedFilterType !== null && normalizedFilterType !== undefined) {
     return rows
       .sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
-      .map((item) => ({ ...item, trash_depth: 0 }))
+      .map((item) => ({
+        ...item,
+        trash_depth: 0,
+        trash_relation_group_index: null,
+        trash_relation_group_size: 1,
+      }))
   }
 
   if (!rows.length) return []
@@ -2334,23 +2626,45 @@ const buildTrashHierarchy = (items, filterType) => {
 
   const visited = new Set()
   const result = []
-  const walk = (node, depth) => {
+
+  const countSubtree = (node, seen = new Set()) => {
+    const key = getTrashItemKey(node, node._trashRowIndex)
+    if (seen.has(key)) return 0
+    seen.add(key)
+    const children = childrenMap.get(key) || []
+    return 1 + children.reduce((total, child) => total + countSubtree(child, seen), 0)
+  }
+
+  const walk = (node, depth, relationGroupIndex = null, relationGroupSize = 1) => {
     const key = getTrashItemKey(node, node._trashRowIndex)
     if (visited.has(key)) return
     visited.add(key)
 
-    result.push({ ...node, trash_depth: depth })
+    result.push({
+      ...node,
+      trash_depth: depth,
+      trash_relation_group_index: relationGroupIndex,
+      trash_relation_group_size: relationGroupSize,
+    })
     const children = childrenMap.get(key) || []
     for (const child of children) {
-      walk(child, depth + 1)
+      walk(child, depth + 1, relationGroupIndex, relationGroupSize)
     }
   }
+  let nextRelationGroupIndex = 0
   for (const root of roots) {
-    walk(root, 0)
+    const relationGroupSize = countSubtree(root)
+    const relationGroupIndex = relationGroupSize > 1 ? nextRelationGroupIndex++ : null
+    walk(root, 0, relationGroupIndex, relationGroupSize)
   }
 
   if (!result.length && rows.length) {
-    return rows.map((item) => ({ ...item, trash_depth: 0 }))
+    return rows.map((item) => ({
+      ...item,
+      trash_depth: 0,
+      trash_relation_group_index: null,
+      trash_relation_group_size: 1,
+    }))
   }
 
   return result
@@ -2414,21 +2728,21 @@ const getCategoryDisplayLabel = (category) => {
   return categoryInfoMap.value[category]?.label || categoryInfoMap.value[category]?.name || ''
 }
 
-const getCategorySeverity = (category) => {
-  const severityMap = {
-    fundamental: 'info',
-    required: 'success',
-    experience: 'warning',
-    optional: 'danger',
-    graduate: 'contrast',
-    'math-department': 'secondary',
-    freshman: 'info',
-    sophomore: 'success',
-    junior: 'warning',
-    senior: 'danger',
-    interdisciplinary: 'secondary',
+const normalizeCategoryBadgeColor = (color) => {
+  const value = (color || DEFAULT_CATEGORY_BADGE_COLOR).toString().trim().toLowerCase()
+  const mappedValue = legacyCategoryBadgeColorMap[value] || value
+  return categoryBadgeColorValues.has(mappedValue) ? mappedValue : DEFAULT_CATEGORY_BADGE_COLOR
+}
+
+const getCategoryBadgeColor = (category) => {
+  if (typeof category === 'string') {
+    return normalizeCategoryBadgeColor(categoryInfoMap.value[category]?.badge_color)
   }
-  return severityMap[category] || 'secondary'
+  return normalizeCategoryBadgeColor(category?.badge_color)
+}
+
+const getCategoryBadgeClass = (category) => {
+  return `category-badge category-badge--${getCategoryBadgeColor(category)}`
 }
 
 const categoryOrder = computed(() =>
@@ -2564,9 +2878,16 @@ const isReviewBlockedByCourseTrash = (item) => {
 }
 
 const getReviewTrashNote = (item, fullText = false) => {
-  if (getReviewItemStatus(item) !== 'takedown') return ''
+  const status = getReviewItemStatus(item)
+  if (!['takedown', 'deleted'].includes(status)) return ''
   if (item?.lifecycle_reason === 'linked_archive_permanently_deleted') return '無法復原：關聯考古題已永久刪除。'
   if (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true) {
+    if (status === 'deleted') {
+      const shortText = '原課程在垃圾桶，請至垃圾桶處理。'
+      const fullTextMessage =
+        '此投稿已刪除；其原課程仍在垃圾桶，請到垃圾桶查看關聯項目。'
+      return fullText ? fullTextMessage : shortText
+    }
     const shortText = '原課程在垃圾桶，復原後會回到原狀。'
     const fullTextMessage =
       '原課程已在垃圾桶，此投稿暫時下架。請先到垃圾桶復原原課程，復原後會回到原本狀態。'
@@ -2576,6 +2897,21 @@ const getReviewTrashNote = (item, fullText = false) => {
     return '關聯考古題在垃圾桶，請先復原考古題。'
   }
   return ''
+}
+
+const isReviewTrashWarningNote = (item) => {
+  const note = getReviewTrashNote(item)
+  return note.includes('無法復原') || note.includes('永久刪除')
+}
+
+const getReviewTrashNoteClass = (item) => {
+  return isReviewTrashWarningNote(item)
+    ? 'review-card-action-note--warning'
+    : 'review-card-action-note--info'
+}
+
+const getReviewTrashNoteIcon = (item) => {
+  return isReviewTrashWarningNote(item) ? 'pi pi-exclamation-circle' : 'pi pi-info-circle'
 }
 
 const runReviewRowAction = (item, action) => {
@@ -2968,9 +3304,13 @@ const getTrashDependencies = (item) => {
   return dependencies
     .map((dependency) => formatTrashDependency(dependency, item?.item_type))
     .filter((item) => item?.label)
+    .filter((dependency) => String(dependency?.label || '').trim())
     .sort((a, b) => {
-      if (a.blocking !== b.blocking) {
-        return a.blocking ? -1 : 1
+      if (a.restoreBlocking !== b.restoreBlocking) {
+        return a.restoreBlocking ? -1 : 1
+      }
+      if (a.deleteBlocking !== b.deleteBlocking) {
+        return a.deleteBlocking ? -1 : 1
       }
       if (a.kindOrder !== b.kindOrder) {
         return a.kindOrder - b.kindOrder
@@ -2979,8 +3319,41 @@ const getTrashDependencies = (item) => {
     })
 }
 
+const canRestoreTrashItem = (item) => {
+  if (item?.canRestore === false) return false
+  if (item?.canRestore === true) return true
+  return !getTrashDependencyHasRestoreBlocker(item)
+}
+
+const canPermanentDeleteTrashItem = (item) => {
+  if (item?.canPermanentDelete === false) return false
+  if (item?.canPermanentDelete === true) return true
+  return !getTrashDependencyHasPermanentDeleteBlocker(item)
+}
+
+const getTrashDependencyHasRestoreBlocker = (item) => {
+  return getTrashDependencies(item).some((dependency) =>
+    String(dependency?.label || '').startsWith('阻擋還原：'),
+  )
+}
+
+const getTrashDependencyHasPermanentDeleteBlocker = (item) => {
+  return getTrashDependencies(item).some((dependency) =>
+    String(dependency?.label || '').startsWith('阻擋永久刪除：'),
+  )
+}
+
 const getTrashDependencySeverity = (dependency) => {
   return dependency?.severity || 'secondary'
+}
+
+const getTrashDependencyChipClass = (dependency) => {
+  const label = String(dependency?.label || '')
+  if (dependency?.restoreBlocking || label.startsWith('阻擋還原：')) return 'trash-dependency-chip--restore-blocked'
+  if (dependency?.deleteBlocking || label.startsWith('阻擋永久刪除：')) return 'trash-dependency-chip--delete-blocked'
+  if (label.startsWith('一併永久刪除：')) return 'trash-dependency-chip--cascade'
+  if (label === '無阻擋') return 'trash-dependency-chip--clear'
+  return 'trash-dependency-chip--relation'
 }
 
 const formatSubmissionLabel = (item) => {
@@ -3017,7 +3390,9 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: `阻擋永久刪除：${applyDependencyCount(label, count)}`,
         severity: 'danger',
         blocking: true,
-        kindOrder: 0,
+        deleteBlocking: true,
+        restoreBlocking: false,
+        kindOrder: 1,
       }
     }
 
@@ -3028,6 +3403,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: `一併永久刪除：${applyDependencyCount(label, count)}`,
         severity: 'info',
         blocking: false,
+        restoreBlocking: false,
+        deleteBlocking: false,
         kindOrder: 1,
       }
     }
@@ -3042,6 +3419,32 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: raw,
       severity: 'danger',
       blocking: true,
+      restoreBlocking: false,
+      deleteBlocking: true,
+      kindOrder: 1,
+    }
+  }
+
+  if (raw.startsWith('阻擋還原：')) {
+    return {
+      key: `restore-blocking-${raw}`,
+      label: raw,
+      severity: 'warning',
+      blocking: true,
+      restoreBlocking: true,
+      deleteBlocking: false,
+      kindOrder: 0,
+    }
+  }
+
+  if (raw.startsWith('無法復原：')) {
+    return {
+      key: `restore-blocking-${raw}`,
+      label: `阻擋還原：${raw.replace('無法復原：', '')}`,
+      severity: 'warning',
+      blocking: true,
+      restoreBlocking: true,
+      deleteBlocking: false,
       kindOrder: 0,
     }
   }
@@ -3052,6 +3455,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: raw,
       severity: 'info',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 1,
     }
   }
@@ -3067,6 +3472,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: raw,
       severity: 'secondary',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 2,
     }
   }
@@ -3102,6 +3509,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: '關聯：此項目仍關聯到考古題（未刪除）',
         severity: 'secondary',
         blocking: false,
+        restoreBlocking: false,
+        deleteBlocking: false,
         kindOrder: 2,
       }
     }
@@ -3111,6 +3520,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
         label: '一併永久刪除：關聯考古題已刪除',
         severity: 'info',
         blocking: false,
+        restoreBlocking: false,
+        deleteBlocking: false,
         kindOrder: 1,
       }
     }
@@ -3122,6 +3533,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: `關聯：此項目與考古題的其他投稿有 ${count} 筆關聯（不一定阻擋）`,
       severity: 'secondary',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 2,
     }
   }
@@ -3180,15 +3593,20 @@ const formatTrashDependency = (dependency, itemType = '') => {
       label: `阻擋永久刪除：${blockerLabel.replace('1 筆', `${count} 筆`)}`,
       severity: 'danger',
       blocking: true,
-      kindOrder: 0,
+      restoreBlocking: false,
+      deleteBlocking: true,
+      kindOrder: 1,
     }
   }
+
   if (isTrashed) {
     return {
       key: `trashed-${raw}`,
       label: `一併永久刪除：${cascadeLabel}`,
       severity: 'info',
       blocking: false,
+      restoreBlocking: false,
+      deleteBlocking: false,
       kindOrder: 1,
     }
   }
@@ -3198,6 +3616,8 @@ const formatTrashDependency = (dependency, itemType = '') => {
     label: `關聯：${relationLabel}${count ? ` ${count} 筆` : ''}`,
     severity: 'secondary',
     blocking: false,
+    restoreBlocking: false,
+    deleteBlocking: false,
     kindOrder: 2,
   }
 }
@@ -3440,24 +3860,24 @@ const revokeComparePreviewUrls = () => {
   }
 }
 
-const openComparePreview = async (archive) => {
-  if (!selectedArchiveRequest.value?.id || !archive?.id || !archive?.course_id) return
-  comparePreviewArchive.value = archive
+const openComparePreview = async (comparison) => {
+  if (!selectedArchiveRequest.value?.id || !comparison?.id) return
+  comparePreviewArchive.value = comparison
   comparePreviewLoading.value = true
   comparePreviewError.value = false
   revokeComparePreviewUrls()
   showComparePreview.value = true
 
   try {
-    const [requestResponse, archiveResponse] = await Promise.all([
+    const [requestResponse, comparisonResponse] = await Promise.all([
       archiveService.getSubmissionPreviewFile(selectedArchiveRequest.value.id),
-      archiveService.getArchivePreviewFile(archive.course_id, archive.id),
+      archiveService.getSubmissionPreviewFile(comparison.id),
     ])
     compareRequestPreviewUrl.value = URL.createObjectURL(
       new Blob([requestResponse.data], { type: 'application/pdf' })
     )
     compareArchivePreviewUrl.value = URL.createObjectURL(
-      new Blob([archiveResponse.data], { type: 'application/pdf' })
+      new Blob([comparisonResponse.data], { type: 'application/pdf' })
     )
   } catch (error) {
     console.error('載入比對 PDF 失敗:', error)
@@ -3479,33 +3899,60 @@ const closeComparePreview = () => {
 
 const loadArchiveComparison = async (request) => {
   comparisonArchives.value = []
-  if (!request?.subject || !request?.category) return
+  if (!request?.id) return
 
   comparisonLoading.value = true
   try {
-    const matchingCourse = courses.value.find(
-      (course) => course.name === request.subject && course.category === request.category
-    )
-    if (!matchingCourse) return
-
-    const { data } = await courseService.getCourseArchives(matchingCourse.id)
-    comparisonArchives.value = (Array.isArray(data) ? data : [])
-      .filter(
-        (archive) =>
-          Number(archive.academic_year) === Number(request.academic_year) &&
-          archive.archive_type === request.archive_type &&
-          archive.name === request.name
-      )
-      .map((archive) => ({
-        ...archive,
-        course_id: matchingCourse.id,
-      }))
+    const { data } = await archiveService.listSubmissionComparisons(request.id)
+    comparisonArchives.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入比對資料失敗:', error)
     if (isUnauthorizedError(error)) return
     toast.add({ severity: 'error', summary: '錯誤', detail: '比對資料載入失敗', life: 3000 })
   } finally {
     comparisonLoading.value = false
+  }
+}
+
+const getComparisonBasisText = (item) => {
+  const course = item?.requested_course_name || item?.subject || '—'
+  const exam = item?.name || '—'
+  const professor = item?.professor || '—'
+  const semester = formatAcademicTerm(item?.academic_year) || '—'
+  return `比對基準：課程 ${course}｜考試 ${exam}｜教師 ${professor}｜學期 ${semester}`
+}
+
+const formatComparisonSubmissionId = (item) => {
+  return item?.id ? `#${item.id}` : '—'
+}
+
+const canTakedownComparisonItem = (item) => {
+  return item?.can_takedown === true && ['pending', 'approved'].includes(normalizeSubmissionStatus(item?.status))
+}
+
+const confirmTakedownComparisonItem = (item) => {
+  if (!canTakedownComparisonItem(item) || !item?.id) return
+  confirm.require({
+    message: '確定要下架這筆比對項目嗎？',
+    header: '確認下架',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: '下架',
+    rejectLabel: '取消',
+    accept: () => takedownComparisonItem(item),
+  })
+}
+
+const takedownComparisonItem = async (item) => {
+  if (!item?.id) return
+  try {
+    await archiveService.takedownSubmission(item.id)
+    toast.add({ severity: 'success', summary: '完成', detail: '已下架', life: 3000 })
+    await loadReviewItems()
+    await loadArchiveComparison(selectedArchiveRequest.value)
+  } catch (error) {
+    console.error('下架比對項目失敗:', error)
+    if (isUnauthorizedError(error)) return
+    toast.add({ severity: 'error', summary: '錯誤', detail: getTrashErrorMessage(error, '下架比對項目失敗'), life: 3000 })
   }
 }
 
@@ -3735,6 +4182,7 @@ const openCreateCategoryDialog = () => {
     name: '',
     label: '',
     icon: 'pi pi-fw pi-book',
+    badge_color: DEFAULT_CATEGORY_BADGE_COLOR,
   }
   categoryFormErrors.value = {}
   editingCategory.value = null
@@ -3747,6 +4195,7 @@ const openEditCategoryDialog = (category) => {
     name: category.name,
     label: category.label || '',
     icon: category.icon || 'pi pi-fw pi-book',
+    badge_color: getCategoryBadgeColor(category),
   }
   categoryFormErrors.value = {}
   editingCategory.value = category
@@ -3761,6 +4210,7 @@ const closeCategoryDialog = () => {
     name: '',
     label: '',
     icon: 'pi pi-fw pi-book',
+    badge_color: DEFAULT_CATEGORY_BADGE_COLOR,
   }
   categoryFormErrors.value = {}
 }
@@ -3789,6 +4239,7 @@ const saveCategory = async () => {
       name: categoryForm.value.name.trim(),
       label: categoryForm.value.label.trim(),
       icon: categoryForm.value.icon.trim() || 'pi pi-fw pi-book',
+      badge_color: getCategoryBadgeColor(categoryForm.value),
     }
     if (editingCategory.value) {
       await courseService.updateCategory(editingCategory.value.id, payload)
@@ -3916,6 +4367,87 @@ const closeUserDialog = () => {
   editingUser.value = null
 }
 
+
+const closeResetPasswordDialog = () => {
+  showResetPasswordDialog.value = false
+  resetPasswordUser.value = null
+  resetPasswordForm.value = {
+    newPassword: '',
+    confirmPassword: '',
+  }
+  resetPasswordFormErrors.value = {}
+  resetPasswordLoading.value = false
+}
+
+const openResetPasswordDialog = (user) => {
+  if (!user?.is_local) return
+
+  resetPasswordUser.value = user
+  resetPasswordForm.value = {
+    newPassword: '',
+    confirmPassword: '',
+  }
+  resetPasswordFormErrors.value = {}
+  showResetPasswordDialog.value = true
+}
+
+const validateResetPasswordForm = () => {
+  const errors = {}
+  const newPassword = (resetPasswordForm.value.newPassword || '').trim()
+  const confirmPassword = (resetPasswordForm.value.confirmPassword || '').trim()
+
+  if (!newPassword) {
+    errors.newPassword = '新密碼是必填欄位'
+  } else if (newPassword.length < USER_PASSWORD_MIN_LENGTH) {
+    errors.newPassword = `新密碼至少 ${USER_PASSWORD_MIN_LENGTH} 字`
+  }
+
+  if (!confirmPassword) {
+    errors.confirmPassword = '請再次輸入新密碼'
+  } else if (confirmPassword !== newPassword) {
+    errors.confirmPassword = '兩次輸入的密碼不一致'
+  }
+
+  resetPasswordFormErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+const resetPassword = async () => {
+  if (!validateResetPasswordForm()) return
+  if (!resetPasswordUser.value?.is_local || !resetPasswordUser.value?.id) return
+
+  resetPasswordLoading.value = true
+  try {
+    const payload = {
+      new_password: (resetPasswordForm.value.newPassword || '').trim(),
+    }
+
+    await resetUserPassword(resetPasswordUser.value.id, payload)
+
+    toast.add({
+      severity: 'success',
+      summary: '成功',
+      detail: `使用者 ${getResetPasswordTargetLabel(resetPasswordUser.value)} 的密碼已更新。`,
+      life: 3000,
+    })
+
+    closeResetPasswordDialog()
+    await loadUsers()
+  } catch (error) {
+    console.error('重設密碼失敗:', error)
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: `重設密碼失敗：${error?.response?.data?.detail || '請稍後再試'}`,
+      life: 3500,
+    })
+  } finally {
+    resetPasswordLoading.value = false
+  }
+}
 const validateUserForm = () => {
   const errors = {}
 
@@ -4394,6 +4926,18 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
 }
 
+.comparison-basis {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.comparison-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .review-sort-header {
   display: inline-flex;
   align-items: center;
@@ -4411,6 +4955,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .review-sort-icon {
@@ -4421,11 +4967,75 @@ onBeforeUnmount(() => {
 }
 
 .review-card-action-note {
-  display: block;
-  margin: 0;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0;
   width: 100%;
-  max-width: 20rem;
+  max-width: min(18rem, 100%);
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-ground) 55%, transparent);
+  color: var(--text-color-secondary);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  white-space: normal;
   overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.review-card-action-note .pi {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  margin-top: 0.08rem;
+  font-size: 0.78rem;
+}
+
+.review-card-action-note span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.review-card-action-note__text {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.review-card-action-note--info {
+  border-color: #8aa1b8;
+  border-left-color: #3d647e;
+  background: #eef3f6;
+  color: #344b5d;
+}
+
+.review-card-action-note--warning {
+  border-color: #c99a61;
+  border-left-color: #9a5f23;
+  background: #f6eee3;
+  color: #694018;
+}
+
+:global(.dark) .review-card-action-note--info,
+:global(.dark) :deep(.review-card-action-note--info) {
+  border-color: rgba(138, 161, 184, 0.44);
+  border-left-color: rgba(126, 169, 196, 0.72);
+  background: rgba(61, 100, 126, 0.18);
+  color: #c7d3dd;
+}
+
+:global(.dark) .review-card-action-note--warning,
+:global(.dark) :deep(.review-card-action-note--warning) {
+  border-color: rgba(201, 154, 97, 0.46);
+  border-left-color: rgba(225, 171, 95, 0.76);
+  background: rgba(154, 95, 35, 0.18);
+  color: #ead4b8;
 }
 
 .review-sort-icon.pi-sort-amount-up-alt,
@@ -4441,10 +5051,172 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
+.category-color-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.category-color-option {
+  border-radius: 999px;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+  transition:
+    outline-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.category-color-option:hover {
+  transform: translateY(-1px);
+}
+
+.category-color-option.is-selected {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.category-badge-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.category-color-option.category-badge,
+:deep(.category-badge) {
+  border: 1px solid transparent;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.category-color-option.category-badge--navy,
+:deep(.category-badge--navy) {
+  background: #dbe4f0;
+  border-color: #475f83;
+  color: #1f3a5f;
+}
+
+.category-color-option.category-badge--teal,
+:deep(.category-badge--teal) {
+  background: #d5ebe7;
+  border-color: #2f766e;
+  color: #175e58;
+}
+
+.category-color-option.category-badge--forest,
+:deep(.category-badge--forest) {
+  background: #dce8d8;
+  border-color: #4f7a45;
+  color: #315f2a;
+}
+
+.category-color-option.category-badge--amber,
+:deep(.category-badge--amber) {
+  background: #efe2c8;
+  border-color: #9a6b24;
+  color: #7a4d12;
+}
+
+.category-color-option.category-badge--burgundy,
+:deep(.category-badge--burgundy) {
+  background: #eed8dd;
+  border-color: #8f3f50;
+  color: #743041;
+}
+
+.category-color-option.category-badge--violet,
+:deep(.category-badge--violet) {
+  background: #e3dcef;
+  border-color: #6d5599;
+  color: #513f7d;
+}
+
+.category-color-option.category-badge--slate,
+:deep(.category-badge--slate) {
+  background: #dfe4ea;
+  border-color: #64748b;
+  color: #334155;
+}
+
+.category-color-option.category-badge--indigo,
+:deep(.category-badge--indigo) {
+  background: #dde1f2;
+  border-color: #5262a3;
+  color: #364381;
+}
+
+:global(.dark) .category-color-option.category-badge--navy,
+:global(.dark) :deep(.category-badge--navy) {
+  background: rgba(71, 95, 131, 0.28);
+  border-color: rgba(125, 151, 190, 0.58);
+  color: #c7d6ea;
+}
+
+:global(.dark) .category-color-option.category-badge--teal,
+:global(.dark) :deep(.category-badge--teal) {
+  background: rgba(45, 118, 110, 0.26);
+  border-color: rgba(89, 170, 160, 0.52);
+  color: #b7ded8;
+}
+
+:global(.dark) .category-color-option.category-badge--forest,
+:global(.dark) :deep(.category-badge--forest) {
+  background: rgba(79, 122, 69, 0.28);
+  border-color: rgba(128, 174, 116, 0.52);
+  color: #c2dfb9;
+}
+
+:global(.dark) .category-color-option.category-badge--amber,
+:global(.dark) :deep(.category-badge--amber) {
+  background: rgba(154, 107, 36, 0.28);
+  border-color: rgba(199, 153, 78, 0.56);
+  color: #ead2a3;
+}
+
+:global(.dark) .category-color-option.category-badge--burgundy,
+:global(.dark) :deep(.category-badge--burgundy) {
+  background: rgba(143, 63, 80, 0.28);
+  border-color: rgba(194, 105, 122, 0.54);
+  color: #e5bec8;
+}
+
+:global(.dark) .category-color-option.category-badge--violet,
+:global(.dark) :deep(.category-badge--violet) {
+  background: rgba(109, 85, 153, 0.28);
+  border-color: rgba(159, 137, 199, 0.56);
+  color: #d9cdef;
+}
+
+:global(.dark) .category-color-option.category-badge--slate,
+:global(.dark) :deep(.category-badge--slate) {
+  background: rgba(100, 116, 139, 0.26);
+  border-color: rgba(148, 163, 184, 0.5);
+  color: #d1d9e4;
+}
+
+:global(.dark) .category-color-option.category-badge--indigo,
+:global(.dark) :deep(.category-badge--indigo) {
+  background: rgba(82, 98, 163, 0.28);
+  border-color: rgba(131, 146, 205, 0.56);
+  color: #cfd6f1;
+}
+
 :deep(.review-admin-upload-chip) {
-  background: rgba(59, 130, 246, 0.18);
-  color: #93c5fd;
-  border-color: rgba(59, 130, 246, 0.4);
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #3b82f6;
+  font-weight: 700;
+}
+
+:global(.dark) :deep(.review-admin-upload-chip) {
+  background: rgba(59, 130, 246, 0.22);
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.56);
 }
 
 .review-load-error {
@@ -4488,82 +5260,336 @@ onBeforeUnmount(() => {
   gap: 0.35rem;
 }
 
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group-even) {
+  --trash-relation-row-bg: rgba(16, 185, 129, 0.055);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group-odd) {
+  --trash-relation-row-bg: rgba(59, 130, 246, 0.045);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group) {
+  background: var(--trash-relation-row-bg);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group > td) {
+  background: var(--trash-relation-row-bg);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group:hover > td) {
+  background: color-mix(in srgb, var(--trash-relation-row-bg) 72%, var(--bg-secondary) 28%);
+}
+
 .trash-dependency-help {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding-right: 0.15rem;
+  gap: 0.75rem;
+  max-height: min(70vh, 44rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  font-size: 0.92rem;
 }
 
 .trash-dependency-help-intro {
   margin: 0;
   color: var(--text-secondary);
+  line-height: 1.55;
 }
 
 .trash-dependency-help-section {
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 0.7rem 0.8rem;
-  background: color-mix(in srgb, var(--surface-card) 86%, transparent);
+  padding: 0.75rem 0.85rem;
+  background: color-mix(in srgb, var(--surface-card) 90%, transparent);
 }
 
 .trash-dependency-help-title {
-  margin: 0 0 0.45rem 0;
+  margin: 0 0 0.55rem 0;
   font-size: 0.95rem;
   font-weight: 700;
-}
-
-.trash-dependency-help-list {
-  margin: 0;
-  padding-left: 1.1rem;
   color: var(--text-color);
 }
 
-.trash-dependency-help-list li + li {
-  margin-top: 0.3rem;
+.trash-dependency-help-label-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.55rem;
 }
 
-.trash-dependency-help-rule,
-.trash-dependency-help-note {
-  margin: 0.35rem 0 0;
+.trash-dependency-help-label-card,
+.trash-dependency-help-flow-card {
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-ground) 42%, transparent);
+}
+
+.trash-dependency-help-label-card {
+  padding: 0.6rem;
+}
+
+.trash-dependency-help-label-card p,
+.trash-dependency-help-flow-card p,
+.trash-dependency-help-rule-list p {
+  margin: 0;
   color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.trash-dependency-help-label-card p {
+  margin-top: 0.4rem;
+  font-size: 0.86rem;
+}
+
+.trash-dependency-chip,
+.trash-dependency-help-chip,
+:deep(.trash-dependency-chip) {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.trash-dependency-chip--restore-blocked,
+:deep(.trash-dependency-chip--restore-blocked) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.trash-dependency-chip--delete-blocked,
+:deep(.trash-dependency-chip--delete-blocked) {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.trash-dependency-chip--cascade,
+:deep(.trash-dependency-chip--cascade) {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.trash-dependency-chip--relation,
+:deep(.trash-dependency-chip--relation) {
+  background: #e2e8f0;
+  border-color: #64748b;
+  color: #334155;
+}
+
+.trash-dependency-chip--clear,
+:deep(.trash-dependency-chip--clear) {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+:global(.dark) .trash-dependency-chip--restore-blocked,
+:global(.dark) :deep(.trash-dependency-chip--restore-blocked) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fcd34d;
+}
+
+:global(.dark) .trash-dependency-chip--delete-blocked,
+:global(.dark) :deep(.trash-dependency-chip--delete-blocked) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(248, 113, 113, 0.54);
+  color: #fca5a5;
+}
+
+:global(.dark) .trash-dependency-chip--cascade,
+:global(.dark) :deep(.trash-dependency-chip--cascade) {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.54);
+  color: #bfdbfe;
+}
+
+:global(.dark) .trash-dependency-chip--relation,
+:global(.dark) :deep(.trash-dependency-chip--relation) {
+  background: rgba(100, 116, 139, 0.24);
+  border-color: rgba(148, 163, 184, 0.5);
+  color: #cbd5e1;
+}
+
+:global(.dark) .trash-dependency-chip--clear,
+:global(.dark) :deep(.trash-dependency-chip--clear) {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(74, 222, 128, 0.52);
+  color: #86efac;
+}
+
+.trash-dependency-help-rule-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.trash-dependency-help-rule-list p {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem;
+  overflow-wrap: anywhere;
+}
+
+.trash-dependency-help-rule-list span {
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.trash-dependency-help-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.65rem;
+}
+
+.trash-dependency-help-flow-card {
+  padding: 0.7rem;
+}
+
+.trash-dependency-help-flow-card h5 {
+  margin: 0 0 0.5rem;
   font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.trash-dependency-help-flow-card p {
+  margin-top: 0.55rem;
+  font-size: 0.86rem;
+}
+
+.trash-dependency-help-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.28rem;
+  border: 1px dashed color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 8px;
+  padding: 0.45rem;
+  background: color-mix(in srgb, var(--surface-card) 72%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.trash-dependency-help-flow span {
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 999px;
+  padding: 0.12rem 0.4rem;
+  color: var(--text-color);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--surface-ground) 55%, transparent);
+}
+
+.trash-dependency-help-flow i {
+  color: var(--text-secondary);
+  font-style: normal;
+  font-size: 0.82rem;
 }
 
 .trash-dependency-help-note {
+  margin: 0.5rem 0 0;
   border: 1px dashed color-mix(in srgb, var(--border-color) 60%, transparent);
   padding: 0.45rem 0.55rem;
   border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.trash-dependency-help-note p {
+  margin: 0;
+}
+
+.trash-dependency-help-note p + p {
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .trash-dependency-help {
+    max-height: 72vh;
+  }
+
+  .trash-dependency-help-section {
+    padding: 0.7rem;
+  }
+
+  .trash-dependency-help-label-grid,
+  .trash-dependency-help-flow-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 :deep(.review-status-chip.review-status-pending) {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.42);
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-approved) {
-  background: rgba(34, 197, 94, 0.18);
-  color: #86efac;
-  border-color: rgba(34, 197, 94, 0.38);
+  background: #dcfce7;
+  color: #166534;
+  border-color: #22c55e;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-rejected) {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.38);
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #ef4444;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-takedown) {
-  background: rgba(100, 116, 139, 0.22);
-  color: #cbd5e1;
-  border-color: rgba(100, 116, 139, 0.42);
+  background: #e2e8f0;
+  color: #334155;
+  border-color: #64748b;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-deleted) {
-  background: rgba(127, 29, 29, 0.28);
-  color: #fecaca;
-  border-color: rgba(127, 29, 29, 0.5);
+  background: #ffe4e6;
+  color: #9f1239;
+  border-color: #f43f5e;
+  font-weight: 700;
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-pending) {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-approved) {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.52);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-rejected) {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.54);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-takedown) {
+  background: rgba(100, 116, 139, 0.24);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-deleted) {
+  background: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+  border-color: rgba(251, 113, 133, 0.54);
 }
 
 .compare-preview-grid {
@@ -4644,6 +5670,57 @@ onBeforeUnmount(() => {
 .admin-mobile-list {
   display: none;
 }
+
+.user-online-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-color);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.user-online-badge .pi {
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.user-online-dot--online {
+  color: #16a34a;
+}
+
+  .user-online-dot--offline {
+    color: var(--text-secondary);
+  }
+
+  :deep(.user-management-table .user-management-table-actions) {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    width: auto;
+    min-width: 17rem;
+  }
+
+  :deep(.user-management-table .user-management-table-actions .p-button),
+  :deep(.user-management-table .user-management-table-actions button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: auto;
+    white-space: nowrap;
+  }
+
+:global(.dark) .user-online-dot--online {
+  color: #22c55e;
+}
+:global(.dark) .user-online-dot--offline {
+  color: var(--text-secondary);
+}
+
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
@@ -5186,6 +6263,13 @@ onBeforeUnmount(() => {
     display: none !important;
   }
 
+  :deep(.user-management-table .user-management-table-actions) {
+    flex-wrap: wrap;
+    white-space: normal;
+    width: 100%;
+    min-width: 0;
+  }
+
   :deep(.user-management-table .p-datatable-tbody > tr),
   :deep(.notification-management-table .p-datatable-tbody > tr) {
     display: flex;
@@ -5294,7 +6378,6 @@ onBeforeUnmount(() => {
     white-space: nowrap;
   }
 
-  :deep(.user-management-table .admin-card-actions),
   :deep(.notification-management-table .admin-card-actions) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5302,11 +6385,24 @@ onBeforeUnmount(() => {
     gap: 0.5rem;
   }
 
-  :deep(.user-management-table .admin-card-actions .p-button),
+  :deep(.user-management-table .admin-card-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
   :deep(.notification-management-table .admin-card-actions .p-button) {
     width: 100%;
     min-width: 0;
     min-height: 2.6rem;
+  }
+
+  :deep(.user-management-table .admin-card-actions .p-button) {
+    width: auto;
+    min-width: 7rem;
+    min-height: 2.35rem;
   }
 
   .admin-card-actions {
@@ -5466,10 +6562,7 @@ onBeforeUnmount(() => {
 
   :deep(.review-card-action-note) {
     grid-column: 1 / -1;
-    color: var(--text-color-secondary);
-    font-size: 0.75rem;
-    line-height: 1.25;
-    margin-top: 0.2rem;
+    max-width: 100%;
   }
 
   :deep(.review-card-actions .p-button) {
@@ -5539,7 +6632,6 @@ onBeforeUnmount(() => {
     line-height: 1;
   }
 
-  :deep(.user-management-table .admin-card-actions),
   :deep(.notification-management-table .admin-card-actions) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5547,11 +6639,24 @@ onBeforeUnmount(() => {
     gap: 0.5rem;
   }
 
-  :deep(.user-management-table .admin-card-actions .p-button),
+  :deep(.user-management-table .admin-card-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
   :deep(.notification-management-table .admin-card-actions .p-button) {
     width: 100%;
     min-width: 0;
     min-height: 2.65rem;
+  }
+
+  :deep(.user-management-table .admin-card-actions .p-button) {
+    width: auto;
+    min-width: 7rem;
+    min-height: 2.35rem;
   }
 
   :deep(.admin-mobile-list .admin-mobile-card-actions .p-button) {
@@ -5616,11 +6721,13 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-card-action-note) {
-    width: 100%;
-    color: var(--text-color-secondary);
-    font-size: 0.75rem;
-    line-height: 1.25;
-    margin-top: 0.2rem;
+  width: 100%;
+  max-width: min(18rem, 100%);
+}
+
+  :deep(.review-card-action-note),
+  :deep(.review-card-action-note .review-card-action-note__text) {
+    white-space: normal;
   }
 
   /* Ensure buttons don't wrap on desktop */

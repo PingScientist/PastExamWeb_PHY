@@ -6,6 +6,7 @@ from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 
+from sqlalchemy import inspect, text
 import yaml
 from sqlmodel import SQLModel, func, select
 
@@ -23,6 +24,7 @@ DEFAULT_CATEGORY_CONFIGS = [
     ("graduate", "研究所", "研究所", "pi pi-fw pi-graduation-cap"),
     ("math-department", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
 ]
+COURSE_CATEGORY_BADGE_COLOR_DEFAULT = "blue"
 
 
 @lru_cache(maxsize=1)
@@ -144,6 +146,42 @@ async def sync_course_categories(session):
         await session.commit()
 
 
+async def _ensure_course_category_badge_color_column() -> None:
+    async with engine.begin() as conn:
+        has_table = await conn.run_sync(
+            lambda sync_conn: inspect(sync_conn).has_table("course_category_configs")
+        )
+        if not has_table:
+            return
+
+        columns = await conn.run_sync(
+            lambda sync_conn: {
+                column["name"]
+                for column in inspect(sync_conn).get_columns("course_category_configs")
+            }
+        )
+        if "badge_color" in columns:
+            return
+
+        await conn.execute(
+            text(
+                "ALTER TABLE course_category_configs ADD COLUMN IF NOT EXISTS badge_color VARCHAR"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE course_category_configs ALTER COLUMN badge_color SET DEFAULT :default_color"
+            ),
+            {"default_color": COURSE_CATEGORY_BADGE_COLOR_DEFAULT},
+        )
+        await conn.execute(
+            text(
+                "UPDATE course_category_configs SET badge_color = :default_color WHERE badge_color IS NULL"
+            ),
+            {"default_color": COURSE_CATEGORY_BADGE_COLOR_DEFAULT},
+        )
+
+
 async def init_db():
     # Run Alembic migrations instead of create_all
     try:
@@ -168,6 +206,8 @@ async def init_db():
         async with engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
             await conn.commit()
+
+    await _ensure_course_category_badge_color_column()
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(

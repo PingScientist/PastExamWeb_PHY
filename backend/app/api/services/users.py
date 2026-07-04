@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.models.models import (
     User,
     UserCreate,
+    UserPasswordResetRequest,
     UserNicknameUpdate,
     UserRead,
     UserRoles,
@@ -19,6 +20,62 @@ from app.utils.auth import get_current_user, get_password_hash
 router = APIRouter()
 
 NICKNAME_MAX_LENGTH = 15
+USER_PASSWORD_MIN_LENGTH = 8
+ONLINE_STATUS_MINUTES = 5
+
+
+def _normalize_timestamp(dt: datetime | None) -> datetime | None:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _is_activity_recent(activity_at: datetime | None, now_utc: datetime) -> bool:
+    if not activity_at:
+        return False
+    cutoff = now_utc - timedelta(minutes=ONLINE_STATUS_MINUTES)
+    return activity_at >= cutoff
+
+
+def _get_user_online_status(user: User):
+    now_utc = datetime.now(timezone.utc)
+    last_seen = _normalize_timestamp(getattr(user, "last_seen_at", None))
+    last_login = _normalize_timestamp(user.last_login)
+    last_logout = _normalize_timestamp(user.last_logout)
+
+    if not last_login and not last_seen:
+        return False, "從未登入"
+
+    reference_time = last_seen or last_login
+
+    if not reference_time:
+        return False, "離線"
+
+    if last_logout and reference_time and last_logout >= reference_time:
+        return False, "離線"
+
+    is_online = _is_activity_recent(reference_time, now_utc)
+    return is_online, "在線" if is_online else "離線"
+
+
+def _to_user_read(user: User) -> UserRead:
+    is_online, status_label = _get_user_online_status(user)
+    return UserRead(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        nickname=user.nickname,
+        is_admin=user.is_admin,
+        is_local=user.is_local,
+        last_login=user.last_login,
+        last_login_at=user.last_login,
+        last_seen_at=user.last_seen_at,
+        last_logout_at=user.last_logout,
+        is_online=is_online,
+        online_status_label=status_label,
+    )
 
 
 @router.get("/admin/users", response_model=List[UserRead])
@@ -36,7 +93,52 @@ async def get_users(
 
     result = await db.execute(select(User).where(User.deleted_at.is_(None)))
     users = result.scalars().all()
-    return users
+    return [_to_user_read(user) for user in users]
+
+@router.post("/admin/users/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: int,
+    payload: UserPasswordResetRequest,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Reset password for a local user (admin only)
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+        )
+
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if not user.is_local:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="此帳號不是本地帳號，無法由系統重設密碼。",
+        )
+
+    new_password = payload.new_password.strip() if payload.new_password else ''
+
+    if not new_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密碼不可為空")
+
+    if len(new_password) < USER_PASSWORD_MIN_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"新密碼長度至少 {USER_PASSWORD_MIN_LENGTH} 字",
+        )
+
+    user.password_hash = get_password_hash(new_password)
+    await db.commit()
+
+    return {"message": "密碼已重設"}
+
 
 
 @router.post("/admin/users", response_model=UserRead)

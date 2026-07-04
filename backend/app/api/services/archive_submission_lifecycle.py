@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from minio.error import S3Error
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 
 from app.core.config import settings
@@ -42,13 +42,31 @@ def is_course_trash_lifecycle_reason(reason: Optional[str]) -> bool:
 
 
 def get_course_trash_previous_status(reason: Optional[str]) -> Optional[SubmissionStatus]:
-    if reason is None:
+    marker_data = _parse_course_trash_lifecycle_reason(reason)
+    raw_status = marker_data.get(COURSE_TRASH_PREVIOUS_STATUS_KEY)
+    if raw_status not in {SubmissionStatus.APPROVED.value, SubmissionStatus.PENDING.value, SubmissionStatus.TAKEDOWN.value, SubmissionStatus.REJECTED.value, SubmissionStatus.DELETED.value}:
         return None
+    return SubmissionStatus(raw_status)
+
+
+def get_course_trash_course_id(reason: Optional[str]) -> Optional[int]:
+    raw_course_id = _parse_course_trash_lifecycle_reason(reason).get(COURSE_TRASH_COURSE_ID_KEY)
+    if raw_course_id is None:
+        return None
+    try:
+        return int(raw_course_id)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_course_trash_lifecycle_reason(reason: Optional[str]) -> dict[str, str]:
+    if reason is None:
+        return {}
     marker_fields = reason.split("|")
     if not marker_fields:
-        return None
+        return {}
     if marker_fields[0] != LIFECYCLE_COURSE_TRASHED:
-        return None
+        return {}
 
     marker_data = {}
     for item in marker_fields[1:]:
@@ -56,11 +74,7 @@ def get_course_trash_previous_status(reason: Optional[str]) -> Optional[Submissi
             continue
         key, value = item.split("=", 1)
         marker_data[key] = value
-
-    raw_status = marker_data.get(COURSE_TRASH_PREVIOUS_STATUS_KEY)
-    if raw_status not in {SubmissionStatus.APPROVED.value, SubmissionStatus.PENDING.value, SubmissionStatus.TAKEDOWN.value, SubmissionStatus.REJECTED.value, SubmissionStatus.DELETED.value}:
-        return None
-    return SubmissionStatus(raw_status)
+    return marker_data
 
 
 @dataclass
@@ -72,6 +86,41 @@ class ArchiveSubmissionGroup:
 
 def is_archive_submission_trashed(submission: ArchiveSubmission) -> bool:
     return submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED
+
+
+async def _resolve_linked_archive(
+    db: SQLModelAsyncSession,
+    *,
+    submission: ArchiveSubmission,
+) -> tuple[Optional[Archive], list[str]]:
+    if submission.created_archive_id:
+        linked_archive = await db.get(Archive, submission.created_archive_id)
+        if linked_archive:
+            return linked_archive, []
+        return None, [f"關聯考古題 #{submission.created_archive_id} 已不存在"]
+
+    if not submission.object_name:
+        return None, []
+
+    fallback_conditions = [
+        Archive.object_name == submission.object_name,
+        Archive.name == submission.name,
+        Archive.academic_year == submission.academic_year,
+        Archive.archive_type == submission.archive_type,
+    ]
+    if submission.professor:
+        fallback_conditions.append(Archive.professor == submission.professor)
+
+    fallback_archive = (
+        (
+            await db.execute(
+                select(Archive).where(and_(*fallback_conditions)).order_by(Archive.created_at.desc())
+            )
+        )
+        .scalars()
+        .first()
+    )
+    return (fallback_archive, []) if fallback_archive else (None, [])
 
 
 async def collect_archive_submission_group(
@@ -98,12 +147,11 @@ async def collect_archive_submission_group(
     add_submission(submission)
 
     linked_archive = archive
-    if submission and submission.created_archive_id:
-        linked_archive = await db.get(Archive, submission.created_archive_id)
+    if submission:
+        linked_archive, link_warnings = await _resolve_linked_archive(db, submission=submission)
+        group.warnings.extend(link_warnings)
         if linked_archive:
             add_archive(linked_archive)
-        else:
-            group.warnings.append(f"關聯考古題 #{submission.created_archive_id} 已不存在")
 
     for item in list(group.archives):
         siblings = (
@@ -212,31 +260,29 @@ async def soft_delete_submission_with_linked_archive(
     submission_count = 1 if _soft_delete_submission(submission, now=timestamp, user_id=user_id, reason=reason) else 0
     archive_count = 0
     warnings: list[str] = []
-    if submission.created_archive_id:
-        archive = await db.get(Archive, submission.created_archive_id)
-        if archive:
-            archive_count = 1 if _soft_delete_archive(archive, now=timestamp, user_id=user_id, reason=reason) else 0
-            linked_submissions = (
-                await db.execute(
-                    select(ArchiveSubmission).where(
-                        ArchiveSubmission.created_archive_id == archive.id,
-                        ArchiveSubmission.id != submission.id,
-                        ArchiveSubmission.deleted_at.is_(None),
-                        ArchiveSubmission.status != SubmissionStatus.DELETED,
-                    )
+    linked_archive, link_warnings = await _resolve_linked_archive(db, submission=submission)
+    warnings.extend(link_warnings)
+    if linked_archive:
+        archive_count = 1 if _soft_delete_archive(linked_archive, now=timestamp, user_id=user_id, reason=reason) else 0
+        linked_submissions = (
+            await db.execute(
+                select(ArchiveSubmission).where(
+                    ArchiveSubmission.created_archive_id == linked_archive.id,
+                    ArchiveSubmission.id != submission.id,
+                    ArchiveSubmission.deleted_at.is_(None),
+                    ArchiveSubmission.status != SubmissionStatus.DELETED,
                 )
-            ).scalars().all()
-            for linked in linked_submissions:
-                if linked.status in {SubmissionStatus.REJECTED, SubmissionStatus.TAKEDOWN}:
-                    continue
-                _temporarily_takedown_submission(
-                    linked,
-                    reason=LIFECYCLE_ARCHIVE_TRASHED,
-                    reviewer_id=user_id,
-                    now=timestamp,
-                )
-        else:
-            warnings.append(f"關聯考古題 #{submission.created_archive_id} 已不存在")
+            )
+        ).scalars().all()
+        for linked in linked_submissions:
+            if linked.status in {SubmissionStatus.REJECTED, SubmissionStatus.TAKEDOWN}:
+                continue
+            _temporarily_takedown_submission(
+                linked,
+                reason=LIFECYCLE_ARCHIVE_TRASHED,
+                reviewer_id=user_id,
+                now=timestamp,
+            )
     return {"archives": archive_count, "submissions": submission_count, "warnings": warnings}
 
 

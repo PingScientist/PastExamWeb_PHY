@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from minio.error import S3Error
 from pydantic import BaseModel
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import String, and_, cast, func, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 
 from app.core.config import settings
@@ -27,7 +27,9 @@ from app.api.services.archive_submission_lifecycle import (
     LIFECYCLE_ARCHIVE_TRASHED,
     LIFECYCLE_COURSE_TRASHED,
     LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED,
+    get_course_trash_course_id,
     get_course_trash_previous_status,
+    is_course_trash_lifecycle_reason,
     collect_archive_submission_group,
     hard_delete_archive_submission_group,
     is_archive_submission_trashed,
@@ -66,6 +68,8 @@ def _to_trash_item(
     course_id: Optional[int] = None,
     course_name: Optional[str] = None,
     dependencies: Optional[list[str]] = None,
+    can_restore: Optional[bool] = None,
+    can_permanent_delete: Optional[bool] = None,
 ) -> TrashItem:
     return TrashItem(
         item_type=item_type,
@@ -85,6 +89,8 @@ def _to_trash_item(
         course_id=course_id,
         course_name=course_name,
         reason=None,
+        canRestore=can_restore,
+        canPermanentDelete=can_permanent_delete,
         dependencies=_build_dependencies(dependencies or []),
     )
 
@@ -169,6 +175,24 @@ def _dependency_count(count: int, unit: str, singular_unit: Optional[str] = None
     return f"{count} {unit}"
 
 
+def _is_course_trash_temporary_submission(submission: ArchiveSubmission) -> bool:
+    return (
+        submission.deleted_at is None
+        and submission.status == SubmissionStatus.TAKEDOWN
+        and is_course_trash_lifecycle_reason(submission.lifecycle_reason)
+    )
+
+
+def _format_submission_status_label(status_value: Optional[SubmissionStatus]) -> str:
+    return {
+        SubmissionStatus.PENDING: "待審核",
+        SubmissionStatus.APPROVED: "已通過",
+        SubmissionStatus.REJECTED: "未通過",
+        SubmissionStatus.TAKEDOWN: "已下架",
+        SubmissionStatus.DELETED: "已刪除",
+    }.get(status_value, "—")
+
+
 async def _count_rows(db: SQLModelAsyncSession, statement) -> int:
     result = await db.execute(statement)
     return int(result.scalar() or 0)
@@ -216,6 +240,14 @@ async def _get_category_dependency_messages(db: SQLModelAsyncSession, category: 
 
 
 async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Course) -> list[str]:
+    category_is_trashed = await _count_rows(
+        db,
+        select(func.count(CourseCategoryConfig.id)).where(
+            CourseCategoryConfig.key == course.category,
+            CourseCategoryConfig.deleted_at.is_not(None),
+        ),
+    )
+
     active_archives = await _count_rows(
         db,
         select(func.count(Archive.id)).where(
@@ -231,7 +263,12 @@ async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Cour
         ),
     )
 
+    restore_blockers = [
+        f"阻擋還原：原分類仍在垃圾桶" if category_is_trashed else "",
+    ]
+
     return [
+        *restore_blockers,
         f"阻擋永久刪除：{_dependency_count(active_archives, '筆')}啟用中考古題仍屬於此課程" if active_archives else "",
         f"一併永久刪除：{_dependency_count(trashed_archives, '筆')}已刪除考古題屬於此課程" if trashed_archives else "",
     ]
@@ -241,7 +278,19 @@ async def _get_archive_dependency_messages(
     db: SQLModelAsyncSession,
     archive: Archive,
     source_submission: Optional[ArchiveSubmission] = None,
+    restore_parent_submission: Optional[ArchiveSubmission] = None,
 ) -> list[str]:
+    course_is_trashed = await _count_rows(
+        db,
+        select(func.count(Course.id)).where(
+            Course.id == archive.course_id,
+            Course.deleted_at.is_not(None),
+        ),
+    )
+    restore_blockers = [
+        "阻擋還原：原課程仍在垃圾桶" if course_is_trashed else "",
+    ]
+
     is_course_trash_reason = or_(
         ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
         ArchiveSubmission.lifecycle_reason.like(f"{LIFECYCLE_COURSE_TRASHED}|%"),
@@ -300,6 +349,14 @@ async def _get_archive_dependency_messages(
     ]
 
     return [
+        (
+            "阻擋還原：請先還原原課程"
+            if restore_parent_submission and _is_course_trash_temporary_submission(restore_parent_submission)
+            else "阻擋還原：請先還原上層投稿"
+            if restore_parent_submission
+            else ""
+        ),
+        *restore_blockers,
         f"一併永久刪除：{_dependency_count(linked_comments, '則')}留言將在考古題永久刪除時一併刪除" if linked_comments else "",
         f"阻擋永久刪除：{_dependency_count(active_linked_submissions, '筆')}啟用中投稿仍連到此考古題" if active_linked_submissions else "",
         f"關聯投稿：投稿編號 #{source_submission.id}" if source_submission and source_submission.id else "",
@@ -361,22 +418,62 @@ async def _get_user_dependency_messages(db: SQLModelAsyncSession, user: User) ->
     ]
 
 
+async def _resolve_submission_linked_archive(
+    db: SQLModelAsyncSession,
+    submission: ArchiveSubmission,
+) -> tuple[Optional[Archive], list[str]]:
+    if submission.created_archive_id:
+        linked_archive = await db.get(Archive, submission.created_archive_id)
+        if linked_archive:
+            return linked_archive, []
+        return None, [f"關聯考古題 #{submission.created_archive_id} 已不存在"]
+
+    if not submission.object_name:
+        return None, []
+
+    fallback_query = (
+        select(Archive)
+        .where(
+            Archive.object_name == submission.object_name,
+            Archive.name == submission.name,
+            Archive.academic_year == submission.academic_year,
+            Archive.archive_type == submission.archive_type,
+        )
+        .order_by(Archive.created_at.desc())
+    )
+    if submission.professor:
+        fallback_query = fallback_query.where(Archive.professor == submission.professor)
+    linked_archive = (await db.execute(fallback_query)).scalars().first()
+    return (linked_archive, []) if linked_archive else (None, [])
+
+
 async def _get_submission_dependency_messages(db: SQLModelAsyncSession, submission: ArchiveSubmission) -> list[str]:
     if submission.lifecycle_reason == LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED:
-        return ["無法復原：關聯考古題已永久刪除"]
+        return ["阻擋還原：關聯考古題已永久刪除"]
 
-    if not submission.created_archive_id:
-        return []
+    if _is_course_trash_temporary_submission(submission):
+        previous_status = get_course_trash_previous_status(submission.lifecycle_reason)
+        return [
+            "阻擋還原：請先還原原課程",
+            f"隨課程復原：課程復原後回到{_format_submission_status_label(previous_status)}",
+        ]
 
-    linked_archive = await db.get(Archive, submission.created_archive_id)
-    if not linked_archive:
-        return ["關聯考古題：不存在"]
+    linked_archive, fallback_warnings = await _resolve_submission_linked_archive(db, submission)
+    if fallback_warnings or not linked_archive:
+        return fallback_warnings
+
+    linked_course = await db.get(Course, linked_archive.course_id) if linked_archive.course_id is not None else None
+    linked_course_blocker = (
+        "阻擋還原：原課程仍在垃圾桶"
+        if linked_course is not None and linked_course.deleted_at is not None
+        else ""
+    )
 
     if linked_archive.deleted_at is not None:
         return [
-            f"關聯考古題：{linked_archive.name}",
-            f"一併永久刪除：關聯考古題 {linked_archive.name} 會跟著永久刪除",
-        ]
+            linked_course_blocker,
+            "一併永久刪除：1 筆關聯考古題",
+        ] if linked_course_blocker else ["一併永久刪除：1 筆關聯考古題"]
 
     linked_comments = await _count_rows(
         db,
@@ -1092,12 +1189,38 @@ async def list_trash_items(
                 if submission.created_archive_id is None:
                     continue
                 archive_source_submissions.setdefault(submission.created_archive_id, submission)
-                if is_archive_submission_trashed(submission):
+                course_trash_parent_course = archive_courses.get(
+                    get_course_trash_course_id(submission.lifecycle_reason)
+                )
+                if is_archive_submission_trashed(submission) or (
+                    _is_course_trash_temporary_submission(submission)
+                    and course_trash_parent_course is not None
+                    and course_trash_parent_course.deleted_at is not None
+                ):
                     archive_parent_submissions.setdefault(submission.created_archive_id, submission)
+            course_trash_parent_course_ids = {
+                course_id
+                for submission in linked_submissions
+                for course_id in (get_course_trash_course_id(submission.lifecycle_reason),)
+                if course_id is not None and course_id not in archive_courses
+            }
+            if course_trash_parent_course_ids:
+                archive_courses.update({
+                    course.id: course
+                    for course in (
+                        await db.execute(select(Course).where(Course.id.in_(course_trash_parent_course_ids)))
+                    ).scalars().all()
+                    if course.id is not None
+                })
         for archive in archives:
-            course = archive_courses.get(archive.course_id)
             parent_submission = archive_parent_submissions.get(archive.id)
             source_submission = parent_submission or archive_source_submissions.get(archive.id)
+            course_trash_parent_course_id = (
+                get_course_trash_course_id(source_submission.lifecycle_reason)
+                if source_submission and is_course_trash_lifecycle_reason(source_submission.lifecycle_reason)
+                else None
+            )
+            course = archive_courses.get(course_trash_parent_course_id or archive.course_id)
             try:
                 items.append(
                     _to_trash_item(
@@ -1119,7 +1242,12 @@ async def list_trash_items(
                         course_id=archive.course_id,
                         course_name=course.name if course else None,
                         source_submission_id=source_submission.id if source_submission else None,
-                        dependencies=await _get_archive_dependency_messages(db, archive, source_submission),
+                        dependencies=await _get_archive_dependency_messages(
+                            db,
+                            archive,
+                            source_submission,
+                            restore_parent_submission=parent_submission,
+                        ),
                     )
                 )
             except Exception as exc:
@@ -1186,6 +1314,10 @@ async def list_trash_items(
                 )
 
     if normalized_item_type in (None, TrashEntityType.ARCHIVE_SUBMISSION):
+        is_course_trash_reason = or_(
+            ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
+            ArchiveSubmission.lifecycle_reason.like(f"{LIFECYCLE_COURSE_TRASHED}|%"),
+        )
         trashed_archive_ids = {
             archive_id
             for archive_id in (
@@ -1201,7 +1333,12 @@ async def list_trash_items(
                 .where(
                     or_(
                         ArchiveSubmission.deleted_at.is_not(None),
-                        ArchiveSubmission.status == SubmissionStatus.DELETED,
+                        func.lower(cast(ArchiveSubmission.status, String)) == SubmissionStatus.DELETED.value,
+                        and_(
+                            ArchiveSubmission.deleted_at.is_(None),
+                            ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
+                            is_course_trash_reason,
+                        ),
                     )
                 )
                 .order_by(ArchiveSubmission.deleted_at.desc(), ArchiveSubmission.reviewed_at.desc(), ArchiveSubmission.created_at.desc())
@@ -1220,15 +1357,52 @@ async def list_trash_items(
                 )
             ).scalars().all()
             archive_map = {archive.id: archive for archive in archive_rows if archive.id is not None}
+
+        submission_linked_archive_map: dict[int, Optional[Archive]] = {}
         for submission in submissions:
-            deleted_at = submission.deleted_at or submission.reviewed_at or submission.created_at
+            is_course_trash_temporary = _is_course_trash_temporary_submission(submission)
             linked_archive = (
                 archive_map.get(submission.created_archive_id)
-                if submission.created_archive_id is not None else None
+                if submission.created_archive_id is not None
+                else None
             )
-            is_direct_deleted_submission = submission.delete_reason in {"user deleted", "admin deleted"}
-            direct_submission_parent_type = "course" if is_direct_deleted_submission and linked_archive else None
-            direct_submission_parent_id = linked_archive.course_id if direct_submission_parent_type else None
+            if linked_archive is None and submission.id is not None and submission.id not in submission_linked_archive_map:
+                linked_archive, _ = await _resolve_submission_linked_archive(db, submission)
+                submission_linked_archive_map[submission.id] = linked_archive
+            if linked_archive is None and submission.id is not None:
+                linked_archive = submission_linked_archive_map[submission.id]
+            linked_archive_id = linked_archive.id if linked_archive and linked_archive.id is not None else None
+            linked_course = (
+                await db.get(Course, linked_archive.course_id)
+                if linked_archive and linked_archive.course_id is not None
+                else None
+            )
+            course_trash_course_id = get_course_trash_course_id(submission.lifecycle_reason)
+            course_trash_course = (
+                await db.get(Course, course_trash_course_id)
+                if is_course_trash_temporary and course_trash_course_id is not None
+                else None
+            )
+            if is_course_trash_temporary and (not course_trash_course or course_trash_course.deleted_at is None):
+                continue
+            deleted_at = (
+                submission.deleted_at
+                or (course_trash_course.deleted_at if is_course_trash_temporary and course_trash_course else None)
+                or submission.reviewed_at
+                or submission.created_at
+            )
+            parent_course = course_trash_course or linked_course
+            parent_type = (
+                "course"
+                if parent_course is not None and parent_course.deleted_at is not None
+                else None
+            )
+            parent_id = parent_course.id if parent_type == "course" else None
+            parent_name = (
+                parent_course.name
+                if parent_type == "course"
+                else linked_archive.name if linked_archive else None
+            )
             try:
                 items.append(
                     _to_trash_item(
@@ -1241,20 +1415,23 @@ async def list_trash_items(
                         deleted_by_id=submission.deleted_by_id,
                         deleted_by_name=_format_deleted_by(users_by_id, submission.deleted_by_id),
                         status=submission.status.value,
-                        parent_type=(
-                            "archive"
-                            if submission.created_archive_id and not is_direct_deleted_submission
-                            else direct_submission_parent_type
-                        ),
-                        parent_id=(
-                            submission.created_archive_id
-                            if not is_direct_deleted_submission
-                            else direct_submission_parent_id
-                        ),
-                        parent_name=linked_archive.name if linked_archive else None,
-                        created_archive_id=submission.created_archive_id,
+                        parent_type=parent_type,
+                        parent_id=parent_id,
+                        parent_name=parent_name,
+                        created_archive_id=linked_archive_id,
                         source_submission_id=submission.id,
-                        course_name=submission.requested_course_name,
+                        course_id=(
+                            parent_course.id
+                            if parent_course
+                            else linked_archive.course_id if linked_archive else None
+                        ),
+                        course_name=(
+                            parent_course.name
+                            if parent_course
+                            else linked_course.name if linked_course else submission.requested_course_name
+                        ),
+                        can_restore=False if is_course_trash_temporary else None,
+                        can_permanent_delete=False if is_course_trash_temporary else None,
                         dependencies=await _get_submission_dependency_messages(db, submission),
                     )
                 )
@@ -1316,36 +1493,65 @@ async def restore_trash_item(
         course.restored_at = now
         course.restored_by_id = current_user.user_id
 
+        course_id_pattern = f"course_id={course.id}"
+        course_trashed_submission_archive_ids = {
+            archive_id
+            for archive_id in (
+                await db.execute(
+                    select(ArchiveSubmission.created_archive_id).where(
+                        ArchiveSubmission.deleted_at.is_(None),
+                        ArchiveSubmission.status != SubmissionStatus.DELETED,
+                        ArchiveSubmission.created_archive_id.is_not(None),
+                        or_(
+                            ArchiveSubmission.lifecycle_reason.like(f"%|{course_id_pattern}|%"),
+                            ArchiveSubmission.lifecycle_reason.like(f"%|{course_id_pattern}"),
+                        ),
+                    )
+                )
+            ).scalars()
+            if archive_id is not None
+        }
+        archive_restore_conditions = [Archive.course_id == course.id]
+        if course_trashed_submission_archive_ids:
+            archive_restore_conditions.append(Archive.id.in_(course_trashed_submission_archive_ids))
+
         archives = (
             await db.execute(
                 select(Archive).where(
-                    Archive.course_id == course.id,
+                    or_(*archive_restore_conditions),
                     Archive.deleted_at.is_not(None),
                 )
             )
         ).scalars().all()
         restored_archives_count = 0
+        skipped_submission_archive_count = 0
+        restored_archive_ids = []
         for archive in archives:
+            parent_submission = await _get_deleted_submission_parent_for_archive(db, archive.id)
+            if parent_submission:
+                skipped_submission_archive_count += 1
+                continue
+
             archive.deleted_at = None
             archive.deleted_by_id = None
             archive.deleted_reason = None
             archive.restored_at = now
             archive.restored_by_id = current_user.user_id
             restored_archives_count += 1
+            if archive.id is not None:
+                restored_archive_ids.append(archive.id)
 
-        archive_ids = [archive.id for archive in archives if archive.id is not None]
         restored_submission_count = 0
         skipped_submission_count = 0
         course_submission_match_conditions = _build_course_trash_submission_match_conditions(
             course.name, course.category
         )
         all_submission_match_conditions = []
-        if archive_ids:
-            all_submission_match_conditions.append(ArchiveSubmission.created_archive_id.in_(archive_ids))
+        if restored_archive_ids:
+            all_submission_match_conditions.append(ArchiveSubmission.created_archive_id.in_(restored_archive_ids))
         all_submission_match_conditions.extend(course_submission_match_conditions)
 
         if all_submission_match_conditions:
-            course_id_pattern = f"course_id={course.id}"
             submissions = (
                 await db.execute(
                     select(ArchiveSubmission).where(
@@ -1387,11 +1593,16 @@ async def restore_trash_item(
             message += (
                 f"{skipped_submission_count} 筆投稿因缺少原本狀態仍維持已下架。"
             )
+        if skipped_submission_archive_count:
+            message += (
+                f"另有 {skipped_submission_archive_count} 筆考古題仍屬於已刪除投稿，需還原投稿後才會復原。"
+            )
         return {
             "message": message,
             "restoredArchivesCount": restored_archives_count,
             "restoredSubmissionsCount": restored_submission_count,
             "skippedSubmissionsCount": skipped_submission_count,
+            "skippedSubmissionArchiveCount": skipped_submission_archive_count,
         }
 
     if payload.item_type == TrashEntityType.NOTIFICATION:
@@ -1407,6 +1618,13 @@ async def restore_trash_item(
         archive = await db.get(Archive, payload.item_id)
         if not archive or archive.deleted_at is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archive not found")
+
+        parent_submission = await _get_deleted_submission_parent_for_archive(db, archive.id)
+        if parent_submission:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="此考古題需隨上層投稿一起還原，請先還原投稿。",
+            )
 
         group = await collect_archive_submission_group(db, archive=archive)
         for linked_archive in group.archives:

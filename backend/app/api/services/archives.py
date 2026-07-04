@@ -8,7 +8,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, or_, text
+from sqlalchemy import and_, func, or_, text
+from sqlalchemy.orm import aliased
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -16,6 +17,7 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.models.models import (
     Archive,
+    ArchiveSubmissionComparisonRead,
     ArchiveSubmission,
     ArchiveSubmissionRead,
     ArchiveSubmissionUpdate,
@@ -107,6 +109,15 @@ async def _get_deleted_course_id_for_submission(
 
 def _normalize_course_name(value: Optional[str]) -> str:
     return (value or "").strip()
+
+
+def _normalize_match_text(value: Optional[str]) -> str:
+    return (value or "").strip().lower()
+
+
+def _normalized_text_expr(*values):
+    present_values = [func.nullif(func.trim(value), "") for value in values]
+    return func.lower(func.trim(func.coalesce(*present_values, "")))
 
 
 def _is_admin_upload_submission(submission_data) -> bool:
@@ -582,6 +593,100 @@ async def list_archive_submissions_for_admin(
     return archive_submissions
 
 
+@router.get("/admin/submissions/{submission_id}/comparisons", response_model=list[ArchiveSubmissionComparisonRead])
+async def list_archive_submission_comparisons(
+    submission_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    submission = await db.get(ArchiveSubmission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+
+    course_name = _normalize_match_text(submission.requested_course_name or submission.subject)
+    category_key = _normalize_match_text(submission.requested_category_key or submission.category)
+    exam_name = _normalize_match_text(submission.name)
+    professor = _normalize_match_text(submission.professor)
+    if not course_name or not category_key or not exam_name or submission.academic_year is None:
+        return []
+
+    current_archive = await db.get(Archive, submission.created_archive_id) if submission.created_archive_id else None
+    current_course_id = current_archive.course_id if current_archive else None
+    comparison_archive = aliased(Archive)
+    comparable_statuses = [
+        SubmissionStatus.PENDING,
+        SubmissionStatus.APPROVED,
+        SubmissionStatus.TAKEDOWN,
+    ]
+    fallback_course_condition = and_(
+        ArchiveSubmission.created_archive_id.is_(None),
+        _normalized_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
+        _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
+    )
+    course_condition = (
+        or_(comparison_archive.course_id == current_course_id, fallback_course_condition)
+        if current_course_id is not None
+        else and_(
+            _normalized_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
+            _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
+        )
+    )
+    query = (
+        select(ArchiveSubmission, User.name, User.email)
+        .outerjoin(User, User.id == ArchiveSubmission.requester_id)
+        .outerjoin(comparison_archive, comparison_archive.id == ArchiveSubmission.created_archive_id)
+        .where(
+            ArchiveSubmission.id != submission.id,
+            ArchiveSubmission.deleted_at.is_(None),
+            ArchiveSubmission.status.in_(comparable_statuses),
+            course_condition,
+            _normalized_text_expr(ArchiveSubmission.name) == exam_name,
+            _normalized_text_expr(ArchiveSubmission.professor) == professor,
+            ArchiveSubmission.academic_year == submission.academic_year,
+        )
+    )
+    if submission.requester_id is not None:
+        query = query.where(
+            or_(
+                ArchiveSubmission.requester_id.is_(None),
+                ArchiveSubmission.requester_id != submission.requester_id,
+            )
+        )
+
+    result = await db.execute(query)
+    status_order = {
+        SubmissionStatus.PENDING: 1,
+        SubmissionStatus.APPROVED: 2,
+        SubmissionStatus.TAKEDOWN: 3,
+    }
+    rows = []
+    for comparison, requester_name, requester_email in result.all():
+        normalized_status = _normalize_submission_status(comparison.status)
+        if normalized_status not in comparable_statuses:
+            continue
+
+        payload = ArchiveSubmissionRead.model_validate(comparison).model_dump()
+        payload["requester_name"] = requester_name
+        payload["requester_email"] = requester_email
+        payload["status"] = normalized_status
+        payload["can_takedown"] = normalized_status in {
+            SubmissionStatus.PENDING,
+            SubmissionStatus.APPROVED,
+        }
+        rows.append(payload)
+
+    rows.sort(
+        key=lambda item: (
+            status_order.get(item["status"], 99),
+            -(item["created_at"].timestamp() if item.get("created_at") else 0),
+        )
+    )
+    return [ArchiveSubmissionComparisonRead.model_validate(item) for item in rows]
+
+
 @router.get("/admin/submissions/{submission_id}/preview-file")
 async def get_archive_submission_preview_file(
     submission_id: int,
@@ -936,20 +1041,15 @@ async def delete_archive_submission_for_admin(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    if submission.deleted_at is not None or submission.status == SubmissionStatus.DELETED:
-        return {"success": True}
-
-    if submission.status == SubmissionStatus.TAKEDOWN:
-        is_course_trash_blocked = is_course_trash_lifecycle_reason(submission.lifecycle_reason)
-        if not is_course_trash_blocked:
-            blocked_course_id = await _get_deleted_course_id_for_submission(db, submission)
-            is_course_trash_blocked = blocked_course_id is not None
-
-        if is_course_trash_blocked:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="原課程仍在垃圾桶，請先復原原課程後再處理此投稿。",
-            )
+    if submission.status == SubmissionStatus.DELETED:
+        now = datetime.now(timezone.utc)
+        if submission.deleted_at is None:
+            submission.deleted_at = now
+        if submission.deleted_by_id is None:
+            submission.deleted_by_id = current_user.user_id
+        if submission.delete_reason is None:
+            submission.delete_reason = "admin deleted"
+        submission.lifecycle_reason = None
 
     result = await soft_delete_submission_with_linked_archive(
         db,

@@ -302,6 +302,8 @@ export default {
         description: '',
         contact: '',
       },
+      heartbeatIntervalMs: 60000,
+      heartbeatTimer: null,
       issueTypes: [
         { label: 'Bug / 程式錯誤', value: 'bug' },
         { label: '功能建議', value: 'enhancement' },
@@ -329,6 +331,7 @@ export default {
     this.checkAuthentication()
     if (this.isAuthenticated) {
       void this.initializeNotifications()
+      void this.startHeartbeat()
     }
 
     setInterval(() => {
@@ -356,6 +359,8 @@ export default {
   },
 
   beforeUnmount() {
+    this.stopHeartbeat()
+
     if (typeof window !== 'undefined' && window.__pastexam) {
       delete window.__pastexam.openLoginModal
     }
@@ -380,7 +385,9 @@ export default {
     isAuthenticated(newValue) {
       if (newValue) {
         void this.initializeNotifications()
+        void this.startHeartbeat()
       } else {
+        this.stopHeartbeat()
         this.notificationStore.state.modalVisible = false
         this.notificationStore.state.centerVisible = false
         this.notificationStore.state.active = []
@@ -570,6 +577,38 @@ export default {
           title: '',
           description: '',
           contact: '',
+        }
+      }
+    },
+
+    async startHeartbeat() {
+      if (this.heartbeatTimer || !this.isAuthenticated) {
+        return
+      }
+
+      await this.sendHeartbeat()
+      this.heartbeatTimer = setInterval(() => {
+        void this.sendHeartbeat()
+      }, this.heartbeatIntervalMs)
+    },
+
+    stopHeartbeat() {
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer)
+        this.heartbeatTimer = null
+      }
+    },
+
+    async sendHeartbeat() {
+      if (!this.isAuthenticated) {
+        return
+      }
+
+      try {
+        await authService.heartbeat()
+      } catch (error) {
+        if (error?.response?.status !== 401) {
+          console.debug('Heartbeat failed:', error?.message || error)
         }
       }
     },
