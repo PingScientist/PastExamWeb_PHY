@@ -74,7 +74,9 @@
                 </Column>
                   <Column field="label" header="科目標籤">
                     <template #body="{ data }">
-                      <Tag severity="secondary">{{ data.label || data.name }}</Tag>
+                      <Tag severity="secondary" :class="getCategoryBadgeClass(data)">
+                        {{ data.label || data.name }}
+                      </Tag>
                     </template>
                   </Column>
                   <Column field="key" header="Key">
@@ -156,7 +158,9 @@
                       </span>
                     </section>
                     <section class="category-card-meta">
-                      <Tag severity="secondary">{{ category.label || category.name }}</Tag>
+                      <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                        {{ category.label || category.name }}
+                      </Tag>
                       <Tag :severity="category.is_active ? 'success' : 'secondary'">
                         {{ category.is_active ? '啟用中' : '已停用' }}
                       </Tag>
@@ -277,7 +281,7 @@
                 </Column>
                 <Column field="category" header="分類" style="width: 22%">
                   <template #body="{ data }">
-                    <Tag :severity="getCategorySeverity(data.category)" class="text-sm">
+                    <Tag severity="secondary" :class="['text-sm', getCategoryBadgeClass(data.category)]">
                       {{ getCategoryName(data.category) }}
                     </Tag>
                   </template>
@@ -333,7 +337,7 @@
                       :disabled="!canMoveCourse(course, 1) || courseOrderLoading"
                       @click="moveCourse(course, 1)"
                     />
-                    <Tag :severity="getCategorySeverity(course.category)" class="course-card-category">
+                    <Tag severity="secondary" :class="['course-card-category', getCategoryBadgeClass(course.category)]">
                       {{ getCategoryName(course.category) }}
                     </Tag>
                   </section>
@@ -1292,6 +1296,32 @@
             <label>PrimeIcons class</label>
             <InputText v-model="categoryForm.icon" placeholder="pi pi-fw pi-book" class="w-full" />
           </div>
+          <div class="flex flex-column gap-2">
+            <label>分類標籤顏色</label>
+            <div class="category-color-options" role="radiogroup" aria-label="分類標籤顏色">
+              <button
+                v-for="option in categoryBadgeColorOptions"
+                :key="option.value"
+                type="button"
+                class="category-color-option"
+                :class="[
+                  getCategoryBadgeClass({ badge_color: option.value }),
+                  { 'is-selected': categoryForm.badge_color === option.value },
+                ]"
+                role="radio"
+                :aria-checked="categoryForm.badge_color === option.value"
+                @click="categoryForm.badge_color = option.value"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <div class="category-badge-preview">
+              <span>預覽</span>
+              <Tag severity="secondary" :class="getCategoryBadgeClass(categoryForm)">
+                {{ categoryForm.label || categoryForm.name || '分類標籤' }}
+              </Tag>
+            </div>
+          </div>
         </div>
 
         <div class="flex pt-6 justify-end gap-2.5">
@@ -1901,8 +1931,19 @@ const categoryForm = ref({
   name: '',
   label: '',
   icon: 'pi pi-fw pi-book',
+  badge_color: 'blue',
 })
 const categoryFormErrors = ref({})
+const DEFAULT_CATEGORY_BADGE_COLOR = 'blue'
+const categoryBadgeColorOptions = [
+  { label: '藍色', value: 'blue' },
+  { label: '綠色', value: 'green' },
+  { label: '琥珀', value: 'amber' },
+  { label: '紫色', value: 'purple' },
+  { label: '玫瑰', value: 'rose' },
+  { label: '灰色', value: 'slate' },
+]
+const categoryBadgeColorValues = new Set(categoryBadgeColorOptions.map((option) => option.value))
 const users = ref([])
 const usersLoading = ref(false)
 const userSearchQuery = ref('')
@@ -2508,21 +2549,20 @@ const getCategoryDisplayLabel = (category) => {
   return categoryInfoMap.value[category]?.label || categoryInfoMap.value[category]?.name || ''
 }
 
-const getCategorySeverity = (category) => {
-  const severityMap = {
-    fundamental: 'info',
-    required: 'success',
-    experience: 'warning',
-    optional: 'danger',
-    graduate: 'contrast',
-    'math-department': 'secondary',
-    freshman: 'info',
-    sophomore: 'success',
-    junior: 'warning',
-    senior: 'danger',
-    interdisciplinary: 'secondary',
+const normalizeCategoryBadgeColor = (color) => {
+  const value = (color || DEFAULT_CATEGORY_BADGE_COLOR).toString().trim().toLowerCase()
+  return categoryBadgeColorValues.has(value) ? value : DEFAULT_CATEGORY_BADGE_COLOR
+}
+
+const getCategoryBadgeColor = (category) => {
+  if (typeof category === 'string') {
+    return normalizeCategoryBadgeColor(categoryInfoMap.value[category]?.badge_color)
   }
-  return severityMap[category] || 'secondary'
+  return normalizeCategoryBadgeColor(category?.badge_color)
+}
+
+const getCategoryBadgeClass = (category) => {
+  return `category-badge category-badge--${getCategoryBadgeColor(category)}`
 }
 
 const categoryOrder = computed(() =>
@@ -3920,6 +3960,7 @@ const openCreateCategoryDialog = () => {
     name: '',
     label: '',
     icon: 'pi pi-fw pi-book',
+    badge_color: DEFAULT_CATEGORY_BADGE_COLOR,
   }
   categoryFormErrors.value = {}
   editingCategory.value = null
@@ -3932,6 +3973,7 @@ const openEditCategoryDialog = (category) => {
     name: category.name,
     label: category.label || '',
     icon: category.icon || 'pi pi-fw pi-book',
+    badge_color: getCategoryBadgeColor(category),
   }
   categoryFormErrors.value = {}
   editingCategory.value = category
@@ -3946,6 +3988,7 @@ const closeCategoryDialog = () => {
     name: '',
     label: '',
     icon: 'pi pi-fw pi-book',
+    badge_color: DEFAULT_CATEGORY_BADGE_COLOR,
   }
   categoryFormErrors.value = {}
 }
@@ -3974,6 +4017,7 @@ const saveCategory = async () => {
       name: categoryForm.value.name.trim(),
       label: categoryForm.value.label.trim(),
       icon: categoryForm.value.icon.trim() || 'pi pi-fw pi-book',
+      badge_color: getCategoryBadgeColor(categoryForm.value),
     }
     if (editingCategory.value) {
       await courseService.updateCategory(editingCategory.value.id, payload)
@@ -4624,6 +4668,133 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+}
+
+.category-color-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.category-color-option {
+  border-radius: 999px;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+  transition:
+    outline-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.category-color-option:hover {
+  transform: translateY(-1px);
+}
+
+.category-color-option.is-selected {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.category-badge-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.category-color-option.category-badge,
+:deep(.category-badge) {
+  border: 1px solid transparent;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.category-color-option.category-badge--blue,
+:deep(.category-badge--blue) {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  color: #1d4ed8;
+}
+
+.category-color-option.category-badge--green,
+:deep(.category-badge--green) {
+  background: #dcfce7;
+  border-color: #4ade80;
+  color: #166534;
+}
+
+.category-color-option.category-badge--amber,
+:deep(.category-badge--amber) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.category-color-option.category-badge--purple,
+:deep(.category-badge--purple) {
+  background: #ede9fe;
+  border-color: #a78bfa;
+  color: #6d28d9;
+}
+
+.category-color-option.category-badge--rose,
+:deep(.category-badge--rose) {
+  background: #ffe4e6;
+  border-color: #fb7185;
+  color: #be123c;
+}
+
+.category-color-option.category-badge--slate,
+:deep(.category-badge--slate) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+:global(.dark) .category-color-option.category-badge--blue,
+:global(.dark) :deep(.category-badge--blue) {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.56);
+  color: #bfdbfe;
+}
+
+:global(.dark) .category-color-option.category-badge--green,
+:global(.dark) :deep(.category-badge--green) {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(74, 222, 128, 0.52);
+  color: #86efac;
+}
+
+:global(.dark) .category-color-option.category-badge--amber,
+:global(.dark) :deep(.category-badge--amber) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fcd34d;
+}
+
+:global(.dark) .category-color-option.category-badge--purple,
+:global(.dark) :deep(.category-badge--purple) {
+  background: rgba(139, 92, 246, 0.22);
+  border-color: rgba(167, 139, 250, 0.56);
+  color: #ddd6fe;
+}
+
+:global(.dark) .category-color-option.category-badge--rose,
+:global(.dark) :deep(.category-badge--rose) {
+  background: rgba(244, 63, 94, 0.2);
+  border-color: rgba(251, 113, 133, 0.54);
+  color: #fecdd3;
+}
+
+:global(.dark) .category-color-option.category-badge--slate,
+:global(.dark) :deep(.category-badge--slate) {
+  background: rgba(100, 116, 139, 0.24);
+  border-color: rgba(148, 163, 184, 0.5);
+  color: #cbd5e1;
 }
 
 :deep(.review-admin-upload-chip) {
