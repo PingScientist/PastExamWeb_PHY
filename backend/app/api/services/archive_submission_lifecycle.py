@@ -42,13 +42,31 @@ def is_course_trash_lifecycle_reason(reason: Optional[str]) -> bool:
 
 
 def get_course_trash_previous_status(reason: Optional[str]) -> Optional[SubmissionStatus]:
-    if reason is None:
+    marker_data = _parse_course_trash_lifecycle_reason(reason)
+    raw_status = marker_data.get(COURSE_TRASH_PREVIOUS_STATUS_KEY)
+    if raw_status not in {SubmissionStatus.APPROVED.value, SubmissionStatus.PENDING.value, SubmissionStatus.TAKEDOWN.value, SubmissionStatus.REJECTED.value, SubmissionStatus.DELETED.value}:
         return None
+    return SubmissionStatus(raw_status)
+
+
+def get_course_trash_course_id(reason: Optional[str]) -> Optional[int]:
+    raw_course_id = _parse_course_trash_lifecycle_reason(reason).get(COURSE_TRASH_COURSE_ID_KEY)
+    if raw_course_id is None:
+        return None
+    try:
+        return int(raw_course_id)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_course_trash_lifecycle_reason(reason: Optional[str]) -> dict[str, str]:
+    if reason is None:
+        return {}
     marker_fields = reason.split("|")
     if not marker_fields:
-        return None
+        return {}
     if marker_fields[0] != LIFECYCLE_COURSE_TRASHED:
-        return None
+        return {}
 
     marker_data = {}
     for item in marker_fields[1:]:
@@ -56,11 +74,7 @@ def get_course_trash_previous_status(reason: Optional[str]) -> Optional[Submissi
             continue
         key, value = item.split("=", 1)
         marker_data[key] = value
-
-    raw_status = marker_data.get(COURSE_TRASH_PREVIOUS_STATUS_KEY)
-    if raw_status not in {SubmissionStatus.APPROVED.value, SubmissionStatus.PENDING.value, SubmissionStatus.TAKEDOWN.value, SubmissionStatus.REJECTED.value, SubmissionStatus.DELETED.value}:
-        return None
-    return SubmissionStatus(raw_status)
+    return marker_data
 
 
 @dataclass
