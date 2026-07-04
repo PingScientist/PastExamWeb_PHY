@@ -803,12 +803,33 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <span class="mobile-primary-text review-card-title review-course-cell">
+                      <div class="mobile-primary-text review-card-title review-course-cell">
                         <span>{{ data.subject }}</span>
                         <Tag v-if="data.is_admin_upload" class="review-admin-upload-chip" severity="info">
                           管理員投稿
                         </Tag>
-                      </span>
+                      </div>
+                      <div class="review-mobile-summary">
+                        <div v-if="data.name" class="review-mobile-exam-name">{{ data.name }}</div>
+                        <div class="review-mobile-info-grid">
+                          <div v-if="data.id !== null && data.id !== undefined" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">投稿編號</span>
+                            <span class="review-mobile-info-value">{{ formatSubmissionLabel(data) }}</span>
+                          </div>
+                          <div v-if="data.professor" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">授課教師</span>
+                            <span class="review-mobile-info-value">{{ data.professor }}</span>
+                          </div>
+                          <div v-if="data.academic_year" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">學期</span>
+                            <span class="review-mobile-info-value">{{ formatAcademicTerm(data.academic_year) }}</span>
+                          </div>
+                          <div v-if="formatReviewSubmissionTime(data) !== '—'" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">投稿時間</span>
+                            <span class="review-mobile-info-value">{{ formatReviewSubmissionTime(data) }}</span>
+                          </div>
+                        </div>
+                      </div>
                     </template>
                   </Column>
                   <Column>
@@ -952,12 +973,33 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <span class="mobile-primary-text review-card-title review-course-cell">
+                      <div class="mobile-primary-text review-card-title review-course-cell">
                         <span>{{ data.subject }}</span>
                         <Tag v-if="data.is_admin_upload" class="review-admin-upload-chip" severity="info">
                           管理員投稿
                         </Tag>
-                      </span>
+                      </div>
+                      <div class="review-mobile-summary">
+                        <div v-if="data.name" class="review-mobile-exam-name">{{ data.name }}</div>
+                        <div class="review-mobile-info-grid">
+                          <div v-if="data.id !== null && data.id !== undefined" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">投稿編號</span>
+                            <span class="review-mobile-info-value">{{ formatSubmissionLabel(data) }}</span>
+                          </div>
+                          <div v-if="data.professor" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">授課教師</span>
+                            <span class="review-mobile-info-value">{{ data.professor }}</span>
+                          </div>
+                          <div v-if="data.academic_year" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">學期</span>
+                            <span class="review-mobile-info-value">{{ formatAcademicTerm(data.academic_year) }}</span>
+                          </div>
+                          <div v-if="formatReviewSubmissionTime(data) !== '—'" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">投稿時間</span>
+                            <span class="review-mobile-info-value">{{ formatReviewSubmissionTime(data) }}</span>
+                          </div>
+                        </div>
+                      </div>
                     </template>
                   </Column>
                   <Column field="name">
@@ -6775,6 +6817,10 @@ onBeforeUnmount(() => {
   color: #fecaca;
 }
 
+:deep(.review-mobile-summary) {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   .review-center {
     padding: 0.75rem !important;
@@ -6842,50 +6888,102 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-request-table .p-datatable-tbody > tr > td:first-child) {
+    display: flex;
+    flex-direction: column;
     order: 1;
     grid-column: 1 / -1;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(2)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(3)) {
-    order: 2;
-    grid-column: 1 / -1;
+    display: none !important;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(3)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(4)) {
-    order: 3;
+    display: none !important;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(4)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(5)) {
-    order: 4;
+    display: none !important;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(5)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(6)) {
-    order: 5;
+    display: none !important;
   }
 
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(2)) {
-    order: 6;
+    order: 2;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(6)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(7)) {
-    order: 7;
+    order: 3;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(7)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(8)) {
-    order: 8;
+    order: 4;
+    grid-column: 1 / -1;
+  }
+
+  :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(6)) {
     grid-column: 1 / -1;
   }
 
   :deep(.review-card-title) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
     font-size: 1rem;
     font-weight: 800;
     line-height: 1.3;
+  }
+
+  :deep(.review-mobile-summary) {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+  }
+
+  :deep(.review-mobile-exam-name) {
+    color: var(--text-primary);
+    font-size: 0.94rem;
+    font-weight: 650;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  :deep(.review-mobile-info-grid) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.42rem 0.65rem;
+    width: 100%;
+    margin-top: 0.55rem;
+  }
+
+  :deep(.review-mobile-info-item) {
+    min-width: 0;
+  }
+
+  :deep(.review-mobile-info-label) {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+
+  :deep(.review-mobile-info-value) {
+    display: block;
+    margin-top: 0.08rem;
+    color: var(--text-primary);
+    font-size: 0.84rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
 
   :deep(.review-card-meta-text) {
