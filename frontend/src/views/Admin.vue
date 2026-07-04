@@ -1729,80 +1729,104 @@
         :draggable="false"
         :closeOnEscape="true"
         header="如何閱讀「依賴與阻擋」"
-        :style="{ width: '40rem', maxWidth: '92vw' }"
+        :style="{ width: '44rem', maxWidth: '92vw' }"
       >
         <div class="trash-dependency-help">
           <p class="trash-dependency-help-intro">
-            這一欄會告訴你：目前項目能不能復原、能不能永久刪除，以及哪些資料會一起處理。
+            這一欄會告訴你：能不能還原、能不能永久刪除，以及哪些資料會一起處理。
           </p>
 
           <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">常見標籤</h4>
-            <ul class="trash-dependency-help-list">
-              <li><strong>阻擋還原</strong>：目前不能復原，通常是父層仍在垃圾桶或必要關聯已缺失。</li>
-              <li><strong>阻擋永久刪除</strong>：目前不能永久刪除，通常仍有啟用中的資料依附。</li>
-              <li><strong>一併永久刪除</strong>：永久刪除此項目時，列出的資料也會一起刪除。</li>
-              <li><strong>關聯</strong>：只表示資料有關係，通常不會直接阻擋。</li>
-              <li><strong>無阻擋</strong>：目前沒有會影響還原或永久刪除的阻擋。</li>
-            </ul>
+            <h4 class="trash-dependency-help-title">快速判斷</h4>
+            <div class="trash-dependency-help-label-grid">
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-help-chip--danger">阻擋還原</span>
+                <p>現在不能還原。通常要先復原父層，或必要關聯已不存在。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-help-chip--warning">阻擋永久刪除</span>
+                <p>現在不能永久刪除。通常仍有啟用中的資料依附。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-help-chip--info">一併永久刪除</span>
+                <p>刪除此項時，列出的資料會一起永久刪除。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-help-chip--muted">關聯</span>
+                <p>只是提醒資料有關，通常不會直接阻擋。</p>
+              </article>
+              <article class="trash-dependency-help-label-card">
+                <span class="trash-dependency-help-chip trash-dependency-help-chip--success">無阻擋</span>
+                <p>目前沒有影響還原或永久刪除的限制。</p>
+              </article>
+            </div>
           </section>
 
           <section class="trash-dependency-help-section">
             <h4 class="trash-dependency-help-title">按鈕規則</h4>
-            <ul class="trash-dependency-help-list">
-              <li>有「阻擋還原」時，不會顯示還原。</li>
-              <li>有「阻擋永久刪除」時，不會顯示永久刪除。</li>
-              <li>只有「一併永久刪除」或「關聯」時，不會自動隱藏按鈕。</li>
-            </ul>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 有「阻擋還原」 → 不顯示還原。</p>
+              <p><span aria-hidden="true">-</span> 有「阻擋永久刪除」 → 不顯示永久刪除。</p>
+              <p><span aria-hidden="true">-</span> 只有「一併永久刪除」或「關聯」 → 按鈕不會自動隱藏。</p>
+            </div>
           </section>
 
           <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">縮排判斷</h4>
-            <p class="trash-dependency-help-note">
-              在「全部」篩選中，縮排代表垃圾桶內項目的父子關係。只有已進垃圾桶的項目才會出現在縮排中；只是暫時下架的投稿不會出現在垃圾桶縮排中。
-            </p>
-            <p class="trash-dependency-help-rule">若先刪除投稿，再刪除課程與分類：課程分類 → 課程 → 考古題投稿 → 考古題</p>
-            <p class="trash-dependency-help-rule">若沒有刪除投稿，而是直接刪除課程與分類：課程分類 → 課程 → 考古題</p>
-            <p class="trash-dependency-help-note">
-              差異在於：投稿只有從審核中心按「刪除」後，才會成為垃圾桶項目；若只是因原課程被刪除而暫時下架，投稿仍留在審核中心，不會列入垃圾桶縮排。
-            </p>
+            <h4 class="trash-dependency-help-title">縮排怎麼看</h4>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 只有「已在垃圾桶」的項目會出現在縮排中。</p>
+              <p><span aria-hidden="true">-</span> 只是暫時下架的投稿，仍留在審核中心，不會出現在垃圾桶縮排。</p>
+            </div>
+            <p class="trash-dependency-help-note">縮排只代表目前垃圾桶中的父子關係，不代表所有歷史關聯都會出現。</p>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">兩種常見流程</h4>
+            <div class="trash-dependency-help-flow-grid">
+              <article class="trash-dependency-help-flow-card">
+                <h5>先刪投稿，再刪課程 / 分類</h5>
+                <div class="trash-dependency-help-flow" aria-label="課程分類 到 課程 到 考古題投稿 到 考古題">
+                  <span>課程分類</span>
+                  <i aria-hidden="true">→</i>
+                  <span>課程</span>
+                  <i aria-hidden="true">→</i>
+                  <span>考古題投稿</span>
+                  <i aria-hidden="true">→</i>
+                  <span>考古題</span>
+                </div>
+                <p>投稿已從審核中心按「刪除」，所以投稿本身也是垃圾桶項目。關聯考古題會列在投稿底下。</p>
+              </article>
+              <article class="trash-dependency-help-flow-card">
+                <h5>直接刪課程 / 分類</h5>
+                <div class="trash-dependency-help-flow" aria-label="課程分類 到 課程 到 考古題">
+                  <span>課程分類</span>
+                  <i aria-hidden="true">→</i>
+                  <span>課程</span>
+                  <i aria-hidden="true">→</i>
+                  <span>考古題</span>
+                </div>
+                <p>投稿只是因原課程刪除而暫時下架，仍留在審核中心，所以不會出現在垃圾桶縮排。</p>
+              </article>
+            </div>
           </section>
 
           <section class="trash-dependency-help-section">
             <h4 class="trash-dependency-help-title">考古題與投稿</h4>
-            <ul class="trash-dependency-help-list">
-              <li>考古題投稿通過後可能建立正式考古題，因此兩者會互相關聯。</li>
-              <li>刪除投稿時：投稿會進垃圾桶，關聯考古題也會被帶入垃圾桶，並顯示在投稿底下。</li>
-              <li>刪除考古題時：考古題會進垃圾桶，相關投稿通常只會暫時下架，不一定進垃圾桶。</li>
-              <li>若投稿仍啟用並連到考古題，可能會阻擋考古題永久刪除。</li>
-              <li>若考古題顯示在投稿底下，通常代表它需隨上層投稿一起還原；請先還原投稿。</li>
-            </ul>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 刪除投稿：投稿進垃圾桶，關聯考古題也會被帶入。</p>
+              <p><span aria-hidden="true">-</span> 刪除考古題：考古題進垃圾桶，相關投稿通常只會暫時下架。</p>
+              <p><span aria-hidden="true">-</span> 考古題顯示在投稿底下時，通常要先還原投稿。</p>
+            </div>
           </section>
 
           <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">課程與考古題</h4>
-            <ul class="trash-dependency-help-list">
-              <li>刪除課程時：課程與下轄考古題會進垃圾桶。</li>
-              <li>相關投稿會暫時下架，並在審核中心提示先復原原課程。</li>
-              <li>復原課程時，系統只會復原因課程刪除而進垃圾桶的考古題；若某考古題是因刪除投稿而進垃圾桶，仍需還原投稿才會復原。</li>
-            </ul>
-          </section>
-
-          <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">分類、課程與投稿的完整例子</h4>
-            <p class="trash-dependency-help-note">流程範例：</p>
-            <ul class="trash-dependency-help-list">
-              <li>先刪投稿，再刪課程與分類：<span class="trash-dependency-help-inline-rule">分類 → 課程 → 投稿 → 考古題</span>，代表投稿本身也在垃圾桶中，考古題由該投稿帶入。</li>
-              <li>直接刪課程與分類，沒有刪投稿：<span class="trash-dependency-help-inline-rule">分類 → 課程 → 考古題</span>，代表投稿只是暫時下架，仍在審核中心，不是垃圾桶項目。</li>
-            </ul>
-          </section>
-
-          <section class="trash-dependency-help-section">
-            <h4 class="trash-dependency-help-title">留言</h4>
-            <ul class="trash-dependency-help-list">
-              <li>留言不再阻擋考古題永久刪除。</li>
-              <li>考古題永久刪除時，關聯留言會一併永久刪除。</li>
-            </ul>
+            <h4 class="trash-dependency-help-title">課程、分類與留言</h4>
+            <div class="trash-dependency-help-rule-list">
+              <p><span aria-hidden="true">-</span> 刪除課程：課程與下轄考古題會進垃圾桶，相關投稿會暫時下架。</p>
+              <p><span aria-hidden="true">-</span> 復原課程：只復原因課程刪除而進垃圾桶的考古題；因刪投稿而進垃圾桶的考古題仍需還原投稿。</p>
+              <p><span aria-hidden="true">-</span> 復原分類：只復原分類本身，不會自動復原課程。</p>
+              <p><span aria-hidden="true">-</span> 留言：不再阻擋考古題永久刪除，會隨考古題一併永久刪除。</p>
+            </div>
           </section>
         </div>
       </Dialog>
@@ -4593,56 +4617,197 @@ onBeforeUnmount(() => {
 .trash-dependency-help {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding-right: 0.15rem;
+  gap: 0.75rem;
+  max-height: min(70vh, 44rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  font-size: 0.92rem;
 }
 
 .trash-dependency-help-intro {
   margin: 0;
   color: var(--text-secondary);
+  line-height: 1.55;
 }
 
 .trash-dependency-help-section {
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 0.7rem 0.8rem;
-  background: color-mix(in srgb, var(--surface-card) 86%, transparent);
+  padding: 0.75rem 0.85rem;
+  background: color-mix(in srgb, var(--surface-card) 90%, transparent);
 }
 
 .trash-dependency-help-title {
-  margin: 0 0 0.45rem 0;
+  margin: 0 0 0.55rem 0;
   font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.trash-dependency-help-label-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.55rem;
+}
+
+.trash-dependency-help-label-card,
+.trash-dependency-help-flow-card {
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-ground) 42%, transparent);
+}
+
+.trash-dependency-help-label-card {
+  padding: 0.6rem;
+}
+
+.trash-dependency-help-label-card p,
+.trash-dependency-help-flow-card p,
+.trash-dependency-help-rule-list p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.trash-dependency-help-label-card p {
+  margin-top: 0.4rem;
+  font-size: 0.86rem;
+}
+
+.trash-dependency-help-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.trash-dependency-help-chip--danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.34);
+  color: #fca5a5;
+}
+
+.trash-dependency-help-chip--warning {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.34);
+  color: #fbbf24;
+}
+
+.trash-dependency-help-chip--info {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.34);
+  color: #93c5fd;
+}
+
+.trash-dependency-help-chip--muted {
+  background: color-mix(in srgb, var(--surface-card) 72%, transparent);
+  color: var(--text-secondary);
+}
+
+.trash-dependency-help-chip--success {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.34);
+  color: #86efac;
+}
+
+.trash-dependency-help-rule-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.trash-dependency-help-rule-list p {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem;
+  overflow-wrap: anywhere;
+}
+
+.trash-dependency-help-rule-list span {
+  color: var(--primary-color);
   font-weight: 700;
 }
 
-.trash-dependency-help-list {
-  margin: 0;
-  padding-left: 1.1rem;
+.trash-dependency-help-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.65rem;
+}
+
+.trash-dependency-help-flow-card {
+  padding: 0.7rem;
+}
+
+.trash-dependency-help-flow-card h5 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
   color: var(--text-color);
 }
 
-.trash-dependency-help-list li + li {
-  margin-top: 0.3rem;
+.trash-dependency-help-flow-card p {
+  margin-top: 0.55rem;
+  font-size: 0.86rem;
 }
 
-.trash-dependency-help-rule,
-.trash-dependency-help-note {
-  margin: 0.35rem 0 0;
+.trash-dependency-help-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.28rem;
+  border: 1px dashed color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 8px;
+  padding: 0.45rem;
+  background: color-mix(in srgb, var(--surface-card) 72%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.trash-dependency-help-flow span {
+  border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: 999px;
+  padding: 0.12rem 0.4rem;
+  color: var(--text-color);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--surface-ground) 55%, transparent);
+}
+
+.trash-dependency-help-flow i {
   color: var(--text-secondary);
-  font-size: 0.9rem;
-  overflow-wrap: anywhere;
+  font-style: normal;
+  font-size: 0.82rem;
 }
 
 .trash-dependency-help-note {
+  margin: 0.5rem 0 0;
   border: 1px dashed color-mix(in srgb, var(--border-color) 60%, transparent);
   padding: 0.45rem 0.55rem;
   border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
-.trash-dependency-help-inline-rule {
-  font-family: var(--font-family);
-  color: var(--text-color);
-  overflow-wrap: anywhere;
+@media (max-width: 640px) {
+  .trash-dependency-help {
+    max-height: 72vh;
+  }
+
+  .trash-dependency-help-section {
+    padding: 0.7rem;
+  }
+
+  .trash-dependency-help-label-grid,
+  .trash-dependency-help-flow-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 :deep(.review-status-chip.review-status-pending) {
