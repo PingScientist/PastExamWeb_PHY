@@ -628,7 +628,7 @@
                 scrollable
                 scrollHeight="65vh"
                 responsiveLayout="stack"
-                breakpoint="768px"
+                breakpoint="1023px"
                 sortMode="multiple"
                 :multiSortMeta="notificationSortMeta"
                 removableSort
@@ -710,6 +710,7 @@
                         title="編輯公告"
                       />
                       <Button
+                        class="admin-danger-solid-button"
                         icon="pi pi-trash"
                         severity="danger"
                         size="small"
@@ -745,7 +746,7 @@
                       {{ formatNotificationDate(notification.updated_at || notification.created_at) }}
                     </span>
                   </section>
-                  <section class="admin-card-actions admin-mobile-card-actions">
+                  <section class="admin-card-actions admin-mobile-card-actions announcement-mobile-actions">
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -756,6 +757,7 @@
                       title="編輯公告"
                     />
                     <Button
+                      class="admin-danger-solid-button"
                       icon="pi pi-trash"
                       severity="danger"
                       size="small"
@@ -6855,13 +6857,15 @@ onBeforeUnmount(() => {
 @media (max-width: 1023px) {
   :deep(.admin-desktop-data-table.user-management-table),
   :deep(.admin-desktop-data-table.course-management-table),
-  :deep(.admin-desktop-data-table.category-management-table) {
+  :deep(.admin-desktop-data-table.category-management-table),
+  :deep(.admin-desktop-data-table.notification-management-table) {
     display: none;
   }
 
   .admin-mobile-list--users,
   .admin-mobile-list--courses,
-  .admin-mobile-list--categories {
+  .admin-mobile-list--categories,
+  .admin-mobile-list--notifications {
     display: flex;
     flex-direction: column;
     gap: 0.8rem;
@@ -6871,7 +6875,8 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--users .admin-mobile-card,
   .admin-mobile-list--courses .admin-mobile-card,
-  .admin-mobile-list--categories .admin-mobile-card {
+  .admin-mobile-list--categories .admin-mobile-card,
+  .admin-mobile-list--notifications .admin-mobile-card {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -6886,6 +6891,7 @@ onBeforeUnmount(() => {
   }
 
   .admin-mobile-list--users .admin-card-primary,
+  .admin-mobile-list--notifications .admin-card-primary,
   .admin-mobile-list--courses .course-card-primary,
   .admin-mobile-list--categories .category-card-main {
     width: 100%;
@@ -6894,6 +6900,7 @@ onBeforeUnmount(() => {
   }
 
   .admin-mobile-list--users .admin-card-title,
+  .admin-mobile-list--notifications .admin-card-title,
   .admin-mobile-list--courses .course-card-title,
   .admin-mobile-list--categories .category-card-title {
     display: block;
@@ -6919,6 +6926,7 @@ onBeforeUnmount(() => {
   }
 
   .admin-mobile-list--users .admin-card-meta,
+  .admin-mobile-list--notifications .admin-card-meta,
   .admin-mobile-list--categories .category-card-meta,
   .admin-mobile-list--courses .course-card-topline,
   .admin-mobile-list--categories .category-card-topline {
@@ -6930,7 +6938,8 @@ onBeforeUnmount(() => {
     min-width: 0;
   }
 
-  .admin-mobile-list--users .admin-card-meta-text {
+  .admin-mobile-list--users .admin-card-meta-text,
+  .admin-mobile-list--notifications .admin-card-meta-text {
     color: var(--text-primary);
     font-size: 0.9rem;
     line-height: 1.3;
@@ -7006,7 +7015,8 @@ onBeforeUnmount(() => {
 
   :deep(.admin-mobile-list--courses .course-card-category),
   :deep(.admin-mobile-list--categories .p-tag),
-  :deep(.admin-mobile-list--users .p-tag) {
+  :deep(.admin-mobile-list--users .p-tag),
+  :deep(.admin-mobile-list--notifications .p-tag) {
     width: fit-content;
     max-width: 100%;
     white-space: nowrap;
@@ -7014,7 +7024,8 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--users .admin-mobile-card-actions,
   .admin-mobile-list--courses .admin-mobile-card-actions,
-  .admin-mobile-list--categories .admin-mobile-card-actions {
+  .admin-mobile-list--categories .admin-mobile-card-actions,
+  .admin-mobile-list--notifications .announcement-mobile-actions {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -7025,7 +7036,8 @@ onBeforeUnmount(() => {
 
   :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button),
   :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button),
-  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button) {
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--notifications .announcement-mobile-actions .p-button) {
     width: auto;
     min-height: 2.45rem;
     justify-content: center;
@@ -7036,7 +7048,8 @@ onBeforeUnmount(() => {
 @media (min-width: 641px) and (max-width: 1023px) {
   .admin-mobile-list--users .admin-mobile-card-actions,
   .admin-mobile-list--courses .admin-mobile-card-actions,
-  .admin-mobile-list--categories .admin-mobile-card-actions {
+  .admin-mobile-list--categories .admin-mobile-card-actions,
+  .admin-mobile-list--notifications .announcement-mobile-actions {
     flex-wrap: nowrap;
     justify-content: flex-start;
     overflow-x: auto;
@@ -7045,7 +7058,8 @@ onBeforeUnmount(() => {
 
   :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button),
   :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button),
-  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button) {
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--notifications .announcement-mobile-actions .p-button) {
     flex: 0 0 auto;
     width: auto;
     min-width: 5.25rem;
@@ -7054,13 +7068,15 @@ onBeforeUnmount(() => {
 
   :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button-label),
   :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button-label),
-  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button-label) {
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button-label),
+  :deep(.admin-mobile-list--notifications .announcement-mobile-actions .p-button-label) {
     display: inline-flex;
   }
 
   :deep(.admin-mobile-list--users .admin-mobile-card-actions .pi),
   :deep(.admin-mobile-list--courses .admin-mobile-card-actions .pi),
-  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .pi) {
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .pi),
+  :deep(.admin-mobile-list--notifications .announcement-mobile-actions .pi) {
     margin-inline-end: 0.35rem;
   }
 }
@@ -7068,7 +7084,8 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
   .admin-mobile-list--users .admin-mobile-card-actions,
   .admin-mobile-list--courses .admin-mobile-card-actions,
-  .admin-mobile-list--categories .admin-mobile-card-actions {
+  .admin-mobile-list--categories .admin-mobile-card-actions,
+  .admin-mobile-list--notifications .announcement-mobile-actions {
     flex-wrap: wrap;
     justify-content: stretch;
     overflow-x: visible;
@@ -7076,7 +7093,8 @@ onBeforeUnmount(() => {
 
   :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button),
   :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button),
-  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button) {
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--notifications .announcement-mobile-actions .p-button) {
     flex: 1 1 calc(33.333% - 0.5rem);
     width: auto;
     min-width: 5.7rem;
@@ -7086,13 +7104,15 @@ onBeforeUnmount(() => {
 
   :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button-label),
   :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button-label),
-  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button-label) {
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button-label),
+  :deep(.admin-mobile-list--notifications .announcement-mobile-actions .p-button-label) {
     display: inline-flex;
   }
 
   :deep(.admin-mobile-list--users .admin-mobile-card-actions .pi),
   :deep(.admin-mobile-list--courses .admin-mobile-card-actions .pi),
-  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .pi) {
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .pi),
+  :deep(.admin-mobile-list--notifications .announcement-mobile-actions .pi) {
     margin-inline-end: 0.3rem;
   }
 }
