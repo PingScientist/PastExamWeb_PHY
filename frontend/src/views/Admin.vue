@@ -813,6 +813,28 @@
                           管理員投稿
                         </Tag>
                       </div>
+                      <div class="review-mobile-card-header">
+                        <div class="review-mobile-card-title-block">
+                          <div class="review-mobile-card-course-row">
+                            <div class="review-mobile-card-course-name">{{ data.subject }}</div>
+                            <Tag v-if="data.is_admin_upload" class="soft-badge soft-badge--admin review-admin-upload-chip" severity="info">
+                              管理員投稿
+                            </Tag>
+                          </div>
+                          <Tag
+                            :class="['soft-badge', 'review-card-chip', 'review-mobile-card-type-badge', getArchiveSubmissionKindClass(data)]"
+                            :severity="getArchiveSubmissionKindSeverity(data)"
+                          >
+                            {{ getArchiveSubmissionKind(data) }}
+                          </Tag>
+                        </div>
+                        <Tag
+                          :class="['soft-badge', 'review-card-chip', 'review-status-chip', 'review-mobile-card-status-badge', getSubmissionStatusClass(data.status)]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          {{ getSubmissionLabel(data.status) }}
+                        </Tag>
+                      </div>
                       <div class="review-mobile-summary">
                         <div v-if="data.name" class="review-mobile-exam-name">{{ data.name }}</div>
                         <div class="review-mobile-info-grid">
@@ -994,6 +1016,22 @@
                         <span>{{ data.subject }}</span>
                         <Tag v-if="data.is_admin_upload" class="soft-badge soft-badge--admin review-admin-upload-chip" severity="info">
                           管理員投稿
+                        </Tag>
+                      </div>
+                      <div class="review-mobile-card-header">
+                        <div class="review-mobile-card-title-block">
+                          <div class="review-mobile-card-course-row">
+                            <div class="review-mobile-card-course-name">{{ data.subject }}</div>
+                            <Tag v-if="data.is_admin_upload" class="soft-badge soft-badge--admin review-admin-upload-chip" severity="info">
+                              管理員投稿
+                            </Tag>
+                          </div>
+                        </div>
+                        <Tag
+                          :class="['soft-badge', 'review-card-chip', 'review-status-chip', 'review-mobile-card-status-badge', getSubmissionStatusClass(data.status)]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          {{ getSubmissionLabel(data.status) }}
                         </Tag>
                       </div>
                       <div class="review-mobile-summary">
@@ -6739,6 +6777,10 @@ onBeforeUnmount(() => {
   display: none;
 }
 
+:deep(.review-mobile-card-header) {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   .review-center {
     padding: 0.75rem !important;
@@ -6812,6 +6854,52 @@ onBeforeUnmount(() => {
     grid-column: 1 / -1;
   }
 
+  :deep(.review-mobile-card-header) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.review-mobile-card-title-block) {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.34rem;
+  }
+
+  :deep(.review-mobile-card-course-row) {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  :deep(.review-mobile-card-course-name) {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  :deep(.review-mobile-card-type-badge) {
+    align-self: flex-start;
+  }
+
+  :deep(.review-mobile-card-status-badge) {
+    flex: 0 0 auto;
+    max-width: 42%;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+  }
+
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(2)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(3)) {
     display: none !important;
@@ -6833,12 +6921,12 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(2)) {
-    order: 2;
+    display: none !important;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(6)),
   :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(7)) {
-    order: 3;
+    display: none !important;
   }
 
   :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(7)),
@@ -6852,7 +6940,7 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-card-title) {
-    display: flex;
+    display: none;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.35rem;
