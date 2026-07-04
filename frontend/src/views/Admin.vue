@@ -1806,6 +1806,11 @@
                   <span>考古題</span>
                 </div>
                 <p>投稿只是因原課程刪除而暫時下架，仍留在審核中心，所以不會出現在垃圾桶縮排。</p>
+                <div class="trash-dependency-help-note">
+                  <p>若之後永久刪除此課程，底下考古題會一併永久刪除。</p>
+                  <p>相關投稿會進入垃圾桶並標示無法復原。</p>
+                  <p>因父層課程與考古題已不存在，投稿會以獨立項目顯示。</p>
+                </div>
               </article>
             </div>
           </section>
@@ -4793,6 +4798,14 @@ onBeforeUnmount(() => {
   font-size: 0.86rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.trash-dependency-help-note p {
+  margin: 0;
+}
+
+.trash-dependency-help-note p + p {
+  margin-top: 0.25rem;
 }
 
 @media (max-width: 640px) {
