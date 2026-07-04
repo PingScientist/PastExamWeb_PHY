@@ -482,7 +482,7 @@
                 </Column>
                 <Column header="操作" style="width: 24%">
                   <template #body="{ data }">
-                    <div class="admin-card-actions">
+                    <div class="admin-card-actions user-management-actions">
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -537,7 +537,7 @@
                       <span>{{ getOnlineStatusLabel(user) }}</span>
                     </span>
                   </section>
-                  <section class="admin-card-actions admin-mobile-card-actions">
+                  <section class="admin-card-actions admin-mobile-card-actions user-management-actions">
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -2083,11 +2083,15 @@ const getOnlineStatusLabel = (user) => {
     return user.online_status_label
   }
 
+  if (user?.is_online === true) {
+    return '在線'
+  }
+
   if (!user || !user.last_login) {
     return '從未登入'
   }
 
-  return `最近登入 ${formatDateTime(user.last_login)}`
+  return '離線'
 }
 
 const getOnlineStatusDotClass = (user) => {
@@ -5622,9 +5626,22 @@ onBeforeUnmount(() => {
   color: #16a34a;
 }
 
-.user-online-dot--offline {
-  color: var(--text-secondary);
-}
+  .user-online-dot--offline {
+    color: var(--text-secondary);
+  }
+
+  :deep(.user-management-actions) {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  :deep(.user-management-actions .p-button),
+  :deep(.user-management-actions button) {
+    flex: 0 0 auto;
+  }
 
 :global(.dark) .user-online-dot--online {
   color: #22c55e;
@@ -6283,7 +6300,6 @@ onBeforeUnmount(() => {
     white-space: nowrap;
   }
 
-  :deep(.user-management-table .admin-card-actions),
   :deep(.notification-management-table .admin-card-actions) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6291,11 +6307,24 @@ onBeforeUnmount(() => {
     gap: 0.5rem;
   }
 
-  :deep(.user-management-table .admin-card-actions .p-button),
+  :deep(.user-management-table .admin-card-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
   :deep(.notification-management-table .admin-card-actions .p-button) {
     width: 100%;
     min-width: 0;
     min-height: 2.6rem;
+  }
+
+  :deep(.user-management-table .admin-card-actions .p-button) {
+    width: auto;
+    min-width: 7rem;
+    min-height: 2.35rem;
   }
 
   .admin-card-actions {
@@ -6525,7 +6554,6 @@ onBeforeUnmount(() => {
     line-height: 1;
   }
 
-  :deep(.user-management-table .admin-card-actions),
   :deep(.notification-management-table .admin-card-actions) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6533,11 +6561,24 @@ onBeforeUnmount(() => {
     gap: 0.5rem;
   }
 
-  :deep(.user-management-table .admin-card-actions .p-button),
+  :deep(.user-management-table .admin-card-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
   :deep(.notification-management-table .admin-card-actions .p-button) {
     width: 100%;
     min-width: 0;
     min-height: 2.65rem;
+  }
+
+  :deep(.user-management-table .admin-card-actions .p-button) {
+    width: auto;
+    min-width: 7rem;
+    min-height: 2.35rem;
   }
 
   :deep(.admin-mobile-list .admin-mobile-card-actions .p-button) {

@@ -21,14 +21,35 @@ router = APIRouter()
 
 NICKNAME_MAX_LENGTH = 15
 USER_PASSWORD_MIN_LENGTH = 8
-ONLINE_STATUS_MINUTES = 5
+ONLINE_STATUS_MINUTES = 10
+
+
+def _normalize_timestamp(dt: datetime | None) -> datetime | None:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _get_user_online_status(user: User):
-    if not user.last_login:
+    now_utc = datetime.now(timezone.utc)
+    last_seen = _normalize_timestamp(
+        getattr(user, "last_seen_at", None) or getattr(user, "last_active_at", None)
+    )
+    last_login = _normalize_timestamp(user.last_login)
+    last_logout = _normalize_timestamp(user.last_logout)
+
+    if not last_login and not last_seen:
         return False, "從未登入"
 
-    is_online = user.last_login >= datetime.now(timezone.utc) - timedelta(minutes=ONLINE_STATUS_MINUTES)
+    reference_time = last_seen or last_login
+
+    if last_logout and last_login and last_logout >= last_login:
+        return False, "離線"
+
+    cutoff = now_utc - timedelta(minutes=ONLINE_STATUS_MINUTES)
+    is_online = reference_time and reference_time >= cutoff
     return is_online, "在線" if is_online else "離線"
 
 
