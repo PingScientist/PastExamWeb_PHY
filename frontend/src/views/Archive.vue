@@ -273,6 +273,8 @@
                                 severity="secondary"
                                 label="預覽"
                                 outlined
+                                aria-label="預覽"
+                                title="預覽"
                                 class="archive-action-preview"
                               />
                               <Button
@@ -282,6 +284,8 @@
                                 severity="success"
                                 label="下載"
                                 :loading="downloadingId === data.id"
+                                aria-label="下載"
+                                title="下載"
                                 class="archive-action-download"
                               />
                               <Button
@@ -293,6 +297,7 @@
                                 label="編輯"
                                 outlined
                                 aria-label="編輯"
+                                title="編輯"
                                 class="archive-action-edit"
                               />
                               <Button
@@ -301,10 +306,11 @@
                                 @click="confirmDelete(data)"
                                 size="small"
                                 severity="danger"
-                                text
-                                rounded
+                                label="刪除"
+                                outlined
                                 aria-label="刪除"
-                                class="archive-action-icon archive-action-danger"
+                                title="刪除"
+                                class="archive-action-delete archive-action-danger"
                               />
                             </div>
                           </div>
@@ -2313,6 +2319,12 @@ const mobileMenuItems = computed(() => {
   padding-left: 0;
 }
 
+.archive-record-actions :deep(.archive-action-delete.p-button) {
+  color: #9b3a35;
+  border-color: rgba(155, 58, 53, 0.42);
+  background: rgba(155, 58, 53, 0.03);
+}
+
 .archive-record-actions :deep(.archive-action-edit.p-button) {
   color: #426b61;
   border-color: #c5d8d0;
@@ -2351,6 +2363,12 @@ const mobileMenuItems = computed(() => {
   color: #b4cbc3;
   border-color: #29483f;
   background: #0f1a17;
+}
+
+.archive-dark .archive-record-actions :deep(.archive-action-delete.p-button) {
+  color: #f0aaa4;
+  border-color: rgba(240, 170, 164, 0.36);
+  background: rgba(155, 58, 53, 0.06);
 }
 
 @media (max-width: 1199px) {
@@ -2527,8 +2545,10 @@ const mobileMenuItems = computed(() => {
 
   .archive-record-actions :deep(.archive-action-preview.p-button),
   .archive-record-actions :deep(.archive-action-download.p-button),
-  .archive-record-actions :deep(.archive-action-edit.p-button) {
-    flex: 0 1 7.2rem;
+  .archive-record-actions :deep(.archive-action-edit.p-button),
+  .archive-record-actions :deep(.archive-action-delete.p-button) {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 
@@ -2710,12 +2730,21 @@ const mobileMenuItems = computed(() => {
   }
 
   .archive-record-actions :deep(.archive-action-preview.p-button),
-  .archive-record-actions :deep(.archive-action-download.p-button) {
-    flex: 1 1 calc(50% - 0.2rem);
+  .archive-record-actions :deep(.archive-action-download.p-button),
+  .archive-record-actions :deep(.archive-action-edit.p-button),
+  .archive-record-actions :deep(.archive-action-delete.p-button) {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-right: 0.45rem;
+    padding-left: 0.45rem;
   }
 
-  .archive-record-actions :deep(.archive-action-edit.p-button) {
-    flex: 1 1 calc(100% - 2.4rem);
+  .archive-record-actions :deep(.p-button-label) {
+    display: none;
+  }
+
+  .archive-record-actions :deep(.p-button-icon) {
+    margin: 0;
   }
 }
 
