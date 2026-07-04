@@ -29,11 +29,19 @@
             <div class="flex flex-column gap-4">
               <div class="request-mode-panel">
                 <div class="flex align-items-start gap-2">
-                  <Checkbox v-model="form.requestNewCourse" :binary="true" inputId="request-new-course" />
+                  <Checkbox
+                    v-model="form.requestNewCourse"
+                    :binary="true"
+                    inputId="request-new-course"
+                    :disabled="form.requestNewCategory"
+                  />
                   <div>
                     <label for="request-new-course" class="font-semibold">申請新增課程</label>
                     <div class="text-sm text-500 mt-1">
                       勾選後，這份考古會先進入審核；管理者通過後才建立新課程並公開考古題。
+                    </div>
+                    <div v-if="form.requestNewCategory" class="text-sm text-500 mt-1">
+                      新增分類必須同時申請新增課程。
                     </div>
                   </div>
                 </div>
@@ -466,6 +474,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'upload-success'])
 
 const toast = useToast()
+const NEW_CATEGORY_REQUIRES_COURSE_MESSAGE = '新增分類必須同時申請新增課程。'
 
 const form = ref({
   category: null,
@@ -604,6 +613,7 @@ const generatedFilename = computed(() => {
 })
 
 const canGoToStep2 = computed(() => {
+  if (form.value.requestNewCategory && !form.value.requestNewCourse) return false
   const hasCategory = form.value.requestNewCategory
     ? isCategoryKeyValid.value && form.value.requestedCategoryName.trim()
     : form.value.category
@@ -691,6 +701,16 @@ async function fetchProfessorsForSubject(subjectId) {
 }
 
 const handleUpload = async () => {
+  if (form.value.requestNewCategory && !form.value.requestNewCourse) {
+    toast.add({
+      severity: 'error',
+      summary: '無法送出',
+      detail: NEW_CATEGORY_REQUIRES_COURSE_MESSAGE,
+      life: 3000,
+    })
+    return
+  }
+
   try {
     uploading.value = true
 

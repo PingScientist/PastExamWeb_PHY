@@ -252,6 +252,12 @@ async def upload_archive(
     requested_category_label = (requested_category_label or "").strip() or None
     requested_category_icon = (requested_category_icon or "").strip() or None
 
+    if request_new_category and not request_new_course:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="新增分類必須同時申請新增課程。",
+        )
+
     if request_new_category:
         if not requested_category_key or not requested_category_name:
             raise HTTPException(
