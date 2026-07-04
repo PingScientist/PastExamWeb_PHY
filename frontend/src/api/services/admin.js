@@ -37,3 +37,7 @@ export const updateUser = (userId, userData) => {
 export const deleteUser = (userId) => {
   return api.delete(`/users/admin/users/${userId}`)
 }
+
+export const resetUserPassword = (userId, payload) => {
+  return api.post(`/users/admin/users/${userId}/reset-password`, payload)
+}

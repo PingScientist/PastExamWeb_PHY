@@ -166,8 +166,8 @@
                       </Tag>
                     </section>
                     <section class="admin-card-actions admin-mobile-card-actions category-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
+                    <Button
+                      icon="pi pi-pencil"
                         label="編輯"
                         aria-label="編輯分類"
                         title="編輯分類"
@@ -289,8 +289,8 @@
                 <Column header="操作" style="width: 18%">
                   <template #body="{ data }">
                     <div class="admin-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
+                    <Button
+                      icon="pi pi-pencil"
                         severity="warning"
                         size="small"
                         @click="openEditDialog(data)"
@@ -472,30 +472,48 @@
                     <span v-else class="text-sm text-500"> 從未登入 </span>
                   </template>
                 </Column>
-                <Column header="操作" style="width: 20%">
+                <Column field="is_online" header="上線狀態" sortable style="width: 16%">
+                  <template #body="{ data }">
+                    <span class="user-online-badge" :class="getOnlineStatusDotClass(data)">
+                      <i class="pi pi-circle-fill"></i>
+                      <span>{{ getOnlineStatusLabel(data) }}</span>
+                    </span>
+                  </template>
+                </Column>
+                <Column header="操作" style="width: 24%">
                   <template #body="{ data }">
                     <div class="admin-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
-                        severity="warning"
-                        size="small"
-                        @click="openEditUserDialog(data)"
-                        label="編輯"
-                        aria-label="編輯使用者"
-                        title="編輯使用者"
-                      />
-                      <Button
-                        icon="pi pi-trash"
-                        severity="danger"
-                        size="small"
-                        @click="confirmDeleteUser(data)"
-                        label="刪除"
-                        aria-label="刪除使用者"
-                        title="刪除使用者"
-                        :disabled="data.id === currentUserId"
-                      />
-                    </div>
-                  </template>
+                    <Button
+                      icon="pi pi-pencil"
+                      severity="warning"
+                      size="small"
+                      @click="openEditUserDialog(data)"
+                      label="編輯"
+                      aria-label="編輯使用者"
+                      title="編輯使用者"
+                    />
+                    <Button
+                      icon="pi pi-key"
+                      severity="info"
+                      size="small"
+                      @click="openResetPasswordDialog(data)"
+                      label="重設密碼"
+                      aria-label="重設使用者密碼"
+                      :title="data.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
+                      :disabled="!data.is_local"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      @click="confirmDeleteUser(data)"
+                      label="刪除"
+                      aria-label="刪除使用者"
+                      title="刪除使用者"
+                      :disabled="data.id === currentUserId"
+                    />
+                  </div>
+                    </template>
                 </Column>
               </DataTable>
               <div v-if="!usersLoading" class="admin-mobile-list admin-mobile-list--users">
@@ -514,6 +532,10 @@
                     <span class="admin-card-meta-text">
                       {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
                     </span>
+                    <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
+                      <i class="pi pi-circle-fill"></i>
+                      <span>{{ getOnlineStatusLabel(user) }}</span>
+                    </span>
                   </section>
                   <section class="admin-card-actions admin-mobile-card-actions">
                     <Button
@@ -524,6 +546,16 @@
                       label="編輯"
                       aria-label="編輯使用者"
                       title="編輯使用者"
+                    />
+                    <Button
+                      icon="pi pi-key"
+                      severity="info"
+                      size="small"
+                      @click="openResetPasswordDialog(user)"
+                      label="重設密碼"
+                      aria-label="重設使用者密碼"
+                      :title="user.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
+                      :disabled="!user.is_local"
                     />
                     <Button
                       icon="pi pi-trash"
@@ -662,8 +694,8 @@
                 <Column header="操作" style="width: 20%">
                   <template #body="{ data }">
                     <div class="admin-card-actions">
-                      <Button
-                        icon="pi pi-pencil"
+                    <Button
+                      icon="pi pi-pencil"
                         severity="warning"
                         size="small"
                         @click="openNotificationEditDialog(data)"
@@ -887,7 +919,7 @@
                           :title="getReviewTrashNote(data, true)"
                         >
                           <i :class="getReviewTrashNoteIcon(data)" aria-hidden="true"></i>
-                          <span>{{ getReviewTrashNote(data) }}</span>
+                          <span class="review-card-action-note__text">{{ getReviewTrashNote(data) }}</span>
                         </div>
                       </div>
                     </template>
@@ -1021,7 +1053,7 @@
                           :title="getReviewTrashNote(data, true)"
                         >
                           <i :class="getReviewTrashNoteIcon(data)" aria-hidden="true"></i>
-                          <span>{{ getReviewTrashNote(data) }}</span>
+                          <span class="review-card-action-note__text">{{ getReviewTrashNote(data) }}</span>
                         </div>
                       </div>
                     </template>
@@ -1665,6 +1697,72 @@
       </Dialog>
 
       <Dialog
+        :visible="showResetPasswordDialog"
+        @update:visible="showResetPasswordDialog = $event"
+        @hide="closeResetPasswordDialog"
+        :modal="true"
+        :draggable="false"
+        :closeOnEscape="false"
+        header="重設密碼"
+        :style="{ width: '460px', maxWidth: '92vw' }"
+        :autoFocus="false"
+      >
+        <div class="flex flex-column gap-3">
+          <div class="flex flex-column gap-1">
+            <label class="font-semibold">使用者</label>
+            <div class="text-sm">
+              {{ getResetPasswordTargetLabel(resetPasswordUser) }}
+              <span v-if="resetPasswordUser?.email" class="text-500">（{{ resetPasswordUser.email }}）</span>
+            </div>
+          </div>
+
+          <div class="flex flex-column gap-2">
+            <label>新密碼</label>
+            <Password
+              v-model="resetPasswordForm.newPassword"
+              placeholder="輸入新密碼"
+              class="w-full"
+              inputClass="w-full"
+              :class="{ 'p-invalid': resetPasswordFormErrors.newPassword }"
+              toggleMask
+              :feedback="false"
+              :maxlength="128"
+            />
+            <small v-if="resetPasswordFormErrors.newPassword" class="p-error">
+              {{ resetPasswordFormErrors.newPassword }}
+            </small>
+          </div>
+
+          <div class="flex flex-column gap-2">
+            <label>確認新密碼</label>
+            <Password
+              v-model="resetPasswordForm.confirmPassword"
+              placeholder="再次輸入新密碼"
+              class="w-full"
+              inputClass="w-full"
+              :class="{ 'p-invalid': resetPasswordFormErrors.confirmPassword }"
+              toggleMask
+              :feedback="false"
+              :maxlength="128"
+            />
+            <small v-if="resetPasswordFormErrors.confirmPassword" class="p-error">
+              {{ resetPasswordFormErrors.confirmPassword }}
+            </small>
+          </div>
+        </div>
+
+        <div class="flex pt-6 justify-end gap-2.5">
+          <Button label="取消" icon="pi pi-times" severity="secondary" @click="closeResetPasswordDialog" />
+          <Button
+            label="確認重設"
+            icon="pi pi-key"
+            severity="success"
+            @click="resetPassword"
+            :loading="resetPasswordLoading"
+          />
+        </div>
+      </Dialog>
+      <Dialog
         :visible="showNotificationDialog"
         @update:visible="showNotificationDialog = $event"
         :modal="true"
@@ -1905,6 +2003,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  resetUserPassword,
   notificationService,
   courseService,
   archiveService,
@@ -1972,10 +2071,42 @@ const userSortMeta = ref([
   { field: 'is_admin', order: -1 },
   { field: 'name', order: 1 },
 ])
+const USER_PASSWORD_MIN_LENGTH = 8
+const NON_LOCAL_PASSWORD_RESET_HINT = '此帳號不是本地帳號，無法由系統重設密碼。'
+
+const getResetPasswordTargetLabel = (user) => {
+  return user?.name || user?.email || '該使用者'
+}
+
+const getOnlineStatusLabel = (user) => {
+  if (user?.online_status_label) {
+    return user.online_status_label
+  }
+
+  if (!user || !user.last_login) {
+    return '從未登入'
+  }
+
+  return `最近登入 ${formatDateTime(user.last_login)}`
+}
+
+const getOnlineStatusDotClass = (user) => {
+  return user?.is_online ? 'user-online-dot--online' : 'user-online-dot--offline'
+}
 
 const showUserDialog = ref(false)
 const editingUser = ref(null)
 const userSaveLoading = ref(false)
+
+const showResetPasswordDialog = ref(false)
+const resetPasswordUser = ref(null)
+const resetPasswordLoading = ref(false)
+const resetPasswordForm = ref({
+  newPassword: "",
+  confirmPassword: "",
+})
+const resetPasswordFormErrors = ref({})
+
 
 const userForm = ref({
   name: '',
@@ -4180,6 +4311,87 @@ const closeUserDialog = () => {
   editingUser.value = null
 }
 
+
+const closeResetPasswordDialog = () => {
+  showResetPasswordDialog.value = false
+  resetPasswordUser.value = null
+  resetPasswordForm.value = {
+    newPassword: '',
+    confirmPassword: '',
+  }
+  resetPasswordFormErrors.value = {}
+  resetPasswordLoading.value = false
+}
+
+const openResetPasswordDialog = (user) => {
+  if (!user?.is_local) return
+
+  resetPasswordUser.value = user
+  resetPasswordForm.value = {
+    newPassword: '',
+    confirmPassword: '',
+  }
+  resetPasswordFormErrors.value = {}
+  showResetPasswordDialog.value = true
+}
+
+const validateResetPasswordForm = () => {
+  const errors = {}
+  const newPassword = (resetPasswordForm.value.newPassword || '').trim()
+  const confirmPassword = (resetPasswordForm.value.confirmPassword || '').trim()
+
+  if (!newPassword) {
+    errors.newPassword = '新密碼是必填欄位'
+  } else if (newPassword.length < USER_PASSWORD_MIN_LENGTH) {
+    errors.newPassword = `新密碼至少 ${USER_PASSWORD_MIN_LENGTH} 字`
+  }
+
+  if (!confirmPassword) {
+    errors.confirmPassword = '請再次輸入新密碼'
+  } else if (confirmPassword !== newPassword) {
+    errors.confirmPassword = '兩次輸入的密碼不一致'
+  }
+
+  resetPasswordFormErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+const resetPassword = async () => {
+  if (!validateResetPasswordForm()) return
+  if (!resetPasswordUser.value?.is_local || !resetPasswordUser.value?.id) return
+
+  resetPasswordLoading.value = true
+  try {
+    const payload = {
+      new_password: (resetPasswordForm.value.newPassword || '').trim(),
+    }
+
+    await resetUserPassword(resetPasswordUser.value.id, payload)
+
+    toast.add({
+      severity: 'success',
+      summary: '成功',
+      detail: `使用者 ${getResetPasswordTargetLabel(resetPasswordUser.value)} 的密碼已更新。`,
+      life: 3000,
+    })
+
+    closeResetPasswordDialog()
+    await loadUsers()
+  } catch (error) {
+    console.error('重設密碼失敗:', error)
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    toast.add({
+      severity: 'error',
+      summary: '錯誤',
+      detail: `重設密碼失敗：${error?.response?.data?.detail || '請稍後再試'}`,
+      life: 3500,
+    })
+  } finally {
+    resetPasswordLoading.value = false
+  }
+}
 const validateUserForm = () => {
   const errors = {}
 
@@ -4675,6 +4887,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .review-sort-icon {
@@ -4690,7 +4904,8 @@ onBeforeUnmount(() => {
   gap: 0.35rem;
   margin: 0.15rem 0 0;
   width: 100%;
-  max-width: 18rem;
+  max-width: min(18rem, 100%);
+  min-width: 0;
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border-color);
   border-left-width: 3px;
@@ -4699,17 +4914,30 @@ onBeforeUnmount(() => {
   color: var(--text-color-secondary);
   font-size: 0.76rem;
   line-height: 1.35;
+  white-space: normal;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .review-card-action-note .pi {
   flex: 0 0 auto;
+  flex-shrink: 0;
   margin-top: 0.08rem;
   font-size: 0.78rem;
 }
 
 .review-card-action-note span {
   min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.review-card-action-note__text {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .review-card-action-note--info {
@@ -5374,6 +5602,37 @@ onBeforeUnmount(() => {
 .admin-mobile-list {
   display: none;
 }
+
+.user-online-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-color);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.user-online-badge .pi {
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.user-online-dot--online {
+  color: #16a34a;
+}
+
+.user-online-dot--offline {
+  color: var(--text-secondary);
+}
+
+:global(.dark) .user-online-dot--online {
+  color: #22c55e;
+}
+:global(.dark) .user-online-dot--offline {
+  color: var(--text-secondary);
+}
+
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
@@ -6343,8 +6602,13 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-card-action-note) {
-    width: 100%;
-    max-width: 18rem;
+  width: 100%;
+  max-width: min(18rem, 100%);
+}
+
+  :deep(.review-card-action-note),
+  :deep(.review-card-action-note .review-card-action-note__text) {
+    white-space: normal;
   }
 
   /* Ensure buttons don't wrap on desktop */

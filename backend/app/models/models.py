@@ -302,6 +302,9 @@ class UserRead(BaseModel):
     is_admin: bool
     is_local: bool
     last_login: Optional[datetime]
+    last_login_at: Optional[datetime] = None
+    is_online: bool = False
+    online_status_label: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -312,6 +315,10 @@ class UserCreate(BaseModel):
     email: str
     password: str
     is_admin: bool = False
+
+
+class UserPasswordResetRequest(BaseModel):
+    new_password: str
 
 
 class UserUpdate(BaseModel):
