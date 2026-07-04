@@ -7047,15 +7047,18 @@ onBeforeUnmount(() => {
 
   :deep(.review-card-actions) {
     order: 2;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(5.75rem, 1fr));
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     width: 100%;
     gap: 0.45rem;
   }
 
   :deep(.review-card-actions .p-button) {
-    width: 100%;
-    min-width: 0;
+    width: auto;
+    flex: 0 0 auto;
+    min-width: 5.75rem;
     min-height: 2.35rem;
     padding-inline: 0.5rem;
     justify-content: center;
@@ -7083,10 +7086,15 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-card-actions) {
-    grid-template-columns: repeat(auto-fit, minmax(2.45rem, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   :deep(.review-card-actions .p-button) {
+    width: auto;
+    flex: 0 0 auto;
+    min-width: 2.45rem;
     min-height: 2.45rem;
     padding-inline: 0.45rem;
   }
