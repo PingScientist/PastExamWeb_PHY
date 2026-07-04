@@ -1069,6 +1069,7 @@
                 tableStyle="min-width: 72rem"
                 responsiveLayout="stack"
                 breakpoint="768px"
+                :rowClass="getTrashRowClass"
               >
                 <Column field="deleted_at">
                   <template #header>
@@ -2305,6 +2306,17 @@ const getTrashTreePrefix = (item) => {
   return `${'│  '.repeat(Math.max(0, depth - 1))}└─`
 }
 
+const getTrashRowClass = (item) => {
+  if (!isTrashRelationHierarchyEnabled.value) return ''
+  const groupIndex = item?.trash_relation_group_index
+  const groupSize = Number(item?.trash_relation_group_size || 0)
+  if (groupIndex === null || groupIndex === undefined || groupSize <= 1) return ''
+  const bandClass = Number(groupIndex) % 2 === 0
+    ? 'trash-row--relation-group-even'
+    : 'trash-row--relation-group-odd'
+  return `trash-row--relation-group ${bandClass}`
+}
+
 const getValidTrashFilterType = (value) => {
   const validFilterValues = new Set(trashFilterOptions.map((option) => option.value))
   if (value === TRASH_FILTER_ALL_VALUE) return null
@@ -2347,13 +2359,20 @@ const buildTrashHierarchy = (items, filterType) => {
       ...item,
       _trashRowIndex: item._trashRowIndex ?? index,
       trash_depth: 0,
+      trash_relation_group_index: null,
+      trash_relation_group_size: 1,
     }))
     .sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
 
   if (normalizedFilterType !== null && normalizedFilterType !== undefined) {
     return rows
       .sort((a, b) => getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a))
-      .map((item) => ({ ...item, trash_depth: 0 }))
+      .map((item) => ({
+        ...item,
+        trash_depth: 0,
+        trash_relation_group_index: null,
+        trash_relation_group_size: 1,
+      }))
   }
 
   if (!rows.length) return []
@@ -2383,23 +2402,45 @@ const buildTrashHierarchy = (items, filterType) => {
 
   const visited = new Set()
   const result = []
-  const walk = (node, depth) => {
+
+  const countSubtree = (node, seen = new Set()) => {
+    const key = getTrashItemKey(node, node._trashRowIndex)
+    if (seen.has(key)) return 0
+    seen.add(key)
+    const children = childrenMap.get(key) || []
+    return 1 + children.reduce((total, child) => total + countSubtree(child, seen), 0)
+  }
+
+  const walk = (node, depth, relationGroupIndex = null, relationGroupSize = 1) => {
     const key = getTrashItemKey(node, node._trashRowIndex)
     if (visited.has(key)) return
     visited.add(key)
 
-    result.push({ ...node, trash_depth: depth })
+    result.push({
+      ...node,
+      trash_depth: depth,
+      trash_relation_group_index: relationGroupIndex,
+      trash_relation_group_size: relationGroupSize,
+    })
     const children = childrenMap.get(key) || []
     for (const child of children) {
-      walk(child, depth + 1)
+      walk(child, depth + 1, relationGroupIndex, relationGroupSize)
     }
   }
+  let nextRelationGroupIndex = 0
   for (const root of roots) {
-    walk(root, 0)
+    const relationGroupSize = countSubtree(root)
+    const relationGroupIndex = relationGroupSize > 1 ? nextRelationGroupIndex++ : null
+    walk(root, 0, relationGroupIndex, relationGroupSize)
   }
 
   if (!result.length && rows.length) {
-    return rows.map((item) => ({ ...item, trash_depth: 0 }))
+    return rows.map((item) => ({
+      ...item,
+      trash_depth: 0,
+      trash_relation_group_index: null,
+      trash_relation_group_size: 1,
+    }))
   }
 
   return result
@@ -4617,6 +4658,26 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group-even) {
+  --trash-relation-row-bg: rgba(16, 185, 129, 0.055);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group-odd) {
+  --trash-relation-row-bg: rgba(59, 130, 246, 0.045);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group) {
+  background: var(--trash-relation-row-bg);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group > td) {
+  background: var(--trash-relation-row-bg);
+}
+
+:deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group:hover > td) {
+  background: color-mix(in srgb, var(--trash-relation-row-bg) 72%, var(--bg-secondary) 28%);
 }
 
 .trash-dependency-help {
