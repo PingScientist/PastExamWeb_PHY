@@ -931,7 +931,13 @@
                           :icon="action.icon"
                           :aria-label="action.label"
                           :title="action.label"
-                          :class="['review-action-button', { 'review-action-button--delete': action.key === 'delete' }]"
+                          :class="[
+                            'review-action-button',
+                            {
+                              'review-action-button--reject': action.key === 'reject',
+                              'review-action-button--delete': action.key === 'delete',
+                            },
+                          ]"
                           size="small"
                           :severity="action.severity"
                           :outlined="action.outlined"
@@ -1088,7 +1094,13 @@
                           :icon="action.icon"
                           :aria-label="action.label"
                           :title="action.label"
-                          :class="['review-action-button', { 'review-action-button--delete': action.key === 'delete' }]"
+                          :class="[
+                            'review-action-button',
+                            {
+                              'review-action-button--reject': action.key === 'reject',
+                              'review-action-button--delete': action.key === 'delete',
+                            },
+                          ]"
                           size="small"
                           :severity="action.severity"
                           :outlined="action.outlined"
@@ -1640,7 +1652,13 @@
             :icon="action.icon"
             :aria-label="action.label"
             :title="action.label"
-            :class="['review-action-button', { 'review-action-button--delete': action.key === 'delete' }]"
+            :class="[
+              'review-action-button',
+              {
+                'review-action-button--reject': action.key === 'reject',
+                'review-action-button--delete': action.key === 'delete',
+              },
+            ]"
             :severity="action.severity"
             :outlined="action.outlined"
             :text="action.text"
@@ -2901,7 +2919,7 @@ const getSubmissionStatusClass = (status) => {
 
 const reviewActionDefinitions = {
   approve: { key: 'approve', label: '通過', icon: 'pi pi-check', severity: 'success' },
-  reject: { key: 'reject', label: '退回', icon: 'pi pi-ban', severity: 'danger', outlined: true },
+  reject: { key: 'reject', label: '退回', icon: 'pi pi-ban', severity: 'danger' },
   takedown: { key: 'takedown', label: '下架', icon: 'pi pi-eye-slash', severity: 'secondary', outlined: true },
   republish: { key: 'republish', label: '重新上架', icon: 'pi pi-refresh', severity: 'success', outlined: true },
   delete: { key: 'delete', label: '刪除', icon: 'pi pi-trash', severity: 'danger', outlined: true },
@@ -5075,29 +5093,29 @@ onBeforeUnmount(() => {
 }
 
 .review-card-action-note--info {
-  --soft-note-bg: rgba(71, 85, 105, 0.08);
-  --soft-note-border: rgba(71, 85, 105, 0.26);
-  --soft-note-color: #334155;
+  --soft-note-bg: rgba(14, 116, 144, 0.1);
+  --soft-note-border: rgba(14, 116, 144, 0.34);
+  --soft-note-color: #155e75;
 }
 
 .review-card-action-note--warning {
-  --soft-note-bg: rgba(234, 88, 12, 0.09);
-  --soft-note-border: rgba(234, 88, 12, 0.32);
+  --soft-note-bg: rgba(234, 88, 12, 0.11);
+  --soft-note-border: rgba(234, 88, 12, 0.38);
   --soft-note-color: #9a3412;
 }
 
 :global(.dark) .review-card-action-note--info,
 :global(.dark) :deep(.review-card-action-note--info) {
-  --soft-note-bg: rgba(148, 163, 184, 0.1);
-  --soft-note-border: rgba(148, 163, 184, 0.28);
-  --soft-note-color: #cbd5e1;
+  --soft-note-bg: rgba(56, 189, 248, 0.16);
+  --soft-note-border: rgba(125, 211, 252, 0.46);
+  --soft-note-color: #bae6fd;
 }
 
 :global(.dark) .review-card-action-note--warning,
 :global(.dark) :deep(.review-card-action-note--warning) {
-  --soft-note-bg: rgba(245, 158, 11, 0.13);
-  --soft-note-border: rgba(251, 191, 36, 0.34);
-  --soft-note-color: #f6c65b;
+  --soft-note-bg: rgba(249, 115, 22, 0.17);
+  --soft-note-border: rgba(251, 146, 60, 0.48);
+  --soft-note-color: #fed7aa;
 }
 
 .review-sort-icon.pi-sort-amount-up-alt,
@@ -6655,10 +6673,34 @@ onBeforeUnmount(() => {
   }
 }
 
+:deep(.review-action-button--reject.p-button) {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #ffffff;
+}
+
+:deep(.review-action-button--reject.p-button:not(:disabled):hover) {
+  border-color: #b91c1c;
+  background: #b91c1c;
+  color: #ffffff;
+}
+
+:deep(.review-action-button--reject.p-button:not(:disabled):active) {
+  border-color: #991b1b;
+  background: #991b1b;
+  color: #ffffff;
+}
+
+:deep(.review-action-button--reject.p-button:disabled) {
+  border-color: rgba(220, 38, 38, 0.38);
+  background: rgba(220, 38, 38, 0.42);
+  color: rgba(255, 255, 255, 0.82);
+}
+
 :deep(.review-action-button--delete.p-button),
 :deep(.trash-action-button--delete.p-button) {
   border: 1px solid rgba(185, 28, 28, 0.42);
-  background: rgba(254, 242, 242, 0.42);
+  background: transparent;
   color: #b91c1c;
 }
 
@@ -6669,10 +6711,48 @@ onBeforeUnmount(() => {
   color: #991b1b;
 }
 
+:deep(.review-action-button--delete.p-button:not(:disabled):active),
+:deep(.trash-action-button--delete.p-button:not(:disabled):active) {
+  border-color: rgba(153, 27, 27, 0.72);
+  background: rgba(254, 202, 202, 0.72);
+  color: #7f1d1d;
+}
+
+:deep(.review-action-button--delete.p-button:disabled),
+:deep(.trash-action-button--delete.p-button:disabled) {
+  border-color: rgba(185, 28, 28, 0.28);
+  background: transparent;
+  color: rgba(185, 28, 28, 0.56);
+}
+
+:global(.dark) :deep(.review-action-button--reject.p-button) {
+  border-color: #ef4444;
+  background: #dc2626;
+  color: #fff7f7;
+}
+
+:global(.dark) :deep(.review-action-button--reject.p-button:not(:disabled):hover) {
+  border-color: #f87171;
+  background: #b91c1c;
+  color: #ffffff;
+}
+
+:global(.dark) :deep(.review-action-button--reject.p-button:not(:disabled):active) {
+  border-color: #fca5a5;
+  background: #991b1b;
+  color: #ffffff;
+}
+
+:global(.dark) :deep(.review-action-button--reject.p-button:disabled) {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: rgba(127, 29, 29, 0.48);
+  color: rgba(254, 202, 202, 0.72);
+}
+
 :global(.dark) :deep(.review-action-button--delete.p-button),
 :global(.dark) :deep(.trash-action-button--delete.p-button) {
   border-color: rgba(248, 113, 113, 0.55);
-  background: rgba(127, 29, 29, 0.18);
+  background: transparent;
   color: #fca5a5;
 }
 
@@ -6681,6 +6761,20 @@ onBeforeUnmount(() => {
   border-color: rgba(252, 165, 165, 0.72);
   background: rgba(127, 29, 29, 0.28);
   color: #fecaca;
+}
+
+:global(.dark) :deep(.review-action-button--delete.p-button:not(:disabled):active),
+:global(.dark) :deep(.trash-action-button--delete.p-button:not(:disabled):active) {
+  border-color: rgba(254, 202, 202, 0.82);
+  background: rgba(127, 29, 29, 0.36);
+  color: #fee2e2;
+}
+
+:global(.dark) :deep(.review-action-button--delete.p-button:disabled),
+:global(.dark) :deep(.trash-action-button--delete.p-button:disabled) {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: transparent;
+  color: rgba(252, 165, 165, 0.62);
 }
 
 :deep(.review-mobile-summary) {
