@@ -240,6 +240,31 @@ async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Cour
             Archive.deleted_at.is_not(None),
         ),
     )
+    unlinked_course_trash_submissions = [
+        submission
+        for submission in (
+            await db.execute(
+                select(ArchiveSubmission).where(
+                    ArchiveSubmission.deleted_at.is_(None),
+                    ArchiveSubmission.status == SubmissionStatus.TAKEDOWN,
+                    ArchiveSubmission.created_archive_id.is_(None),
+                    or_(
+                        ArchiveSubmission.lifecycle_reason == LIFECYCLE_COURSE_TRASHED,
+                        ArchiveSubmission.lifecycle_reason.like(f"{LIFECYCLE_COURSE_TRASHED}|%"),
+                    ),
+                )
+            )
+        ).scalars().all()
+        if get_course_trash_course_id(submission.lifecycle_reason) == course.id
+    ]
+    pending_unlinked_course_trash_submissions = [
+        submission
+        for submission in unlinked_course_trash_submissions
+        if get_course_trash_previous_status(submission.lifecycle_reason) == SubmissionStatus.PENDING
+    ]
+    other_unlinked_course_trash_count = (
+        len(unlinked_course_trash_submissions) - len(pending_unlinked_course_trash_submissions)
+    )
 
     restore_blockers = [
         f"阻擋還原：原分類仍在垃圾桶" if category_is_trashed else "",
@@ -249,6 +274,8 @@ async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Cour
         *restore_blockers,
         f"阻擋永久刪除：{_dependency_count(active_archives, '筆')}啟用中考古題仍屬於此課程" if active_archives else "",
         f"一併永久刪除：{_dependency_count(trashed_archives, '筆')}已刪除考古題屬於此課程" if trashed_archives else "",
+        f"關聯投稿：{_dependency_count(len(pending_unlinked_course_trash_submissions), '筆')}待審核投稿已暫時下架" if pending_unlinked_course_trash_submissions else "",
+        f"關聯投稿：{_dependency_count(other_unlinked_course_trash_count, '筆')}投稿已暫時下架（無關聯考古題）" if other_unlinked_course_trash_count else "",
     ]
 
 
