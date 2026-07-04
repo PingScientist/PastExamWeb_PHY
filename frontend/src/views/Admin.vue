@@ -790,7 +790,7 @@
                   class="admin-data-table review-request-table review-request-table--new"
                   tableStyle="min-width: 60rem"
                   responsiveLayout="stack"
-                  breakpoint="768px"
+                  breakpoint="1024px"
                 >
                   <template #empty>
                     <div class="review-empty-state">沒有符合搜尋條件的投稿。</div>
@@ -890,6 +890,7 @@
                       <div class="review-row-action-area">
                         <div class="admin-card-actions review-card-actions">
                         <Button
+                          class="review-action-button"
                           label="查看/編輯"
                           icon="pi pi-search"
                           aria-label="查看/編輯"
@@ -906,6 +907,7 @@
                           :icon="action.icon"
                           :aria-label="action.label"
                           :title="action.label"
+                          :class="['review-action-button', { 'review-action-button--delete': action.key === 'delete' }]"
                           size="small"
                           :severity="action.severity"
                           :outlined="action.outlined"
@@ -937,7 +939,7 @@
                   class="admin-data-table review-request-table"
                   tableStyle="min-width: 60rem"
                   responsiveLayout="stack"
-                  breakpoint="768px"
+                  breakpoint="1024px"
                 >
                   <template #empty>
                     <div class="review-empty-state">沒有符合搜尋條件的投稿。</div>
@@ -1024,6 +1026,7 @@
                       <div class="review-row-action-area">
                         <div class="admin-card-actions review-card-actions">
                         <Button
+                          class="review-action-button"
                           label="查看/編輯"
                           icon="pi pi-search"
                           aria-label="查看/編輯"
@@ -1040,6 +1043,7 @@
                           :icon="action.icon"
                           :aria-label="action.label"
                           :title="action.label"
+                          :class="['review-action-button', { 'review-action-button--delete': action.key === 'delete' }]"
                           size="small"
                           :severity="action.severity"
                           :outlined="action.outlined"
@@ -1225,11 +1229,14 @@
                       />
                       <Button
                         v-if="canPermanentDeleteTrashItem(data)"
+                        class="trash-action-button trash-action-button--delete"
                         icon="pi pi-trash"
                         label="永久刪除"
+                        aria-label="永久刪除"
+                        title="永久刪除"
                         size="small"
                         severity="danger"
-                        text
+                        outlined
                         @click="confirmPermanentDeleteTrashItem(data)"
                       />
                       <span
@@ -1582,6 +1589,8 @@
             :label="action.label"
             :icon="action.icon"
             :aria-label="action.label"
+            :title="action.label"
+            :class="['review-action-button', { 'review-action-button--delete': action.key === 'delete' }]"
             :severity="action.severity"
             :outlined="action.outlined"
             :text="action.text"
@@ -2259,6 +2268,7 @@ const submissionStatusAliases = {
   deleted: 'deleted',
   '待審核': 'pending',
   '已通過': 'approved',
+  '已退回': 'rejected',
   '未通過': 'rejected',
   '已下架': 'takedown',
   '已刪除': 'deleted',
@@ -2814,7 +2824,7 @@ const getSubmissionLabel = (status) => {
   const labels = {
     pending: '待審核',
     approved: '已通過',
-    rejected: '未通過',
+    rejected: '已退回',
     takedown: '已下架',
     deleted: '已刪除',
   }
@@ -2844,7 +2854,7 @@ const reviewActionDefinitions = {
   reject: { key: 'reject', label: '退回', icon: 'pi pi-ban', severity: 'danger', outlined: true },
   takedown: { key: 'takedown', label: '下架', icon: 'pi pi-eye-slash', severity: 'secondary', outlined: true },
   republish: { key: 'republish', label: '重新上架', icon: 'pi pi-refresh', severity: 'success', outlined: true },
-  delete: { key: 'delete', label: '刪除', icon: 'pi pi-trash', severity: 'danger', text: true },
+  delete: { key: 'delete', label: '刪除', icon: 'pi pi-trash', severity: 'danger', outlined: true },
 }
 
 const getReviewRowActions = (item) => {
@@ -3280,7 +3290,7 @@ const getTrashStatusLabel = (statusValue) => {
   const labels = {
     pending: '待審核',
     approved: '已通過',
-    rejected: '未通過',
+    rejected: '已退回',
     takedown: '已下架',
     deleted: '已刪除',
   }
@@ -6734,6 +6744,238 @@ onBeforeUnmount(() => {
   :deep(.p-datatable .flex.gap-2) {
     flex-wrap: nowrap;
     gap: 0.5rem;
+  }
+}
+
+:deep(.review-action-button--delete.p-button),
+:deep(.trash-action-button--delete.p-button) {
+  border: 1px solid rgba(185, 28, 28, 0.42);
+  background: rgba(254, 242, 242, 0.42);
+  color: #b91c1c;
+}
+
+:deep(.review-action-button--delete.p-button:not(:disabled):hover),
+:deep(.trash-action-button--delete.p-button:not(:disabled):hover) {
+  border-color: rgba(185, 28, 28, 0.64);
+  background: rgba(254, 226, 226, 0.72);
+  color: #991b1b;
+}
+
+:global(.dark) :deep(.review-action-button--delete.p-button),
+:global(.dark) :deep(.trash-action-button--delete.p-button) {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(127, 29, 29, 0.18);
+  color: #fca5a5;
+}
+
+:global(.dark) :deep(.review-action-button--delete.p-button:not(:disabled):hover),
+:global(.dark) :deep(.trash-action-button--delete.p-button:not(:disabled):hover) {
+  border-color: rgba(252, 165, 165, 0.72);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+}
+
+@media (max-width: 1024px) {
+  .review-center {
+    padding: 0.75rem !important;
+  }
+
+  .review-search-toolbar {
+    margin-bottom: 0.75rem;
+  }
+
+  .review-search-toolbar .relative {
+    width: min(100%, 26rem) !important;
+  }
+
+  .review-search-toolbar :deep(.p-inputtext) {
+    min-height: 2.35rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    font-size: 0.92rem;
+  }
+
+  .review-section.mt-5 {
+    margin-top: 1rem !important;
+  }
+
+  .review-section-header {
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .review-section-header h3 {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  :deep(.review-request-table) {
+    overflow: visible;
+  }
+
+  :deep(.review-request-table .p-datatable-table) {
+    min-width: 0 !important;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    padding: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-primary) 94%, var(--bg-secondary) 6%);
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr > td) {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    white-space: normal !important;
+  }
+
+  :deep(.review-request-table .p-column-title) {
+    display: none !important;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr > td:first-child) {
+    order: 1;
+    grid-column: 1 / -1;
+  }
+
+  :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(3)) {
+    order: 2;
+    grid-column: 1 / -1;
+  }
+
+  :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(3)),
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(4)) {
+    order: 3;
+  }
+
+  :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(4)),
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(5)) {
+    order: 4;
+  }
+
+  :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(5)),
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(6)) {
+    order: 5;
+  }
+
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(2)) {
+    order: 6;
+  }
+
+  :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(6)),
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(7)) {
+    order: 7;
+  }
+
+  :deep(.review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(7)),
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(8)) {
+    order: 8;
+    grid-column: 1 / -1;
+  }
+
+  :deep(.review-card-title) {
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  :deep(.review-card-meta-text) {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  :deep(.review-request-table .text-xs) {
+    display: inline-flex;
+    color: var(--text-secondary);
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  :deep(.review-request-table .p-tag),
+  :deep(.review-card-chip) {
+    width: fit-content;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  :deep(.review-row-action-area) {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.55rem;
+  }
+
+  :deep(.review-card-action-note) {
+    order: 1;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  :deep(.review-card-actions) {
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5.75rem, 1fr));
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  :deep(.review-card-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.35rem;
+    padding-inline: 0.5rem;
+    justify-content: center;
+  }
+
+  :deep(.review-card-actions .p-button .p-button-label) {
+    display: inline-flex;
+  }
+
+  :deep(.review-card-actions .p-button .pi) {
+    margin-inline-end: 0.35rem;
+    line-height: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  :deep(.review-request-table .p-datatable-tbody > tr) {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+    padding: 0.8rem;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr > td) {
+    grid-column: 1 / -1 !important;
+  }
+
+  :deep(.review-card-actions) {
+    grid-template-columns: repeat(auto-fit, minmax(2.45rem, 1fr));
+  }
+
+  :deep(.review-card-actions .p-button) {
+    min-height: 2.45rem;
+    padding-inline: 0.45rem;
+  }
+
+  :deep(.review-card-actions .p-button .p-button-label) {
+    display: none;
+  }
+
+  :deep(.review-card-actions .p-button .pi) {
+    margin: 0;
   }
 }
 </style>
