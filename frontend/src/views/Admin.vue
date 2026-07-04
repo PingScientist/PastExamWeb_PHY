@@ -1131,7 +1131,10 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <Tag :severity="getTrashStatusSeverity(data.status)">
+                    <Tag
+                      :class="['review-status-chip', getSubmissionStatusClass(data.status)]"
+                      :severity="getTrashStatusSeverity(data.status)"
+                    >
                       {{ getTrashStatusLabel(data.status) }}
                     </Tag>
                   </template>
@@ -1154,10 +1157,11 @@
                         v-for="dependency in getTrashDependencies(data)"
                         :key="dependency.key"
                         :severity="getTrashDependencySeverity(dependency)"
+                        :class="['trash-dependency-chip', getTrashDependencyChipClass(dependency)]"
                       >
                         {{ dependency.label }}
                       </Tag>
-                      <span v-if="!getTrashDependencies(data).length" class="text-sm text-500">無阻擋</span>
+                      <span v-if="!getTrashDependencies(data).length" class="trash-dependency-chip trash-dependency-chip--clear">無阻擋</span>
                     </div>
                   </template>
                 </Column>
@@ -1741,23 +1745,23 @@
             <h4 class="trash-dependency-help-title">快速判斷</h4>
             <div class="trash-dependency-help-label-grid">
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-help-chip--danger">阻擋還原</span>
+                <span class="trash-dependency-help-chip trash-dependency-chip--restore-blocked">阻擋還原</span>
                 <p>現在不能還原。通常要先復原父層，或必要關聯已不存在。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-help-chip--warning">阻擋永久刪除</span>
+                <span class="trash-dependency-help-chip trash-dependency-chip--delete-blocked">阻擋永久刪除</span>
                 <p>現在不能永久刪除。通常仍有啟用中的資料依附。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-help-chip--info">一併永久刪除</span>
+                <span class="trash-dependency-help-chip trash-dependency-chip--cascade">一併永久刪除</span>
                 <p>刪除此項時，列出的資料會一起永久刪除。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-help-chip--muted">關聯</span>
+                <span class="trash-dependency-help-chip trash-dependency-chip--relation">關聯</span>
                 <p>只是提醒資料有關，通常不會直接阻擋。</p>
               </article>
               <article class="trash-dependency-help-label-card">
-                <span class="trash-dependency-help-chip trash-dependency-help-chip--success">無阻擋</span>
+                <span class="trash-dependency-help-chip trash-dependency-chip--clear">無阻擋</span>
                 <p>目前沒有影響還原或永久刪除的限制。</p>
               </article>
             </div>
@@ -3106,6 +3110,15 @@ const getTrashDependencyHasPermanentDeleteBlocker = (item) => {
 
 const getTrashDependencySeverity = (dependency) => {
   return dependency?.severity || 'secondary'
+}
+
+const getTrashDependencyChipClass = (dependency) => {
+  const label = String(dependency?.label || '')
+  if (dependency?.restoreBlocking || label.startsWith('阻擋還原：')) return 'trash-dependency-chip--restore-blocked'
+  if (dependency?.deleteBlocking || label.startsWith('阻擋永久刪除：')) return 'trash-dependency-chip--delete-blocked'
+  if (label.startsWith('一併永久刪除：')) return 'trash-dependency-chip--cascade'
+  if (label === '無阻擋') return 'trash-dependency-chip--clear'
+  return 'trash-dependency-chip--relation'
 }
 
 const formatSubmissionLabel = (item) => {
@@ -4614,9 +4627,16 @@ onBeforeUnmount(() => {
 }
 
 :deep(.review-admin-upload-chip) {
-  background: rgba(59, 130, 246, 0.18);
-  color: #93c5fd;
-  border-color: rgba(59, 130, 246, 0.4);
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #3b82f6;
+  font-weight: 700;
+}
+
+:global(.dark) :deep(.review-admin-upload-chip) {
+  background: rgba(59, 130, 246, 0.22);
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.56);
 }
 
 .review-load-error {
@@ -4740,46 +4760,89 @@ onBeforeUnmount(() => {
   font-size: 0.86rem;
 }
 
-.trash-dependency-help-chip {
+.trash-dependency-chip,
+.trash-dependency-help-chip,
+:deep(.trash-dependency-chip) {
   display: inline-flex;
   align-items: center;
   width: fit-content;
   max-width: 100%;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
-.trash-dependency-help-chip--danger {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.34);
+.trash-dependency-chip--restore-blocked,
+:deep(.trash-dependency-chip--restore-blocked) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.trash-dependency-chip--delete-blocked,
+:deep(.trash-dependency-chip--delete-blocked) {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.trash-dependency-chip--cascade,
+:deep(.trash-dependency-chip--cascade) {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.trash-dependency-chip--relation,
+:deep(.trash-dependency-chip--relation) {
+  background: #e2e8f0;
+  border-color: #64748b;
+  color: #334155;
+}
+
+.trash-dependency-chip--clear,
+:deep(.trash-dependency-chip--clear) {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+:global(.dark) .trash-dependency-chip--restore-blocked,
+:global(.dark) :deep(.trash-dependency-chip--restore-blocked) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fcd34d;
+}
+
+:global(.dark) .trash-dependency-chip--delete-blocked,
+:global(.dark) :deep(.trash-dependency-chip--delete-blocked) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(248, 113, 113, 0.54);
   color: #fca5a5;
 }
 
-.trash-dependency-help-chip--warning {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.34);
-  color: #fbbf24;
+:global(.dark) .trash-dependency-chip--cascade,
+:global(.dark) :deep(.trash-dependency-chip--cascade) {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.54);
+  color: #bfdbfe;
 }
 
-.trash-dependency-help-chip--info {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.34);
-  color: #93c5fd;
+:global(.dark) .trash-dependency-chip--relation,
+:global(.dark) :deep(.trash-dependency-chip--relation) {
+  background: rgba(100, 116, 139, 0.24);
+  border-color: rgba(148, 163, 184, 0.5);
+  color: #cbd5e1;
 }
 
-.trash-dependency-help-chip--muted {
-  background: color-mix(in srgb, var(--surface-card) 72%, transparent);
-  color: var(--text-secondary);
-}
-
-.trash-dependency-help-chip--success {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.34);
+:global(.dark) .trash-dependency-chip--clear,
+:global(.dark) :deep(.trash-dependency-chip--clear) {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(74, 222, 128, 0.52);
   color: #86efac;
 }
 
@@ -4885,33 +4948,68 @@ onBeforeUnmount(() => {
 }
 
 :deep(.review-status-chip.review-status-pending) {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.42);
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-approved) {
-  background: rgba(34, 197, 94, 0.18);
-  color: #86efac;
-  border-color: rgba(34, 197, 94, 0.38);
+  background: #dcfce7;
+  color: #166534;
+  border-color: #22c55e;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-rejected) {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.38);
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #ef4444;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-takedown) {
-  background: rgba(100, 116, 139, 0.22);
-  color: #cbd5e1;
-  border-color: rgba(100, 116, 139, 0.42);
+  background: #e2e8f0;
+  color: #334155;
+  border-color: #64748b;
+  font-weight: 700;
 }
 
 :deep(.review-status-chip.review-status-deleted) {
-  background: rgba(127, 29, 29, 0.28);
-  color: #fecaca;
-  border-color: rgba(127, 29, 29, 0.5);
+  background: #ffe4e6;
+  color: #9f1239;
+  border-color: #f43f5e;
+  font-weight: 700;
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-pending) {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-approved) {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.52);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-rejected) {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.54);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-takedown) {
+  background: rgba(100, 116, 139, 0.24);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+:global(.dark) :deep(.review-status-chip.review-status-deleted) {
+  background: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+  border-color: rgba(251, 113, 133, 0.54);
 }
 
 .compare-preview-grid {
