@@ -8,7 +8,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, or_, text
+from sqlalchemy import and_, func, or_, text
+from sqlalchemy.orm import aliased
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -108,6 +109,15 @@ async def _get_deleted_course_id_for_submission(
 
 def _normalize_course_name(value: Optional[str]) -> str:
     return (value or "").strip()
+
+
+def _normalize_match_text(value: Optional[str]) -> str:
+    return (value or "").strip().lower()
+
+
+def _normalized_text_expr(*values):
+    present_values = [func.nullif(func.trim(value), "") for value in values]
+    return func.lower(func.trim(func.coalesce(*present_values, "")))
 
 
 def _is_admin_upload_submission(submission_data) -> bool:
@@ -596,28 +606,46 @@ async def list_archive_submission_comparisons(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    course_name = _normalize_course_name(submission.requested_course_name or submission.subject)
-    category_key = submission.requested_category_key or submission.category
-    if not course_name or not category_key:
+    course_name = _normalize_match_text(submission.requested_course_name or submission.subject)
+    category_key = _normalize_match_text(submission.requested_category_key or submission.category)
+    exam_name = _normalize_match_text(submission.name)
+    professor = _normalize_match_text(submission.professor)
+    if not course_name or not category_key or not exam_name or submission.academic_year is None:
         return []
 
+    current_archive = await db.get(Archive, submission.created_archive_id) if submission.created_archive_id else None
+    current_course_id = current_archive.course_id if current_archive else None
+    comparison_archive = aliased(Archive)
     comparable_statuses = [
         SubmissionStatus.PENDING,
         SubmissionStatus.APPROVED,
         SubmissionStatus.TAKEDOWN,
     ]
+    fallback_course_condition = and_(
+        ArchiveSubmission.created_archive_id.is_(None),
+        _normalized_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
+        _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
+    )
+    course_condition = (
+        or_(comparison_archive.course_id == current_course_id, fallback_course_condition)
+        if current_course_id is not None
+        else and_(
+            _normalized_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
+            _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
+        )
+    )
     query = (
         select(ArchiveSubmission, User.name, User.email)
         .outerjoin(User, User.id == ArchiveSubmission.requester_id)
+        .outerjoin(comparison_archive, comparison_archive.id == ArchiveSubmission.created_archive_id)
         .where(
             ArchiveSubmission.id != submission.id,
             ArchiveSubmission.deleted_at.is_(None),
             ArchiveSubmission.status.in_(comparable_statuses),
-            func.coalesce(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
-            func.coalesce(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
-            ArchiveSubmission.name == submission.name,
+            course_condition,
+            _normalized_text_expr(ArchiveSubmission.name) == exam_name,
+            _normalized_text_expr(ArchiveSubmission.professor) == professor,
             ArchiveSubmission.academic_year == submission.academic_year,
-            ArchiveSubmission.archive_type == submission.archive_type,
         )
     )
     if submission.requester_id is not None:

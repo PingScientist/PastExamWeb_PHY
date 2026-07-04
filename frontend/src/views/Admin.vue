@@ -1462,24 +1462,22 @@
 
         <div class="mt-4">
           <h4 class="mb-2">同課程同考試比對</h4>
+          <div class="comparison-basis mb-2">
+            {{ getComparisonBasisText(selectedArchiveRequest) }}
+          </div>
           <div v-if="comparisonLoading" class="text-sm text-500">載入中...</div>
           <div v-else-if="comparisonArchives.length === 0" class="text-sm text-500">
-            沒有找到相同課程、學期與類型的其他投稿。
+            沒有找到同課程、同教師、同學期、同考試名稱的其他投稿。
           </div>
           <DataTable
             v-else
             :value="comparisonArchives"
-            tableStyle="min-width: 48rem"
+            tableStyle="min-width: 36rem"
             responsiveLayout="stack"
             breakpoint="768px"
           >
-            <Column header="課程">
-              <template #body="{ data }">{{ getComparisonCourseName(data) }}</template>
-            </Column>
-            <Column field="name" header="考試名稱" />
-            <Column field="professor" header="授課教師" />
-            <Column field="academic_year" header="學期">
-              <template #body="{ data }">{{ formatAcademicTerm(data.academic_year) }}</template>
+            <Column header="投稿編號">
+              <template #body="{ data }">{{ formatComparisonSubmissionId(data) }}</template>
             </Column>
             <Column field="has_answers" header="解答">
               <template #body="{ data }">{{ data.has_answers ? '有' : '無' }}</template>
@@ -3916,8 +3914,16 @@ const loadArchiveComparison = async (request) => {
   }
 }
 
-const getComparisonCourseName = (item) => {
-  return item?.requested_course_name || item?.subject || '—'
+const getComparisonBasisText = (item) => {
+  const course = item?.requested_course_name || item?.subject || '—'
+  const exam = item?.name || '—'
+  const professor = item?.professor || '—'
+  const semester = formatAcademicTerm(item?.academic_year) || '—'
+  return `比對基準：課程 ${course}｜考試 ${exam}｜教師 ${professor}｜學期 ${semester}`
+}
+
+const formatComparisonSubmissionId = (item) => {
+  return item?.id ? `#${item.id}` : '—'
 }
 
 const canTakedownComparisonItem = (item) => {
@@ -4918,6 +4924,11 @@ onBeforeUnmount(() => {
 
 .review-history-title small {
   color: var(--text-secondary);
+}
+
+.comparison-basis {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .comparison-row-actions {
