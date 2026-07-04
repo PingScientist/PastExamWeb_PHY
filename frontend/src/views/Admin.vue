@@ -106,6 +106,7 @@
                           @click="confirmToggleCategory(data)"
                         />
                         <Button
+                          class="admin-danger-outline-button"
                           icon="pi pi-trash"
                           label="刪除"
                           aria-label="刪除分類"
@@ -186,6 +187,7 @@
                         @click="confirmToggleCategory(category)"
                       />
                       <Button
+                        class="admin-danger-outline-button"
                         icon="pi pi-trash"
                         label="刪除"
                         aria-label="刪除分類"
@@ -299,6 +301,7 @@
                         title="編輯課程"
                       />
                       <Button
+                        class="admin-danger-solid-button"
                         icon="pi pi-trash"
                         severity="danger"
                         size="small"
@@ -355,6 +358,7 @@
                       title="編輯課程"
                     />
                     <Button
+                      class="admin-danger-solid-button"
                       icon="pi pi-trash"
                       severity="danger"
                       size="small"
@@ -936,6 +940,9 @@
                             {
                               'review-action-button--reject': action.key === 'reject',
                               'review-action-button--delete': action.key === 'delete',
+                              'review-action-reject': action.key === 'reject',
+                              'admin-danger-solid-button': action.key === 'reject',
+                              'admin-danger-outline-button': action.key === 'delete',
                               'review-action-delete': action.key === 'delete',
                             },
                           ]"
@@ -1100,6 +1107,9 @@
                             {
                               'review-action-button--reject': action.key === 'reject',
                               'review-action-button--delete': action.key === 'delete',
+                              'review-action-reject': action.key === 'reject',
+                              'admin-danger-solid-button': action.key === 'reject',
+                              'admin-danger-outline-button': action.key === 'delete',
                               'review-action-delete': action.key === 'delete',
                             },
                           ]"
@@ -1290,7 +1300,7 @@
                       />
                       <Button
                         v-if="canPermanentDeleteTrashItem(data)"
-                        class="trash-action-button trash-action-button--delete trash-action-permanent-delete"
+                        class="trash-action-button trash-action-button--delete trash-action-permanent-delete admin-danger-outline-button"
                         icon="pi pi-trash"
                         label="永久刪除"
                         aria-label="永久刪除"
@@ -1659,6 +1669,9 @@
               {
                 'review-action-button--reject': action.key === 'reject',
                 'review-action-button--delete': action.key === 'delete',
+                'review-action-reject': action.key === 'reject',
+                'admin-danger-solid-button': action.key === 'reject',
+                'admin-danger-outline-button': action.key === 'delete',
                 'review-action-delete': action.key === 'delete',
               },
             ]"
@@ -4878,31 +4891,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .admin-container {
-  --danger-action-text: #b45a55;
-  --danger-action-border: rgba(180, 90, 85, 0.62);
-  --danger-action-hover-bg: rgba(180, 90, 85, 0.1);
-  --danger-action-active-bg: rgba(180, 90, 85, 0.14);
-  --danger-action-focus-ring: rgba(180, 90, 85, 0.18);
-  --danger-action-solid-bg: #bd625d;
-  --danger-action-solid-hover-bg: #ad5551;
-  --danger-action-solid-active-bg: #984944;
-  --danger-action-solid-text: #fffafa;
   background: var(--p-tabs-tabpanel-background);
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-}
-
-:global(.dark) .admin-container {
-  --danger-action-text: #f3b1a8;
-  --danger-action-border: rgba(243, 177, 168, 0.58);
-  --danger-action-hover-bg: rgba(244, 128, 118, 0.12);
-  --danger-action-active-bg: rgba(244, 128, 118, 0.15);
-  --danger-action-focus-ring: rgba(244, 128, 118, 0.22);
-  --danger-action-solid-bg: #a95852;
-  --danger-action-solid-hover-bg: #994d48;
-  --danger-action-solid-active-bg: #87413d;
-  --danger-action-solid-text: #fff7f5;
 }
 
 .card {
@@ -6715,104 +6707,6 @@ onBeforeUnmount(() => {
   }
 }
 
-:deep(.review-action-button--reject.p-button) {
-  border-color: var(--danger-action-solid-bg);
-  background: var(--danger-action-solid-bg);
-  color: var(--danger-action-solid-text);
-}
-
-:deep(.review-action-button--reject.p-button:not(:disabled):hover) {
-  border-color: var(--danger-action-solid-hover-bg);
-  background: var(--danger-action-solid-hover-bg);
-  color: var(--danger-action-solid-text);
-}
-
-:deep(.review-action-button--reject.p-button:not(:disabled):active) {
-  border-color: var(--danger-action-solid-active-bg);
-  background: var(--danger-action-solid-active-bg);
-  color: var(--danger-action-solid-text);
-}
-
-:deep(.review-action-button--reject.p-button:disabled) {
-  border-color: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
-  background: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
-  color: color-mix(in srgb, var(--danger-action-solid-text) 82%, transparent);
-}
-
-:deep(.review-action-delete.p-button),
-:deep(.trash-action-permanent-delete.p-button) {
-  border: 1px solid var(--danger-action-border) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--danger-action-text) !important;
-  box-shadow: none;
-}
-
-:deep(.review-action-delete.p-button .p-button-icon),
-:deep(.review-action-delete.p-button .p-button-label),
-:deep(.trash-action-permanent-delete.p-button .p-button-icon),
-:deep(.trash-action-permanent-delete.p-button .p-button-label) {
-  color: inherit !important;
-}
-
-:deep(.review-action-delete.p-button:not(:disabled):hover),
-:deep(.trash-action-permanent-delete.p-button:not(:disabled):hover) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
-  background: var(--danger-action-hover-bg) !important;
-  background-color: var(--danger-action-hover-bg) !important;
-  color: color-mix(in srgb, var(--danger-action-text) 88%, #5f2420) !important;
-}
-
-:deep(.review-action-delete.p-button:not(:disabled):focus),
-:deep(.trash-action-permanent-delete.p-button:not(:disabled):focus) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--danger-action-text) !important;
-  box-shadow: 0 0 0 0.12rem var(--danger-action-focus-ring) !important;
-}
-
-:deep(.review-action-delete.p-button:not(:disabled):active),
-:deep(.trash-action-permanent-delete.p-button:not(:disabled):active) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 88%, transparent) !important;
-  background: var(--danger-action-active-bg) !important;
-  background-color: var(--danger-action-active-bg) !important;
-  color: color-mix(in srgb, var(--danger-action-text) 82%, #4b1f1b) !important;
-}
-
-:deep(.review-action-delete.p-button:disabled),
-:deep(.trash-action-permanent-delete.p-button:disabled) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 32%, transparent) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  color: color-mix(in srgb, var(--danger-action-text) 58%, transparent) !important;
-  box-shadow: none !important;
-}
-
-:global(.dark) :deep(.review-action-button--reject.p-button) {
-  border-color: var(--danger-action-solid-bg);
-  background: var(--danger-action-solid-bg);
-  color: var(--danger-action-solid-text);
-}
-
-:global(.dark) :deep(.review-action-button--reject.p-button:not(:disabled):hover) {
-  border-color: var(--danger-action-solid-hover-bg);
-  background: var(--danger-action-solid-hover-bg);
-  color: var(--danger-action-solid-text);
-}
-
-:global(.dark) :deep(.review-action-button--reject.p-button:not(:disabled):active) {
-  border-color: var(--danger-action-solid-active-bg);
-  background: var(--danger-action-solid-active-bg);
-  color: var(--danger-action-solid-text);
-}
-
-:global(.dark) :deep(.review-action-button--reject.p-button:disabled) {
-  border-color: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
-  background: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
-  color: color-mix(in srgb, var(--danger-action-solid-text) 72%, transparent);
-}
-
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note),
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note .pi),
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note .review-card-action-note__text) {
@@ -6833,56 +6727,6 @@ onBeforeUnmount(() => {
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note) {
   border-color: rgba(251, 191, 36, 0.68) !important;
   background: rgba(251, 146, 60, 0.16) !important;
-}
-
-:global(.dark) :deep(.review-action-delete.p-button),
-:global(.dark) :deep(.trash-action-permanent-delete.p-button) {
-  border-color: var(--danger-action-border) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--danger-action-text) !important;
-  box-shadow: none;
-}
-
-:global(.dark) :deep(.review-action-delete.p-button .p-button-icon),
-:global(.dark) :deep(.review-action-delete.p-button .p-button-label),
-:global(.dark) :deep(.trash-action-permanent-delete.p-button .p-button-icon),
-:global(.dark) :deep(.trash-action-permanent-delete.p-button .p-button-label) {
-  color: inherit !important;
-}
-
-:global(.dark) :deep(.review-action-delete.p-button:not(:disabled):hover),
-:global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):hover) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
-  background: var(--danger-action-hover-bg) !important;
-  background-color: var(--danger-action-hover-bg) !important;
-  color: #ffd0ca !important;
-}
-
-:global(.dark) :deep(.review-action-delete.p-button:not(:disabled):focus),
-:global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):focus) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--danger-action-text) !important;
-  box-shadow: 0 0 0 0.12rem var(--danger-action-focus-ring) !important;
-}
-
-:global(.dark) :deep(.review-action-delete.p-button:not(:disabled):active),
-:global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):active) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 86%, transparent) !important;
-  background: var(--danger-action-active-bg) !important;
-  background-color: var(--danger-action-active-bg) !important;
-  color: #ffe1dd !important;
-}
-
-:global(.dark) :deep(.review-action-delete.p-button:disabled),
-:global(.dark) :deep(.trash-action-permanent-delete.p-button:disabled) {
-  border-color: color-mix(in srgb, var(--danger-action-text) 34%, transparent) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  color: color-mix(in srgb, var(--danger-action-text) 62%, transparent) !important;
-  box-shadow: none !important;
 }
 
 :deep(.review-mobile-summary) {
