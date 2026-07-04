@@ -70,6 +70,16 @@ DEFAULT_CATEGORIES = [
     ("math-department", "戳戳數學系", "數學", "pi pi-fw pi-calculator"),
 ]
 DEFAULT_CATEGORY_ORDER = {item[0]: index for index, item in enumerate(DEFAULT_CATEGORIES)}
+DEFAULT_CATEGORY_BADGE_COLOR = "blue"
+CATEGORY_BADGE_COLOR_TOKENS = {"blue", "green", "amber", "purple", "rose", "slate"}
+DEFAULT_CATEGORY_BADGE_COLORS = {
+    "fundamental": "blue",
+    "required": "green",
+    "experience": "amber",
+    "optional": "purple",
+    "graduate": "rose",
+    "math-department": "slate",
+}
 LEGACY_CATEGORY_ALIASES = {
     "freshman": "fundamental",
     "sophomore": "required",
@@ -118,6 +128,18 @@ def _visible_courses(courses: list[Course], category_order: dict[str, int] | Non
         seen.add(key)
         selected.append(course)
     return selected
+
+
+def _normalize_category_badge_color(color: str | None) -> str:
+    normalized = (color or DEFAULT_CATEGORY_BADGE_COLOR).strip().lower()
+    if not normalized:
+        return DEFAULT_CATEGORY_BADGE_COLOR
+    if normalized not in CATEGORY_BADGE_COLOR_TOKENS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid category badge color",
+        )
+    return normalized
 
 
 def _normalize_course_lookup_value(value: str | None) -> str:
@@ -226,6 +248,10 @@ async def _ensure_category(db: AsyncSession, category_key: str) -> CourseCategor
             key=category_key,
             name=category_key,
             label=category_key,
+            badge_color=DEFAULT_CATEGORY_BADGE_COLORS.get(
+                category_key,
+                DEFAULT_CATEGORY_BADGE_COLOR,
+            ),
             order_index=DEFAULT_CATEGORY_ORDER[category_key],
         )
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Course category does not exist")
@@ -271,6 +297,7 @@ async def list_course_categories(
             name=name,
             label=label,
             icon=icon,
+            badge_color=DEFAULT_CATEGORY_BADGE_COLORS.get(key, DEFAULT_CATEGORY_BADGE_COLOR),
             order_index=index,
             is_active=True,
         )
@@ -1509,6 +1536,7 @@ async def create_course_category(
         name=category_data.name.strip(),
         label=category_data.label.strip(),
         icon=category_data.icon.strip() or "pi pi-fw pi-book",
+        badge_color=_normalize_category_badge_color(category_data.badge_color),
         order_index=order_index,
         is_active=True,
     )
@@ -1560,6 +1588,8 @@ async def update_course_category(
         category.label = category_data.label.strip()
     if category_data.icon is not None:
         category.icon = category_data.icon.strip() or "pi pi-fw pi-book"
+    if category_data.badge_color is not None:
+        category.badge_color = _normalize_category_badge_color(category_data.badge_color)
     if category_data.order_index is not None:
         category.order_index = category_data.order_index
     if category_data.is_active is not None:

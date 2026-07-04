@@ -77,6 +77,10 @@ class CourseCategoryConfig(SQLModel, table=True):
     name: str = Field(index=True)
     label: str = Field(default="")
     icon: str = Field(default="pi pi-fw pi-book")
+    badge_color: str = Field(
+        default="blue",
+        sa_column=Column(String, nullable=False, server_default="blue"),
+    )
     order_index: int = Field(default=0, index=True)
     is_active: bool = Field(default=True, index=True)
     created_at: datetime = Field(
@@ -457,6 +461,7 @@ class CourseCategoryCreate(BaseModel):
     name: str
     label: str = ""
     icon: str = "pi pi-fw pi-book"
+    badge_color: Optional[str] = None
     order_index: Optional[int] = None
 
 
@@ -465,6 +470,7 @@ class CourseCategoryUpdate(BaseModel):
     name: Optional[str] = None
     label: Optional[str] = None
     icon: Optional[str] = None
+    badge_color: Optional[str] = None
     order_index: Optional[int] = None
     is_active: Optional[bool] = None
 
@@ -479,6 +485,7 @@ class CourseCategoryRead(BaseModel):
     name: str
     label: str
     icon: str
+    badge_color: str = "blue"
     order_index: int
     is_active: bool
 
