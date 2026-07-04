@@ -936,6 +936,7 @@
                             {
                               'review-action-button--reject': action.key === 'reject',
                               'review-action-button--delete': action.key === 'delete',
+                              'review-action-delete': action.key === 'delete',
                             },
                           ]"
                           size="small"
@@ -1099,6 +1100,7 @@
                             {
                               'review-action-button--reject': action.key === 'reject',
                               'review-action-button--delete': action.key === 'delete',
+                              'review-action-delete': action.key === 'delete',
                             },
                           ]"
                           size="small"
@@ -1288,7 +1290,7 @@
                       />
                       <Button
                         v-if="canPermanentDeleteTrashItem(data)"
-                        class="trash-action-button trash-action-button--delete"
+                        class="trash-action-button trash-action-button--delete trash-action-permanent-delete"
                         icon="pi pi-trash"
                         label="永久刪除"
                         aria-label="永久刪除"
@@ -1657,6 +1659,7 @@
               {
                 'review-action-button--reject': action.key === 'reject',
                 'review-action-button--delete': action.key === 'delete',
+                'review-action-delete': action.key === 'delete',
               },
             ]"
             :severity="action.severity"
@@ -5106,16 +5109,16 @@ onBeforeUnmount(() => {
 
 :global(.dark) .review-card-action-note--info,
 :global(.dark) :deep(.review-card-action-note--info) {
-  --soft-note-bg: rgba(56, 189, 248, 0.16);
-  --soft-note-border: rgba(125, 211, 252, 0.46);
-  --soft-note-color: #bae6fd;
+  --soft-note-bg: rgba(56, 189, 248, 0.18);
+  --soft-note-border: rgba(125, 211, 252, 0.56);
+  --soft-note-color: #e0f2fe;
 }
 
 :global(.dark) .review-card-action-note--warning,
 :global(.dark) :deep(.review-card-action-note--warning) {
-  --soft-note-bg: rgba(249, 115, 22, 0.17);
-  --soft-note-border: rgba(251, 146, 60, 0.48);
-  --soft-note-color: #fed7aa;
+  --soft-note-bg: rgba(245, 158, 11, 0.18);
+  --soft-note-border: rgba(251, 191, 36, 0.56);
+  --soft-note-color: #fde68a;
 }
 
 .review-sort-icon.pi-sort-amount-up-alt,
@@ -6697,32 +6700,54 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.82);
 }
 
-:deep(.review-action-button--delete.p-button),
-:deep(.trash-action-button--delete.p-button) {
-  border: 1px solid rgba(185, 28, 28, 0.42);
-  background: transparent;
-  color: #b91c1c;
+:deep(.review-action-delete.p-button),
+:deep(.trash-action-permanent-delete.p-button) {
+  border: 1px solid rgba(185, 28, 28, 0.58) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #b91c1c !important;
+  box-shadow: none;
 }
 
-:deep(.review-action-button--delete.p-button:not(:disabled):hover),
-:deep(.trash-action-button--delete.p-button:not(:disabled):hover) {
-  border-color: rgba(185, 28, 28, 0.64);
-  background: rgba(254, 226, 226, 0.72);
-  color: #991b1b;
+:deep(.review-action-delete.p-button .p-button-icon),
+:deep(.review-action-delete.p-button .p-button-label),
+:deep(.trash-action-permanent-delete.p-button .p-button-icon),
+:deep(.trash-action-permanent-delete.p-button .p-button-label) {
+  color: inherit !important;
 }
 
-:deep(.review-action-button--delete.p-button:not(:disabled):active),
-:deep(.trash-action-button--delete.p-button:not(:disabled):active) {
-  border-color: rgba(153, 27, 27, 0.72);
-  background: rgba(254, 202, 202, 0.72);
-  color: #7f1d1d;
+:deep(.review-action-delete.p-button:not(:disabled):hover),
+:deep(.trash-action-permanent-delete.p-button:not(:disabled):hover) {
+  border-color: rgba(185, 28, 28, 0.72) !important;
+  background: rgba(220, 38, 38, 0.1) !important;
+  background-color: rgba(220, 38, 38, 0.1) !important;
+  color: #991b1b !important;
 }
 
-:deep(.review-action-button--delete.p-button:disabled),
-:deep(.trash-action-button--delete.p-button:disabled) {
-  border-color: rgba(185, 28, 28, 0.28);
-  background: transparent;
-  color: rgba(185, 28, 28, 0.56);
+:deep(.review-action-delete.p-button:not(:disabled):focus),
+:deep(.trash-action-permanent-delete.p-button:not(:disabled):focus) {
+  border-color: rgba(185, 28, 28, 0.72) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #991b1b !important;
+  box-shadow: 0 0 0 0.12rem rgba(220, 38, 38, 0.16) !important;
+}
+
+:deep(.review-action-delete.p-button:not(:disabled):active),
+:deep(.trash-action-permanent-delete.p-button:not(:disabled):active) {
+  border-color: rgba(153, 27, 27, 0.82) !important;
+  background: rgba(220, 38, 38, 0.12) !important;
+  background-color: rgba(220, 38, 38, 0.12) !important;
+  color: #7f1d1d !important;
+}
+
+:deep(.review-action-delete.p-button:disabled),
+:deep(.trash-action-permanent-delete.p-button:disabled) {
+  border-color: rgba(185, 28, 28, 0.3) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: rgba(185, 28, 28, 0.58) !important;
+  box-shadow: none !important;
 }
 
 :global(.dark) :deep(.review-action-button--reject.p-button) {
@@ -6749,32 +6774,76 @@ onBeforeUnmount(() => {
   color: rgba(254, 202, 202, 0.72);
 }
 
-:global(.dark) :deep(.review-action-button--delete.p-button),
-:global(.dark) :deep(.trash-action-button--delete.p-button) {
-  border-color: rgba(248, 113, 113, 0.55);
-  background: transparent;
-  color: #fca5a5;
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note),
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note .pi),
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note .review-card-action-note__text) {
+  color: #e0f2fe !important;
 }
 
-:global(.dark) :deep(.review-action-button--delete.p-button:not(:disabled):hover),
-:global(.dark) :deep(.trash-action-button--delete.p-button:not(:disabled):hover) {
-  border-color: rgba(252, 165, 165, 0.72);
-  background: rgba(127, 29, 29, 0.28);
-  color: #fecaca;
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note) {
+  border-color: rgba(125, 211, 252, 0.56) !important;
+  background: rgba(56, 189, 248, 0.18) !important;
 }
 
-:global(.dark) :deep(.review-action-button--delete.p-button:not(:disabled):active),
-:global(.dark) :deep(.trash-action-button--delete.p-button:not(:disabled):active) {
-  border-color: rgba(254, 202, 202, 0.82);
-  background: rgba(127, 29, 29, 0.36);
-  color: #fee2e2;
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note),
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note .pi),
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note .review-card-action-note__text) {
+  color: #fde68a !important;
 }
 
-:global(.dark) :deep(.review-action-button--delete.p-button:disabled),
-:global(.dark) :deep(.trash-action-button--delete.p-button:disabled) {
-  border-color: rgba(248, 113, 113, 0.28);
-  background: transparent;
-  color: rgba(252, 165, 165, 0.62);
+:global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note) {
+  border-color: rgba(251, 191, 36, 0.56) !important;
+  background: rgba(245, 158, 11, 0.18) !important;
+}
+
+:global(.dark) :deep(.review-action-delete.p-button),
+:global(.dark) :deep(.trash-action-permanent-delete.p-button) {
+  border-color: rgba(248, 113, 113, 0.68) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #fca5a5 !important;
+  box-shadow: none;
+}
+
+:global(.dark) :deep(.review-action-delete.p-button .p-button-icon),
+:global(.dark) :deep(.review-action-delete.p-button .p-button-label),
+:global(.dark) :deep(.trash-action-permanent-delete.p-button .p-button-icon),
+:global(.dark) :deep(.trash-action-permanent-delete.p-button .p-button-label) {
+  color: inherit !important;
+}
+
+:global(.dark) :deep(.review-action-delete.p-button:not(:disabled):hover),
+:global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):hover) {
+  border-color: rgba(252, 165, 165, 0.78) !important;
+  background: rgba(248, 113, 113, 0.12) !important;
+  background-color: rgba(248, 113, 113, 0.12) !important;
+  color: #fecaca !important;
+}
+
+:global(.dark) :deep(.review-action-delete.p-button:not(:disabled):focus),
+:global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):focus) {
+  border-color: rgba(252, 165, 165, 0.78) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #fecaca !important;
+  box-shadow: 0 0 0 0.12rem rgba(248, 113, 113, 0.2) !important;
+}
+
+:global(.dark) :deep(.review-action-delete.p-button:not(:disabled):active),
+:global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):active) {
+  border-color: rgba(254, 202, 202, 0.86) !important;
+  background: rgba(248, 113, 113, 0.14) !important;
+  background-color: rgba(248, 113, 113, 0.14) !important;
+  color: #fee2e2 !important;
+}
+
+:global(.dark) :deep(.review-action-delete.p-button:disabled),
+:global(.dark) :deep(.trash-action-permanent-delete.p-button:disabled) {
+  border-color: rgba(248, 113, 113, 0.32) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: rgba(252, 165, 165, 0.66) !important;
+  box-shadow: none !important;
 }
 
 :deep(.review-mobile-summary) {
