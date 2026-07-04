@@ -31,7 +31,7 @@
                   class="admin-data-table admin-desktop-data-table category-management-table"
                   tableStyle="min-width: 44rem"
                   responsiveLayout="stack"
-                  breakpoint="768px"
+                  breakpoint="1023px"
                 >
                   <Column header="順序" style="width: 12rem">
                     <template #body="{ data }">
@@ -245,7 +245,7 @@
                 scrollable
                 scrollHeight="65vh"
                 responsiveLayout="stack"
-                breakpoint="768px"
+                breakpoint="1023px"
               >
                 <Column header="順序" style="width: 18%">
                   <template #body="{ data }">
@@ -422,7 +422,7 @@
                 scrollable
                 scrollHeight="65vh"
                 responsiveLayout="stack"
-                breakpoint="768px"
+                breakpoint="1023px"
                 :multiSortMeta="userSortMeta"
                 sortMode="multiple"
                 removableSort
@@ -507,6 +507,7 @@
                       :disabled="!data.is_local"
                     />
                     <Button
+                      class="admin-danger-solid-button"
                       icon="pi pi-trash"
                       severity="danger"
                       size="small"
@@ -562,6 +563,7 @@
                       :disabled="!user.is_local"
                     />
                     <Button
+                      class="admin-danger-solid-button"
                       icon="pi pi-trash"
                       severity="danger"
                       size="small"
@@ -6847,6 +6849,251 @@ onBeforeUnmount(() => {
     width: 100%;
     min-width: 0;
     min-height: 2.65rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  :deep(.admin-desktop-data-table.user-management-table),
+  :deep(.admin-desktop-data-table.course-management-table),
+  :deep(.admin-desktop-data-table.category-management-table) {
+    display: none;
+  }
+
+  .admin-mobile-list--users,
+  .admin-mobile-list--courses,
+  .admin-mobile-list--categories {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--users .admin-mobile-card,
+  .admin-mobile-list--courses .admin-mobile-card,
+  .admin-mobile-list--categories .admin-mobile-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.85rem;
+    box-sizing: border-box;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  .admin-mobile-list--users .admin-card-primary,
+  .admin-mobile-list--courses .course-card-primary,
+  .admin-mobile-list--categories .category-card-main {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--users .admin-card-title,
+  .admin-mobile-list--courses .course-card-title,
+  .admin-mobile-list--categories .category-card-title {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-mobile-list--users .admin-card-email {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 0.25rem;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-mobile-list--users .admin-card-meta,
+  .admin-mobile-list--categories .category-card-meta,
+  .admin-mobile-list--courses .course-card-topline,
+  .admin-mobile-list--categories .category-card-topline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--users .admin-card-meta-text {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--categories .category-card-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .admin-mobile-list--categories .category-card-order,
+  .admin-mobile-list--courses .course-card-order {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  :deep(.admin-mobile-list--categories .category-card-topline .p-button),
+  :deep(.admin-mobile-list--courses .course-card-topline .p-button) {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  :deep(.admin-mobile-list--categories .category-card-topline .pi),
+  :deep(.admin-mobile-list--courses .course-card-topline .pi) {
+    margin: 0;
+    line-height: 1;
+  }
+
+  .admin-mobile-list--categories .category-card-key {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    gap: 0.1rem;
+    align-items: flex-start;
+    max-width: 48%;
+    padding: 0.32rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
+  }
+
+  .admin-mobile-list--categories .category-card-key-label {
+    color: var(--accent-gold);
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--categories .category-card-key-value {
+    max-width: 100%;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  :deep(.admin-mobile-list--courses .course-card-category),
+  :deep(.admin-mobile-list--categories .p-tag),
+  :deep(.admin-mobile-list--users .p-tag) {
+    width: fit-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--users .admin-mobile-card-actions,
+  .admin-mobile-list--courses .admin-mobile-card-actions,
+  .admin-mobile-list--categories .admin-mobile-card-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button) {
+    width: auto;
+    min-height: 2.45rem;
+    justify-content: center;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  .admin-mobile-list--users .admin-mobile-card-actions,
+  .admin-mobile-list--courses .admin-mobile-card-actions,
+  .admin-mobile-list--categories .admin-mobile-card-actions {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 0.05rem;
+  }
+
+  :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5.25rem;
+    padding-inline: 0.65rem;
+  }
+
+  :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button-label),
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button-label),
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button-label) {
+    display: inline-flex;
+  }
+
+  :deep(.admin-mobile-list--users .admin-mobile-card-actions .pi),
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .pi),
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .pi) {
+    margin-inline-end: 0.35rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-mobile-list--users .admin-mobile-card-actions,
+  .admin-mobile-list--courses .admin-mobile-card-actions,
+  .admin-mobile-list--categories .admin-mobile-card-actions {
+    flex-wrap: wrap;
+    justify-content: stretch;
+    overflow-x: visible;
+  }
+
+  :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button),
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button) {
+    flex: 1 1 calc(33.333% - 0.5rem);
+    width: auto;
+    min-width: 5.7rem;
+    min-height: 2.65rem;
+    padding-inline: 0.45rem;
+  }
+
+  :deep(.admin-mobile-list--users .admin-mobile-card-actions .p-button-label),
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .p-button-label),
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .p-button-label) {
+    display: inline-flex;
+  }
+
+  :deep(.admin-mobile-list--users .admin-mobile-card-actions .pi),
+  :deep(.admin-mobile-list--courses .admin-mobile-card-actions .pi),
+  :deep(.admin-mobile-list--categories .admin-mobile-card-actions .pi) {
+    margin-inline-end: 0.3rem;
   }
 }
 
