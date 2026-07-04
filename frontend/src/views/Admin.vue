@@ -805,7 +805,7 @@
                     <template #body="{ data }">
                       <div class="mobile-primary-text review-card-title review-course-cell">
                         <span>{{ data.subject }}</span>
-                        <Tag v-if="data.is_admin_upload" class="review-admin-upload-chip" severity="info">
+                        <Tag v-if="data.is_admin_upload" class="soft-badge soft-badge--admin review-admin-upload-chip" severity="info">
                           管理員投稿
                         </Tag>
                       </div>
@@ -840,7 +840,10 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag class="review-card-chip" :severity="getArchiveSubmissionKindSeverity(data)">
+                      <Tag
+                        :class="['soft-badge', 'review-card-chip', getArchiveSubmissionKindClass(data)]"
+                        :severity="getArchiveSubmissionKindSeverity(data)"
+                      >
                         {{ getArchiveSubmissionKind(data) }}
                       </Tag>
                     </template>
@@ -899,7 +902,7 @@
                     </template>
                     <template #body="{ data }">
                       <Tag
-                        :class="['review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
+                        :class="['soft-badge', 'review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
                         :severity="getSubmissionSeverity(data.status)"
                       >
                         {{ getSubmissionLabel(data.status) }}
@@ -975,7 +978,7 @@
                     <template #body="{ data }">
                       <div class="mobile-primary-text review-card-title review-course-cell">
                         <span>{{ data.subject }}</span>
-                        <Tag v-if="data.is_admin_upload" class="review-admin-upload-chip" severity="info">
+                        <Tag v-if="data.is_admin_upload" class="soft-badge soft-badge--admin review-admin-upload-chip" severity="info">
                           管理員投稿
                         </Tag>
                       </div>
@@ -1056,7 +1059,7 @@
                     </template>
                     <template #body="{ data }">
                       <Tag
-                        :class="['review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
+                        :class="['soft-badge', 'review-card-chip', 'review-status-chip', getSubmissionStatusClass(data.status)]"
                         :severity="getSubmissionSeverity(data.status)"
                       >
                         {{ getSubmissionLabel(data.status) }}
@@ -1224,7 +1227,7 @@
                   </template>
                   <template #body="{ data }">
                     <Tag
-                      :class="['review-status-chip', getSubmissionStatusClass(data.status)]"
+                      :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(data.status)]"
                       :severity="getTrashStatusSeverity(data.status)"
                     >
                       {{ getTrashStatusLabel(data.status) }}
@@ -1249,11 +1252,11 @@
                         v-for="dependency in getTrashDependencies(data)"
                         :key="dependency.key"
                         :severity="getTrashDependencySeverity(dependency)"
-                        :class="['trash-dependency-chip', getTrashDependencyChipClass(dependency)]"
+                        :class="['soft-badge', 'trash-dependency-chip', getTrashDependencyChipClass(dependency)]"
                       >
                         {{ dependency.label }}
                       </Tag>
-                      <span v-if="!getTrashDependencies(data).length" class="trash-dependency-chip trash-dependency-chip--clear">無阻擋</span>
+                      <span v-if="!getTrashDependencies(data).length" class="soft-badge trash-dependency-chip trash-dependency-chip--clear">無阻擋</span>
                     </div>
                   </template>
                 </Column>
@@ -1435,7 +1438,10 @@
         :style="{ width: '760px', maxWidth: '96vw' }"
       >
       <div class="request-summary mb-4">
-          <Tag :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)">
+          <Tag
+            :class="['soft-badge', 'review-card-chip', getArchiveSubmissionKindClass(selectedArchiveRequest)]"
+            :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)"
+          >
             {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
           </Tag>
           <small class="text-500">投稿編號：{{ formatSubmissionLabel(selectedArchiveRequest) }}</small>
@@ -1534,7 +1540,7 @@
             <Column header="狀態">
               <template #body="{ data }">
                 <Tag
-                  :class="['review-status-chip', getSubmissionStatusClass(data.status)]"
+                  :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(data.status)]"
                   :severity="getSubmissionSeverity(data.status)"
                 >
                   {{ getSubmissionLabel(data.status) }}
@@ -1590,7 +1596,7 @@
               <small>投稿：{{ item.requester }}</small>
             </span>
             <Tag
-              :class="['review-status-chip', getSubmissionStatusClass(item.status)]"
+              :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(item.status)]"
               :severity="getSubmissionSeverity(item.status)"
             >
               {{ getSubmissionLabel(item.status) }}
@@ -2985,6 +2991,12 @@ const getArchiveSubmissionKindSeverity = (item) => {
   if (item?.requested_category_key) return 'warning'
   if (item?.requested_course_name) return 'info'
   return 'secondary'
+}
+
+const getArchiveSubmissionKindClass = (item) => {
+  if (item?.requested_category_key) return 'soft-badge--new-course-category'
+  if (item?.requested_course_name) return 'soft-badge--new-course'
+  return 'soft-badge--info'
 }
 
 const formatAcademicTerm = (value) => {
@@ -5020,19 +5032,20 @@ onBeforeUnmount(() => {
 
 .review-card-action-note {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.35rem;
   margin: 0.15rem 0 0;
-  width: 100%;
+  width: fit-content;
   max-width: min(18rem, 100%);
   min-width: 0;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border-color);
-  border-left-width: 3px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--surface-ground) 55%, transparent);
-  color: var(--text-color-secondary);
-  font-size: 0.76rem;
+  min-height: 1.55rem;
+  padding: 0.18rem 0.55rem;
+  border: 1px solid var(--soft-note-border, var(--border-color));
+  border-radius: 999px;
+  background: var(--soft-note-bg, color-mix(in srgb, var(--surface-ground) 55%, transparent));
+  color: var(--soft-note-color, var(--text-color-secondary));
+  font-size: 0.78rem;
+  font-weight: 700;
   line-height: 1.35;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -5042,7 +5055,6 @@ onBeforeUnmount(() => {
 .review-card-action-note .pi {
   flex: 0 0 auto;
   flex-shrink: 0;
-  margin-top: 0.08rem;
   font-size: 0.78rem;
 }
 
@@ -5061,33 +5073,29 @@ onBeforeUnmount(() => {
 }
 
 .review-card-action-note--info {
-  border-color: #8aa1b8;
-  border-left-color: #3d647e;
-  background: #eef3f6;
-  color: #344b5d;
+  --soft-note-bg: rgba(71, 85, 105, 0.1);
+  --soft-note-border: rgba(71, 85, 105, 0.28);
+  --soft-note-color: #334155;
 }
 
 .review-card-action-note--warning {
-  border-color: #c99a61;
-  border-left-color: #9a5f23;
-  background: #f6eee3;
-  color: #694018;
+  --soft-note-bg: rgba(234, 88, 12, 0.1);
+  --soft-note-border: rgba(234, 88, 12, 0.32);
+  --soft-note-color: #9a3412;
 }
 
 :global(.dark) .review-card-action-note--info,
 :global(.dark) :deep(.review-card-action-note--info) {
-  border-color: rgba(138, 161, 184, 0.44);
-  border-left-color: rgba(126, 169, 196, 0.72);
-  background: rgba(61, 100, 126, 0.18);
-  color: #c7d3dd;
+  --soft-note-bg: rgba(148, 163, 184, 0.12);
+  --soft-note-border: rgba(148, 163, 184, 0.34);
+  --soft-note-color: #cbd5e1;
 }
 
 :global(.dark) .review-card-action-note--warning,
 :global(.dark) :deep(.review-card-action-note--warning) {
-  border-color: rgba(201, 154, 97, 0.46);
-  border-left-color: rgba(225, 171, 95, 0.76);
-  background: rgba(154, 95, 35, 0.18);
-  color: #ead4b8;
+  --soft-note-bg: rgba(248, 113, 113, 0.12);
+  --soft-note-border: rgba(251, 146, 60, 0.36);
+  --soft-note-color: #fed7aa;
 }
 
 .review-sort-icon.pi-sort-amount-up-alt,
@@ -5101,6 +5109,224 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+}
+
+.soft-badge,
+:deep(.soft-badge) {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 1.55rem;
+  padding: 0.16rem 0.55rem;
+  border: 1px solid var(--soft-badge-border, rgba(100, 116, 139, 0.28)) !important;
+  border-radius: 999px;
+  background: var(--soft-badge-bg, rgba(100, 116, 139, 0.1)) !important;
+  color: var(--soft-badge-color, #334155) !important;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: none;
+}
+
+.soft-badge--pending,
+:deep(.soft-badge--pending),
+.review-status-pending,
+:deep(.review-status-pending) {
+  --soft-badge-bg: rgba(245, 158, 11, 0.12);
+  --soft-badge-border: rgba(245, 158, 11, 0.34);
+  --soft-badge-color: #92400e;
+}
+
+.soft-badge--approved,
+:deep(.soft-badge--approved),
+.review-status-approved,
+:deep(.review-status-approved) {
+  --soft-badge-bg: rgba(34, 197, 94, 0.12);
+  --soft-badge-border: rgba(34, 197, 94, 0.34);
+  --soft-badge-color: #166534;
+}
+
+.soft-badge--rejected,
+.soft-badge--deleted,
+:deep(.soft-badge--rejected),
+:deep(.soft-badge--deleted),
+.review-status-rejected,
+.review-status-deleted,
+:deep(.review-status-rejected),
+:deep(.review-status-deleted) {
+  --soft-badge-bg: rgba(239, 68, 68, 0.11);
+  --soft-badge-border: rgba(239, 68, 68, 0.34);
+  --soft-badge-color: #991b1b;
+}
+
+.soft-badge--archived,
+:deep(.soft-badge--archived),
+.review-status-takedown,
+:deep(.review-status-takedown) {
+  --soft-badge-bg: rgba(100, 116, 139, 0.12);
+  --soft-badge-border: rgba(100, 116, 139, 0.3);
+  --soft-badge-color: #334155;
+}
+
+.soft-badge--admin,
+:deep(.soft-badge--admin) {
+  --soft-badge-bg: rgba(37, 99, 235, 0.1);
+  --soft-badge-border: rgba(37, 99, 235, 0.3);
+  --soft-badge-color: #1d4ed8;
+}
+
+.soft-badge--new-course,
+:deep(.soft-badge--new-course) {
+  --soft-badge-bg: rgba(14, 165, 233, 0.1);
+  --soft-badge-border: rgba(14, 165, 233, 0.3);
+  --soft-badge-color: #0369a1;
+}
+
+.soft-badge--new-course-category,
+:deep(.soft-badge--new-course-category) {
+  --soft-badge-bg: rgba(20, 184, 166, 0.11);
+  --soft-badge-border: rgba(20, 184, 166, 0.34);
+  --soft-badge-color: #0f766e;
+}
+
+.soft-badge--info,
+:deep(.soft-badge--info),
+.trash-dependency-chip--relation,
+:deep(.trash-dependency-chip--relation) {
+  --soft-badge-bg: rgba(71, 85, 105, 0.1);
+  --soft-badge-border: rgba(71, 85, 105, 0.28);
+  --soft-badge-color: #334155;
+}
+
+.soft-badge--warning,
+:deep(.soft-badge--warning),
+.trash-dependency-chip--restore-blocked,
+.trash-dependency-chip--delete-blocked,
+:deep(.trash-dependency-chip--restore-blocked),
+:deep(.trash-dependency-chip--delete-blocked) {
+  --soft-badge-bg: rgba(234, 88, 12, 0.1);
+  --soft-badge-border: rgba(234, 88, 12, 0.34);
+  --soft-badge-color: #9a3412;
+}
+
+.trash-dependency-chip--cascade,
+:deep(.trash-dependency-chip--cascade) {
+  --soft-badge-bg: rgba(14, 165, 233, 0.1);
+  --soft-badge-border: rgba(14, 165, 233, 0.3);
+  --soft-badge-color: #0369a1;
+}
+
+.trash-dependency-chip--clear,
+:deep(.trash-dependency-chip--clear) {
+  --soft-badge-bg: rgba(34, 197, 94, 0.12);
+  --soft-badge-border: rgba(34, 197, 94, 0.34);
+  --soft-badge-color: #166534;
+}
+
+:global(.dark) .soft-badge,
+:global(.dark) :deep(.soft-badge) {
+  --soft-badge-bg: rgba(148, 163, 184, 0.1);
+  --soft-badge-border: rgba(148, 163, 184, 0.3);
+  --soft-badge-color: #cbd5e1;
+}
+
+:global(.dark) .soft-badge--pending,
+:global(.dark) :deep(.soft-badge--pending),
+:global(.dark) .review-status-pending,
+:global(.dark) :deep(.review-status-pending) {
+  --soft-badge-bg: rgba(245, 158, 11, 0.14);
+  --soft-badge-border: rgba(251, 191, 36, 0.36);
+  --soft-badge-color: #fcd34d;
+}
+
+:global(.dark) .soft-badge--approved,
+:global(.dark) :deep(.soft-badge--approved),
+:global(.dark) .review-status-approved,
+:global(.dark) :deep(.review-status-approved) {
+  --soft-badge-bg: rgba(34, 197, 94, 0.12);
+  --soft-badge-border: rgba(74, 222, 128, 0.34);
+  --soft-badge-color: #86efac;
+}
+
+:global(.dark) .soft-badge--rejected,
+:global(.dark) .soft-badge--deleted,
+:global(.dark) :deep(.soft-badge--rejected),
+:global(.dark) :deep(.soft-badge--deleted),
+:global(.dark) .review-status-rejected,
+:global(.dark) .review-status-deleted,
+:global(.dark) :deep(.review-status-rejected),
+:global(.dark) :deep(.review-status-deleted) {
+  --soft-badge-bg: rgba(239, 68, 68, 0.12);
+  --soft-badge-border: rgba(248, 113, 113, 0.34);
+  --soft-badge-color: #fca5a5;
+}
+
+:global(.dark) .soft-badge--archived,
+:global(.dark) :deep(.soft-badge--archived),
+:global(.dark) .review-status-takedown,
+:global(.dark) :deep(.review-status-takedown) {
+  --soft-badge-bg: rgba(148, 163, 184, 0.12);
+  --soft-badge-border: rgba(148, 163, 184, 0.32);
+  --soft-badge-color: #cbd5e1;
+}
+
+:global(.dark) .soft-badge--admin,
+:global(.dark) :deep(.soft-badge--admin) {
+  --soft-badge-bg: rgba(59, 130, 246, 0.12);
+  --soft-badge-border: rgba(96, 165, 250, 0.34);
+  --soft-badge-color: #bfdbfe;
+}
+
+:global(.dark) .soft-badge--new-course,
+:global(.dark) :deep(.soft-badge--new-course) {
+  --soft-badge-bg: rgba(14, 165, 233, 0.12);
+  --soft-badge-border: rgba(56, 189, 248, 0.34);
+  --soft-badge-color: #bae6fd;
+}
+
+:global(.dark) .soft-badge--new-course-category,
+:global(.dark) :deep(.soft-badge--new-course-category) {
+  --soft-badge-bg: rgba(20, 184, 166, 0.12);
+  --soft-badge-border: rgba(45, 212, 191, 0.34);
+  --soft-badge-color: #99f6e4;
+}
+
+:global(.dark) .soft-badge--info,
+:global(.dark) :deep(.soft-badge--info),
+:global(.dark) .trash-dependency-chip--relation,
+:global(.dark) :deep(.trash-dependency-chip--relation) {
+  --soft-badge-bg: rgba(148, 163, 184, 0.1);
+  --soft-badge-border: rgba(148, 163, 184, 0.3);
+  --soft-badge-color: #cbd5e1;
+}
+
+:global(.dark) .soft-badge--warning,
+:global(.dark) :deep(.soft-badge--warning),
+:global(.dark) .trash-dependency-chip--restore-blocked,
+:global(.dark) .trash-dependency-chip--delete-blocked,
+:global(.dark) :deep(.trash-dependency-chip--restore-blocked),
+:global(.dark) :deep(.trash-dependency-chip--delete-blocked) {
+  --soft-badge-bg: rgba(248, 113, 113, 0.12);
+  --soft-badge-border: rgba(251, 146, 60, 0.36);
+  --soft-badge-color: #fed7aa;
+}
+
+:global(.dark) .trash-dependency-chip--cascade,
+:global(.dark) :deep(.trash-dependency-chip--cascade) {
+  --soft-badge-bg: rgba(14, 165, 233, 0.12);
+  --soft-badge-border: rgba(56, 189, 248, 0.34);
+  --soft-badge-color: #bae6fd;
+}
+
+:global(.dark) .trash-dependency-chip--clear,
+:global(.dark) :deep(.trash-dependency-chip--clear) {
+  --soft-badge-bg: rgba(34, 197, 94, 0.12);
+  --soft-badge-border: rgba(74, 222, 128, 0.34);
+  --soft-badge-color: #86efac;
 }
 
 .category-color-options {
@@ -5258,19 +5484,6 @@ onBeforeUnmount(() => {
   color: #cfd6f1;
 }
 
-:deep(.review-admin-upload-chip) {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border-color: #3b82f6;
-  font-weight: 700;
-}
-
-:global(.dark) :deep(.review-admin-upload-chip) {
-  background: rgba(59, 130, 246, 0.22);
-  color: #bfdbfe;
-  border-color: rgba(96, 165, 250, 0.56);
-}
-
 .review-load-error {
   margin-bottom: 1rem;
   padding: 0.75rem 1rem;
@@ -5399,83 +5612,17 @@ onBeforeUnmount(() => {
   align-items: center;
   width: fit-content;
   max-width: 100%;
-  border: 1px solid var(--border-color);
+  min-height: 1.55rem;
+  border: 1px solid var(--soft-badge-border, rgba(100, 116, 139, 0.28)) !important;
   border-radius: 999px;
-  padding: 0.15rem 0.5rem;
+  padding: 0.16rem 0.55rem;
+  background: var(--soft-badge-bg, rgba(100, 116, 139, 0.1)) !important;
+  color: var(--soft-badge-color, #334155) !important;
   font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0;
   line-height: 1.35;
   overflow-wrap: anywhere;
-}
-
-.trash-dependency-chip--restore-blocked,
-:deep(.trash-dependency-chip--restore-blocked) {
-  background: #fef3c7;
-  border-color: #f59e0b;
-  color: #92400e;
-}
-
-.trash-dependency-chip--delete-blocked,
-:deep(.trash-dependency-chip--delete-blocked) {
-  background: #fee2e2;
-  border-color: #ef4444;
-  color: #991b1b;
-}
-
-.trash-dependency-chip--cascade,
-:deep(.trash-dependency-chip--cascade) {
-  background: #dbeafe;
-  border-color: #3b82f6;
-  color: #1d4ed8;
-}
-
-.trash-dependency-chip--relation,
-:deep(.trash-dependency-chip--relation) {
-  background: #e2e8f0;
-  border-color: #64748b;
-  color: #334155;
-}
-
-.trash-dependency-chip--clear,
-:deep(.trash-dependency-chip--clear) {
-  background: #dcfce7;
-  border-color: #22c55e;
-  color: #166534;
-}
-
-:global(.dark) .trash-dependency-chip--restore-blocked,
-:global(.dark) :deep(.trash-dependency-chip--restore-blocked) {
-  background: rgba(245, 158, 11, 0.22);
-  border-color: rgba(251, 191, 36, 0.55);
-  color: #fcd34d;
-}
-
-:global(.dark) .trash-dependency-chip--delete-blocked,
-:global(.dark) :deep(.trash-dependency-chip--delete-blocked) {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(248, 113, 113, 0.54);
-  color: #fca5a5;
-}
-
-:global(.dark) .trash-dependency-chip--cascade,
-:global(.dark) :deep(.trash-dependency-chip--cascade) {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(96, 165, 250, 0.54);
-  color: #bfdbfe;
-}
-
-:global(.dark) .trash-dependency-chip--relation,
-:global(.dark) :deep(.trash-dependency-chip--relation) {
-  background: rgba(100, 116, 139, 0.24);
-  border-color: rgba(148, 163, 184, 0.5);
-  color: #cbd5e1;
-}
-
-:global(.dark) .trash-dependency-chip--clear,
-:global(.dark) :deep(.trash-dependency-chip--clear) {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(74, 222, 128, 0.52);
-  color: #86efac;
 }
 
 .trash-dependency-help-rule-list {
@@ -5577,71 +5724,6 @@ onBeforeUnmount(() => {
   .trash-dependency-help-flow-grid {
     grid-template-columns: 1fr;
   }
-}
-
-:deep(.review-status-chip.review-status-pending) {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #f59e0b;
-  font-weight: 700;
-}
-
-:deep(.review-status-chip.review-status-approved) {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #22c55e;
-  font-weight: 700;
-}
-
-:deep(.review-status-chip.review-status-rejected) {
-  background: #fee2e2;
-  color: #991b1b;
-  border-color: #ef4444;
-  font-weight: 700;
-}
-
-:deep(.review-status-chip.review-status-takedown) {
-  background: #e2e8f0;
-  color: #334155;
-  border-color: #64748b;
-  font-weight: 700;
-}
-
-:deep(.review-status-chip.review-status-deleted) {
-  background: #ffe4e6;
-  color: #9f1239;
-  border-color: #f43f5e;
-  font-weight: 700;
-}
-
-:global(.dark) :deep(.review-status-chip.review-status-pending) {
-  background: rgba(245, 158, 11, 0.22);
-  color: #fcd34d;
-  border-color: rgba(251, 191, 36, 0.55);
-}
-
-:global(.dark) :deep(.review-status-chip.review-status-approved) {
-  background: rgba(34, 197, 94, 0.2);
-  color: #86efac;
-  border-color: rgba(74, 222, 128, 0.52);
-}
-
-:global(.dark) :deep(.review-status-chip.review-status-rejected) {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border-color: rgba(248, 113, 113, 0.54);
-}
-
-:global(.dark) :deep(.review-status-chip.review-status-takedown) {
-  background: rgba(100, 116, 139, 0.24);
-  color: #cbd5e1;
-  border-color: rgba(148, 163, 184, 0.5);
-}
-
-:global(.dark) :deep(.review-status-chip.review-status-deleted) {
-  background: rgba(244, 63, 94, 0.2);
-  color: #fda4af;
-  border-color: rgba(251, 113, 133, 0.54);
 }
 
 .compare-preview-grid {
