@@ -32,7 +32,10 @@
                   <Button
                     v-for="course in category.items"
                     :key="course.label"
-                    class="p-button-text search-result-btn text-color"
+                    :class="[
+                      'p-button-text search-result-btn text-color',
+                      { 'active-course-search-result': selectedCourse === course.id },
+                    ]"
                     @click="filterBySubject({ label: course.label, id: course.id })"
                   >
                     <span class="ellipsis">{{ course.label }}</span>
@@ -120,7 +123,10 @@
                   <Button
                     v-for="course in category.items"
                     :key="course.label"
-                    class="p-button-text search-result-btn text-color"
+                    :class="[
+                      'p-button-text search-result-btn text-color',
+                      { 'active-course-search-result': selectedCourse === course.id },
+                    ]"
                     @click="
                       () => {
                         filterBySubject({ label: course.label, id: course.id })
@@ -165,49 +171,59 @@
           <div v-if="selectedSubject" class="subject-header">
             <div class="subject-title-block">
               <Tag severity="secondary" class="subject-tag">
-                {{ getCategoryTag(getCategoryName(getCurrentCategory)) }}
+                {{ currentCategoryLabel }}
               </Tag>
               <div>
                 <div class="subject-title">{{ selectedSubject }}</div>
-                <div class="subject-subtitle">Physics Archive Records</div>
+                <div class="subject-subtitle">
+                  <span>{{ currentCategoryName }}</span>
+                  <span>共 {{ archiveTotalCount }} 份考古題</span>
+                  <span>最新：{{ latestAcademicTerm }}</span>
+                </div>
+                <div class="subject-eyebrow">Physics Archive Records</div>
               </div>
             </div>
           </div>
-          <Toolbar v-if="selectedSubject" class="archive-filter-bar m-3">
+          <Toolbar v-if="selectedSubject" class="archive-filter-bar mx-3 mt-3 mb-2">
             <template #start>
-              <div class="flex flex-wrap gap-3 w-full">
-                <Select
-                  v-model="filters.year"
-                  :options="years"
-                  optionLabel="name"
-                  optionValue="code"
-                  placeholder="選擇學期"
-                  class="w-full md:w-12rem"
-                  showClear
-                  filter
-                />
-                <Select
-                  v-model="filters.professor"
-                  :options="professors"
-                  optionLabel="name"
-                  optionValue="code"
-                  placeholder="選擇教授"
-                  class="w-full md:w-12rem"
-                  showClear
-                  filter
-                />
-                <Select
-                  v-model="filters.type"
-                  :options="archiveTypes"
-                  optionLabel="name"
-                  optionValue="code"
-                  placeholder="選擇類型"
-                  class="w-full md:w-12rem"
-                  showClear
-                />
-                <div class="flex align-items-center">
-                  <Checkbox v-model="filters.hasAnswers" :binary="true" />
-                  <label class="ml-2">附解答</label>
+              <div class="archive-filter-shell">
+                <div class="filter-summary">
+                  目前顯示：{{ selectedSubject }} · 共 {{ filteredArchiveCount }} 份考古題
+                </div>
+                <div class="archive-filter-controls">
+                  <Select
+                    v-model="filters.year"
+                    :options="years"
+                    optionLabel="name"
+                    optionValue="code"
+                    placeholder="學期"
+                    class="filter-select"
+                    showClear
+                    filter
+                  />
+                  <Select
+                    v-model="filters.professor"
+                    :options="professors"
+                    optionLabel="name"
+                    optionValue="code"
+                    placeholder="教授"
+                    class="filter-select"
+                    showClear
+                    filter
+                  />
+                  <Select
+                    v-model="filters.type"
+                    :options="archiveTypes"
+                    optionLabel="name"
+                    optionValue="code"
+                    placeholder="類型"
+                    class="filter-select"
+                    showClear
+                  />
+                  <div class="answer-filter">
+                    <Checkbox v-model="filters.hasAnswers" :binary="true" inputId="hasAnswersFilter" />
+                    <label for="hasAnswersFilter">附解答</label>
+                  </div>
                 </div>
               </div>
             </template>
@@ -231,71 +247,77 @@
                   :key="group.year"
                   :value="group.year.toString()"
                 >
-                  <AccordionHeader>{{ formatAcademicTerm(group.year) }}</AccordionHeader>
+                  <AccordionHeader>
+                    <div class="term-header-content">
+                      <span class="term-title">{{ formatAcademicTerm(group.year) }}</span>
+                      <span class="term-count">{{ group.list.length }} 份</span>
+                    </div>
+                  </AccordionHeader>
                   <AccordionContent>
                     <div class="archive-card-grid">
                       <article v-for="data in group.list" :key="data.id" class="archive-record-card">
-                        <div class="archive-record-main">
-                          <div class="archive-record-kicker">
-                            <Tag :severity="archiveTypeConfig[data.type]?.severity || 'secondary'">
+                        <div class="archive-record-content">
+                          <div class="archive-record-line archive-record-primary-line">
+                            <div class="archive-record-title-group">
+                              <Tag
+                                :severity="archiveTypeConfig[data.type]?.severity || 'secondary'"
+                                class="exam-type-tag"
+                              >
                               {{ archiveTypeConfig[data.type]?.name || data.type }}
-                            </Tag>
-                            <Tag :severity="data.hasAnswers ? 'info' : 'secondary'">
-                              {{ data.hasAnswers ? '附解答' : '僅題目' }}
-                            </Tag>
-                          </div>
-                          <h3>{{ data.name }}</h3>
-                          <div class="archive-record-detail-row">
-                            <div class="archive-record-teacher">
-                              <span>授課教師</span>
-                              <strong>{{ data.professor }}</strong>
+                              </Tag>
+                              <h3>{{ data.name }}</h3>
                             </div>
-                            <div class="archive-record-meta">
-                              <span>
-                                <i class="pi pi-download"></i>
-                                {{ formatDownloadCount(data.downloadCount) }} 次下載
-                              </span>
-                              <span v-if="isAdmin && formatSourceSubmissionIds(data)">
-                                投稿編號：{{ formatSourceSubmissionIds(data) }}
-                              </span>
+                            <div class="archive-record-actions">
+                              <Button
+                                icon="pi pi-eye"
+                                @click="previewArchive(data)"
+                                size="small"
+                                severity="secondary"
+                                label="預覽"
+                                outlined
+                                class="archive-action-preview"
+                              />
+                              <Button
+                                icon="pi pi-download"
+                                @click="downloadArchive(data)"
+                                size="small"
+                                severity="success"
+                                label="下載"
+                                :loading="downloadingId === data.id"
+                                class="archive-action-download"
+                              />
+                              <Button
+                                v-if="canEditArchive(data)"
+                                icon="pi pi-pencil"
+                                @click="openEditDialog(data)"
+                                size="small"
+                                severity="secondary"
+                                text
+                                rounded
+                                aria-label="編輯"
+                                class="archive-action-icon"
+                              />
+                              <Button
+                                v-if="canDeleteArchive(data)"
+                                icon="pi pi-trash"
+                                @click="confirmDelete(data)"
+                                size="small"
+                                severity="danger"
+                                text
+                                rounded
+                                aria-label="刪除"
+                                class="archive-action-icon archive-action-danger"
+                              />
                             </div>
                           </div>
-                        </div>
-                        <div class="archive-record-actions">
-                          <Button
-                            icon="pi pi-eye"
-                            @click="previewArchive(data)"
-                            size="small"
-                            severity="secondary"
-                            label="預覽"
-                            outlined
-                          />
-                          <Button
-                            icon="pi pi-download"
-                            @click="downloadArchive(data)"
-                            size="small"
-                            severity="success"
-                            label="下載"
-                            :loading="downloadingId === data.id"
-                          />
-                          <Button
-                            v-if="canEditArchive(data)"
-                            icon="pi pi-pencil"
-                            @click="openEditDialog(data)"
-                            size="small"
-                            severity="warning"
-                            label="編輯"
-                            outlined
-                          />
-                          <Button
-                            v-if="canDeleteArchive(data)"
-                            icon="pi pi-trash"
-                            @click="confirmDelete(data)"
-                            size="small"
-                            severity="danger"
-                            label="刪除"
-                            outlined
-                          />
+                          <div class="archive-record-line archive-record-meta-line">
+                            <span>{{ data.professor }}</span>
+                            <span>{{ formatAnswerStatus(data) }}</span>
+                            <span>{{ formatDownloadCount(data.downloadCount) }} 次下載</span>
+                            <span v-if="isAdmin && formatSourceSubmissionIds(data)">
+                              投稿編號：{{ formatSourceSubmissionIds(data) }}
+                            </span>
+                          </div>
                         </div>
                       </article>
                     </div>
@@ -770,6 +792,7 @@ const menuItems = computed(() => {
     items: (coursesList.value[category.key] || [])
       .map((course) => ({
         label: course.name,
+        class: selectedCourse.value === course.id ? 'active-course-menu-item' : undefined,
         command: () => filterBySubject({ label: course.name, id: course.id }),
       }))
   }))
@@ -867,6 +890,21 @@ const groupedArchives = computed(() => {
   })
 
   return Object.values(groups).sort((a, b) => b.year - a.year)
+})
+
+const archiveTotalCount = computed(() => archives.value.length)
+
+const filteredArchiveCount = computed(() =>
+  groupedArchives.value.reduce((total, group) => total + group.list.length, 0)
+)
+
+const latestAcademicTerm = computed(() => {
+  const latestYear = archives.value
+    .map((archive) => Number(archive.year))
+    .filter(Boolean)
+    .sort((a, b) => b - a)[0]
+
+  return latestYear ? formatAcademicTerm(latestYear) : '尚無資料'
 })
 
 function formatAcademicTerm(value) {
@@ -1612,6 +1650,10 @@ function formatDownloadCount(count) {
   return count.toString()
 }
 
+function formatAnswerStatus(archive) {
+  return archive?.hasAnswers ? '含解答' : '僅題目'
+}
+
 function toggleSidebar() {
   trackEvent(EVENTS.TOGGLE_SIDEBAR, { visible: !sidebarVisible.value })
   sidebarVisible.value = !sidebarVisible.value
@@ -1688,6 +1730,9 @@ const getCurrentCategory = computed(() => {
   }
   return ''
 })
+
+const currentCategoryName = computed(() => getCategoryName(getCurrentCategory.value))
+const currentCategoryLabel = computed(() => getCategoryTag(currentCategoryName.value))
 
 const searchEditProfessor = (event) => {
   const query = event?.query?.toLowerCase() || ''
@@ -1952,10 +1997,14 @@ const mobileMenuItems = computed(() => {
 
 .subject-header {
   border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  background: #eef6f2;
   position: relative;
   z-index: 1;
-  padding: 1rem 1.35rem;
+  padding: 0.9rem 1.35rem;
+}
+
+.archive-dark .subject-header {
+  background: #14211d;
 }
 
 .subject-title-block {
@@ -1976,19 +2025,82 @@ const mobileMenuItems = computed(() => {
 }
 
 .subject-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin-top: 0.28rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.subject-subtitle span + span::before {
+  content: '';
+  display: inline-block;
+  width: 0.24rem;
+  height: 0.24rem;
+  margin-right: 0.75rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: #8aa49a;
+}
+
+.subject-eyebrow {
   margin-top: 0.2rem;
-  color: rgba(202, 179, 111, 0.78);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  color: #6f8b82;
+  font-size: 0.7rem;
+  font-weight: 750;
   text-transform: uppercase;
 }
 
 .archive-filter-bar {
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid #d7e4df !important;
   border-radius: 8px;
-  background: var(--bg-secondary) !important;
+  background: rgba(247, 251, 249, 0.84) !important;
   box-shadow: none;
+}
+
+.archive-filter-bar :deep(.p-toolbar-start) {
+  width: 100%;
+}
+
+.archive-filter-shell {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.filter-summary {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.archive-filter-controls {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.filter-select {
+  width: min(11rem, 100%);
+}
+
+.answer-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.35rem;
+  padding: 0 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  font-weight: 650;
 }
 
 .ellipsis {
@@ -2006,6 +2118,13 @@ const mobileMenuItems = computed(() => {
   text-align: left;
   padding: 0.5rem;
   border-radius: 4px;
+}
+
+.active-course-search-result {
+  background: #dcebe4 !important;
+  box-shadow: inset 3px 0 0 #176a5a;
+  color: #17382f !important;
+  font-weight: 800;
 }
 
 :deep(.p-panelmenu) {
@@ -2032,52 +2151,85 @@ const mobileMenuItems = computed(() => {
 }
 
 :deep(.p-panelmenu-header-link) {
-  padding: 0.95rem 1rem;
+  padding: 0.85rem 1rem;
+  font-weight: 800;
 }
 
 :deep(.p-panelmenu-item-link) {
   border-radius: 7px;
   margin: 0.15rem 0.45rem;
+  padding: 0.55rem 0.75rem;
+}
+
+:deep(.active-course-menu-item .p-panelmenu-item-link),
+:deep(.active-course-menu-item > .p-panelmenu-item-link) {
+  background: #dcebe4;
+  box-shadow: inset 3px 0 0 #176a5a;
+  color: #17382f;
+  font-weight: 800;
+}
+
+.archive-dark :deep(.active-course-menu-item .p-panelmenu-item-link),
+.archive-dark :deep(.active-course-menu-item > .p-panelmenu-item-link) {
+  background: #172c26;
+  color: #edf8f3;
+  box-shadow: inset 3px 0 0 #49b692;
 }
 
 :deep(.p-accordion) {
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 :deep(.p-accordionpanel) {
   overflow: hidden;
   border: 1px solid var(--border-color);
+  border-left: 4px solid #176a5a;
   border-radius: 8px;
-  background: var(--bg-secondary);
+  background: #fbfdfc;
 }
 
 :deep(.p-accordionheader) {
-  padding: 1rem 1.25rem;
+  padding: 0.82rem 1rem;
   border: 0;
-  background: transparent;
-  font-size: 1.05rem;
+  background: #f0f7f4;
+  font-size: 1rem;
   font-weight: 800;
 }
 
 :deep(.p-accordioncontent-content) {
-  padding: 0 1rem 1rem;
+  padding: 0.75rem;
   background: transparent;
+}
+
+.term-header-content {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.term-title {
+  color: var(--text-primary);
+  font-weight: 850;
+}
+
+.term-count {
+  color: #60776f;
+  font-size: 0.86rem;
+  font-weight: 750;
 }
 
 .archive-card-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .archive-record-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: center;
-  padding: 1rem;
-  border: 1px solid var(--border-color);
-  border-left: 4px solid #1fb985;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d8e4df;
+  border-left: 3px solid #6da48f;
   border-radius: 8px;
   background: #ffffff;
 }
@@ -2088,71 +2240,111 @@ const mobileMenuItems = computed(() => {
   border-left-color: #35d39a;
 }
 
-.archive-record-kicker,
-.archive-record-meta,
+.archive-record-content {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.archive-record-line,
+.archive-record-title-group,
 .archive-record-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
   align-items: center;
+}
+
+.archive-record-primary-line {
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.archive-record-title-group {
+  flex: 1 1 16rem;
+  min-width: 0;
+  gap: 0.55rem;
 }
 
 .archive-record-card h3 {
-  margin: 0.55rem 0;
+  min-width: 0;
+  margin: 0;
   color: var(--text-primary);
-  font-size: 1.2rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.exam-type-tag {
+  background: #edf5f1 !important;
+  border-color: #c5d8d0 !important;
+  color: #1d5f52 !important;
   font-weight: 800;
 }
 
-.archive-record-detail-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: stretch;
-}
-
-.archive-record-teacher {
-  display: grid;
-  gap: 0.12rem;
-  min-width: 10rem;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid #cadbd4;
-  border-radius: 7px;
-  background: #eef6f2;
-}
-
-.archive-dark .archive-record-teacher {
-  border-color: #29443b;
-  background: #14241f;
-}
-
-.archive-record-teacher span {
+.archive-record-meta-line {
+  gap: 0.35rem 0.65rem;
   color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.86rem;
+  font-weight: 560;
 }
 
-.archive-record-teacher strong {
-  color: var(--text-primary);
-  font-size: 1rem;
-  font-weight: 850;
-}
-
-.archive-record-meta {
-  color: var(--text-secondary);
-  font-size: 0.92rem;
-  padding: 0.5rem 0;
-}
-
-.archive-record-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.38rem;
+.archive-record-meta-line span + span::before {
+  content: '';
+  display: inline-block;
+  width: 0.2rem;
+  height: 0.2rem;
+  margin-right: 0.65rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: #91a9a0;
 }
 
 .archive-record-actions {
+  flex: 0 0 auto;
   justify-content: flex-end;
-  min-width: 20rem;
+  gap: 0.35rem;
+}
+
+.archive-record-actions :deep(.p-button) {
+  min-height: 2.05rem;
+  padding-top: 0.36rem;
+  padding-bottom: 0.36rem;
+}
+
+.archive-record-actions :deep(.archive-action-icon.p-button) {
+  width: 2.05rem;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.archive-record-actions :deep(.archive-action-danger.p-button) {
+  color: #9b3a35;
+}
+
+.archive-dark .archive-filter-bar {
+  border-color: #22342f !important;
+  background: rgba(18, 31, 27, 0.86) !important;
+}
+
+.archive-dark :deep(.p-accordionpanel) {
+  border-left-color: #49b692;
+  background: #0f1a17;
+}
+
+.archive-dark :deep(.p-accordionheader) {
+  background: #14231f;
+}
+
+.archive-dark .term-count,
+.archive-dark .subject-eyebrow {
+  color: #9db8ae;
+}
+
+.archive-dark .exam-type-tag {
+  background: #172c26 !important;
+  border-color: #29483f !important;
+  color: #9ee8c7 !important;
 }
 
 .search-results .text-sm {
@@ -2331,8 +2523,24 @@ const mobileMenuItems = computed(() => {
     padding: 0.85rem 1rem;
   }
 
-  .archive-record-card {
-    grid-template-columns: 1fr;
+  .archive-filter-shell {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .archive-filter-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .filter-select {
+    flex: 1 1 9.5rem;
+    min-width: min(100%, 9.5rem);
+  }
+
+  .archive-record-primary-line {
+    align-items: flex-start;
   }
 
   .archive-record-actions {
@@ -2341,7 +2549,12 @@ const mobileMenuItems = computed(() => {
   }
 
   .archive-record-actions :deep(.p-button) {
-    flex: 1 1 8rem;
+    flex: 0 0 auto;
+  }
+
+  .archive-record-actions :deep(.archive-action-preview.p-button),
+  .archive-record-actions :deep(.archive-action-download.p-button) {
+    flex: 1 1 6.5rem;
   }
 
   /* Dialog font size adjustments for mobile */
