@@ -6745,6 +6745,25 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (max-width: 640px) {
+  .comparison-mobile-actions :deep(.p-button) {
+    flex: 1 1 calc(50% - 0.45rem);
+    min-width: 0;
+    justify-content: center;
+  }
+
+  :deep(.review-card-actions) {
+    width: 100%;
+  }
+
+  :deep(.review-card-actions .p-button) {
+    flex: 1 1 calc(50% - 0.45rem);
+    width: auto;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 480px) {
   .comparison-mobile-meta {
     grid-template-columns: 1fr;
@@ -7240,9 +7259,9 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-card-actions .p-button) {
+    flex: 1 1 calc(50% - 0.45rem);
     width: auto;
-    flex: 0 0 auto;
-    min-width: 2.45rem;
+    min-width: 0;
     min-height: 2.45rem;
     padding-inline: 0.45rem;
   }
