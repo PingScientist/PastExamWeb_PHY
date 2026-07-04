@@ -576,4 +576,6 @@ class TrashItem(BaseModel):
     course_id: Optional[int] = None
     course_name: Optional[str] = None
     reason: Optional[str] = None
+    canRestore: Optional[bool] = None
+    canPermanentDelete: Optional[bool] = None
     dependencies: List[str] = []
