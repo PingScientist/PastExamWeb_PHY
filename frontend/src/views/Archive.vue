@@ -589,7 +589,11 @@ const sidebarVisible = inject('sidebarVisible')
 const isMobile = ref(false)
 
 const checkDevice = () => {
-  isMobile.value = window.innerWidth < 768
+  const mobile = window.innerWidth < 768
+  isMobile.value = mobile
+  if (mobile) {
+    sidebarVisible.value = false
+  }
 }
 
 onMounted(() => {
@@ -2048,6 +2052,7 @@ const mobileMenuItems = computed(() => {
   border-radius: 8px;
   background: rgba(247, 251, 249, 0.84) !important;
   box-shadow: none;
+  padding: 0.65rem 0.8rem !important;
 }
 
 .archive-filter-bar :deep(.p-toolbar-start) {
@@ -2348,6 +2353,372 @@ const mobileMenuItems = computed(() => {
   background: #0f1a17;
 }
 
+@media (max-width: 1199px) {
+  .subject-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .subject-title-block {
+    gap: 0.65rem;
+  }
+
+  .subject-title {
+    font-size: clamp(1.12rem, 2.4vw, 1.5rem);
+  }
+
+  .subject-subtitle {
+    margin-top: 0.22rem;
+    font-size: 0.84rem;
+  }
+
+  .archive-filter-bar {
+    margin: 0.75rem 0.75rem 0.55rem !important;
+    padding: 0.55rem 0.65rem !important;
+  }
+
+  .archive-filter-shell {
+    gap: 0.55rem;
+  }
+
+  .filter-summary {
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+
+  .archive-filter-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  .filter-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .archive-filter-controls :deep(.p-select) {
+    min-height: 2.25rem;
+  }
+
+  .archive-filter-controls :deep(.p-select-label) {
+    padding-top: 0.42rem;
+    padding-bottom: 0.42rem;
+    font-size: 0.88rem;
+  }
+
+  .answer-filter {
+    min-height: 2.25rem;
+    justify-content: center;
+    padding: 0 0.45rem;
+    font-size: 0.86rem;
+  }
+
+  :deep(.p-accordion) {
+    gap: 0.65rem;
+    max-width: calc(100% - 1.5rem);
+  }
+
+  :deep(.p-accordionpanel) {
+    border-left-width: 3px;
+  }
+
+  :deep(.p-accordionheader) {
+    padding: 0.68rem 0.78rem;
+    font-size: 0.95rem;
+  }
+
+  :deep(.p-accordioncontent-content) {
+    padding: 0.55rem;
+  }
+
+  .archive-record-card {
+    padding: 0.55rem 0.62rem;
+  }
+
+  .archive-record-card h3 {
+    font-size: 0.98rem;
+  }
+
+  .archive-record-meta-line {
+    font-size: 0.82rem;
+  }
+
+  .archive-record-actions :deep(.p-button) {
+    min-height: 1.95rem;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1199px) {
+  .sidebar {
+    width: 280px;
+    max-width: 280px;
+  }
+
+  .archive-filter-shell {
+    flex-wrap: nowrap;
+  }
+
+  .filter-summary {
+    flex: 0 1 18rem;
+  }
+
+  .archive-filter-controls {
+    flex: 1 1 auto;
+    grid-template-columns: repeat(3, minmax(8.5rem, 1fr)) auto;
+  }
+
+  .archive-record-title-group {
+    flex-basis: 13rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .sidebar {
+    width: 258px;
+    max-width: 258px;
+  }
+
+  .search-section,
+  .course-list-section,
+  .upload-section {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .archive-filter-shell {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .archive-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .answer-filter {
+    justify-content: flex-start;
+  }
+
+  .archive-record-primary-line {
+    align-items: flex-start;
+  }
+
+  .archive-record-actions {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    order: 3;
+  }
+
+  .archive-record-primary-line {
+    display: contents;
+  }
+
+  .archive-record-title-group {
+    order: 1;
+  }
+
+  .archive-record-meta-line {
+    order: 2;
+  }
+
+  .archive-record-actions :deep(.archive-action-preview.p-button),
+  .archive-record-actions :deep(.archive-action-download.p-button),
+  .archive-record-actions :deep(.archive-action-edit.p-button) {
+    flex: 0 1 7.2rem;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+  .archive-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .answer-filter {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 767px) {
+  .subject-header {
+    padding: 0.62rem 0.8rem;
+  }
+
+  .subject-tag {
+    align-self: flex-start;
+  }
+
+  .subject-title-block {
+    align-items: flex-start;
+  }
+
+  .subject-title {
+    font-size: 1.22rem;
+  }
+
+  .subject-subtitle {
+    gap: 0.22rem 0.55rem;
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .subject-subtitle span + span::before {
+    width: 0.2rem;
+    height: 0.2rem;
+    margin-right: 0.55rem;
+  }
+
+  .archive-filter-bar {
+    margin: 0.55rem 0.55rem 0.45rem !important;
+    padding: 0.48rem 0.52rem !important;
+  }
+
+  .archive-filter-shell {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.42rem;
+  }
+
+  .filter-summary {
+    font-size: 0.8rem;
+  }
+
+  .archive-filter-controls {
+    gap: 0.4rem;
+  }
+
+  .archive-filter-controls :deep(.p-select) {
+    min-height: 2.08rem;
+  }
+
+  .archive-filter-controls :deep(.p-select-label) {
+    padding: 0.34rem 0.55rem;
+    font-size: 0.82rem;
+  }
+
+  .archive-filter-controls :deep(.p-select-dropdown) {
+    width: 2rem;
+  }
+
+  .answer-filter {
+    min-height: 2.08rem;
+    font-size: 0.82rem;
+    line-height: 1;
+  }
+
+  .answer-filter :deep(.p-checkbox) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .answer-filter :deep(.p-checkbox-box) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  :deep(.p-accordion) {
+    gap: 0.52rem;
+    max-width: calc(100% - 1.1rem);
+  }
+
+  :deep(.p-accordionheader) {
+    padding: 0.58rem 0.65rem;
+    font-size: 0.92rem;
+  }
+
+  .term-count {
+    font-size: 0.78rem;
+  }
+
+  :deep(.p-accordioncontent-content) {
+    padding: 0.45rem;
+  }
+
+  .archive-card-grid {
+    gap: 0.42rem;
+  }
+
+  .archive-record-content {
+    gap: 0.3rem;
+  }
+
+  .archive-record-primary-line {
+    display: contents;
+  }
+
+  .archive-record-title-group {
+    order: 1;
+    gap: 0.45rem;
+  }
+
+  .archive-record-meta-line {
+    order: 2;
+    gap: 0.26rem 0.52rem;
+    font-size: 0.79rem;
+    line-height: 1.45;
+  }
+
+  .archive-record-meta-line span + span::before {
+    width: 0.18rem;
+    height: 0.18rem;
+    margin-right: 0.52rem;
+  }
+
+  .archive-record-actions {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.36rem;
+    margin-top: 0.08rem;
+  }
+
+  .archive-record-actions :deep(.p-button) {
+    min-height: 1.92rem;
+    padding: 0.28rem 0.55rem;
+    font-size: 0.8rem;
+  }
+
+  .archive-record-actions :deep(.archive-action-icon.p-button) {
+    width: 2rem;
+    flex: 0 0 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .archive-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .answer-filter {
+    justify-content: flex-start;
+    padding-left: 0.12rem;
+  }
+
+  .archive-record-card {
+    padding: 0.5rem 0.55rem;
+  }
+
+  .archive-record-card h3 {
+    font-size: 0.95rem;
+  }
+
+  .exam-type-tag {
+    max-width: 5.5rem;
+  }
+
+  .archive-record-actions :deep(.archive-action-preview.p-button),
+  .archive-record-actions :deep(.archive-action-download.p-button) {
+    flex: 1 1 calc(50% - 0.2rem);
+  }
+
+  .archive-record-actions :deep(.archive-action-edit.p-button) {
+    flex: 1 1 calc(100% - 2.4rem);
+  }
+}
+
 .search-results .text-sm {
   font-size: 0.875rem;
 }
@@ -2518,44 +2889,6 @@ const mobileMenuItems = computed(() => {
     width: 100%;
     min-width: 0;
     overflow-x: hidden;
-  }
-
-  .subject-header {
-    padding: 0.85rem 1rem;
-  }
-
-  .archive-filter-shell {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.55rem;
-  }
-
-  .archive-filter-controls {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .filter-select {
-    flex: 1 1 9.5rem;
-    min-width: min(100%, 9.5rem);
-  }
-
-  .archive-record-primary-line {
-    align-items: flex-start;
-  }
-
-  .archive-record-actions {
-    min-width: 0;
-    justify-content: flex-start;
-  }
-
-  .archive-record-actions :deep(.p-button) {
-    flex: 0 0 auto;
-  }
-
-  .archive-record-actions :deep(.archive-action-preview.p-button),
-  .archive-record-actions :deep(.archive-action-download.p-button) {
-    flex: 1 1 6.5rem;
   }
 
   /* Dialog font size adjustments for mobile */
