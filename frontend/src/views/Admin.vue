@@ -1389,7 +1389,7 @@
           <Tag :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)">
             {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
           </Tag>
-          <small class="text-500">{{ formatSubmissionLabel(selectedArchiveRequest) }}</small>
+          <small class="text-500">投稿編號：{{ formatSubmissionLabel(selectedArchiveRequest) }}</small>
           <span v-if="selectedArchiveRequest?.requested_course_name">
             這筆投稿通過後會建立或使用新課程「{{ selectedArchiveRequest.requested_course_name }}」。
           </span>
@@ -3358,9 +3358,9 @@ const getTrashDependencyChipClass = (dependency) => {
 
 const formatSubmissionLabel = (item) => {
   if (!item || item.id === null || item.id === undefined) {
-    return '投稿編號：—'
+    return '—'
   }
-  return `投稿編號：#${item.id}`
+  return `#${item.id}`
 }
 
 const getTrashSubmissionLabel = (item) => {
