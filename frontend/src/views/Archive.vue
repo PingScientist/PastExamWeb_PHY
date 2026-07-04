@@ -384,7 +384,7 @@
                 <article v-for="item in archiveSubmissions" :key="`archive-${item.id}`" class="submission-status-card">
                   <div class="submission-status-head">
                     <Tag
-                      :class="['soft-badge', 'submission-status-badge', getSubmissionStatusClass(item.status)]"
+                      :class="['soft-badge', 'submission-status-badge', 'my-submission-status-badge', getSubmissionStatusClass(item.status)]"
                       :severity="getSubmissionSeverity(item.status)"
                     >
                       {{ getSubmissionLabel(item.status) }}
@@ -402,13 +402,13 @@
                     </div>
                   </div>
                   <div class="submission-status-meta">
-                    <span :class="['soft-badge', 'submission-meta-chip', getArchiveSubmissionKindClass(item)]">
+                    <span :class="['soft-badge', 'submission-meta-chip', 'my-submission-type-badge', getArchiveSubmissionKindClass(item)]">
                       <i class="pi pi-send"></i>{{ getArchiveSubmissionKind(item) }}
                     </span>
-                    <span class="soft-badge soft-badge--type submission-meta-chip">
+                    <span class="soft-badge soft-badge--type submission-meta-chip my-submission-meta-chip">
                       <i class="pi pi-calendar"></i>{{ formatAcademicTerm(item.academic_year) }}
                     </span>
-                    <span class="soft-badge soft-badge--info submission-meta-chip">
+                    <span class="soft-badge soft-badge--info submission-meta-chip my-submission-meta-chip">
                       <i class="pi pi-user"></i>{{ item.professor }}
                     </span>
                   </div>
@@ -3285,6 +3285,14 @@ const mobileMenuItems = computed(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+:deep(.my-submission-status-badge.soft-badge) {
+  min-height: 1.72rem !important;
+  padding: 0.22rem 0.62rem !important;
+  font-size: 0.9rem !important;
+  font-weight: 650 !important;
+  line-height: 1.25 !important;
 }
 
 .submission-status-note {

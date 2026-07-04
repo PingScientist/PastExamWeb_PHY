@@ -4878,10 +4878,31 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .admin-container {
+  --danger-action-text: #b45a55;
+  --danger-action-border: rgba(180, 90, 85, 0.62);
+  --danger-action-hover-bg: rgba(180, 90, 85, 0.1);
+  --danger-action-active-bg: rgba(180, 90, 85, 0.14);
+  --danger-action-focus-ring: rgba(180, 90, 85, 0.18);
+  --danger-action-solid-bg: #bd625d;
+  --danger-action-solid-hover-bg: #ad5551;
+  --danger-action-solid-active-bg: #984944;
+  --danger-action-solid-text: #fffafa;
   background: var(--p-tabs-tabpanel-background);
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
+}
+
+:global(.dark) .admin-container {
+  --danger-action-text: #f3b1a8;
+  --danger-action-border: rgba(243, 177, 168, 0.58);
+  --danger-action-hover-bg: rgba(244, 128, 118, 0.12);
+  --danger-action-active-bg: rgba(244, 128, 118, 0.15);
+  --danger-action-focus-ring: rgba(244, 128, 118, 0.22);
+  --danger-action-solid-bg: #a95852;
+  --danger-action-solid-hover-bg: #994d48;
+  --danger-action-solid-active-bg: #87413d;
+  --danger-action-solid-text: #fff7f5;
 }
 
 .card {
@@ -5097,28 +5118,28 @@ onBeforeUnmount(() => {
 
 .review-card-action-note--info {
   --soft-note-bg: rgba(14, 116, 144, 0.1);
-  --soft-note-border: rgba(14, 116, 144, 0.34);
-  --soft-note-color: #155e75;
+  --soft-note-border: rgba(14, 116, 144, 0.42);
+  --soft-note-color: #0e7490;
 }
 
 .review-card-action-note--warning {
   --soft-note-bg: rgba(234, 88, 12, 0.11);
-  --soft-note-border: rgba(234, 88, 12, 0.38);
-  --soft-note-color: #9a3412;
+  --soft-note-border: rgba(234, 88, 12, 0.44);
+  --soft-note-color: #c2410c;
 }
 
 :global(.dark) .review-card-action-note--info,
 :global(.dark) :deep(.review-card-action-note--info) {
-  --soft-note-bg: rgba(56, 189, 248, 0.18);
-  --soft-note-border: rgba(125, 211, 252, 0.56);
-  --soft-note-color: #e0f2fe;
+  --soft-note-bg: rgba(34, 211, 238, 0.16);
+  --soft-note-border: rgba(103, 232, 249, 0.68);
+  --soft-note-color: #67e8f9;
 }
 
 :global(.dark) .review-card-action-note--warning,
 :global(.dark) :deep(.review-card-action-note--warning) {
-  --soft-note-bg: rgba(245, 158, 11, 0.18);
-  --soft-note-border: rgba(251, 191, 36, 0.56);
-  --soft-note-color: #fde68a;
+  --soft-note-bg: rgba(251, 146, 60, 0.16);
+  --soft-note-border: rgba(251, 191, 36, 0.68);
+  --soft-note-color: #fbbf24;
 }
 
 .review-sort-icon.pi-sort-amount-up-alt,
@@ -5417,17 +5438,35 @@ onBeforeUnmount(() => {
   align-items: center;
   width: fit-content;
   max-width: 100%;
-  min-height: 1.55rem;
+  min-height: 1.65rem;
   border: 1px solid var(--soft-badge-border, rgba(100, 116, 139, 0.28)) !important;
   border-radius: 999px;
-  padding: 0.16rem 0.55rem;
+  padding: 0.18rem 0.6rem;
   background: var(--soft-badge-bg, rgba(100, 116, 139, 0.1)) !important;
   color: var(--soft-badge-color, #334155) !important;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+:deep(.review-card-chip.soft-badge),
+:deep(.review-status-chip.soft-badge),
+:deep(.review-admin-upload-chip.soft-badge),
+:deep(.trash-type-chip.soft-badge) {
+  min-height: 1.75rem !important;
+  padding: 0.22rem 0.62rem !important;
+  font-size: 0.9rem !important;
+  line-height: 1.25 !important;
+}
+
+:deep(.review-status-chip.soft-badge) {
+  font-weight: 650 !important;
+}
+
+:deep(.trash-dependency-chip.soft-badge) {
+  font-size: 0.84rem !important;
 }
 
 .trash-dependency-help-rule-list {
@@ -6677,35 +6716,35 @@ onBeforeUnmount(() => {
 }
 
 :deep(.review-action-button--reject.p-button) {
-  border-color: #dc2626;
-  background: #dc2626;
-  color: #ffffff;
+  border-color: var(--danger-action-solid-bg);
+  background: var(--danger-action-solid-bg);
+  color: var(--danger-action-solid-text);
 }
 
 :deep(.review-action-button--reject.p-button:not(:disabled):hover) {
-  border-color: #b91c1c;
-  background: #b91c1c;
-  color: #ffffff;
+  border-color: var(--danger-action-solid-hover-bg);
+  background: var(--danger-action-solid-hover-bg);
+  color: var(--danger-action-solid-text);
 }
 
 :deep(.review-action-button--reject.p-button:not(:disabled):active) {
-  border-color: #991b1b;
-  background: #991b1b;
-  color: #ffffff;
+  border-color: var(--danger-action-solid-active-bg);
+  background: var(--danger-action-solid-active-bg);
+  color: var(--danger-action-solid-text);
 }
 
 :deep(.review-action-button--reject.p-button:disabled) {
-  border-color: rgba(220, 38, 38, 0.38);
-  background: rgba(220, 38, 38, 0.42);
-  color: rgba(255, 255, 255, 0.82);
+  border-color: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
+  background: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
+  color: color-mix(in srgb, var(--danger-action-solid-text) 82%, transparent);
 }
 
 :deep(.review-action-delete.p-button),
 :deep(.trash-action-permanent-delete.p-button) {
-  border: 1px solid rgba(185, 28, 28, 0.58) !important;
+  border: 1px solid var(--danger-action-border) !important;
   background: transparent !important;
   background-color: transparent !important;
-  color: #b91c1c !important;
+  color: var(--danger-action-text) !important;
   box-shadow: none;
 }
 
@@ -6718,90 +6757,90 @@ onBeforeUnmount(() => {
 
 :deep(.review-action-delete.p-button:not(:disabled):hover),
 :deep(.trash-action-permanent-delete.p-button:not(:disabled):hover) {
-  border-color: rgba(185, 28, 28, 0.72) !important;
-  background: rgba(220, 38, 38, 0.1) !important;
-  background-color: rgba(220, 38, 38, 0.1) !important;
-  color: #991b1b !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
+  background: var(--danger-action-hover-bg) !important;
+  background-color: var(--danger-action-hover-bg) !important;
+  color: color-mix(in srgb, var(--danger-action-text) 88%, #5f2420) !important;
 }
 
 :deep(.review-action-delete.p-button:not(:disabled):focus),
 :deep(.trash-action-permanent-delete.p-button:not(:disabled):focus) {
-  border-color: rgba(185, 28, 28, 0.72) !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
   background: transparent !important;
   background-color: transparent !important;
-  color: #991b1b !important;
-  box-shadow: 0 0 0 0.12rem rgba(220, 38, 38, 0.16) !important;
+  color: var(--danger-action-text) !important;
+  box-shadow: 0 0 0 0.12rem var(--danger-action-focus-ring) !important;
 }
 
 :deep(.review-action-delete.p-button:not(:disabled):active),
 :deep(.trash-action-permanent-delete.p-button:not(:disabled):active) {
-  border-color: rgba(153, 27, 27, 0.82) !important;
-  background: rgba(220, 38, 38, 0.12) !important;
-  background-color: rgba(220, 38, 38, 0.12) !important;
-  color: #7f1d1d !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 88%, transparent) !important;
+  background: var(--danger-action-active-bg) !important;
+  background-color: var(--danger-action-active-bg) !important;
+  color: color-mix(in srgb, var(--danger-action-text) 82%, #4b1f1b) !important;
 }
 
 :deep(.review-action-delete.p-button:disabled),
 :deep(.trash-action-permanent-delete.p-button:disabled) {
-  border-color: rgba(185, 28, 28, 0.3) !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 32%, transparent) !important;
   background: transparent !important;
   background-color: transparent !important;
-  color: rgba(185, 28, 28, 0.58) !important;
+  color: color-mix(in srgb, var(--danger-action-text) 58%, transparent) !important;
   box-shadow: none !important;
 }
 
 :global(.dark) :deep(.review-action-button--reject.p-button) {
-  border-color: #ef4444;
-  background: #dc2626;
-  color: #fff7f7;
+  border-color: var(--danger-action-solid-bg);
+  background: var(--danger-action-solid-bg);
+  color: var(--danger-action-solid-text);
 }
 
 :global(.dark) :deep(.review-action-button--reject.p-button:not(:disabled):hover) {
-  border-color: #f87171;
-  background: #b91c1c;
-  color: #ffffff;
+  border-color: var(--danger-action-solid-hover-bg);
+  background: var(--danger-action-solid-hover-bg);
+  color: var(--danger-action-solid-text);
 }
 
 :global(.dark) :deep(.review-action-button--reject.p-button:not(:disabled):active) {
-  border-color: #fca5a5;
-  background: #991b1b;
-  color: #ffffff;
+  border-color: var(--danger-action-solid-active-bg);
+  background: var(--danger-action-solid-active-bg);
+  color: var(--danger-action-solid-text);
 }
 
 :global(.dark) :deep(.review-action-button--reject.p-button:disabled) {
-  border-color: rgba(248, 113, 113, 0.32);
-  background: rgba(127, 29, 29, 0.48);
-  color: rgba(254, 202, 202, 0.72);
+  border-color: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
+  background: color-mix(in srgb, var(--danger-action-solid-bg) 42%, transparent);
+  color: color-mix(in srgb, var(--danger-action-solid-text) 72%, transparent);
 }
 
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note),
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note .pi),
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note .review-card-action-note__text) {
-  color: #e0f2fe !important;
+  color: #67e8f9 !important;
 }
 
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--info.review-card-action-note) {
-  border-color: rgba(125, 211, 252, 0.56) !important;
-  background: rgba(56, 189, 248, 0.18) !important;
+  border-color: rgba(103, 232, 249, 0.68) !important;
+  background: rgba(34, 211, 238, 0.16) !important;
 }
 
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note),
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note .pi),
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note .review-card-action-note__text) {
-  color: #fde68a !important;
+  color: #fbbf24 !important;
 }
 
 :global(.dark) :deep(.review-row-action-area .review-card-action-note--warning.review-card-action-note) {
-  border-color: rgba(251, 191, 36, 0.56) !important;
-  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(251, 191, 36, 0.68) !important;
+  background: rgba(251, 146, 60, 0.16) !important;
 }
 
 :global(.dark) :deep(.review-action-delete.p-button),
 :global(.dark) :deep(.trash-action-permanent-delete.p-button) {
-  border-color: rgba(248, 113, 113, 0.68) !important;
+  border-color: var(--danger-action-border) !important;
   background: transparent !important;
   background-color: transparent !important;
-  color: #fca5a5 !important;
+  color: var(--danger-action-text) !important;
   box-shadow: none;
 }
 
@@ -6814,35 +6853,35 @@ onBeforeUnmount(() => {
 
 :global(.dark) :deep(.review-action-delete.p-button:not(:disabled):hover),
 :global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):hover) {
-  border-color: rgba(252, 165, 165, 0.78) !important;
-  background: rgba(248, 113, 113, 0.12) !important;
-  background-color: rgba(248, 113, 113, 0.12) !important;
-  color: #fecaca !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
+  background: var(--danger-action-hover-bg) !important;
+  background-color: var(--danger-action-hover-bg) !important;
+  color: #ffd0ca !important;
 }
 
 :global(.dark) :deep(.review-action-delete.p-button:not(:disabled):focus),
 :global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):focus) {
-  border-color: rgba(252, 165, 165, 0.78) !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 78%, transparent) !important;
   background: transparent !important;
   background-color: transparent !important;
-  color: #fecaca !important;
-  box-shadow: 0 0 0 0.12rem rgba(248, 113, 113, 0.2) !important;
+  color: var(--danger-action-text) !important;
+  box-shadow: 0 0 0 0.12rem var(--danger-action-focus-ring) !important;
 }
 
 :global(.dark) :deep(.review-action-delete.p-button:not(:disabled):active),
 :global(.dark) :deep(.trash-action-permanent-delete.p-button:not(:disabled):active) {
-  border-color: rgba(254, 202, 202, 0.86) !important;
-  background: rgba(248, 113, 113, 0.14) !important;
-  background-color: rgba(248, 113, 113, 0.14) !important;
-  color: #fee2e2 !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 86%, transparent) !important;
+  background: var(--danger-action-active-bg) !important;
+  background-color: var(--danger-action-active-bg) !important;
+  color: #ffe1dd !important;
 }
 
 :global(.dark) :deep(.review-action-delete.p-button:disabled),
 :global(.dark) :deep(.trash-action-permanent-delete.p-button:disabled) {
-  border-color: rgba(248, 113, 113, 0.32) !important;
+  border-color: color-mix(in srgb, var(--danger-action-text) 34%, transparent) !important;
   background: transparent !important;
   background-color: transparent !important;
-  color: rgba(252, 165, 165, 0.66) !important;
+  color: color-mix(in srgb, var(--danger-action-text) 62%, transparent) !important;
   box-shadow: none !important;
 }
 
