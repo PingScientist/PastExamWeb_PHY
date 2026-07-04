@@ -2087,7 +2087,7 @@ const getOnlineStatusLabel = (user) => {
     return '在線'
   }
 
-  if (!user || !user.last_login) {
+  if (!user || !user.last_login_at) {
     return '從未登入'
   }
 
@@ -5630,17 +5630,22 @@ onBeforeUnmount(() => {
     color: var(--text-secondary);
   }
 
-  :deep(.user-management-actions) {
+  :deep(.user-management-table .user-management-actions) {
     display: flex !important;
+    flex-direction: row !important;
     align-items: center;
     justify-content: flex-start;
     gap: 0.5rem;
     flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
   }
 
-  :deep(.user-management-actions .p-button),
-  :deep(.user-management-actions button) {
+  :deep(.user-management-table .user-management-actions .p-button),
+  :deep(.user-management-table .user-management-actions button) {
     flex: 0 0 auto;
+    width: auto;
+    min-width: auto;
   }
 
 :global(.dark) .user-online-dot--online {

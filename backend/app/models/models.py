@@ -63,6 +63,9 @@ class User(SQLModel, table=True):
     last_login: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
+    last_seen_at: Optional[datetime] = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     last_logout: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
@@ -303,6 +306,8 @@ class UserRead(BaseModel):
     is_local: bool
     last_login: Optional[datetime]
     last_login_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
+    last_logout_at: Optional[datetime] = None
     is_online: bool = False
     online_status_label: Optional[str] = None
 

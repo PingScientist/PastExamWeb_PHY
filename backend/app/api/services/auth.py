@@ -14,6 +14,14 @@ from app.utils.jwt import jwt
 router = APIRouter()
 
 
+def _ensure_timezone_aware(dt: datetime | None) -> datetime | None:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 @router.post("/login")
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -30,8 +38,10 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Update last_login timestamp
-    user.last_login = datetime.now(timezone.utc)
+    # Update last login and heartbeat timestamps
+    now_utc = datetime.now(timezone.utc)
+    user.last_login = now_utc
+    user.last_seen_at = now_utc
     await db.commit()
     await db.refresh(user)
 
@@ -74,3 +84,44 @@ async def logout(
         token = auth_header.split(" ")[1]
         blacklist_token(token)
     return {"message": "Successfully logged out"}
+
+
+@router.post("/heartbeat")
+async def heartbeat(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    Update current user's last_seen_at as a lightweight heartbeat endpoint.
+    """
+    result = await db.execute(
+        select(User).where(User.id == current_user.user_id, User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    now_utc = datetime.now(timezone.utc)
+    should_update = True
+    normalized_last_seen = _ensure_timezone_aware(user.last_seen_at)
+    if normalized_last_seen is not None:
+        delta_seconds = (now_utc - normalized_last_seen).total_seconds()
+        should_update = delta_seconds >= 60
+        if should_update:
+            user.last_seen_at = now_utc
+        else:
+            user.last_seen_at = normalized_last_seen
+    else:
+        user.last_seen_at = now_utc
+        should_update = True
+
+    if should_update:
+        await db.commit()
+
+    return {
+        "message": "ok",
+        "last_seen_at": user.last_seen_at,
+        "is_online": True,
+    }

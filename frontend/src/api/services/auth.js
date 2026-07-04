@@ -14,6 +14,10 @@ export const authService = {
     return response.data
   },
 
+  async heartbeat() {
+    return api.post('/auth/heartbeat')
+  },
+
   logout() {
     return api.post('/auth/logout')
   },

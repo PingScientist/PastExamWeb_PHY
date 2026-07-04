@@ -21,7 +21,7 @@ router = APIRouter()
 
 NICKNAME_MAX_LENGTH = 15
 USER_PASSWORD_MIN_LENGTH = 8
-ONLINE_STATUS_MINUTES = 10
+ONLINE_STATUS_MINUTES = 5
 
 
 def _normalize_timestamp(dt: datetime | None) -> datetime | None:
@@ -32,11 +32,16 @@ def _normalize_timestamp(dt: datetime | None) -> datetime | None:
     return dt
 
 
+def _is_activity_recent(activity_at: datetime | None, now_utc: datetime) -> bool:
+    if not activity_at:
+        return False
+    cutoff = now_utc - timedelta(minutes=ONLINE_STATUS_MINUTES)
+    return activity_at >= cutoff
+
+
 def _get_user_online_status(user: User):
     now_utc = datetime.now(timezone.utc)
-    last_seen = _normalize_timestamp(
-        getattr(user, "last_seen_at", None) or getattr(user, "last_active_at", None)
-    )
+    last_seen = _normalize_timestamp(getattr(user, "last_seen_at", None))
     last_login = _normalize_timestamp(user.last_login)
     last_logout = _normalize_timestamp(user.last_logout)
 
@@ -45,11 +50,13 @@ def _get_user_online_status(user: User):
 
     reference_time = last_seen or last_login
 
-    if last_logout and last_login and last_logout >= last_login:
+    if not reference_time:
         return False, "離線"
 
-    cutoff = now_utc - timedelta(minutes=ONLINE_STATUS_MINUTES)
-    is_online = reference_time and reference_time >= cutoff
+    if last_logout and reference_time and last_logout >= reference_time:
+        return False, "離線"
+
+    is_online = _is_activity_recent(reference_time, now_utc)
     return is_online, "在線" if is_online else "離線"
 
 
@@ -64,6 +71,8 @@ def _to_user_read(user: User) -> UserRead:
         is_local=user.is_local,
         last_login=user.last_login,
         last_login_at=user.last_login,
+        last_seen_at=user.last_seen_at,
+        last_logout_at=user.last_logout,
         is_online=is_online,
         online_status_label=status_label,
     )
