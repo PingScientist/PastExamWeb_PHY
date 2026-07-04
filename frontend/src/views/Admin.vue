@@ -1758,31 +1758,42 @@
 
           <section class="trash-dependency-help-section">
             <h4 class="trash-dependency-help-title">縮排判斷</h4>
-            <p class="trash-dependency-help-note">在「全部」篩選中，縮排代表垃圾桶中的父子關係。</p>
-            <ul class="trash-dependency-help-list">
-              <li>刪除父項時，標示為一併永久刪除的子項也會被一起刪除。</li>
-            </ul>
-            <p class="trash-dependency-help-rule">課程 → 考古題</p>
-            <p class="trash-dependency-help-rule">考古題投稿 → 考古題</p>
-            <p class="trash-dependency-help-rule">課程分類 → 課程 → 考古題</p>
+            <p class="trash-dependency-help-note">
+              在「全部」篩選中，縮排代表垃圾桶內項目的父子關係。只有已進垃圾桶的項目才會出現在縮排中；只是暫時下架的投稿不會出現在垃圾桶縮排中。
+            </p>
+            <p class="trash-dependency-help-rule">若先刪除投稿，再刪除課程與分類：課程分類 → 課程 → 考古題投稿 → 考古題</p>
+            <p class="trash-dependency-help-rule">若沒有刪除投稿，而是直接刪除課程與分類：課程分類 → 課程 → 考古題</p>
+            <p class="trash-dependency-help-note">
+              差異在於：投稿只有從審核中心按「刪除」後，才會成為垃圾桶項目；若只是因原課程被刪除而暫時下架，投稿仍留在審核中心，不會列入垃圾桶縮排。
+            </p>
           </section>
 
           <section class="trash-dependency-help-section">
             <h4 class="trash-dependency-help-title">考古題與投稿</h4>
             <ul class="trash-dependency-help-list">
-              <li>考古題投稿通過後可能建立正式考古題，兩者會互相關聯。</li>
-              <li>刪除投稿：投稿進垃圾桶，關聯考古題會列在投稿底下。</li>
-              <li>刪除考古題：考古題進垃圾桶，相關投稿會暫時下架，但不一定進垃圾桶。</li>
-              <li>若投稿仍啟用並連到考古題，考古題可能被阻擋永久刪除。</li>
+              <li>考古題投稿通過後可能建立正式考古題，因此兩者會互相關聯。</li>
+              <li>刪除投稿時：投稿會進垃圾桶，關聯考古題也會被帶入垃圾桶，並顯示在投稿底下。</li>
+              <li>刪除考古題時：考古題會進垃圾桶，相關投稿通常只會暫時下架，不一定進垃圾桶。</li>
+              <li>若投稿仍啟用並連到考古題，可能會阻擋考古題永久刪除。</li>
+              <li>若考古題顯示在投稿底下，通常代表它需隨上層投稿一起還原；請先還原投稿。</li>
             </ul>
           </section>
 
           <section class="trash-dependency-help-section">
             <h4 class="trash-dependency-help-title">課程與考古題</h4>
             <ul class="trash-dependency-help-list">
-              <li>刪除課程：課程與下屬考古題會進入垃圾桶。</li>
-              <li>相關投稿會暫時下架，並提示先復原原課程。</li>
-              <li>復原課程時，系統會嘗試還原相關投稿原始狀態。</li>
+              <li>刪除課程時：課程與下轄考古題會進垃圾桶。</li>
+              <li>相關投稿會暫時下架，並在審核中心提示先復原原課程。</li>
+              <li>復原課程時，系統只會復原因課程刪除而進垃圾桶的考古題；若某考古題是因刪除投稿而進垃圾桶，仍需還原投稿才會復原。</li>
+            </ul>
+          </section>
+
+          <section class="trash-dependency-help-section">
+            <h4 class="trash-dependency-help-title">分類、課程與投稿的完整例子</h4>
+            <p class="trash-dependency-help-note">流程範例：</p>
+            <ul class="trash-dependency-help-list">
+              <li>先刪投稿，再刪課程與分類：<span class="trash-dependency-help-inline-rule">分類 → 課程 → 投稿 → 考古題</span>，代表投稿本身也在垃圾桶中，考古題由該投稿帶入。</li>
+              <li>直接刪課程與分類，沒有刪投稿：<span class="trash-dependency-help-inline-rule">分類 → 課程 → 考古題</span>，代表投稿只是暫時下架，仍在審核中心，不是垃圾桶項目。</li>
             </ul>
           </section>
 
@@ -4619,12 +4630,19 @@ onBeforeUnmount(() => {
   margin: 0.35rem 0 0;
   color: var(--text-secondary);
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .trash-dependency-help-note {
   border: 1px dashed color-mix(in srgb, var(--border-color) 60%, transparent);
   padding: 0.45rem 0.55rem;
   border-radius: 6px;
+}
+
+.trash-dependency-help-inline-rule {
+  font-family: var(--font-family);
+  color: var(--text-color);
+  overflow-wrap: anywhere;
 }
 
 :deep(.review-status-chip.review-status-pending) {
