@@ -176,11 +176,9 @@
               <div>
                 <div class="subject-title">{{ selectedSubject }}</div>
                 <div class="subject-subtitle">
-                  <span>{{ currentCategoryName }}</span>
                   <span>共 {{ archiveTotalCount }} 份考古題</span>
                   <span>最新：{{ latestAcademicTerm }}</span>
                 </div>
-                <div class="subject-eyebrow">Physics Archive Records</div>
               </div>
             </div>
           </div>
@@ -292,10 +290,10 @@
                                 @click="openEditDialog(data)"
                                 size="small"
                                 severity="secondary"
-                                text
-                                rounded
+                                label="編輯"
+                                outlined
                                 aria-label="編輯"
-                                class="archive-action-icon"
+                                class="archive-action-edit"
                               />
                               <Button
                                 v-if="canDeleteArchive(data)"
@@ -2045,14 +2043,6 @@ const mobileMenuItems = computed(() => {
   background: #8aa49a;
 }
 
-.subject-eyebrow {
-  margin-top: 0.2rem;
-  color: #6f8b82;
-  font-size: 0.7rem;
-  font-weight: 750;
-  text-transform: uppercase;
-}
-
 .archive-filter-bar {
   border: 1px solid #d7e4df !important;
   border-radius: 8px;
@@ -2318,6 +2308,12 @@ const mobileMenuItems = computed(() => {
   padding-left: 0;
 }
 
+.archive-record-actions :deep(.archive-action-edit.p-button) {
+  color: #426b61;
+  border-color: #c5d8d0;
+  background: #fbfdfc;
+}
+
 .archive-record-actions :deep(.archive-action-danger.p-button) {
   color: #9b3a35;
 }
@@ -2336,8 +2332,7 @@ const mobileMenuItems = computed(() => {
   background: #14231f;
 }
 
-.archive-dark .term-count,
-.archive-dark .subject-eyebrow {
+.archive-dark .term-count {
   color: #9db8ae;
 }
 
@@ -2345,6 +2340,12 @@ const mobileMenuItems = computed(() => {
   background: #172c26 !important;
   border-color: #29483f !important;
   color: #9ee8c7 !important;
+}
+
+.archive-dark .archive-record-actions :deep(.archive-action-edit.p-button) {
+  color: #b4cbc3;
+  border-color: #29483f;
+  background: #0f1a17;
 }
 
 .search-results .text-sm {
