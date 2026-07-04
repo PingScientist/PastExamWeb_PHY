@@ -1,7 +1,7 @@
 export function formatRelativeTime(value) {
   if (!value) return '—'
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
+  if (Number.isNaN(date.getTime())) return '—'
 
   const now = new Date()
   const diffInMs = Math.max(now - date, 0)
@@ -30,5 +30,6 @@ export function formatRelativeTime(value) {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   })
 }
