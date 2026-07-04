@@ -3927,7 +3927,7 @@ const formatComparisonSubmissionId = (item) => {
 }
 
 const canTakedownComparisonItem = (item) => {
-  return item?.can_takedown === true && normalizeSubmissionStatus(item?.status) === 'approved'
+  return item?.can_takedown === true && ['pending', 'approved'].includes(normalizeSubmissionStatus(item?.status))
 }
 
 const confirmTakedownComparisonItem = (item) => {

@@ -672,7 +672,10 @@ async def list_archive_submission_comparisons(
         payload["requester_name"] = requester_name
         payload["requester_email"] = requester_email
         payload["status"] = normalized_status
-        payload["can_takedown"] = normalized_status == SubmissionStatus.APPROVED
+        payload["can_takedown"] = normalized_status in {
+            SubmissionStatus.PENDING,
+            SubmissionStatus.APPROVED,
+        }
         rows.append(payload)
 
     rows.sort(
