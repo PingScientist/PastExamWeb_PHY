@@ -6754,12 +6754,16 @@ onBeforeUnmount(() => {
 
   :deep(.review-card-actions) {
     width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 0.1rem;
   }
 
   :deep(.review-card-actions .p-button) {
-    flex: 1 1 calc(50% - 0.45rem);
+    flex: 0 0 auto;
     width: auto;
-    min-width: 0;
+    min-width: 2.65rem;
     justify-content: center;
   }
 }
@@ -7254,14 +7258,16 @@ onBeforeUnmount(() => {
 
   :deep(.review-card-actions) {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
   }
 
   :deep(.review-card-actions .p-button) {
-    flex: 1 1 calc(50% - 0.45rem);
+    flex: 0 0 auto;
     width: auto;
-    min-width: 0;
+    min-width: 2.65rem;
     min-height: 2.45rem;
     padding-inline: 0.45rem;
   }
