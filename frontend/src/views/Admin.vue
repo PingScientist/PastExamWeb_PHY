@@ -794,7 +794,7 @@
                   class="admin-data-table review-request-table review-request-table--new"
                   tableStyle="min-width: 60rem"
                   responsiveLayout="stack"
-                  breakpoint="1024px"
+                  breakpoint="1023px"
                 >
                   <template #empty>
                     <div class="review-empty-state">沒有符合搜尋條件的投稿。</div>
@@ -999,7 +999,7 @@
                   class="admin-data-table review-request-table"
                   tableStyle="min-width: 60rem"
                   responsiveLayout="stack"
-                  breakpoint="1024px"
+                  breakpoint="1023px"
                 >
                   <template #empty>
                     <div class="review-empty-state">沒有符合搜尋條件的投稿。</div>
@@ -6781,7 +6781,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .review-center {
     padding: 0.75rem !important;
   }
@@ -6819,12 +6819,29 @@ onBeforeUnmount(() => {
     overflow: visible;
   }
 
+  :deep(.review-request-table .p-datatable-table-container) {
+    overflow: visible;
+  }
+
   :deep(.review-request-table .p-datatable-table) {
+    display: block;
+    width: 100%;
     min-width: 0 !important;
+  }
+
+  :deep(.review-request-table .p-datatable-thead) {
+    display: none !important;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody) {
+    display: block;
+    width: 100%;
   }
 
   :deep(.review-request-table .p-datatable-tbody > tr) {
     display: grid;
+    width: 100%;
+    box-sizing: border-box;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem 0.75rem;
     padding: 0.85rem;
