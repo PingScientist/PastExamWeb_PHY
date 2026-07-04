@@ -1588,56 +1588,104 @@
           <div v-else-if="comparisonArchives.length === 0" class="text-sm text-500">
             沒有找到同課程、同教師、同學期、同考試名稱的其他投稿。
           </div>
-          <DataTable
-            v-else
-            :value="comparisonArchives"
-            tableStyle="min-width: 36rem"
-            responsiveLayout="stack"
-            breakpoint="768px"
-          >
-            <Column header="投稿編號">
-              <template #body="{ data }">{{ formatComparisonSubmissionId(data) }}</template>
-            </Column>
-            <Column field="has_answers" header="解答">
-              <template #body="{ data }">{{ data.has_answers ? '有' : '無' }}</template>
-            </Column>
-            <Column header="狀態">
-              <template #body="{ data }">
-                <Tag
-                  :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(data.status)]"
-                  :severity="getSubmissionSeverity(data.status)"
-                >
-                  {{ getSubmissionLabel(data.status) }}
-                </Tag>
-              </template>
-            </Column>
-            <Column header="投稿帳號">
-              <template #body="{ data }">{{ getRequesterDisplay(data) }}</template>
-            </Column>
-            <Column header="操作" style="width: 14rem">
-              <template #body="{ data }">
-                <div class="comparison-row-actions">
+          <div v-else class="submission-detail-comparison">
+            <DataTable
+              :value="comparisonArchives"
+              class="comparison-desktop-table"
+              tableStyle="min-width: 36rem"
+              responsiveLayout="stack"
+              breakpoint="768px"
+            >
+              <Column header="投稿編號">
+                <template #body="{ data }">{{ formatComparisonSubmissionId(data) }}</template>
+              </Column>
+              <Column field="has_answers" header="解答">
+                <template #body="{ data }">{{ data.has_answers ? '有' : '無' }}</template>
+              </Column>
+              <Column header="狀態">
+                <template #body="{ data }">
+                  <Tag
+                    :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(data.status)]"
+                    :severity="getSubmissionSeverity(data.status)"
+                  >
+                    {{ getSubmissionLabel(data.status) }}
+                  </Tag>
+                </template>
+              </Column>
+              <Column header="投稿帳號">
+                <template #body="{ data }">{{ getRequesterDisplay(data) }}</template>
+              </Column>
+              <Column header="操作" style="width: 14rem">
+                <template #body="{ data }">
+                  <div class="comparison-row-actions">
+                    <Button
+                      label="並排預覽"
+                      icon="pi pi-columns"
+                      size="small"
+                      outlined
+                      :loading="comparePreviewLoading && comparePreviewArchive?.id === data.id"
+                      @click="openComparePreview(data)"
+                    />
+                    <Button
+                      v-if="canTakedownComparisonItem(data)"
+                      label="下架"
+                      icon="pi pi-eye-slash"
+                      size="small"
+                      severity="secondary"
+                      outlined
+                      @click="confirmTakedownComparisonItem(data)"
+                    />
+                  </div>
+                </template>
+              </Column>
+            </DataTable>
+            <div class="submission-detail-comparison-mobile">
+              <article
+                v-for="comparison in comparisonArchives"
+                :key="`comparison-mobile-${comparison.id}`"
+                class="comparison-mobile-card"
+              >
+                <header class="comparison-mobile-card-header">
+                  <div class="comparison-mobile-id">投稿編號 {{ formatComparisonSubmissionId(comparison) }}</div>
+                  <Tag
+                    :class="['soft-badge', 'review-status-chip', 'comparison-mobile-status', getSubmissionStatusClass(comparison.status)]"
+                    :severity="getSubmissionSeverity(comparison.status)"
+                  >
+                    {{ getSubmissionLabel(comparison.status) }}
+                  </Tag>
+                </header>
+                <div class="comparison-mobile-meta">
+                  <div class="comparison-mobile-meta-item">
+                    <span class="comparison-mobile-meta-label">附解答</span>
+                    <span class="comparison-mobile-meta-value">{{ comparison.has_answers ? '有' : '無' }}</span>
+                  </div>
+                  <div class="comparison-mobile-meta-item">
+                    <span class="comparison-mobile-meta-label">投稿者</span>
+                    <span class="comparison-mobile-meta-value">{{ getRequesterDisplay(comparison) }}</span>
+                  </div>
+                </div>
+                <div class="comparison-mobile-actions">
                   <Button
                     label="並排預覽"
                     icon="pi pi-columns"
                     size="small"
                     outlined
-                    :loading="comparePreviewLoading && comparePreviewArchive?.id === data.id"
-                    @click="openComparePreview(data)"
+                    :loading="comparePreviewLoading && comparePreviewArchive?.id === comparison.id"
+                    @click="openComparePreview(comparison)"
                   />
                   <Button
-                    v-if="canTakedownComparisonItem(data)"
+                    v-if="canTakedownComparisonItem(comparison)"
                     label="下架"
                     icon="pi pi-eye-slash"
                     size="small"
                     severity="secondary"
                     outlined
-                    @click="confirmTakedownComparisonItem(data)"
+                    @click="confirmTakedownComparisonItem(comparison)"
                   />
                 </div>
-              </template>
-            </Column>
-          </DataTable>
+              </article>
+            </div>
+          </div>
         </div>
 
         <div class="mt-4 review-history">
@@ -5067,6 +5115,8 @@ onBeforeUnmount(() => {
 .comparison-basis {
   color: var(--text-secondary);
   font-size: 0.9rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .comparison-row-actions {
@@ -5074,6 +5124,83 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.submission-detail-comparison-mobile {
+  display: none;
+}
+
+.comparison-mobile-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-primary) 92%, var(--bg-secondary) 8%);
+}
+
+.comparison-mobile-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.comparison-mobile-id {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.comparison-mobile-status {
+  flex: 0 0 auto;
+  max-width: 48%;
+  justify-content: center;
+  text-align: center;
+}
+
+.comparison-mobile-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+.comparison-mobile-meta-item {
+  min-width: 0;
+}
+
+.comparison-mobile-meta-label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.comparison-mobile-meta-value {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.comparison-mobile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.comparison-mobile-actions :deep(.p-button) {
+  width: auto;
+  flex: 0 0 auto;
+  min-height: 2.25rem;
 }
 
 .review-sort-header {
@@ -6607,9 +6734,30 @@ onBeforeUnmount(() => {
   .compare-preview-grid {
     grid-template-columns: 1fr;
   }
+
+  :deep(.comparison-desktop-table) {
+    display: none;
+  }
+
+  .submission-detail-comparison-mobile {
+    display: grid;
+    gap: 0.65rem;
+  }
 }
 
 @media (max-width: 480px) {
+  .comparison-mobile-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-mobile-card-header {
+    flex-wrap: wrap;
+  }
+
+  .comparison-mobile-status {
+    max-width: 100%;
+  }
+
   :deep(.admin-card-actions .p-button) {
     min-width: 2.6rem;
     width: 2.6rem;
