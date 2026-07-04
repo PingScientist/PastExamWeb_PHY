@@ -480,9 +480,9 @@
                     </span>
                   </template>
                 </Column>
-                <Column header="操作" style="width: 24%">
+                <Column header="操作" style="width: 24%; min-width: 17rem">
                   <template #body="{ data }">
-                    <div class="admin-card-actions user-management-actions">
+                    <div class="user-management-table-actions">
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -537,7 +537,7 @@
                       <span>{{ getOnlineStatusLabel(user) }}</span>
                     </span>
                   </section>
-                  <section class="admin-card-actions admin-mobile-card-actions user-management-actions">
+                  <section class="admin-card-actions admin-mobile-card-actions user-management-card-actions">
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -5694,22 +5694,24 @@ onBeforeUnmount(() => {
     color: var(--text-secondary);
   }
 
-  :deep(.user-management-table .user-management-actions) {
+  :deep(.user-management-table .user-management-table-actions) {
     display: flex !important;
     flex-direction: row !important;
-    align-items: center;
-    justify-content: flex-start;
+    align-items: center !important;
+    justify-content: flex-start !important;
     gap: 0.5rem;
-    flex-wrap: wrap;
-    width: 100%;
-    min-width: 0;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    width: auto;
+    min-width: 17rem;
   }
 
-  :deep(.user-management-table .user-management-actions .p-button),
-  :deep(.user-management-table .user-management-actions button) {
+  :deep(.user-management-table .user-management-table-actions .p-button),
+  :deep(.user-management-table .user-management-table-actions button) {
     flex: 0 0 auto;
     width: auto;
     min-width: auto;
+    white-space: nowrap;
   }
 
 :global(.dark) .user-online-dot--online {
@@ -6259,6 +6261,13 @@ onBeforeUnmount(() => {
   :deep(.user-management-table .p-column-title),
   :deep(.notification-management-table .p-column-title) {
     display: none !important;
+  }
+
+  :deep(.user-management-table .user-management-table-actions) {
+    flex-wrap: wrap;
+    white-space: normal;
+    width: 100%;
+    min-width: 0;
   }
 
   :deep(.user-management-table .p-datatable-tbody > tr),
