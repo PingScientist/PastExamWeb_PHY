@@ -1387,6 +1387,28 @@ async def delete_course(
         course_category=course.category,
         archive_ids=archive_ids,
     )
+    active_archive_ids = {archive.id for archive in active_archives if archive.id is not None}
+    linked_archive_ids = {
+        submission.created_archive_id
+        for submission in linked_submissions
+        if submission.created_archive_id is not None
+    }
+    missing_linked_archive_ids = linked_archive_ids - active_archive_ids
+    if missing_linked_archive_ids:
+        linked_archives = (
+            await db.execute(
+                select(Archive).where(
+                    Archive.id.in_(missing_linked_archive_ids),
+                    Archive.deleted_at.is_(None),
+                )
+            )
+        ).scalars().all()
+        for archive in linked_archives:
+            archive.deleted_at = current_time
+            archive.deleted_by_id = current_user.user_id
+            archive.deleted_reason = "course deleted"
+            active_archives.append(archive)
+
     for submission in linked_submissions:
         if is_course_trash_lifecycle_reason(submission.lifecycle_reason):
             continue
