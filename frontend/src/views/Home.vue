@@ -157,7 +157,7 @@ const formulaCards = [
   },
   {
     name: 'Hamilton',
-    expression: 'q̇ᵢ = ∂H/∂pᵢ,  ṗᵢ = −∂H/∂qᵢ',
+    expression: 'q̇ᵢ = ∂H/∂pᵢ,   ṗᵢ = −∂H/∂qᵢ',
   },
   {
     name: 'Hamilton-Jacobi',
@@ -165,7 +165,7 @@ const formulaCards = [
   },
   {
     name: 'Noether',
-    expression: 'δS = 0 ⇒ ∂μjμ = 0',
+    expression: '∂_μ j^μ = 0',
   },
   {
     name: 'Virial',
@@ -173,15 +173,15 @@ const formulaCards = [
   },
   {
     name: 'Maxwell',
-    expression: '∂μFμν = μ₀Jν,  ∂[αFβγ] = 0',
+    expression: '∇·E = ρ/ε₀',
   },
   {
     name: 'Lorentz Force',
-    expression: 'dpμ/dτ = qFμνuν',
+    expression: 'dp_μ/dτ = qF_{μν}u^ν',
   },
   {
     name: 'Lienard-Wiechert',
-    expression: 'φ = 1/4πϵ₀ [q/(R − R · β)]ret',
+    expression: '∇×B = μ₀J + μ₀ε₀ ∂E/∂t',
   },
   {
     name: 'Poynting',
@@ -189,15 +189,15 @@ const formulaCards = [
   },
   {
     name: 'Jefimenko',
-    expression: 'E(r,t) = ∫[ρ/R² + ρ̇/cR − J̇/c²R] d³r′',
+    expression: 'E(r,t)=∫(ρ/R² + ρ̇/(cR) − J̇/(c²R)) d³r′',
   },
   {
     name: 'TDSE',
-    expression: 'iℏ∂t|ψ⟩ = Ĥ|ψ⟩',
+    expression: 'iℏ ∂|ψ⟩/∂t = Ĥ|ψ⟩',
   },
   {
     name: 'TISE',
-    expression: 'Ĥψn = Enψn',
+    expression: 'Ĥψ_n = E_nψ_n',
   },
   {
     name: 'Heisenberg',
@@ -209,15 +209,15 @@ const formulaCards = [
   },
   {
     name: 'Lippmann-Schwinger',
-    expression: '|ψ±⟩ = |φ⟩ + G₀±V|ψ±⟩',
+    expression: '|ψ_±⟩ = |φ⟩ + G^0_± V|ψ_±⟩',
   },
   {
     name: 'Boltzmann',
-    expression: '∂tf + v · ∇f + F · ∇pf = C[f]',
+    expression: '∂f/∂t + v·∇f + F·∇_p f = C[f]',
   },
   {
     name: 'Fokker-Planck',
-    expression: '∂tP = −∂i(AiP) + 1/2∂i∂j(BijP)',
+    expression: '∂_t P = −∂_i(A_iP) + 1/2∂_i∂_j(B_{ij}P)',
   },
   {
     name: 'Langevin',
@@ -225,11 +225,19 @@ const formulaCards = [
   },
   {
     name: 'Einstein Field',
-    expression: 'Gμν + Λgμν = 8πG/c⁴ Tμν',
+    expression: 'R_{μν} - 1/2 R g_{μν} = 8πG T_{μν}/c⁴',
   },
   {
     name: 'Dirac',
-    expression: '(iγμ∂μ − m)ψ = 0',
+    expression: '(iγ^μ∂_μ − mc)ψ = 0',
+  },
+  {
+    name: 'Maxwell Dual',
+    expression: '∂_μ F^{μν} = μ₀J^ν',
+  },
+  {
+    name: 'Path Integral',
+    expression: 'Z = ∫ Dφ e^{iS[φ]/ℏ}',
   },
 ]
 
@@ -620,28 +628,41 @@ h1 {
 
 .theory-card {
   position: absolute;
-  display: block;
-  max-width: min(24rem, 28vw);
+  display: inline-flex;
+  max-width: min(30rem, 40vw);
+  min-width: max-content;
   color: rgba(232, 240, 226, 0.25);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Times New Roman', Georgia, serif;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-align: left;
+  overflow: visible;
   transform: rotate(var(--tilt, 0deg));
   white-space: nowrap;
+  pointer-events: none;
   animation: var(--formula-motion, formulaOrbitA) var(--float-duration, 8s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
 }
 
 .physics-home:not(.physics-home-dark) .theory-card {
-  color: rgba(38, 84, 69, 0.24);
+  color: rgba(44, 82, 68, 0.2);
 }
 
 .formula-expression {
-  font-size: clamp(0.9rem, 1.05vw, 1.15rem);
+  display: inline-flex;
+  font-size: clamp(0.9rem, 1.05vw, 1.12rem);
   line-height: 1.2;
-  text-shadow: 0 0 1rem rgba(168, 204, 181, 0.1);
+  text-shadow: 0 0 1rem rgba(168, 204, 181, 0.1), 0 0 0.2rem rgba(255, 255, 255, 0.08);
+  color: inherit;
+  width: max-content;
+  white-space: nowrap;
+  margin: 0;
 }
 
 .physics-home:not(.physics-home-dark) .formula-expression {
-  text-shadow: 0 0 1rem rgba(255, 250, 234, 0.45);
+  color: rgba(39, 73, 63, 0.85);
+  text-shadow: 0 0 0.95rem rgba(186, 168, 113, 0.1), 0 0 0.2rem rgba(255, 255, 255, 0.1);
+  font-style: italic;
 }
 
 .formula-1 {
@@ -827,6 +848,24 @@ h1 {
   --float-delay: -5s;
   --float-duration: 8.7s;
   --formula-motion: formulaOrbitA;
+}
+
+.formula-21 {
+  top: 31%;
+  left: 8%;
+  --tilt: 1deg;
+  --float-delay: -4.5s;
+  --float-duration: 8.2s;
+  --formula-motion: formulaOrbitB;
+}
+
+.formula-22 {
+  top: 78%;
+  right: 18%;
+  --tilt: 2.2deg;
+  --float-delay: -9.2s;
+  --float-duration: 9s;
+  --formula-motion: formulaOrbitC;
 }
 
 .dashboard-strip {
@@ -1287,8 +1326,13 @@ h1 {
   .formula-6,
   .formula-11,
   .formula-19,
-  .formula-20 {
-    display: grid;
+  .formula-20,
+  .formula-21,
+  .formula-22 {
+    display: inline-flex;
+    align-items: center;
+    width: max-content;
+    max-width: min(100%, 72vw);
   }
 
   .formula-1 {
