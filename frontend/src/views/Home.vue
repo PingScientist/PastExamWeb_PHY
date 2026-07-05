@@ -33,12 +33,12 @@
 
       <div class="formula-cloud">
         <div
-          v-for="(formula, index) in formulaCards"
+          v-for="(formula, index) in renderedFormulaCards"
           :key="formula.name"
           class="theory-card"
           :class="`formula-${index + 1}`"
         >
-          <span class="formula-expression">{{ formula.expression }}</span>
+          <span class="formula-expression" v-html="formula.rendered" />
         </div>
       </div>
     </div>
@@ -93,6 +93,8 @@ defineOptions({
 import { ref, onMounted, computed } from 'vue'
 import { useTheme } from '../utils/useTheme'
 import { statisticsService } from '../api'
+import { renderToString } from 'katex'
+import 'katex/dist/katex.min.css'
 
 const { isDarkTheme } = useTheme()
 const statsSection = ref(null)
@@ -153,93 +155,115 @@ const statistics = computed(() => [
 const formulaCards = [
   {
     name: 'Euler-Lagrange',
-    expression: 'd/dt(∂L/∂q̇ᵢ) − ∂L/∂qᵢ = 0',
+    latex: '\\frac{d}{dt}\\left(\\frac{\\partial L}{\\partial \\dot{q}_i}\\right) - \\frac{\\partial L}{\\partial q_i} = 0',
   },
   {
     name: 'Hamilton',
-    expression: 'q̇ᵢ = ∂H/∂pᵢ,   ṗᵢ = −∂H/∂qᵢ',
+    latex:
+      '\\dot{q}_i = \\frac{\\partial H}{\\partial p_i},\\; \\dot{p}_i = -\\frac{\\partial H}{\\partial q_i}',
   },
   {
     name: 'Hamilton-Jacobi',
-    expression: 'H(q, ∂S/∂q, t) + ∂S/∂t = 0',
+    latex: 'H\\left(q, \\frac{\\partial S}{\\partial q}, t\\right) + \\frac{\\partial S}{\\partial t} = 0',
   },
   {
     name: 'Noether',
-    expression: '∂_μ j^μ = 0',
+    latex: '\\partial_\\mu j^\\mu = 0',
   },
   {
     name: 'Virial',
-    expression: '2⟨T⟩ = ⟨r · ∇V⟩',
+    latex: '2\\langle T \\rangle = \\langle \\mathbf{r} \\cdot \\nabla V \\rangle',
   },
   {
     name: 'Maxwell',
-    expression: '∇·E = ρ/ε₀',
+    latex: '\\nabla\\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}',
   },
   {
     name: 'Lorentz Force',
-    expression: 'dp_μ/dτ = qF_{μν}u^ν',
+    latex: '\\frac{dp_\\mu}{d\\tau} = qF_{\\mu\\nu}u^\\nu',
   },
   {
     name: 'Lienard-Wiechert',
-    expression: '∇×B = μ₀J + μ₀ε₀ ∂E/∂t',
+    latex: '\\nabla\\times\\mathbf{B} = \\mu_0 \\mathbf{J} + \\mu_0\\varepsilon_0 \\frac{\\partial \\mathbf{E}}{\\partial t}',
   },
   {
     name: 'Poynting',
-    expression: '∂u/∂t + ∇ · S = −J · E',
+    latex: '\\frac{\\partial u}{\\partial t} + \\nabla\\cdot\\mathbf{S} = -\\mathbf{J}\\cdot\\mathbf{E}',
   },
   {
     name: 'Jefimenko',
-    expression: 'E(r,t)=∫(ρ/R² + ρ̇/(cR) − J̇/(c²R)) d³r′',
+    latex:
+      '\\mathbf{E}(\\mathbf{r},t)=\\int\\left(\\frac{\\rho}{R^2}+\\frac{\\dot{\\rho}}{cR}-\\frac{\\dot{\\mathbf{J}}}{c^2R}\\right)\, d^3\\mathbf{r}^{\\prime}',
   },
   {
     name: 'TDSE',
-    expression: 'iℏ ∂|ψ⟩/∂t = Ĥ|ψ⟩',
+    latex: 'i\\hbar\\frac{\\partial \\psi}{\\partial t} = \\hat{H}\\psi',
   },
   {
     name: 'TISE',
-    expression: 'Ĥψ_n = E_nψ_n',
+    latex: '\\hat{H}\\psi_n = E_n\\psi_n',
   },
   {
     name: 'Heisenberg',
-    expression: 'dA/dt = (i/ℏ)[H,A] + ∂A/∂t',
+    latex: '\\frac{dA}{dt} = \\frac{i}{\\hbar}[H,A] + \\frac{\\partial A}{\\partial t}',
   },
   {
     name: 'Ehrenfest',
-    expression: 'd⟨p⟩/dt = −⟨∇V⟩',
+    latex: '\\frac{d\\langle p \\rangle}{dt} = -\\langle \\nabla V \\rangle',
   },
   {
     name: 'Lippmann-Schwinger',
-    expression: '|ψ_±⟩ = |φ⟩ + G^0_± V|ψ_±⟩',
+    latex: '|\\psi_\\pm\\rangle = |\\phi\\rangle + G^0_\\pm V|\\psi_\\pm\\rangle',
   },
   {
     name: 'Boltzmann',
-    expression: '∂f/∂t + v·∇f + F·∇_p f = C[f]',
+    latex: '\\frac{\\partial f}{\\partial t} + \\mathbf{v}\\cdot\\nabla f + \\mathbf{F}\\cdot\\nabla_p f = C[f]',
   },
   {
     name: 'Fokker-Planck',
-    expression: '∂_t P = −∂_i(A_iP) + 1/2∂_i∂_j(B_{ij}P)',
+    latex: '\\partial_t P = -\\partial_i(A_i P) + \\frac{1}{2}\\partial_i\\partial_j(B_{ij}P)',
   },
   {
     name: 'Langevin',
-    expression: 'mẍ + γẋ + ∇V = ξ(t)',
+    latex: 'm\\ddot{x} + \\gamma \\dot{x} + \\nabla V = \\xi(t)',
   },
   {
     name: 'Einstein Field',
-    expression: 'R_{μν} - 1/2 R g_{μν} = 8πG T_{μν}/c⁴',
+    latex: 'R_{\\mu\\nu} - \\frac{1}{2}R g_{\\mu\\nu} = \\frac{8\\pi G}{c^4}T_{\\mu\\nu}',
   },
   {
     name: 'Dirac',
-    expression: '(iγ^μ∂_μ − mc)ψ = 0',
+    latex: '(i\\gamma^\\mu\\partial_\\mu - mc)\\psi = 0',
   },
   {
     name: 'Maxwell Dual',
-    expression: '∂_μ F^{μν} = μ₀J^ν',
+    latex: '\\partial_\\mu F^{\\mu\\nu} = \\mu_0 J^\\nu',
   },
   {
     name: 'Path Integral',
-    expression: 'Z = ∫ Dφ e^{iS[φ]/ℏ}',
+    latex: 'Z = \\int \\mathcal{D}\\phi\\, e^{iS[\\phi]/\\hbar}',
   },
 ]
+
+const renderedFormulaCards = computed(() =>
+  formulaCards.map((formula) => {
+    try {
+      return {
+        ...formula,
+        rendered: renderToString(formula.latex, {
+          displayMode: false,
+          throwOnError: false,
+          strict: false,
+        }),
+      }
+    } catch {
+      return {
+        ...formula,
+        rendered: formula.latex,
+      }
+    }
+  }),
+)
 
 onMounted(async () => {
   await fetchStatistics()
@@ -657,6 +681,18 @@ h1 {
   width: max-content;
   white-space: nowrap;
   margin: 0;
+}
+
+.formula-expression :deep(.katex) {
+  color: inherit;
+  font-size: 1em;
+  line-height: 1.2;
+  text-shadow: inherit;
+  display: inline-block;
+}
+
+.formula-expression :deep(.katex .katex-html) {
+  white-space: nowrap;
 }
 
 .physics-home:not(.physics-home-dark) .formula-expression {
