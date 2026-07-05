@@ -7795,9 +7795,11 @@ onBeforeUnmount(() => {
   }
 
   :deep(.trash-mobile-dependencies .trash-dependency-chip) {
-    min-height: 1.8rem !important;
-    padding: 0.22rem 0.62rem !important;
+    min-height: 1.55rem !important;
+    padding: 0.18rem 0.52rem !important;
     border-width: 1px !important;
+    font-size: 0.74rem !important;
+    line-height: 1.22 !important;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--soft-badge-border) 38%, transparent) !important;
   }
 
@@ -7868,33 +7870,33 @@ onBeforeUnmount(() => {
   }
 
   :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--relation) {
-    --soft-badge-bg: rgba(148, 163, 184, 0.18);
-    --soft-badge-border: rgba(203, 213, 225, 0.38);
-    --soft-badge-color: #e2e8f0;
+    --soft-badge-bg: rgba(148, 163, 184, 0.24);
+    --soft-badge-border: rgba(203, 213, 225, 0.5);
+    --soft-badge-color: #f1f5f9;
   }
 
   :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--restore-blocked) {
-    --soft-badge-bg: rgba(245, 158, 11, 0.2);
-    --soft-badge-border: rgba(251, 191, 36, 0.5);
-    --soft-badge-color: #fde68a;
+    --soft-badge-bg: rgba(245, 158, 11, 0.25);
+    --soft-badge-border: rgba(251, 191, 36, 0.62);
+    --soft-badge-color: #fef3c7;
   }
 
   :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--delete-blocked) {
-    --soft-badge-bg: rgba(248, 113, 113, 0.18);
-    --soft-badge-border: rgba(251, 146, 60, 0.5);
-    --soft-badge-color: #fed7aa;
+    --soft-badge-bg: rgba(248, 113, 113, 0.23);
+    --soft-badge-border: rgba(251, 146, 60, 0.62);
+    --soft-badge-color: #ffedd5;
   }
 
   :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--cascade) {
-    --soft-badge-bg: rgba(99, 102, 241, 0.22);
-    --soft-badge-border: rgba(129, 140, 248, 0.5);
-    --soft-badge-color: #e0e7ff;
+    --soft-badge-bg: rgba(99, 102, 241, 0.28);
+    --soft-badge-border: rgba(129, 140, 248, 0.62);
+    --soft-badge-color: #eef2ff;
   }
 
   :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--clear) {
-    --soft-badge-bg: rgba(34, 197, 94, 0.18);
-    --soft-badge-border: rgba(74, 222, 128, 0.46);
-    --soft-badge-color: #bbf7d0;
+    --soft-badge-bg: rgba(34, 197, 94, 0.22);
+    --soft-badge-border: rgba(74, 222, 128, 0.56);
+    --soft-badge-color: #dcfce7;
   }
 
   :global(.dark) :deep(.trash-mobile-card-actions .p-button-success.p-button-outlined) {
