@@ -155,96 +155,94 @@ const statistics = computed(() => [
 const formulaCards = [
   {
     name: 'Euler-Lagrange',
-    latex: '\\frac{d}{dt}\\left(\\frac{\\partial L}{\\partial \\dot{q}_i}\\right) - \\frac{\\partial L}{\\partial q_i} = 0',
+    latex: String.raw`\frac{d}{dt}\left(\frac{\partial L}{\partial \dot{q}_i}\right) - \frac{\partial L}{\partial q_i} = 0`,
   },
   {
     name: 'Hamilton',
-    latex:
-      '\\dot{q}_i = \\frac{\\partial H}{\\partial p_i},\\; \\dot{p}_i = -\\frac{\\partial H}{\\partial q_i}',
+    latex: String.raw`\dot{q}_i = \frac{\partial H}{\partial p_i},\; \dot{p}_i = -\frac{\partial H}{\partial q_i}`,
   },
   {
     name: 'Hamilton-Jacobi',
-    latex: 'H\\left(q, \\frac{\\partial S}{\\partial q}, t\\right) + \\frac{\\partial S}{\\partial t} = 0',
+    latex: String.raw`H\left(q, \frac{\partial S}{\partial q}, t\right) + \frac{\partial S}{\partial t} = 0`,
   },
   {
     name: 'Noether',
-    latex: '\\partial_\\mu j^\\mu = 0',
+    latex: String.raw`\partial_\mu j^\mu = 0`,
   },
   {
     name: 'Virial',
-    latex: '2\\langle T \\rangle = \\langle \\mathbf{r} \\cdot \\nabla V \\rangle',
+    latex: String.raw`2\langle T \rangle = \langle \mathbf{r} \cdot \nabla V \rangle`,
   },
   {
     name: 'Maxwell',
-    latex: '\\nabla\\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}',
+    latex: String.raw`\nabla\cdot \mathbf{E} = \frac{\rho}{\varepsilon_0}`,
   },
   {
     name: 'Lorentz Force',
-    latex: '\\frac{dp_\\mu}{d\\tau} = qF_{\\mu\\nu}u^\\nu',
+    latex: String.raw`\frac{dp_\mu}{d\tau} = qF_{\mu\nu}u^\nu`,
   },
   {
     name: 'Lienard-Wiechert',
-    latex: '\\nabla\\times\\mathbf{B} = \\mu_0 \\mathbf{J} + \\mu_0\\varepsilon_0 \\frac{\\partial \\mathbf{E}}{\\partial t}',
+    latex: String.raw`\nabla\times\mathbf{B} = \mu_0 \mathbf{J} + \mu_0\varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}`,
   },
   {
     name: 'Poynting',
-    latex: '\\frac{\\partial u}{\\partial t} + \\nabla\\cdot\\mathbf{S} = -\\mathbf{J}\\cdot\\mathbf{E}',
+    latex: String.raw`\frac{\partial u}{\partial t} + \nabla\cdot\mathbf{S} = -\mathbf{J}\cdot\mathbf{E}`,
   },
   {
     name: 'Jefimenko',
     latex:
-      '\\mathbf{E}(\\mathbf{r},t)=\\int\\left(\\frac{\\rho}{R^2}+\\frac{\\dot{\\rho}}{cR}-\\frac{\\dot{\\mathbf{J}}}{c^2R}\\right)\, d^3\\mathbf{r}^{\\prime}',
+      String.raw`\mathbf{E}(\mathbf{r},t)=\int\left(\frac{\rho}{R^2}+\frac{\dot{\rho}}{cR}-\frac{\dot{\mathbf{J}}}{c^2R}\right)\, d^3\mathbf{r}^{\prime}`,
   },
   {
     name: 'TDSE',
-    latex: 'i\\hbar\\frac{\\partial \\psi}{\\partial t} = \\hat{H}\\psi',
+    latex: String.raw`i\hbar\frac{\partial \psi}{\partial t} = \hat{H}\psi`,
   },
   {
     name: 'TISE',
-    latex: '\\hat{H}\\psi_n = E_n\\psi_n',
+    latex: String.raw`\hat{H}\psi_n = E_n\psi_n`,
   },
   {
     name: 'Heisenberg',
-    latex: '\\frac{dA}{dt} = \\frac{i}{\\hbar}[H,A] + \\frac{\\partial A}{\\partial t}',
+    latex: String.raw`\frac{dA}{dt} = \frac{i}{\hbar}[H,A] + \frac{\partial A}{\partial t}`,
   },
   {
     name: 'Ehrenfest',
-    latex: '\\frac{d\\langle p \\rangle}{dt} = -\\langle \\nabla V \\rangle',
+    latex: String.raw`\frac{d\langle p \rangle}{dt} = -\langle \nabla V \rangle`,
   },
   {
     name: 'Lippmann-Schwinger',
-    latex: '|\\psi_\\pm\\rangle = |\\phi\\rangle + G^0_\\pm V|\\psi_\\pm\\rangle',
+    latex: String.raw`|\psi_\pm\rangle = |\phi\rangle + G^0_\pm V|\psi_\pm\rangle`,
   },
   {
     name: 'Boltzmann',
-    latex: '\\frac{\\partial f}{\\partial t} + \\mathbf{v}\\cdot\\nabla f + \\mathbf{F}\\cdot\\nabla_p f = C[f]',
+    latex: String.raw`\frac{\partial f}{\partial t} + \mathbf{v}\cdot\nabla f + \mathbf{F}\cdot\nabla_p f = C[f]`,
   },
   {
     name: 'Fokker-Planck',
-    latex: '\\partial_t P = -\\partial_i(A_i P) + \\frac{1}{2}\\partial_i\\partial_j(B_{ij}P)',
+    latex: String.raw`\partial_t P = -\partial_i(A_i P) + \frac{1}{2}\partial_i\partial_j(B_{ij}P)`,
   },
   {
     name: 'Langevin',
-    latex: 'm\\ddot{x} + \\gamma \\dot{x} + \\nabla V = \\xi(t)',
+    latex: String.raw`m\ddot{x} + \gamma \dot{x} + \nabla V = \xi(t)`,
   },
   {
     name: 'Einstein Field',
-    latex: 'R_{\\mu\\nu} - \\frac{1}{2}R g_{\\mu\\nu} = \\frac{8\\pi G}{c^4}T_{\\mu\\nu}',
+    latex: String.raw`R_{\mu\nu} - \frac{1}{2}R g_{\mu\nu} = \frac{8\pi G}{c^4}T_{\mu\nu}`,
   },
   {
     name: 'Dirac',
-    latex: '(i\\gamma^\\mu\\partial_\\mu - mc)\\psi = 0',
+    latex: String.raw`(i\gamma^\mu\partial_\mu - mc)\psi = 0`,
   },
   {
     name: 'Maxwell Dual',
-    latex: '\\partial_\\mu F^{\\mu\\nu} = \\mu_0 J^\\nu',
+    latex: String.raw`\partial_\mu F^{\mu\nu} = \mu_0 J^\nu`,
   },
   {
     name: 'Path Integral',
-    latex: 'Z = \\int \\mathcal{D}\\phi\\, e^{iS[\\phi]/\\hbar}',
+    latex: String.raw`Z = \int \mathcal{D}\phi\, e^{iS[\phi]/\hbar}`,
   },
 ]
-
 const renderedFormulaCards = computed(() =>
   formulaCards.map((formula) => {
     try {
