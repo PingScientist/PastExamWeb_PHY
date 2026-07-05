@@ -1229,7 +1229,7 @@
                 class="admin-data-table trash-table"
                 tableStyle="min-width: 72rem"
                 responsiveLayout="stack"
-                breakpoint="768px"
+                breakpoint="1023px"
                 :rowClass="getTrashRowClass"
               >
                 <Column field="deleted_at">
@@ -1240,7 +1240,101 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <span>{{ formatTrashDeletedAt(data.deleted_at) }}</span>
+                    <span class="trash-deleted-at-desktop">{{ formatTrashDeletedAt(data.deleted_at) }}</span>
+                    <article class="trash-mobile-card">
+                      <header class="trash-mobile-card-header">
+                        <div class="trash-mobile-card-title-block">
+                          <strong class="trash-mobile-card-title">
+                            <span
+                              v-if="isTrashRelationHierarchyEnabled && (data?.trash_depth || 0) > 0"
+                              class="trash-tree-prefix"
+                              aria-hidden="true"
+                            >
+                              {{ getTrashTreePrefix(data) }}
+                            </span>
+                            {{ data.display_name }}
+                          </strong>
+                        </div>
+                        <div class="trash-mobile-card-badges">
+                          <Tag class="soft-badge soft-badge--type trash-type-chip" severity="secondary">
+                            {{ getTrashTypeLabel(data.item_type) }}
+                          </Tag>
+                          <Tag
+                            :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(data.status)]"
+                            :severity="getTrashStatusSeverity(data.status)"
+                          >
+                            {{ getTrashStatusLabel(data.status) }}
+                          </Tag>
+                        </div>
+                      </header>
+
+                      <div class="trash-mobile-info-grid">
+                        <div v-if="getTrashSubmissionLabel(data)" class="trash-mobile-info-item">
+                          <span class="trash-mobile-info-label">投稿編號</span>
+                          <span class="trash-mobile-info-value">{{ getTrashSubmissionValue(data) }}</span>
+                        </div>
+                        <div v-if="getTrashSemesterValue(data)" class="trash-mobile-info-item">
+                          <span class="trash-mobile-info-label">學期</span>
+                          <span class="trash-mobile-info-value">{{ getTrashSemesterValue(data) }}</span>
+                        </div>
+                        <div class="trash-mobile-info-item">
+                          <span class="trash-mobile-info-label">刪除者</span>
+                          <span class="trash-mobile-info-value">{{ getTrashDeletedByLabel(data) }}</span>
+                        </div>
+                        <div class="trash-mobile-info-item">
+                          <span class="trash-mobile-info-label">刪除時間</span>
+                          <span class="trash-mobile-info-value">{{ formatTrashDeletedAt(data.deleted_at) }}</span>
+                        </div>
+                        <div v-if="getTrashContextLine(data)" class="trash-mobile-info-item trash-mobile-info-item--wide">
+                          <span class="trash-mobile-info-label">{{ getTrashContextLabel(data) }}</span>
+                          <span class="trash-mobile-info-value">{{ getTrashContextValue(data) }}</span>
+                        </div>
+                      </div>
+
+                      <div class="trash-mobile-dependencies">
+                        <Tag
+                          v-for="dependency in getTrashDependencies(data)"
+                          :key="dependency.key"
+                          :severity="getTrashDependencySeverity(dependency)"
+                          :class="['soft-badge', 'trash-dependency-chip', getTrashDependencyChipClass(dependency)]"
+                        >
+                          {{ dependency.label }}
+                        </Tag>
+                        <span v-if="!getTrashDependencies(data).length" class="soft-badge trash-dependency-chip trash-dependency-chip--clear">無阻擋</span>
+                      </div>
+
+                      <section class="trash-mobile-card-actions">
+                        <Button
+                          v-if="canRestoreTrashItem(data)"
+                          icon="pi pi-undo"
+                          label="還原"
+                          aria-label="還原"
+                          title="還原"
+                          size="small"
+                          severity="success"
+                          outlined
+                          @click="confirmRestoreTrashItem(data)"
+                        />
+                        <Button
+                          v-if="canPermanentDeleteTrashItem(data)"
+                          class="trash-action-button trash-action-button--delete trash-action-permanent-delete admin-danger-outline-button"
+                          icon="pi pi-trash"
+                          label="永久刪除"
+                          aria-label="永久刪除"
+                          title="永久刪除"
+                          size="small"
+                          severity="danger"
+                          outlined
+                          @click="confirmPermanentDeleteTrashItem(data)"
+                        />
+                        <span
+                          v-if="!canRestoreTrashItem(data) && !canPermanentDeleteTrashItem(data)"
+                          class="text-xs text-500"
+                        >
+                          目前無可用操作
+                        </span>
+                      </section>
+                    </article>
                   </template>
                 </Column>
                 <Column field="item_type">
@@ -3465,6 +3559,11 @@ const getTrashSemesterText = (item) => {
   return `學期：${item.academic_term}`
 }
 
+const getTrashSemesterValue = (item) => {
+  if (!['archive', 'archive_submission'].includes(item?.item_type)) return ''
+  return item?.academic_term || '—'
+}
+
 const getTrashStatusLabel = (statusValue) => {
   const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
   const labels = {
@@ -3557,6 +3656,26 @@ const getTrashSubmissionLabel = (item) => {
   if (!['archive', 'archive_submission'].includes(item?.item_type)) return ''
   const submissionId = item?.source_submission_id || (item?.item_type === 'archive_submission' ? item?.id : null)
   return submissionId ? `投稿編號：#${submissionId}` : '投稿編號：—'
+}
+
+const getTrashSubmissionValue = (item) => {
+  if (!['archive', 'archive_submission'].includes(item?.item_type)) return ''
+  const submissionId = item?.source_submission_id || (item?.item_type === 'archive_submission' ? item?.id : null)
+  return submissionId ? `#${submissionId}` : '—'
+}
+
+const getTrashContextLabel = (item) => {
+  const line = getTrashContextLine(item)
+  if (!line) return ''
+  const separatorIndex = line.indexOf('：')
+  return separatorIndex > 0 ? line.slice(0, separatorIndex) : '關聯'
+}
+
+const getTrashContextValue = (item) => {
+  const line = getTrashContextLine(item)
+  if (!line) return ''
+  const separatorIndex = line.indexOf('：')
+  return separatorIndex > 0 ? line.slice(separatorIndex + 1) : line
 }
 
 const applyDependencyCount = (label, count) => {
@@ -5510,6 +5629,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.trash-mobile-card {
+  display: none;
 }
 
 :deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group-even) {
@@ -7543,6 +7666,327 @@ onBeforeUnmount(() => {
 
   :deep(.review-card-actions .p-button .pi) {
     margin: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  :deep(.trash-table) {
+    overflow: visible;
+  }
+
+  :deep(.trash-table .p-datatable-table-container) {
+    overflow: visible !important;
+  }
+
+  :deep(.trash-table .p-datatable-table) {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  :deep(.trash-table .p-datatable-thead) {
+    display: none !important;
+  }
+
+  :deep(.trash-table .p-datatable-tbody) {
+    display: block;
+    width: 100%;
+  }
+
+  :deep(.trash-table .p-datatable-tbody > tr) {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent !important;
+  }
+
+  :deep(.trash-table .p-datatable-tbody > tr > td) {
+    display: none !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  :deep(.trash-table .p-datatable-tbody > tr > td:first-child) {
+    display: block !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.trash-table .p-column-title),
+  .trash-deleted-at-desktop {
+    display: none !important;
+  }
+
+  .trash-mobile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  :deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group-even .trash-mobile-card) {
+    background: color-mix(in srgb, rgba(16, 185, 129, 0.12) 72%, var(--bg-secondary) 28%);
+  }
+
+  :deep(.trash-table .p-datatable-tbody > tr.trash-row--relation-group-odd .trash-mobile-card) {
+    background: color-mix(in srgb, rgba(59, 130, 246, 0.1) 72%, var(--bg-secondary) 28%);
+  }
+
+  .trash-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .trash-mobile-card-title-block {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .trash-mobile-card-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .trash-mobile-card-badges {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 0.35rem;
+    max-width: 46%;
+    min-width: 0;
+  }
+
+  :deep(.trash-mobile-card-badges .p-tag) {
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .trash-mobile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    width: 100%;
+  }
+
+  .trash-mobile-info-item {
+    min-width: 0;
+  }
+
+  .trash-mobile-info-item--wide {
+    grid-column: 1 / -1;
+  }
+
+  .trash-mobile-info-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .trash-mobile-info-value {
+    display: block;
+    margin-top: 0.08rem;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .trash-mobile-dependencies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip) {
+    min-height: 1.8rem !important;
+    padding: 0.22rem 0.62rem !important;
+    border-width: 1px !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--soft-badge-border) 38%, transparent) !important;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip--relation) {
+    --soft-badge-bg: rgba(51, 65, 85, 0.14);
+    --soft-badge-border: rgba(51, 65, 85, 0.42);
+    --soft-badge-color: #263548;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip--restore-blocked) {
+    --soft-badge-bg: rgba(217, 119, 6, 0.18);
+    --soft-badge-border: rgba(217, 119, 6, 0.48);
+    --soft-badge-color: #7c2d12;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip--delete-blocked) {
+    --soft-badge-bg: rgba(234, 88, 12, 0.18);
+    --soft-badge-border: rgba(234, 88, 12, 0.5);
+    --soft-badge-color: #7c2d12;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip--cascade) {
+    --soft-badge-bg: rgba(79, 70, 229, 0.16);
+    --soft-badge-border: rgba(79, 70, 229, 0.46);
+    --soft-badge-color: #3730a3;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip--clear) {
+    --soft-badge-bg: rgba(22, 163, 74, 0.16);
+    --soft-badge-border: rgba(22, 163, 74, 0.44);
+    --soft-badge-color: #14532d;
+  }
+
+  .trash-mobile-card-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    padding-bottom: 0.05rem;
+  }
+
+  :deep(.trash-mobile-card-actions .p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5.25rem;
+    min-height: 2.45rem;
+    padding-inline: 0.65rem;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  :deep(.trash-mobile-card-actions .p-button-label) {
+    display: inline-flex;
+  }
+
+  :deep(.trash-mobile-card-actions .pi) {
+    margin-inline-end: 0.35rem;
+    line-height: 1;
+  }
+
+  :global(.dark) :deep(.trash-mobile-card) {
+    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-secondary) 82%, #000 18%);
+  }
+
+  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--relation) {
+    --soft-badge-bg: rgba(148, 163, 184, 0.18);
+    --soft-badge-border: rgba(203, 213, 225, 0.38);
+    --soft-badge-color: #e2e8f0;
+  }
+
+  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--restore-blocked) {
+    --soft-badge-bg: rgba(245, 158, 11, 0.2);
+    --soft-badge-border: rgba(251, 191, 36, 0.5);
+    --soft-badge-color: #fde68a;
+  }
+
+  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--delete-blocked) {
+    --soft-badge-bg: rgba(248, 113, 113, 0.18);
+    --soft-badge-border: rgba(251, 146, 60, 0.5);
+    --soft-badge-color: #fed7aa;
+  }
+
+  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--cascade) {
+    --soft-badge-bg: rgba(99, 102, 241, 0.22);
+    --soft-badge-border: rgba(129, 140, 248, 0.5);
+    --soft-badge-color: #e0e7ff;
+  }
+
+  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--clear) {
+    --soft-badge-bg: rgba(34, 197, 94, 0.18);
+    --soft-badge-border: rgba(74, 222, 128, 0.46);
+    --soft-badge-color: #bbf7d0;
+  }
+
+  :global(.dark) :deep(.trash-mobile-card-actions .p-button-success.p-button-outlined) {
+    border-color: rgba(74, 222, 128, 0.62);
+    background: rgba(34, 197, 94, 0.12);
+    color: #bbf7d0;
+  }
+
+  :global(.dark) :deep(.trash-mobile-card-actions .p-button-danger.p-button-outlined) {
+    border-color: rgba(248, 113, 113, 0.64);
+    background: rgba(248, 113, 113, 0.1);
+    color: #fecaca;
+  }
+}
+
+@media (max-width: 640px) {
+  .trash-mobile-card-header {
+    gap: 0.55rem;
+  }
+
+  .trash-mobile-card-badges {
+    max-width: 44%;
+  }
+
+  .trash-mobile-card-actions {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    overflow-x: visible;
+  }
+
+  :deep(.trash-mobile-card-actions .p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.65rem;
+    padding-inline: 0.45rem;
+  }
+
+  :deep(.trash-mobile-card-actions .p-button-label) {
+    display: none;
+  }
+
+  :deep(.trash-mobile-card-actions .pi) {
+    margin: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .trash-mobile-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .trash-mobile-card-badges {
+    max-width: 100%;
+    justify-content: flex-end;
+  }
+
+  .trash-mobile-info-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
