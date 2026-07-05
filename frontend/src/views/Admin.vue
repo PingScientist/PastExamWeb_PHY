@@ -7864,39 +7864,54 @@ onBeforeUnmount(() => {
     line-height: 1;
   }
 
-  :global(.dark) :deep(.trash-mobile-card) {
+  :global(.dark .trash-mobile-card) {
     border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
     background: color-mix(in srgb, var(--bg-secondary) 82%, #000 18%);
   }
 
-  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--relation) {
+  :global(.dark .trash-mobile-card .trash-mobile-dependencies .trash-dependency-chip--relation) {
     --soft-badge-bg: rgba(148, 163, 184, 0.24);
     --soft-badge-border: rgba(203, 213, 225, 0.5);
     --soft-badge-color: #f1f5f9;
+    background: var(--soft-badge-bg) !important;
+    border-color: var(--soft-badge-border) !important;
+    color: var(--soft-badge-color) !important;
   }
 
-  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--restore-blocked) {
+  :global(.dark .trash-mobile-card .trash-mobile-dependencies .trash-dependency-chip--restore-blocked) {
     --soft-badge-bg: rgba(245, 158, 11, 0.25);
     --soft-badge-border: rgba(251, 191, 36, 0.62);
     --soft-badge-color: #fef3c7;
+    background: var(--soft-badge-bg) !important;
+    border-color: var(--soft-badge-border) !important;
+    color: var(--soft-badge-color) !important;
   }
 
-  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--delete-blocked) {
+  :global(.dark .trash-mobile-card .trash-mobile-dependencies .trash-dependency-chip--delete-blocked) {
     --soft-badge-bg: rgba(248, 113, 113, 0.23);
     --soft-badge-border: rgba(251, 146, 60, 0.62);
     --soft-badge-color: #ffedd5;
+    background: var(--soft-badge-bg) !important;
+    border-color: var(--soft-badge-border) !important;
+    color: var(--soft-badge-color) !important;
   }
 
-  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--cascade) {
+  :global(.dark .trash-mobile-card .trash-mobile-dependencies .trash-dependency-chip--cascade) {
     --soft-badge-bg: rgba(99, 102, 241, 0.28);
     --soft-badge-border: rgba(129, 140, 248, 0.62);
     --soft-badge-color: #eef2ff;
+    background: var(--soft-badge-bg) !important;
+    border-color: var(--soft-badge-border) !important;
+    color: var(--soft-badge-color) !important;
   }
 
-  :global(.dark) :deep(.trash-mobile-dependencies .trash-dependency-chip--clear) {
+  :global(.dark .trash-mobile-card .trash-mobile-dependencies .trash-dependency-chip--clear) {
     --soft-badge-bg: rgba(34, 197, 94, 0.22);
     --soft-badge-border: rgba(74, 222, 128, 0.56);
     --soft-badge-color: #dcfce7;
+    background: var(--soft-badge-bg) !important;
+    border-color: var(--soft-badge-border) !important;
+    color: var(--soft-badge-color) !important;
   }
 
   :global(.dark) :deep(.trash-mobile-card-actions .p-button-success.p-button-outlined) {
