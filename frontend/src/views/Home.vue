@@ -50,7 +50,7 @@
           <h1><span class="title-line">清大物理</span><span class="title-line">考古系統</span></h1>
           <p class="title-campus"><span></span>NTHU PHYSICS<span></span></p>
         </div>
-        <p class="subtitle">書卷沒有，考古這有。</p>
+        <p class="subtitle">書卷沒有，考古這有</p>
         <div class="hero-actions">
           <Button icon="pi pi-sign-in" label="登入開始使用" size="large" @click="openLogin" />
           <Button
@@ -1233,6 +1233,8 @@ h1 {
   .subtitle {
     margin-top: 1.45rem;
     margin-inline: auto;
+    width: 100%;
+    text-align: center;
     font-size: 0.95rem;
     line-height: 1.6;
   }
