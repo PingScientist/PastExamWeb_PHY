@@ -16,6 +16,7 @@ services:
     volumes:
       - /app/node_modules
       - ../frontend:/app
+    working_dir: /app
     networks:
       app_network:
         aliases:
