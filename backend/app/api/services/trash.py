@@ -38,6 +38,7 @@ from app.api.services.archive_submission_lifecycle import (
     restore_archive_submission_group,
 )
 from app.utils.auth import get_current_user
+from app.utils.course_text import normalized_course_text_expr, normalize_course_search_text
 from app.utils.storage import get_minio_client
 
 router = APIRouter()
@@ -143,7 +144,7 @@ def _format_deleted_by(users_by_id: dict[int, User], user_id: Optional[int]) -> 
 
 
 def _normalize_course_lookup_value(value: str | None) -> str:
-    return (value or "").strip().lower()
+    return normalize_course_search_text(value)
 
 
 def _build_course_trash_submission_match_conditions(
@@ -154,8 +155,8 @@ def _build_course_trash_submission_match_conditions(
     if not normalized_course_name:
         return []
 
-    requested_name_match = func.lower(func.trim(ArchiveSubmission.requested_course_name)) == normalized_course_name
-    subject_match = func.lower(func.trim(ArchiveSubmission.subject)) == normalized_course_name
+    requested_name_match = normalized_course_text_expr(ArchiveSubmission.requested_course_name) == normalized_course_name
+    subject_match = normalized_course_text_expr(ArchiveSubmission.subject) == normalized_course_name
     name_match = or_(requested_name_match, subject_match)
 
     normalized_category = _normalize_course_lookup_value(course_category)

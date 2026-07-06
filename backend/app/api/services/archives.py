@@ -34,6 +34,11 @@ from app.api.services.archive_submission_lifecycle import (
     soft_delete_submission_with_linked_archive,
 )
 from app.utils.auth import get_current_user
+from app.utils.course_text import (
+    format_course_display_name,
+    normalize_course_search_text,
+    normalized_course_text_expr,
+)
 from app.utils.storage import get_minio_client
 
 router = APIRouter()
@@ -108,11 +113,15 @@ async def _get_deleted_course_id_for_submission(
 
 
 def _normalize_course_name(value: Optional[str]) -> str:
-    return (value or "").strip()
+    return normalize_course_search_text(value)
 
 
 def _normalize_match_text(value: Optional[str]) -> str:
     return (value or "").strip().lower()
+
+
+def _normalize_course_match_text(value: Optional[str]) -> str:
+    return normalize_course_search_text(value)
 
 
 def _normalized_text_expr(*values):
@@ -243,10 +252,12 @@ async def upload_archive(
     requested_category_label = _unwrap_form_default(requested_category_label)
     requested_category_icon = _unwrap_form_default(requested_category_icon)
 
-    subject = subject.strip()
+    subject = format_course_display_name(subject)
     category = category.strip()
     professor = professor.strip()
-    requested_course_name = (requested_course_name or "").strip() or None
+    requested_course_name = (
+        format_course_display_name(requested_course_name) if requested_course_name else None
+    )
     requested_category_key = (requested_category_key or "").strip() or None
     requested_category_name = (requested_category_name or "").strip() or None
     requested_category_label = (requested_category_label or "").strip() or None
@@ -279,6 +290,8 @@ async def upload_archive(
                 detail="New course name is required",
             )
         subject = requested_course_name
+    else:
+        subject = format_course_display_name(subject)
 
     course = None
     if current_user.is_admin:
@@ -291,7 +304,7 @@ async def upload_archive(
                 requested_category_icon,
             )
         query = select(Course).where(
-            Course.name == subject,
+            normalized_course_text_expr(Course.name) == normalize_course_search_text(subject),
             Course.category == category,
             Course.deleted_at.is_(None),
         )
@@ -580,6 +593,16 @@ async def list_archive_submissions_for_admin(
             continue
 
         row_dict["status"] = normalized_status
+        if row_dict.get("subject"):
+            row_dict["subject"] = format_course_display_name(row_dict["subject"])
+        if row_dict.get("requested_course_name"):
+            row_dict["requested_course_name"] = format_course_display_name(
+                row_dict["requested_course_name"]
+            )
+        if row_dict.get("requested_category_name"):
+            row_dict["requested_category_name"] = format_course_display_name(
+                row_dict["requested_category_name"]
+            )
         try:
             row_dict["is_admin_upload"] = bool(row_dict.get("is_admin_upload"))
             archive_submissions.append(ArchiveSubmissionRead.model_validate(row_dict))
@@ -612,7 +635,7 @@ async def list_archive_submission_comparisons(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    course_name = _normalize_match_text(submission.requested_course_name or submission.subject)
+    course_name = _normalize_course_match_text(submission.requested_course_name or submission.subject)
     category_key = _normalize_match_text(submission.requested_category_key or submission.category)
     exam_name = _normalize_match_text(submission.name)
     professor = _normalize_match_text(submission.professor)
@@ -629,15 +652,19 @@ async def list_archive_submission_comparisons(
     ]
     fallback_course_condition = and_(
         ArchiveSubmission.created_archive_id.is_(None),
-        _normalized_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
-        _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
+        normalized_course_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject)
+        == course_name,
+        _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category)
+        == category_key,
     )
     course_condition = (
         or_(comparison_archive.course_id == current_course_id, fallback_course_condition)
         if current_course_id is not None
         else and_(
-            _normalized_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject) == course_name,
-            _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category) == category_key,
+            normalized_course_text_expr(ArchiveSubmission.requested_course_name, ArchiveSubmission.subject)
+            == course_name,
+            _normalized_text_expr(ArchiveSubmission.requested_category_key, ArchiveSubmission.category)
+            == category_key,
         )
     )
     query = (
@@ -745,7 +772,7 @@ async def update_archive_submission_for_admin(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
     if submission_data.subject is not None:
-        submission.subject = submission_data.subject
+        submission.subject = format_course_display_name(submission_data.subject)
     if submission_data.category is not None:
         if not (submission_data.requested_category_key or submission.requested_category_key):
             await _ensure_category(db, submission_data.category)
@@ -761,7 +788,9 @@ async def update_archive_submission_for_admin(
     if submission_data.has_answers is not None:
         submission.has_answers = submission_data.has_answers
     if submission_data.requested_course_name is not None:
-        submission.requested_course_name = submission_data.requested_course_name.strip() or None
+        submission.requested_course_name = (
+            format_course_display_name(submission_data.requested_course_name) or None
+        )
     if submission_data.requested_category_key is not None:
         key = submission_data.requested_category_key.strip()
         submission.requested_category_key = _normalize_category_key(key) if key else None
@@ -776,7 +805,10 @@ async def update_archive_submission_for_admin(
     await db.refresh(submission)
 
     if submission.created_archive_id:
-        course_name = submission.requested_course_name or submission.subject
+        course_name = format_course_display_name(
+            submission.requested_course_name or submission.subject or ""
+        )
+        course_name_for_match = _normalize_course_match_text(course_name)
         category_key = submission.requested_category_key or submission.category
         if submission.requested_category_key:
             await _ensure_or_create_requested_category(
@@ -792,7 +824,7 @@ async def update_archive_submission_for_admin(
         course = (
             await db.execute(
                 select(Course).where(
-                    Course.name == course_name,
+                    normalized_course_text_expr(Course.name) == course_name_for_match,
                     Course.category == category_key,
                     Course.deleted_at.is_(None),
                 )
@@ -833,7 +865,8 @@ async def approve_archive_submission(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    course_name = _normalize_course_name(submission.requested_course_name or submission.subject)
+    formatted_course_name = format_course_display_name(submission.requested_course_name or submission.subject)
+    course_name = _normalize_course_name(formatted_course_name)
     category_key = submission.requested_category_key or submission.category
 
     if not course_name:
@@ -858,7 +891,7 @@ async def approve_archive_submission(
     course = (
         await db.execute(
             select(Course).where(
-                Course.name == course_name,
+                normalized_course_text_expr(Course.name) == course_name,
                 Course.category == category_key,
                 Course.deleted_at.is_(None),
             )
@@ -869,7 +902,7 @@ async def approve_archive_submission(
         deleted_course = (
             await db.execute(
                 select(Course).where(
-                    Course.name == course_name,
+                    normalized_course_text_expr(Course.name) == course_name,
                     Course.category == category_key,
                     Course.deleted_at.is_not(None),
                 )
@@ -881,7 +914,7 @@ async def approve_archive_submission(
                 detail="已有同名課程在垃圾桶，請先復原或永久刪除後再通過。",
             )
 
-        course = Course(name=course_name, category=category_key)
+        course = Course(name=formatted_course_name, category=category_key)
         db.add(course)
         await db.commit()
         await db.refresh(course)

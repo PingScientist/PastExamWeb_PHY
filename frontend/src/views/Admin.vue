@@ -2776,6 +2776,7 @@ import {
 } from '../api'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
+import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 
 const confirm = useConfirm()
@@ -3090,10 +3091,7 @@ const sortArchiveReviewItems = (items, section) => {
   })
 }
 
-const normalizeReviewSearchText = (value) =>
-  String(value ?? '')
-    .trim()
-    .toLowerCase()
+const normalizeReviewSearchText = (value) => normalizeCourseSearchText(value)
 
 const getReviewSearchHaystack = (item) => {
   const fields = [
@@ -3798,12 +3796,12 @@ const filteredCourses = computed(() => {
   let filtered = sortCourses(courses.value)
 
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
+    const query = normalizeReviewSearchText(searchQuery.value)
     filtered = filtered.filter((course) => {
-      const courseName = (course.name || '').toLowerCase()
-      const categoryName = (getCategoryName(course.category) || '').toLowerCase()
-      const categoryLabel = getCategoryDisplayLabel(course.category).toLowerCase()
-      const categoryKey = (course.category || '').toLowerCase()
+      const courseName = normalizeReviewSearchText(course.name)
+      const categoryName = normalizeReviewSearchText(getCategoryName(course.category))
+      const categoryLabel = normalizeReviewSearchText(getCategoryDisplayLabel(course.category))
+      const categoryKey = normalizeReviewSearchText(course.category)
       return (
         courseName.includes(query) ||
         categoryName.includes(query) ||
@@ -3976,7 +3974,11 @@ const loadCourses = async () => {
     ])
     courseCategories.value = Array.isArray(categoryResponse.data) ? categoryResponse.data : []
     const response = courseResponse
-    courses.value = response.data
+    const courseList = Array.isArray(response.data) ? response.data : []
+    courses.value = courseList.map((course) => ({
+      ...course,
+      name: formatCourseDisplayName(course?.name),
+    }))
   } catch (error) {
     console.error('載入課程失敗:', error)
     if (isUnauthorizedError(error)) {

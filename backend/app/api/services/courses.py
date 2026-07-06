@@ -54,6 +54,11 @@ from app.models.models import (
 from app.utils.auth import get_current_user
 from app.utils.auth_ws import get_ws_token_payload
 from app.utils.storage import get_minio_client, presigned_get_url
+from app.utils.course_text import (
+    format_course_display_name,
+    normalize_course_search_text,
+    normalized_course_text_expr,
+)
 from app.core.config import settings
 
 router = APIRouter()
@@ -138,7 +143,7 @@ def _visible_courses(courses: list[Course], category_order: dict[str, int] | Non
         category = _course_category_value(course)
         if category not in allowed_categories:
             continue
-        key = (category, course.name)
+        key = (category, normalize_course_search_text(course.name))
         if key in seen:
             continue
         seen.add(key)
@@ -159,19 +164,15 @@ def _normalize_category_badge_color(color: str | None) -> str:
     return normalized
 
 
-def _normalize_course_lookup_value(value: str | None) -> str:
-    return (value or "").strip().lower()
-
-
 def _build_course_submission_match_conditions(
     course_name: str,
     course_category: str,
 ) -> list:
     conditions = []
-    normalized_course_name = _normalize_course_lookup_value(course_name)
+    normalized_course_name = normalize_course_search_text(course_name)
     if normalized_course_name:
-        requested_name_match = func.lower(func.trim(ArchiveSubmission.requested_course_name)) == normalized_course_name
-        subject_match = func.lower(func.trim(ArchiveSubmission.subject)) == normalized_course_name
+        requested_name_match = normalized_course_text_expr(ArchiveSubmission.requested_course_name) == normalized_course_name
+        subject_match = normalized_course_text_expr(ArchiveSubmission.subject) == normalized_course_name
         name_match = or_(requested_name_match, subject_match)
         normalized_category = (course_category or "").strip().lower()
         if normalized_category:
@@ -340,7 +341,7 @@ async def get_categorized_courses(
     for course in courses:
         course_info = CourseInfo(
             id=course.id,
-            name=course.name,
+            name=format_course_display_name(course.name),
             order_index=course.order_index,
         )
         categorized_courses.setdefault(_course_category_value(course), []).append(course_info)
@@ -359,12 +360,15 @@ async def create_course_request(
     db: AsyncSession = Depends(get_session),
 ):
     await _ensure_category(db, course_data.category)
+    normalized_name = normalize_course_search_text(course_data.name)
+    normalized_category = course_data.category
+    formatted_name = format_course_display_name(course_data.name)
 
     existing_course = (
         await db.execute(
             select(Course).where(
-                Course.name == course_data.name,
-                Course.category == course_data.category,
+                normalized_course_text_expr(Course.name) == normalized_name,
+                Course.category == normalized_category,
                 Course.deleted_at.is_(None),
             )
         )
@@ -378,8 +382,8 @@ async def create_course_request(
     existing_pending = (
         await db.execute(
             select(CourseSubmission).where(
-                CourseSubmission.name == course_data.name,
-                CourseSubmission.category == course_data.category,
+                normalized_course_text_expr(CourseSubmission.name) == normalized_name,
+                CourseSubmission.category == normalized_category,
                 CourseSubmission.status == SubmissionStatus.PENDING,
             )
         )
@@ -392,7 +396,7 @@ async def create_course_request(
 
     if current_user.is_admin:
         course = Course(
-            name=course_data.name,
+            name=formatted_name,
             category=course_data.category,
             order_index=await _next_order_index(db, course_data.category),
         )
@@ -410,7 +414,7 @@ async def create_course_request(
         )
     else:
         submission = CourseSubmission(
-            name=course_data.name,
+            name=formatted_name,
             category=course_data.category,
             requester_id=current_user.user_id,
         )
@@ -468,7 +472,7 @@ async def update_course_request_for_admin(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request already reviewed")
 
     if request_data.name is not None:
-        submission.name = request_data.name
+        submission.name = format_course_display_name(request_data.name)
     if request_data.category is not None:
         await _ensure_category(db, request_data.category)
         submission.category = request_data.category
@@ -494,10 +498,12 @@ async def approve_course_request(
     if submission.status != SubmissionStatus.PENDING:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request already reviewed")
 
+    normalized_course_name = normalize_course_search_text(submission.name)
+    formatted_course_name = format_course_display_name(submission.name)
     course = (
         await db.execute(
             select(Course).where(
-                Course.name == submission.name,
+                normalized_course_text_expr(Course.name) == normalized_course_name,
                 Course.category == submission.category,
                 Course.deleted_at.is_(None),
             )
@@ -505,7 +511,7 @@ async def approve_course_request(
     ).scalar_one_or_none()
     if not course:
         course = Course(
-            name=submission.name,
+            name=formatted_course_name,
             category=submission.category,
             order_index=await _next_order_index(db, submission.category),
         )
@@ -1128,9 +1134,12 @@ async def update_archive_course(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Target course not found"
             )
     elif course_update.course_name and course_update.course_category:
+        normalized_course_name = normalize_course_search_text(course_update.course_name)
+        formatted_course_name = format_course_display_name(course_update.course_name)
+
         # Transfer to course by name and category, create if not exists
         new_course_query = select(Course).where(
-            Course.name == course_update.course_name,
+            normalized_course_text_expr(Course.name) == normalized_course_name,
             Course.category == course_update.course_category,
             Course.deleted_at.is_(None),
         )
@@ -1147,7 +1156,8 @@ async def update_archive_course(
         else:
             # Create new course if it doesn't exist
             new_course = Course(
-                name=course_update.course_name, category=course_update.course_category
+                name=formatted_course_name,
+                category=course_update.course_category,
             )
             db.add(new_course)
             await db.commit()
@@ -1233,8 +1243,11 @@ async def create_course(
 
     await _ensure_category(db, course_data.category)
 
+    formatted_name = format_course_display_name(course_data.name)
+    normalized_name = normalize_course_search_text(course_data.name)
+
     query = select(Course).where(
-        Course.name == course_data.name,
+        normalized_course_text_expr(Course.name) == normalized_name,
         Course.category == course_data.category,
         Course.deleted_at.is_(None),
     )
@@ -1252,7 +1265,7 @@ async def create_course(
         order_index = await _next_order_index(db, course_data.category)
 
     course = Course(
-        name=course_data.name,
+        name=formatted_name,
         category=course_data.category,
         order_index=order_index,
     )
@@ -1293,15 +1306,18 @@ async def update_course(
 
     if course_data.name is not None or course_data.category is not None:
         new_name = course_data.name if course_data.name is not None else course.name
+        formatted_name = format_course_display_name(new_name)
+        normalized_new_name = normalize_course_search_text(formatted_name)
+        normalized_current_name = normalize_course_search_text(course.name)
         new_category = (
             course_data.category
             if course_data.category is not None
             else course.category
         )
 
-        if new_name != course.name or new_category != course.category:
+        if normalized_new_name != normalized_current_name or new_category != course.category:
             check_query = select(Course).where(
-                Course.name == new_name,
+                normalized_course_text_expr(Course.name) == normalized_new_name,
                 Course.category == new_category,
                 Course.id != course_id,
                 Course.deleted_at.is_(None),
@@ -1316,7 +1332,7 @@ async def update_course(
                 )
 
     if course_data.name is not None:
-        course.name = course_data.name
+        course.name = formatted_name
     if course_data.category is not None:
         await _ensure_category(db, course_data.category)
         course.category = course_data.category

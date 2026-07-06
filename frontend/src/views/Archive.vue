@@ -219,7 +219,11 @@
                     showClear
                   />
                   <div class="answer-filter">
-                    <Checkbox v-model="filters.hasAnswers" :binary="true" inputId="hasAnswersFilter" />
+                    <Checkbox
+                      v-model="filters.hasAnswers"
+                      :binary="true"
+                      inputId="hasAnswersFilter"
+                    />
                     <label for="hasAnswersFilter">附解答</label>
                   </div>
                 </div>
@@ -253,7 +257,11 @@
                   </AccordionHeader>
                   <AccordionContent>
                     <div class="archive-card-grid">
-                      <article v-for="data in group.list" :key="data.id" class="archive-record-card">
+                      <article
+                        v-for="data in group.list"
+                        :key="data.id"
+                        class="archive-record-card"
+                      >
                         <div class="archive-record-content">
                           <div class="archive-record-line archive-record-primary-line">
                             <div class="archive-record-title-group">
@@ -261,7 +269,7 @@
                                 :severity="archiveTypeConfig[data.type]?.severity || 'secondary'"
                                 class="exam-type-tag"
                               >
-                              {{ archiveTypeConfig[data.type]?.name || data.type }}
+                                {{ archiveTypeConfig[data.type]?.name || data.type }}
                               </Tag>
                               <h3>{{ data.name }}</h3>
                             </div>
@@ -376,15 +384,29 @@
             :draggable="false"
             :style="{ width: '760px', maxWidth: '94vw' }"
           >
-            <ProgressSpinner v-if="submissionStatusLoading" class="w-full flex justify-content-center my-4" />
+            <ProgressSpinner
+              v-if="submissionStatusLoading"
+              class="w-full flex justify-content-center my-4"
+            />
             <div v-else class="submission-status-list">
               <section>
                 <h3>考古題投稿</h3>
-                <div v-if="archiveSubmissions.length === 0" class="submission-empty">目前沒有考古題投稿</div>
-                <article v-for="item in archiveSubmissions" :key="`archive-${item.id}`" class="submission-status-card">
+                <div v-if="archiveSubmissions.length === 0" class="submission-empty">
+                  目前沒有考古題投稿
+                </div>
+                <article
+                  v-for="item in archiveSubmissions"
+                  :key="`archive-${item.id}`"
+                  class="submission-status-card"
+                >
                   <div class="submission-status-head">
                     <Tag
-                      :class="['soft-badge', 'submission-status-badge', 'my-submission-status-badge', getSubmissionStatusClass(item.status)]"
+                      :class="[
+                        'soft-badge',
+                        'submission-status-badge',
+                        'my-submission-status-badge',
+                        getSubmissionStatusClass(item.status),
+                      ]"
                       :severity="getSubmissionSeverity(item.status)"
                     >
                       {{ getSubmissionLabel(item.status) }}
@@ -399,17 +421,30 @@
                     <div class="submission-status-title">
                       <strong>{{ item.subject }}</strong>
                       <span>{{ item.name }}</span>
-                      <small class="my-submission-id">投稿編號：{{ formatMySubmissionId(item) }}</small>
+                      <small class="my-submission-id"
+                        >投稿編號：{{ formatMySubmissionId(item) }}</small
+                      >
                     </div>
                   </div>
                   <div class="submission-status-meta">
-                    <span :class="['soft-badge', 'submission-meta-chip', 'my-submission-type-badge', getArchiveSubmissionKindClass(item)]">
+                    <span
+                      :class="[
+                        'soft-badge',
+                        'submission-meta-chip',
+                        'my-submission-type-badge',
+                        getArchiveSubmissionKindClass(item),
+                      ]"
+                    >
                       <i class="pi pi-send"></i>{{ getArchiveSubmissionKind(item) }}
                     </span>
-                    <span class="soft-badge soft-badge--type submission-meta-chip my-submission-meta-chip">
+                    <span
+                      class="soft-badge soft-badge--type submission-meta-chip my-submission-meta-chip"
+                    >
                       <i class="pi pi-calendar"></i>{{ formatAcademicTerm(item.academic_year) }}
                     </span>
-                    <span class="soft-badge soft-badge--info submission-meta-chip my-submission-meta-chip">
+                    <span
+                      class="soft-badge soft-badge--info submission-meta-chip my-submission-meta-chip"
+                    >
                       <i class="pi pi-user"></i>{{ item.professor }}
                     </span>
                   </div>
@@ -584,6 +619,7 @@ import { getCurrentUser, isAuthenticated } from '../utils/auth'
 import { useTheme } from '../utils/useTheme'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { isUnauthorizedError } from '../utils/http'
+import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
 import {
   STORAGE_KEYS,
   getLocalJson,
@@ -804,12 +840,12 @@ const menuItems = computed(() => {
     key: category.key,
     label: category.name,
     icon: category.icon || 'pi pi-fw pi-book',
-    items: (coursesList.value[category.key] || [])
-      .map((course) => ({
-        label: course.name,
-        class: selectedCourse.value === course.id ? 'active-course-menu-item' : undefined,
-        command: () => filterBySubject({ label: course.name, id: course.id }),
-      }))
+    items: (coursesList.value[category.key] || []).map((course) => ({
+      label: formatCourseDisplayName(course.name),
+      class: selectedCourse.value === course.id ? 'active-course-menu-item' : undefined,
+      command: () =>
+        filterBySubject({ label: formatCourseDisplayName(course.name), id: course.id }),
+    })),
   }))
 })
 
@@ -818,29 +854,28 @@ const filteredCategories = computed(() => {
     return []
   }
 
-  const query = searchQuery.value.trim().toLowerCase().normalize('NFKC')
+  const query = normalizeCourseSearchText(searchQuery.value)
   const filtered = []
 
   menuItems.value.forEach((category) => {
     const filteredItems = category.items.filter((item) => {
-      const itemLabelLower = item.label.toLowerCase().normalize('NFKC')
-      const isIncluded = itemLabelLower.includes(query)
+      const itemLabelNormalized = normalizeCourseSearchText(item.label)
+      const isIncluded = itemLabelNormalized.includes(query)
       return isIncluded
     })
 
     if (filteredItems.length > 0) {
       filtered.push({
         ...category,
-        items: filteredItems
-          .map((item) => {
-            const course = (coursesList.value[getCategoryKey(category.label)] || []).find(
-              (c) => c.name === item.label
-            )
-            return {
-              label: item.label,
-              id: course?.id,
-            }
-          })
+        items: filteredItems.map((item) => {
+          const course = (coursesList.value[getCategoryKey(category.label)] || []).find(
+            (c) => c.name === item.label
+          )
+          return {
+            label: item.label,
+            id: course?.id,
+          }
+        }),
       })
     }
   })
@@ -948,12 +983,21 @@ async function fetchCourses() {
       courseService.listCategories(),
       courseService.listCourses(),
     ])
-    const categories = Array.isArray(categoriesResponse.data) && categoriesResponse.data.length
-      ? categoriesResponse.data
-      : fallbackCategories
+    const categories =
+      Array.isArray(categoriesResponse.data) && categoriesResponse.data.length
+        ? categoriesResponse.data
+        : fallbackCategories
 
     // Only update coursesList if the data has actually changed to prevent unnecessary re-renders
-    const newData = coursesResponse.data || {}
+    const rawCourses =
+      coursesResponse.data && typeof coursesResponse.data === 'object' ? coursesResponse.data : {}
+    const newData = {}
+    for (const [categoryKey, courses] of Object.entries(rawCourses)) {
+      newData[categoryKey] = (Array.isArray(courses) ? courses : []).map((course) => ({
+        ...course,
+        name: formatCourseDisplayName(course?.name),
+      }))
+    }
     const currentData = coursesList.value
     const hasChanged = JSON.stringify(currentData) !== JSON.stringify(newData)
 
@@ -1041,8 +1085,15 @@ function formatMySubmissionId(item) {
 }
 
 function isBoilerplateReviewNote(note) {
-  const normalized = String(note || '').trim().toLowerCase()
-  return !normalized || normalized === '管理員上傳' || normalized === 'admin upload' || normalized.startsWith('takedown_target:')
+  const normalized = String(note || '')
+    .trim()
+    .toLowerCase()
+  return (
+    !normalized ||
+    normalized === '管理員上傳' ||
+    normalized === 'admin upload' ||
+    normalized.startsWith('takedown_target:')
+  )
 }
 
 function shouldShowReviewNote(item) {
@@ -1128,7 +1179,9 @@ async function fetchArchives() {
         subject: selectedSubject.value,
         uploader_id: archive.uploader_id || null,
         downloadCount: Number(archive.download_count || 0),
-        sourceSubmissionIds: Array.isArray(archive.source_submission_ids) ? archive.source_submission_ids : [],
+        sourceSubmissionIds: Array.isArray(archive.source_submission_ids)
+          ? archive.source_submission_ids
+          : [],
       }))
 
     const uniqueYears = new Set()
@@ -1625,12 +1678,23 @@ onMounted(async () => {
   if (subjectData) {
     try {
       // Verify the course still exists in the current course list
+      const normalizedStoredLabel = normalizeCourseSearchText(subjectData.label)
+      let matchedCourse = null
       const courseExists = Object.values(coursesList.value).some((category) =>
-        category.some((course) => course.id === subjectData.id && course.name === subjectData.label)
+        category.some((course) => {
+          if (
+            course.id === subjectData.id &&
+            normalizeCourseSearchText(course.name) === normalizedStoredLabel
+          ) {
+            matchedCourse = course
+            return true
+          }
+          return false
+        })
       )
 
       if (courseExists) {
-        selectedSubject.value = subjectData.label
+        selectedSubject.value = formatCourseDisplayName(matchedCourse?.name || subjectData.label)
         selectedCourse.value = subjectData.id
 
         const categoryKey = getCategoryKeyForCourse(subjectData.id)
@@ -1792,9 +1856,9 @@ const closeEditDialog = () => {
 }
 
 const searchTargetCourse = (event) => {
-  const query = event?.query?.toLowerCase() || ''
+  const query = normalizeCourseSearchText(event?.query || '')
   const filteredCourses = allAvailableCoursesForTransfer.value
-    .filter((course) => course.label.toLowerCase().includes(query))
+    .filter((course) => normalizeCourseSearchText(course.label).includes(query))
     .sort((a, b) => a.label.localeCompare(b.label))
 
   availableCoursesForTransfer.value = filteredCourses
@@ -1818,7 +1882,7 @@ watch(
     if (typeof newValue === 'string' && newValue) {
       // Check if it's an existing course
       const existingCourse = allAvailableCoursesForTransfer.value.find(
-        (course) => course.label === newValue
+        (course) => normalizeCourseSearchText(course.label) === normalizeCourseSearchText(newValue)
       )
       if (existingCourse) {
         editForm.value.targetCourseId = existingCourse.id
@@ -2902,13 +2966,21 @@ const mobileMenuItems = computed(() => {
   box-shadow: 0 -1px 0 rgba(214, 230, 223, 0.04);
 }
 
-:global(.mobile-drawer.mobile-drawer-dark .mobile-upload-section .p-button.p-button-secondary.p-button-outlined) {
+:global(
+  .mobile-drawer.mobile-drawer-dark
+    .mobile-upload-section
+    .p-button.p-button-secondary.p-button-outlined
+) {
   background: rgba(214, 230, 223, 0.06) !important;
   border-color: rgba(214, 230, 223, 0.28) !important;
   color: rgba(239, 247, 238, 0.92) !important;
 }
 
-:global(.mobile-drawer.mobile-drawer-dark .mobile-upload-section .p-button.p-button-secondary.p-button-outlined:hover) {
+:global(
+  .mobile-drawer.mobile-drawer-dark
+    .mobile-upload-section
+    .p-button.p-button-secondary.p-button-outlined:hover
+) {
   background: rgba(214, 230, 223, 0.12) !important;
   border-color: rgba(214, 230, 223, 0.4) !important;
   color: #f4fbf4 !important;

@@ -46,9 +46,15 @@
                   </div>
                 </div>
                 <div class="flex align-items-start gap-2 mt-3">
-                  <Checkbox v-model="form.requestNewCategory" :binary="true" inputId="request-new-category" />
+                  <Checkbox
+                    v-model="form.requestNewCategory"
+                    :binary="true"
+                    inputId="request-new-category"
+                  />
                   <div>
-                    <label for="request-new-category" class="font-semibold">同時申請新增課程分類</label>
+                    <label for="request-new-category" class="font-semibold"
+                      >同時申請新增課程分類</label
+                    >
                     <div class="text-sm text-500 mt-1">
                       適合現有分類都不合用的課程；勾選後會自動視為新增課程申請。
                     </div>
@@ -65,17 +71,29 @@
                     class="w-full"
                     :class="{ 'p-invalid': form.requestedCategoryKey && !isCategoryKeyValid }"
                   />
-                  <small :class="form.requestedCategoryKey && !isCategoryKeyValid ? 'p-error' : 'text-gray-500'">
+                  <small
+                    :class="
+                      form.requestedCategoryKey && !isCategoryKeyValid ? 'p-error' : 'text-gray-500'
+                    "
+                  >
                     請使用小寫英文字母、數字或連字號，2 到 40 字。
                   </small>
                 </div>
                 <div class="flex flex-column gap-2">
                   <label>新分類名稱</label>
-                  <InputText v-model="form.requestedCategoryName" placeholder="例如 天文物理" class="w-full" />
+                  <InputText
+                    v-model="form.requestedCategoryName"
+                    placeholder="例如 天文物理"
+                    class="w-full"
+                  />
                 </div>
                 <div class="flex flex-column gap-2">
                   <label>科目旁小標籤</label>
-                  <InputText v-model="form.requestedCategoryLabel" placeholder="例如 天文" class="w-full" />
+                  <InputText
+                    v-model="form.requestedCategoryLabel"
+                    placeholder="例如 天文"
+                    class="w-full"
+                  />
                 </div>
               </div>
 
@@ -104,24 +122,24 @@
                 />
               </div>
 
-	              <div v-else class="flex flex-column gap-2">
-	                <label>課程名稱</label>
-	                <Select
-	                  v-model="form.subject"
-	                  :options="subjectOptions"
-	                  optionLabel="name"
-	                  placeholder="選擇課程名稱"
-	                  class="w-full"
-	                  :disabled="!form.category"
-	                  filter
-	                  showClear
-	                >
-	                  <template #item="{ item }">
-	                    <div>{{ item.name }}</div>
-	                  </template>
-	                </Select>
-	                <small class="text-gray-500">若課程不在列表上，請勾選「申請新增課程」。</small>
-	              </div>
+              <div v-else class="flex flex-column gap-2">
+                <label>課程名稱</label>
+                <Select
+                  v-model="form.subject"
+                  :options="subjectOptions"
+                  optionLabel="name"
+                  placeholder="選擇課程名稱"
+                  class="w-full"
+                  :disabled="!form.category"
+                  filter
+                  showClear
+                >
+                  <template #item="{ item }">
+                    <div>{{ item.name }}</div>
+                  </template>
+                </Select>
+                <small class="text-gray-500">若課程不在列表上，請勾選「申請新增課程」。</small>
+              </div>
 
               <div class="flex flex-column gap-2">
                 <label>授課教授</label>
@@ -168,11 +186,7 @@
                     {{ formatSemester(form.academicYear) || '選擇考試學期' }}
                   </div>
                   <div class="semester-grid" role="listbox" aria-label="選擇考試學期">
-                    <div
-                      v-for="group in semesterGroups"
-                      :key="group.year"
-                      class="semester-row"
-                    >
+                    <div v-for="group in semesterGroups" :key="group.year" class="semester-row">
                       <div class="semester-year">{{ group.year }}</div>
                       <button
                         v-for="semester in group.semesters"
@@ -455,6 +469,7 @@ import PdfPreviewModal from './PdfPreviewModal.vue'
 import { PDFDocument } from 'pdf-lib'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { isUnauthorizedError } from '../utils/http'
+import { formatCourseDisplayName } from '../utils/courseText'
 
 const props = defineProps({
   modelValue: {
@@ -531,7 +546,7 @@ const subjectOptions = computed(() =>
       return (a.id ?? 0) - (b.id ?? 0)
     })
     .map((course) => ({
-      name: course.name,
+      name: formatCourseDisplayName(course.name),
       code: course.id,
     }))
 )
@@ -579,13 +594,14 @@ const isCategoryKeyValid = computed(() =>
 )
 
 const effectiveSubject = computed(() => {
-  if (form.value.requestNewCourse) return (form.value.requestedCourseName || '').trim()
-  if (typeof form.value.subject === 'string') return form.value.subject.trim()
-  return form.value.subject?.name?.trim?.() || ''
+  if (form.value.requestNewCourse) return formatCourseDisplayName(form.value.requestedCourseName)
+  if (typeof form.value.subject === 'string') return formatCourseDisplayName(form.value.subject)
+  return formatCourseDisplayName(form.value.subject?.name)
 })
 
 const effectiveCategory = computed(() => {
-  if (form.value.requestNewCategory) return (form.value.requestedCategoryKey || '').trim().toLowerCase()
+  if (form.value.requestNewCategory)
+    return (form.value.requestedCategoryKey || '').trim().toLowerCase()
   return form.value.category
 })
 
@@ -621,7 +637,9 @@ const canGoToStep2 = computed(() => {
 })
 
 const canGoToStep3 = computed(() => {
-  return form.value.academicYear && form.value.type && generatedFilename.value && isFilenameValid.value
+  return (
+    form.value.academicYear && form.value.type && generatedFilename.value && isFilenameValid.value
+  )
 })
 
 const canUpload = computed(() => {
@@ -759,8 +777,7 @@ const handleUpload = async () => {
     const uploadResult = response?.data || {}
     const uploadedSubmission = uploadResult.submission || {}
     const isAdminUpload =
-      uploadResult.is_admin_upload === true ||
-      uploadedSubmission.is_admin_upload === true
+      uploadResult.is_admin_upload === true || uploadedSubmission.is_admin_upload === true
 
     emit('update:modelValue', false)
     emit('upload-success')

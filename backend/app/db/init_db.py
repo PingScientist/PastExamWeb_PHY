@@ -1,6 +1,5 @@
 import os
 import subprocess
-import unicodedata
 from datetime import datetime, timezone
 from collections import defaultdict
 from functools import lru_cache
@@ -14,6 +13,7 @@ from app.core.config import settings
 from app.db.session import AsyncSessionLocal, engine
 from app.models.models import Course, CourseCategory, CourseCategoryConfig, Meme, User
 from app.utils.auth import get_password_hash
+from app.utils.course_text import format_course_display_name
 
 SEED_DATA_PATH = Path(__file__).with_name("seed_data.yaml")
 DEFAULT_CATEGORY_CONFIGS = [
@@ -35,25 +35,29 @@ def load_seed_data():
 
 def _seed_course_key(course: Course) -> tuple[str, str]:
     category = getattr(course.category, "value", course.category)
-    return (str(category), unicodedata.normalize("NFKC", course.name))
+    return (str(category), format_course_display_name(course.name))
 
 
 async def sync_course_catalog(session):
     seed_courses = [
         (
             course["category"],
-            unicodedata.normalize("NFKC", course["name"]),
+            format_course_display_name(course["name"]),
         )
         for course in load_seed_data().get("courses", [])
     ]
 
     result = await session.execute(select(Course))
     existing_courses = result.scalars().all()
+    changed = False
+    for course in existing_courses:
+        formatted_name = format_course_display_name(course.name)
+        if formatted_name != course.name:
+            course.name = formatted_name
+            changed = True
     courses_by_key: dict[tuple[str, str], list[Course]] = {}
     for course in existing_courses:
         courses_by_key.setdefault(_seed_course_key(course), []).append(course)
-
-    changed = False
     seed_order_by_key = {}
     category_positions = defaultdict(int)
     for category_name, course_name in seed_courses:
