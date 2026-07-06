@@ -1102,6 +1102,42 @@ h1 {
   }
 }
 
+@media (min-width: 1100px) and (max-width: 1300px) {
+  .hero-copy {
+    margin-left: clamp(1.8rem, 3.6vw, 3.4rem);
+  }
+}
+
+@media (min-width: 1500px) and (max-width: 1650px) {
+  .formula-8 {
+    top: 63%;
+    left: 56%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-20 {
+    top: 70%;
+    left: 64%;
+    --formula-font-size: 0.76rem;
+    --formula-alpha: 0.16;
+  }
+
+  .formula-21 {
+    top: 58%;
+    left: 54%;
+    --formula-font-size: 0.76rem;
+    --formula-alpha: 0.14;
+  }
+
+  .formula-22 {
+    top: 50%;
+    left: 68%;
+    --formula-font-size: 0.78rem;
+    --formula-alpha: 0.13;
+  }
+}
+
 .stat-card {
   display: flex;
   align-items: center;
