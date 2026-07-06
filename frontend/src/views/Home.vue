@@ -702,7 +702,7 @@ h1 {
 .formula-1 {
   top: 11%;
   left: 16%;
-  --tilt: 3deg;
+  --tilt: -13deg;
   --formula-font-size: 0.96rem;
   --formula-alpha: 0.32;
   --float-delay: -1s;
@@ -711,132 +711,132 @@ h1 {
 }
 
 .formula-2 {
-  top: 17%;
-  left: 61%;
+  top: 16%;
+  left: 64%;
   --formula-font-size: 0.95rem;
   --formula-alpha: 0.3;
-  --tilt: 5deg;
+  --tilt: 8deg;
   --float-delay: -7s;
   --float-duration: 8.6s;
   --formula-motion: formulaOrbitB;
 }
 
 .formula-3 {
-  top: 21%;
-  left: 72%;
+  top: 23%;
+  left: 73%;
   --formula-font-size: 0.9rem;
   --formula-alpha: 0.28;
-  --tilt: 9deg;
+  --tilt: -9deg;
   --float-delay: -4s;
   --float-duration: 9.2s;
   --formula-motion: formulaOrbitC;
 }
 
 .formula-4 {
-  top: 8%;
-  left: 26%;
+  top: 9%;
+  left: 24%;
   --formula-font-size: 0.86rem;
   --formula-alpha: 0.26;
-  --tilt: 7deg;
+  --tilt: -5deg;
   --float-delay: -10s;
   --float-duration: 7.8s;
   --formula-motion: formulaOrbitB;
 }
 
 .formula-5 {
-  top: 19%;
-  left: 6%;
+  top: 18%;
+  left: 8%;
   --formula-font-size: 0.92rem;
   --formula-alpha: 0.25;
-  --tilt: 14deg;
+  --tilt: 17deg;
   --float-delay: -13s;
   --float-duration: 8.2s;
   --formula-motion: formulaOrbitA;
 }
 
 .formula-6 {
-  top: 53%;
-  left: 20%;
+  top: 30%;
+  left: 22%;
   --formula-font-size: 0.86rem;
   --formula-alpha: 0.22;
-  --tilt: 11deg;
+  --tilt: -24deg;
   --float-delay: -5s;
   --float-duration: 9.8s;
   --formula-motion: formulaOrbitC;
 }
 
 .formula-7 {
-  top: 14%;
-  left: 34%;
+  top: 21%;
+  left: 36%;
   --formula-font-size: 0.83rem;
   --formula-alpha: 0.22;
-  --tilt: 16deg;
+  --tilt: 4deg;
   --float-delay: -9s;
   --float-duration: 8.4s;
   --formula-motion: formulaOrbitC;
 }
 
 .formula-8 {
-  top: 80%;
-  left: 68%;
-  --formula-font-size: 0.84rem;
+  top: 68%;
+  left: 60%;
+  --formula-font-size: 0.85rem;
   --formula-alpha: 0.2;
-  --tilt: 18deg;
+  --tilt: 22deg;
   --float-delay: -2s;
   --float-duration: 7.4s;
   --formula-motion: formulaOrbitB;
 }
 
 .formula-9 {
-  top: 65%;
-  left: 40%;
+  top: 64%;
+  left: 38%;
   --formula-font-size: 0.84rem;
   --formula-alpha: 0.23;
-  --tilt: 21deg;
+  --tilt: -18deg;
   --float-delay: -12s;
   --float-duration: 9.4s;
   --formula-motion: formulaOrbitA;
 }
 
 .formula-10 {
-  top: 89%;
-  left: 24%;
-  --formula-font-size: 0.78rem;
+  top: 87%;
+  left: 18%;
+  --formula-font-size: 0.76rem;
   --formula-alpha: 0.18;
-  --tilt: 24deg;
+  --tilt: -13deg;
   --float-delay: -6s;
   --float-duration: 8.8s;
   --formula-motion: formulaOrbitC;
 }
 
 .formula-11 {
-  top: 26%;
-  left: 42%;
-  --formula-font-size: 0.92rem;
+  top: 25%;
+  left: 48%;
+  --formula-font-size: 0.9rem;
   --formula-alpha: 0.26;
-  --tilt: 0deg;
+  --tilt: 12deg;
   --float-delay: -15s;
   --float-duration: 7.9s;
   --formula-motion: formulaOrbitA;
 }
 
 .formula-12 {
-  top: 34%;
-  left: 10%;
+  top: 33%;
+  left: 14%;
   --formula-font-size: 0.8rem;
   --formula-alpha: 0.21;
-  --tilt: 4deg;
+  --tilt: 0deg;
   --float-delay: -3s;
   --float-duration: 8.5s;
   --formula-motion: formulaOrbitB;
 }
 
 .formula-13 {
-  top: 58%;
-  left: 33%;
+  top: 65%;
+  left: 49%;
   --formula-font-size: 0.88rem;
   --formula-alpha: 0.22;
-  --tilt: 7deg;
+  --tilt: -5deg;
   --float-delay: -11s;
   --float-duration: 9s;
   --formula-motion: formulaOrbitC;
@@ -844,43 +844,43 @@ h1 {
 
 .formula-14 {
   top: 52%;
-  left: 54%;
+  left: 57%;
   --formula-font-size: 0.85rem;
   --formula-alpha: 0.23;
-  --tilt: 9deg;
+  --tilt: 8deg;
   --float-delay: -8s;
   --float-duration: 7.7s;
   --formula-motion: formulaOrbitB;
 }
 
 .formula-15 {
-  top: 90%;
-  left: 14%;
-  --formula-font-size: 0.82rem;
+  top: 89%;
+  left: 16%;
+  --formula-font-size: 0.8rem;
   --formula-alpha: 0.2;
-  --tilt: 11deg;
+  --tilt: 12deg;
   --float-delay: -14s;
   --float-duration: 8.9s;
   --formula-motion: formulaOrbitA;
 }
 
 .formula-16 {
-  top: 44%;
-  left: 62%;
+  top: 43%;
+  left: 63%;
   --formula-font-size: 0.84rem;
   --formula-alpha: 0.22;
-  --tilt: 14deg;
+  --tilt: -9deg;
   --float-delay: -4s;
   --float-duration: 9.6s;
   --formula-motion: formulaOrbitC;
 }
 
 .formula-17 {
-  top: 73%;
+  top: 78%;
   left: 30%;
   --formula-font-size: 0.82rem;
   --formula-alpha: 0.22;
-  --tilt: 16deg;
+  --tilt: 22deg;
   --float-delay: -16s;
   --float-duration: 7.6s;
   --formula-motion: formulaOrbitB;
@@ -888,22 +888,22 @@ h1 {
 
 .formula-18 {
   top: 76%;
-  left: 12%;
+  left: 16%;
   --formula-font-size: 0.83rem;
   --formula-alpha: 0.21;
-  --tilt: 18deg;
+  --tilt: -13deg;
   --float-delay: -7s;
   --float-duration: 9.1s;
   --formula-motion: formulaOrbitA;
 }
 
 .formula-19 {
-  top: 36%;
-  left: 58%;
+  top: 37%;
+  left: 59%;
   color: rgba(242, 238, 216, 0.34);
   --formula-font-size: 0.93rem;
   --formula-alpha: 0.27;
-  --tilt: 21deg;
+  --tilt: -18deg;
   --float-delay: -18s;
   --float-duration: 8s;
   --formula-motion: formulaOrbitC;
@@ -914,31 +914,31 @@ h1 {
 }
 
 .formula-20 {
-  top: 72%;
-  left: 64%;
+  top: 69%;
+  left: 74%;
   --formula-font-size: 0.82rem;
   --formula-alpha: 0.21;
-  --tilt: 23deg;
+  --tilt: 4deg;
   --float-delay: -5s;
   --float-duration: 8.7s;
   --formula-motion: formulaOrbitA;
 }
 
 .formula-21 {
-  top: 61%;
-  left: 67%;
+  top: 62%;
+  left: 68%;
   --formula-font-size: 0.88rem;
   --formula-alpha: 0.2;
-  --tilt: 24deg;
+  --tilt: -24deg;
   --float-delay: -4.5s;
   --float-duration: 8.2s;
   --formula-motion: formulaOrbitB;
 }
 
 .formula-22 {
-  top: 46%;
-  left: 74%;
-  --tilt: 24deg;
+  top: 48%;
+  left: 78%;
+  --tilt: 17deg;
   --formula-font-size: 0.86rem;
   --formula-alpha: 0.23;
   --float-delay: -9.2s;
@@ -951,7 +951,6 @@ h1 {
   .formula-2,
   .formula-3 {
     right: auto;
-    left: 60%;
     --formula-font-size: 0.88rem;
   }
 
@@ -962,56 +961,56 @@ h1 {
 
   .formula-2 {
     top: 18%;
-    left: 55%;
+    left: 64%;
   }
 
   .formula-3 {
     top: 24%;
-    left: 70%;
+    left: 74%;
   }
 
   .formula-7 {
-    left: 28%;
-    top: 12%;
+    left: 34%;
+    top: 14%;
     right: auto;
+  }
+
+  .formula-6 {
+    top: 32%;
+    left: 20%;
   }
 
   .formula-18 {
     left: 12%;
     right: auto;
-    top: 80%;
+    top: 76%;
     --formula-font-size: 0.82rem;
   }
 
-  .formula-6 {
-    left: 22%;
-    top: 56%;
-  }
-
   .formula-8 {
-    left: 66%;
-    top: 78%;
+    left: 61%;
+    top: 70%;
     --formula-font-size: 0.8rem;
     --formula-alpha: 0.18;
   }
 
   .formula-10 {
-    left: 20%;
-    top: 88%;
+    left: 17%;
+    top: 86%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.16;
   }
 
   .formula-20 {
-    left: 59%;
+    left: 74%;
     right: auto;
-    top: 75%;
+    top: 70%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.18;
   }
 
   .formula-21 {
-    left: 62%;
+    left: 69%;
     right: auto;
     top: 62%;
     --formula-font-size: 0.8rem;
@@ -1019,15 +1018,19 @@ h1 {
   }
 
   .formula-22 {
-    left: 68%;
+    left: 79%;
     right: auto;
-    top: 42%;
+    top: 46%;
     --formula-font-size: 0.82rem;
     --formula-alpha: 0.2;
   }
 
-  .formula-3 {
+  .formula-9 {
     --formula-alpha: 0.26;
+    --formula-font-size: 0.84rem;
+  }
+
+  .formula-3 {
     --formula-font-size: 0.86rem;
   }
 }
@@ -1496,37 +1499,38 @@ h1 {
 
   .formula-1 {
     top: 54%;
-    right: 5%;
+    right: 6%;
     left: auto;
     --formula-font-size: 0.75rem;
     --formula-alpha: 0.2;
   }
 
   .formula-6 {
-    top: 66%;
-    left: 8%;
+    top: 65%;
+    left: 7%;
     right: auto;
     --formula-font-size: 0.74rem;
     --formula-alpha: 0.22;
   }
 
   .formula-11 {
-    top: 78%;
-    left: 14%;
+    top: 77%;
+    left: 12%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.22;
   }
 
   .formula-19 {
-    top: 34%;
-    left: 15%;
+    top: 35%;
+    left: 9%;
     --formula-font-size: 0.72rem;
     --formula-alpha: 0.2;
   }
 
   .formula-20 {
-    top: 58%;
-    left: 58%;
+    top: auto;
+    bottom: 10%;
+    left: 55%;
     right: auto;
     --formula-font-size: 0.72rem;
     --formula-alpha: 0.22;
@@ -1534,7 +1538,7 @@ h1 {
 
   .formula-22 {
     top: 78%;
-    left: 56%;
+    left: 60%;
     right: auto;
     --formula-font-size: 0.71rem;
     --formula-alpha: 0.2;
