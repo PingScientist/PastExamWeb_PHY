@@ -12,7 +12,7 @@ COURSE_PARENTHESIS_FULL_TO_HALF = str.maketrans({"（": "(", "）": ")"})
 def format_course_display_name(value: str | None) -> str:
     if not value:
         return ""
-    return str(value).translate(COURSE_PARENTHESIS_HALF_TO_FULL).strip()
+    return str(value).translate(COURSE_PARENTHESIS_FULL_TO_HALF).strip()
 
 
 def normalize_course_search_text(value: str | None) -> str:
