@@ -1098,44 +1098,50 @@ h1 {
   }
 }
 
-@media (min-width: 1100px) and (max-width: 1350px) {
+@media (min-width: 1100px) and (max-width: 1300px) {
   .hero-copy {
     margin-left: clamp(2rem, 3.2vw, 3.3rem);
   }
 }
 
-@media (min-width: 1650px) and (max-width: 1800px) {
+@media (min-width: 1300px) and (max-width: 1450px) {
+  .hero-copy {
+    margin-left: clamp(2.5rem, 3.1vw, 3.8rem);
+  }
+}
+
+@media (min-width: 1450px) and (max-width: 1650px) {
+  .formula-8 {
+    top: 63%;
+    left: 55%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.17;
+  }
+
   .formula-10 {
-    top: 84%;
-    left: 22%;
+    top: 80%;
+    left: 23%;
     --formula-font-size: 0.74rem;
-    --formula-alpha: 0.12;
+    --formula-alpha: 0.13;
   }
 
   .formula-17 {
-    top: 66%;
-    left: 43%;
-    --formula-font-size: 0.8rem;
-    --formula-alpha: 0.17;
-  }
-
-  .formula-18 {
-    top: 76%;
-    left: 31%;
-    --formula-font-size: 0.8rem;
-    --formula-alpha: 0.17;
-  }
-
-  .formula-8 {
-    top: 64%;
-    left: 52%;
-    --formula-font-size: 0.8rem;
+    top: 68%;
+    left: 44%;
+    --formula-font-size: 0.78rem;
     --formula-alpha: 0.18;
   }
 
+  .formula-18 {
+    top: 77%;
+    left: 52%;
+    --formula-font-size: 0.79rem;
+    --formula-alpha: 0.17;
+  }
+
   .formula-20 {
-    top: 71%;
-    left: 58%;
+    top: 70%;
+    left: 60%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.16;
   }
@@ -1146,37 +1152,55 @@ h1 {
 
   .formula-22 {
     top: 50%;
-    left: 63%;
+    left: 64%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.13;
   }
 }
 
-@media (min-width: 1500px) and (max-width: 1649px) {
-  .formula-8 {
-    top: 63%;
-    left: 56%;
+@media (min-width: 1650px) {
+  .formula-10 {
+    top: 84%;
+    left: 21%;
+    --formula-font-size: 0.74rem;
+    --formula-alpha: 0.12;
+  }
+
+  .formula-17 {
+    top: 58%;
+    left: 58%;
     --formula-font-size: 0.8rem;
     --formula-alpha: 0.17;
   }
 
+  .formula-18 {
+    top: 66%;
+    left: 49%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-8 {
+    top: 64%;
+    left: 53%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.18;
+  }
+
   .formula-20 {
-    top: 70%;
-    left: 64%;
+    top: 72%;
+    left: 55%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.16;
   }
 
   .formula-21 {
-    top: 58%;
-    left: 54%;
-    --formula-font-size: 0.76rem;
-    --formula-alpha: 0.14;
+    display: none;
   }
 
   .formula-22 {
     top: 50%;
-    left: 68%;
+    left: 67%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.13;
   }
