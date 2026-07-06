@@ -1236,6 +1236,36 @@ h1 {
   }
 }
 
+@media (min-width: 1900px) {
+  .formula-8 {
+    top: 74%;
+    left: 52%;
+    --formula-font-size: 0.82rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-13 {
+    top: 64%;
+    left: 43%;
+    --formula-font-size: 0.84rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-18 {
+    top: 87%;
+    left: 30%;
+    --formula-font-size: 0.74rem;
+    --formula-alpha: 0.16;
+  }
+
+  .formula-20 {
+    top: 90%;
+    left: 62%;
+    --formula-font-size: 0.76rem;
+    --formula-alpha: 0.16;
+  }
+}
+
 .stat-card {
   display: flex;
   align-items: center;
