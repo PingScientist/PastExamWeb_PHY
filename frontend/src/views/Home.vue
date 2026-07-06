@@ -1110,6 +1110,13 @@ h1 {
   }
 }
 
+@media (min-width: 1360px) and (max-width: 1500px) {
+  .hero-copy {
+    margin-left: 3.6vw;
+    transform: translateX(0.18rem);
+  }
+}
+
 @media (min-width: 1450px) and (max-width: 1650px) {
   .formula-8 {
     top: 63%;
