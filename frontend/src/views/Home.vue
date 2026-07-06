@@ -700,11 +700,11 @@ h1 {
 }
 
 .formula-1 {
-  top: 11%;
-  right: 34%;
+  top: 12%;
+  left: 58%;
   --tilt: -3deg;
-  --formula-font-size: 1rem;
-  --formula-alpha: 0.33;
+  --formula-font-size: 0.98rem;
+  --formula-alpha: 0.32;
   --float-delay: -1s;
   --float-duration: 7.5s;
   --formula-motion: formulaOrbitA;
@@ -712,7 +712,7 @@ h1 {
 
 .formula-2 {
   top: 18%;
-  right: 16%;
+  left: 68%;
   --formula-font-size: 0.95rem;
   --formula-alpha: 0.3;
   --tilt: 2deg;
@@ -722,9 +722,9 @@ h1 {
 }
 
 .formula-3 {
-  top: 30%;
-  left: 56%;
-  --formula-font-size: 0.92rem;
+  top: 34%;
+  left: 55%;
+  --formula-font-size: 0.89rem;
   --formula-alpha: 0.28;
   --tilt: -1deg;
   --float-delay: -4s;
@@ -733,9 +733,9 @@ h1 {
 }
 
 .formula-4 {
-  top: 5%;
-  left: 36%;
-  --formula-font-size: 0.9rem;
+  top: 9%;
+  left: 20%;
+  --formula-font-size: 0.88rem;
   --formula-alpha: 0.26;
   --tilt: 3deg;
   --float-delay: -10s;
@@ -744,9 +744,9 @@ h1 {
 }
 
 .formula-5 {
-  top: 20%;
+  top: 22%;
   left: 11%;
-  --formula-font-size: 1rem;
+  --formula-font-size: 0.94rem;
   --formula-alpha: 0.25;
   --tilt: -2deg;
   --float-delay: -13s;
@@ -755,10 +755,10 @@ h1 {
 }
 
 .formula-6 {
-  top: 52%;
-  right: 40%;
-  --formula-font-size: 0.87rem;
-  --formula-alpha: 0.23;
+  top: 55%;
+  left: 61%;
+  --formula-font-size: 0.86rem;
+  --formula-alpha: 0.22;
   --tilt: 2deg;
   --float-delay: -5s;
   --float-duration: 9.8s;
@@ -766,9 +766,9 @@ h1 {
 }
 
 .formula-7 {
-  top: 11%;
-  left: 14%;
-  --formula-font-size: 0.84rem;
+  top: 13%;
+  left: 10%;
+  --formula-font-size: 0.83rem;
   --formula-alpha: 0.22;
   --tilt: -2deg;
   --float-delay: -9s;
@@ -777,10 +777,10 @@ h1 {
 }
 
 .formula-8 {
-  top: 66%;
-  left: 66%;
-  --formula-font-size: 0.88rem;
-  --formula-alpha: 0.24;
+  top: 79%;
+  left: 69%;
+  --formula-font-size: 0.84rem;
+  --formula-alpha: 0.2;
   --tilt: 3deg;
   --float-delay: -2s;
   --float-duration: 7.4s;
@@ -788,10 +788,10 @@ h1 {
 }
 
 .formula-9 {
-  top: 72%;
-  left: 52%;
-  --formula-font-size: 0.86rem;
-  --formula-alpha: 0.22;
+  top: 68%;
+  left: 47%;
+  --formula-font-size: 0.84rem;
+  --formula-alpha: 0.23;
   --tilt: -3deg;
   --float-delay: -12s;
   --float-duration: 9.4s;
@@ -799,10 +799,10 @@ h1 {
 }
 
 .formula-10 {
-  top: 66%;
-  right: 26%;
-  --formula-font-size: 0.89rem;
-  --formula-alpha: 0.23;
+  top: 82%;
+  left: 40%;
+  --formula-font-size: 0.8rem;
+  --formula-alpha: 0.18;
   --tilt: 2deg;
   --float-delay: -6s;
   --float-duration: 8.8s;
@@ -810,9 +810,9 @@ h1 {
 }
 
 .formula-11 {
-  top: 26%;
-  left: 8%;
-  --formula-font-size: 0.96rem;
+  top: 28%;
+  left: 16%;
+  --formula-font-size: 0.94rem;
   --formula-alpha: 0.26;
   --tilt: 1deg;
   --float-delay: -15s;
@@ -821,10 +821,10 @@ h1 {
 }
 
 .formula-12 {
-  top: 40%;
+  top: 32%;
   left: 6%;
-  --formula-font-size: 0.84rem;
-  --formula-alpha: 0.24;
+  --formula-font-size: 0.8rem;
+  --formula-alpha: 0.21;
   --tilt: -2deg;
   --float-delay: -3s;
   --float-duration: 8.5s;
@@ -832,9 +832,9 @@ h1 {
 }
 
 .formula-13 {
-  top: 58%;
+  top: 60%;
   left: 38%;
-  --formula-font-size: 0.9rem;
+  --formula-font-size: 0.88rem;
   --formula-alpha: 0.22;
   --tilt: -2deg;
   --float-delay: -11s;
@@ -843,9 +843,9 @@ h1 {
 }
 
 .formula-14 {
-  top: 46%;
+  top: 50%;
   left: 74%;
-  --formula-font-size: 0.88rem;
+  --formula-font-size: 0.86rem;
   --formula-alpha: 0.23;
   --tilt: 2deg;
   --float-delay: -8s;
@@ -854,9 +854,9 @@ h1 {
 }
 
 .formula-15 {
-  top: 88%;
-  left: 41%;
-  --formula-font-size: 0.92rem;
+  top: 89%;
+  left: 26%;
+  --formula-font-size: 0.9rem;
   --formula-alpha: 0.2;
   --tilt: -1deg;
   --float-delay: -14s;
@@ -865,10 +865,10 @@ h1 {
 }
 
 .formula-16 {
-  top: 43%;
-  right: 56%;
-  --formula-font-size: 0.85rem;
-  --formula-alpha: 0.24;
+  top: 41%;
+  left: 58%;
+  --formula-font-size: 0.84rem;
+  --formula-alpha: 0.22;
   --tilt: 2deg;
   --float-delay: -4s;
   --float-duration: 9.6s;
@@ -876,8 +876,8 @@ h1 {
 }
 
 .formula-17 {
-  top: 70%;
-  left: 4%;
+  top: 72%;
+  left: 6%;
   --formula-font-size: 0.82rem;
   --formula-alpha: 0.22;
   --tilt: -3deg;
@@ -887,8 +887,8 @@ h1 {
 }
 
 .formula-18 {
-  top: 82%;
-  left: 18%;
+  top: 84%;
+  left: 16%;
   --formula-font-size: 0.83rem;
   --formula-alpha: 0.21;
   --tilt: -1deg;
@@ -898,11 +898,11 @@ h1 {
 }
 
 .formula-19 {
-  top: 35%;
-  right: 34%;
+  top: 38%;
+  left: 74%;
   color: rgba(242, 238, 216, 0.34);
-  --formula-font-size: 1rem;
-  --formula-alpha: 0.29;
+  --formula-font-size: 0.93rem;
+  --formula-alpha: 0.27;
   --tilt: -2deg;
   --float-delay: -18s;
   --float-duration: 8s;
@@ -914,10 +914,10 @@ h1 {
 }
 
 .formula-20 {
-  top: 84%;
-  left: 70%;
-  --formula-font-size: 0.88rem;
-  --formula-alpha: 0.22;
+  top: 86%;
+  left: 66%;
+  --formula-font-size: 0.82rem;
+  --formula-alpha: 0.21;
   --tilt: 3deg;
   --float-delay: -5s;
   --float-duration: 8.7s;
@@ -925,10 +925,10 @@ h1 {
 }
 
 .formula-21 {
-  top: 53%;
-  left: 66%;
-  --formula-font-size: 1.02rem;
-  --formula-alpha: 0.25;
+  top: 63%;
+  left: 71%;
+  --formula-font-size: 0.88rem;
+  --formula-alpha: 0.2;
   --tilt: 1deg;
   --float-delay: -4.5s;
   --float-duration: 8.2s;
@@ -936,11 +936,11 @@ h1 {
 }
 
 .formula-22 {
-  top: 58%;
-  right: 30%;
+  top: 36%;
+  left: 68%;
   --tilt: 2.2deg;
-  --formula-font-size: 0.89rem;
-  --formula-alpha: 0.22;
+  --formula-font-size: 0.86rem;
+  --formula-alpha: 0.23;
   --float-delay: -9.2s;
   --float-duration: 9s;
   --formula-motion: formulaOrbitC;
@@ -951,47 +951,81 @@ h1 {
   .formula-2,
   .formula-3 {
     right: auto;
-    left: 60%;
+    left: 58%;
     --formula-font-size: 0.88rem;
   }
 
   .formula-1 {
-    top: 10%;
+    top: 11%;
   }
 
   .formula-2 {
-    top: 20%;
+    top: 22%;
   }
 
   .formula-3 {
-    top: 31%;
+    top: 36%;
   }
 
   .formula-7 {
-    left: 12%;
-    top: 8%;
+    left: 10%;
+    top: 9%;
     right: auto;
   }
 
   .formula-18 {
-    left: 64%;
+    left: 62%;
     right: auto;
-    top: 76%;
+    top: 78%;
     --formula-font-size: 0.82rem;
   }
 
-  .formula-20 {
-    left: 60%;
-    right: auto;
-    top: 88%;
+  .formula-6 {
+    left: 59%;
+    top: 57%;
+  }
+
+  .formula-8 {
+    left: 72%;
+    top: 82%;
     --formula-font-size: 0.8rem;
+    --formula-alpha: 0.18;
+  }
+
+  .formula-10 {
+    left: 44%;
+    top: 86%;
+    --formula-font-size: 0.76rem;
+    --formula-alpha: 0.16;
+  }
+
+  .formula-20 {
+    left: 65%;
+    right: auto;
+    top: 89%;
+    --formula-font-size: 0.78rem;
+    --formula-alpha: 0.18;
   }
 
   .formula-21 {
+    left: 75%;
+    right: auto;
+    top: 66%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.18;
+  }
+
+  .formula-22 {
     left: 70%;
     right: auto;
-    top: 61%;
-    --formula-font-size: 0.9rem;
+    top: 38%;
+    --formula-font-size: 0.82rem;
+    --formula-alpha: 0.2;
+  }
+
+  .formula-3 {
+    --formula-alpha: 0.26;
+    --formula-font-size: 0.86rem;
   }
 }
 
@@ -1450,7 +1484,6 @@ h1 {
   .formula-11,
   .formula-19,
   .formula-20,
-  .formula-21,
   .formula-22 {
     display: inline-flex;
     align-items: center;
@@ -1482,33 +1515,25 @@ h1 {
   }
 
   .formula-19 {
-    top: 38%;
+    top: 34%;
     left: 15%;
     --formula-font-size: 0.72rem;
     --formula-alpha: 0.2;
   }
 
   .formula-20 {
-    top: 57%;
-    left: 18%;
+    top: 58%;
+    left: 58%;
     right: auto;
-    bottom: 7%;
-    --formula-font-size: 0.74rem;
+    --formula-font-size: 0.72rem;
     --formula-alpha: 0.22;
   }
 
-  .formula-21 {
-    top: 22%;
-    left: 20%;
-    --formula-font-size: 0.73rem;
-    --formula-alpha: 0.2;
-  }
-
   .formula-22 {
-    top: 84%;
-    left: 60%;
+    top: 78%;
+    left: 56%;
     right: auto;
-    --formula-font-size: 0.72rem;
+    --formula-font-size: 0.71rem;
     --formula-alpha: 0.2;
   }
 
@@ -1530,7 +1555,6 @@ h1 {
 }
 
 @media (max-width: 420px) {
-  .formula-21,
   .formula-22 {
     display: none;
   }
