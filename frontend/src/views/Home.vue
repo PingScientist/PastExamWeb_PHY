@@ -1075,6 +1075,33 @@ h1 {
   }
 }
 
+@media (min-width: 1200px) and (max-width: 1500px) {
+  .hero-copy {
+    margin-left: clamp(0.6rem, 2vw, 2rem);
+  }
+
+  .formula-10 {
+    top: 80%;
+    left: 23%;
+    --formula-font-size: 0.74rem;
+    --formula-alpha: 0.13;
+  }
+
+  .formula-17 {
+    top: 68%;
+    left: 44%;
+    --formula-font-size: 0.78rem;
+    --formula-alpha: 0.18;
+  }
+
+  .formula-18 {
+    top: 72%;
+    left: 30%;
+    --formula-font-size: 0.79rem;
+    --formula-alpha: 0.17;
+  }
+}
+
 .stat-card {
   display: flex;
   align-items: center;
