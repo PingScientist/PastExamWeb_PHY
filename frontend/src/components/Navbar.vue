@@ -14,11 +14,7 @@
           />
           <button class="brand-lockup clickable-title" type="button" @click="handleTitleClick">
             <span class="brand-mark-frame">
-              <img
-                src="/physics-symbol.jpeg"
-                alt="清大物理考古系統"
-                class="brand-mark"
-              />
+              <img src="/physics-symbol.jpeg" alt="清大物理考古系統" class="brand-mark" />
             </span>
             <span class="brand-wordmark">
               <span class="brand-title-main">清大物理考古系統</span>
@@ -30,11 +26,9 @@
       <template #end>
         <div class="nav-control-cluster">
           <div class="hidden md:flex align-items-center gap-2 nav-action-group">
-            <span
-              v-if="isAuthenticated"
-              class="user-name flex align-items-center"
-              >{{ userData?.name || 'User' }}</span
-            >
+            <span v-if="isAuthenticated" class="user-name flex align-items-center">{{
+              userData?.name || 'User'
+            }}</span>
             <Button
               v-if="moreActions.length"
               icon="pi pi-list"
@@ -163,7 +157,6 @@
             :loading="loading"
           />
         </div>
-
       </div>
     </Dialog>
 

@@ -191,8 +191,7 @@ const formulaCards = [
   },
   {
     name: 'Jefimenko',
-    latex:
-      String.raw`\mathbf{E}(\mathbf{r},t)=\int\left(\frac{\rho}{R^2}+\frac{\dot{\rho}}{cR}-\frac{\dot{\mathbf{J}}}{c^2R}\right)\, d^3\mathbf{r}^{\prime}`,
+    latex: String.raw`\mathbf{E}(\mathbf{r},t)=\int\left(\frac{\rho}{R^2}+\frac{\dot{\rho}}{cR}-\frac{\dot{\mathbf{J}}}{c^2R}\right)\, d^3\mathbf{r}^{\prime}`,
   },
   {
     name: 'TDSE',
@@ -260,7 +259,7 @@ const renderedFormulaCards = computed(() =>
         rendered: formula.latex,
       }
     }
-  }),
+  })
 )
 
 onMounted(async () => {
@@ -453,7 +452,9 @@ h1 {
   background: rgba(10, 20, 18, 0.18);
 }
 
-.physics-home:not(.physics-home-dark) .hero-actions :deep(.p-button.p-button-secondary.p-button-outlined) {
+.physics-home:not(.physics-home-dark)
+  .hero-actions
+  :deep(.p-button.p-button-secondary.p-button-outlined) {
   color: #1c4c42;
   border-color: rgba(58, 111, 93, 0.36);
   background: rgba(249, 247, 238, 0.52);
@@ -465,7 +466,9 @@ h1 {
   background: rgba(214, 230, 223, 0.1);
 }
 
-.physics-home:not(.physics-home-dark) .hero-actions :deep(.p-button.p-button-secondary.p-button-outlined:hover) {
+.physics-home:not(.physics-home-dark)
+  .hero-actions
+  :deep(.p-button.p-button-secondary.p-button-outlined:hover) {
   color: #123a31;
   border-color: rgba(58, 111, 93, 0.5);
   background: rgba(232, 240, 224, 0.75);
@@ -674,7 +677,9 @@ h1 {
   display: inline-flex;
   font-size: var(--formula-font-size, clamp(0.9rem, 1.02vw, 1.1rem));
   line-height: 1.2;
-  text-shadow: 0 0 1rem rgba(168, 204, 181, 0.1), 0 0 0.2rem rgba(255, 255, 255, 0.08);
+  text-shadow:
+    0 0 1rem rgba(168, 204, 181, 0.1),
+    0 0 0.2rem rgba(255, 255, 255, 0.08);
   color: inherit;
   width: max-content;
   white-space: nowrap;
@@ -695,7 +700,9 @@ h1 {
 
 .physics-home:not(.physics-home-dark) .formula-expression {
   color: rgba(39, 73, 63, 0.85);
-  text-shadow: 0 0 0.95rem rgba(186, 168, 113, 0.1), 0 0 0.2rem rgba(255, 255, 255, 0.1);
+  text-shadow:
+    0 0 0.95rem rgba(186, 168, 113, 0.1),
+    0 0 0.2rem rgba(255, 255, 255, 0.1);
   font-style: italic;
 }
 
@@ -1294,8 +1301,7 @@ h1 {
   border-color: rgba(85, 125, 108, 0.2);
   border-left-color: rgba(184, 145, 54, 0.62);
   background:
-    linear-gradient(90deg, rgba(190, 159, 78, 0.13), transparent 46%),
-    rgba(250, 248, 240, 0.72);
+    linear-gradient(90deg, rgba(190, 159, 78, 0.13), transparent 46%), rgba(250, 248, 240, 0.72);
   box-shadow: 0 1.4rem 3.6rem rgba(68, 92, 78, 0.12);
 }
 

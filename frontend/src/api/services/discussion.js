@@ -18,7 +18,10 @@ export const discussionService = {
   pinArchiveMessage(courseId, archiveId, messageId, pinned) {
     const formData = new FormData()
     formData.append('pinned', pinned)
-    return api.patch(`/courses/${courseId}/archives/${archiveId}/discussion/${messageId}/pin`, formData)
+    return api.patch(
+      `/courses/${courseId}/archives/${archiveId}/discussion/${messageId}/pin`,
+      formData
+    )
   },
 
   openArchiveDiscussionWebSocket(courseId, archiveId, { token } = {}) {

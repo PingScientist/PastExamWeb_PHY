@@ -26,7 +26,12 @@
         還沒有人發起討論，來當第一個吧！
       </div>
 
-      <div v-for="msg in sortedMessages" :key="msg.id" class="message p-2.5" :class="{ 'is-pinned': msg.is_pinned }">
+      <div
+        v-for="msg in sortedMessages"
+        :key="msg.id"
+        class="message p-2.5"
+        :class="{ 'is-pinned': msg.is_pinned }"
+      >
         <div class="flex align-items-center justify-content-between gap-3">
           <div class="flex align-items-center gap-2 min-w-0">
             <Tag v-if="msg.is_pinned" value="置頂" severity="warning" class="discussion-pin-tag" />

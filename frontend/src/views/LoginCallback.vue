@@ -1,5 +1,7 @@
 <template>
-  <div class="login-callback physics-background h-full flex align-items-center justify-content-center">
+  <div
+    class="login-callback physics-background h-full flex align-items-center justify-content-center"
+  >
     <div class="text-center px-4 w-full max-w-md" :style="{ color: 'var(--text-secondary)' }">
       <div v-if="errorMessage">
         <Card class="border-round shadow-2" :style="{ backgroundColor: 'var(--bg-secondary)' }">
