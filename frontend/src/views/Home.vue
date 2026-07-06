@@ -799,10 +799,10 @@ h1 {
 }
 
 .formula-10 {
-  top: 87%;
-  left: 18%;
+  top: 82%;
+  left: 26%;
   --formula-font-size: 0.76rem;
-  --formula-alpha: 0.18;
+  --formula-alpha: 0.14;
   --tilt: -13deg;
   --float-delay: -6s;
   --float-duration: 8.8s;
@@ -854,6 +854,7 @@ h1 {
 }
 
 .formula-15 {
+  display: none;
   top: 89%;
   left: 16%;
   --formula-font-size: 0.8rem;
@@ -876,8 +877,8 @@ h1 {
 }
 
 .formula-17 {
-  top: 78%;
-  left: 30%;
+  top: 74%;
+  left: 38%;
   --formula-font-size: 0.82rem;
   --formula-alpha: 0.22;
   --tilt: 22deg;
@@ -887,8 +888,8 @@ h1 {
 }
 
 .formula-18 {
-  top: 76%;
-  left: 16%;
+  top: 72%;
+  left: 34%;
   --formula-font-size: 0.83rem;
   --formula-alpha: 0.21;
   --tilt: -13deg;
@@ -981,9 +982,9 @@ h1 {
   }
 
   .formula-18 {
-    left: 12%;
+    left: 26%;
     right: auto;
-    top: 76%;
+    top: 75%;
     --formula-font-size: 0.82rem;
   }
 
@@ -995,8 +996,8 @@ h1 {
   }
 
   .formula-10 {
-    left: 17%;
-    top: 86%;
+    left: 22%;
+    top: 84%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.16;
   }
