@@ -1076,10 +1076,6 @@ h1 {
 }
 
 @media (min-width: 1200px) and (max-width: 1500px) {
-  .hero-copy {
-    margin-left: clamp(0.6rem, 2vw, 2rem);
-  }
-
   .formula-10 {
     top: 80%;
     left: 23%;
@@ -1102,13 +1098,61 @@ h1 {
   }
 }
 
-@media (min-width: 1100px) and (max-width: 1300px) {
+@media (min-width: 1100px) and (max-width: 1350px) {
   .hero-copy {
-    margin-left: clamp(1.8rem, 3.6vw, 3.4rem);
+    margin-left: clamp(2rem, 3.2vw, 3.3rem);
   }
 }
 
-@media (min-width: 1500px) and (max-width: 1650px) {
+@media (min-width: 1650px) and (max-width: 1800px) {
+  .formula-10 {
+    top: 84%;
+    left: 22%;
+    --formula-font-size: 0.74rem;
+    --formula-alpha: 0.12;
+  }
+
+  .formula-17 {
+    top: 66%;
+    left: 43%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-18 {
+    top: 76%;
+    left: 31%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-8 {
+    top: 64%;
+    left: 52%;
+    --formula-font-size: 0.8rem;
+    --formula-alpha: 0.18;
+  }
+
+  .formula-20 {
+    top: 71%;
+    left: 58%;
+    --formula-font-size: 0.76rem;
+    --formula-alpha: 0.16;
+  }
+
+  .formula-21 {
+    display: none;
+  }
+
+  .formula-22 {
+    top: 50%;
+    left: 63%;
+    --formula-font-size: 0.78rem;
+    --formula-alpha: 0.13;
+  }
+}
+
+@media (min-width: 1500px) and (max-width: 1649px) {
   .formula-8 {
     top: 63%;
     left: 56%;
