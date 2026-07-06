@@ -838,17 +838,17 @@
                     class="review-category-filter w-full md:w-14rem"
                   />
                 </div>
+                <Button
+                  class="review-refresh-button"
+                  icon="pi pi-refresh"
+                  label="重新整理"
+                  outlined
+                  @click="loadReviewItems"
+                />
               </div>
               <div class="review-section">
                 <div class="review-section-header">
                   <h3>新課程 / 新分類考古申請</h3>
-                  <Button
-                    icon="pi pi-refresh"
-                    label="重新整理"
-                    size="small"
-                    outlined
-                    @click="loadReviewItems"
-                  />
                 </div>
                 <DataTable
                   :value="newCourseArchiveRequests"
@@ -5761,8 +5761,37 @@ onBeforeUnmount(() => {
 
 .review-search-toolbar {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
+}
+
+.review-search-toolbar .search-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.review-refresh-button {
+  margin-left: auto;
+  white-space: nowrap;
+  min-height: 2.45rem;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+}
+
+:deep(.review-refresh-button .p-button-label) {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+:deep(.review-refresh-button .p-button-icon) {
+  font-size: 0.95rem;
 }
 
 .review-empty-state {
