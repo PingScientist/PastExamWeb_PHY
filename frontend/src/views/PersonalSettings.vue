@@ -36,14 +36,14 @@
                         <label id="font-size-label">字體大小</label>
                         <div class="font-size-slider-row">
                           <Slider
-                            v-model="fontSizeIndex"
-                            :min="0"
-                            :max="fontSizeOptions.length - 1"
-                            :step="1"
+                            v-model="fontSizeScale"
+                            :min="fontSizeMin"
+                            :max="fontSizeMax"
+                            :step="fontSizeStep"
                             class="font-size-slider"
                             aria-labelledby="font-size-label"
                           />
-                          <span class="font-size-current">{{ currentFontSizeOption.label }}</span>
+                          <span class="font-size-current">{{ fontSizePercent }}%</span>
                         </div>
                         <small>偏好值會保存於此裝置，重新整理後仍會保留。</small>
                       </div>
@@ -183,7 +183,9 @@ import { userService } from '../api'
 import { getCurrentUser } from '../utils/auth'
 import { getLocalItem, setLocalItem } from '../utils/storage'
 import {
-  FONT_SIZE_OPTIONS,
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
+  FONT_SIZE_STEP,
   getFontSizePreference,
   setFontSizePreference,
 } from '../utils/fontSizePreference'
@@ -220,9 +222,10 @@ export default {
         fontSize: getFontSizePreference(),
         language: getLocalItem(LANGUAGE_KEY) || 'zh-TW',
       },
-      fontSizeIndex: FONT_SIZE_OPTIONS.findIndex(
-        (option) => option.value === getFontSizePreference()
-      ),
+      fontSizeScale: getFontSizePreference(),
+      fontSizeMin: FONT_SIZE_MIN,
+      fontSizeMax: FONT_SIZE_MAX,
+      fontSizeStep: FONT_SIZE_STEP,
       activeSection: 'display-settings',
       sectionObserver: null,
       navItems: [
@@ -233,7 +236,6 @@ export default {
         { id: 'profile-setting', label: '基本資料', level: 'item' },
         { id: 'password-setting', label: '密碼設定', level: 'item' },
       ],
-      fontSizeOptions: FONT_SIZE_OPTIONS,
       languageOptions: [
         { label: '繁體中文', value: 'zh-TW' },
         { label: 'English', value: 'en' },
@@ -241,12 +243,12 @@ export default {
     }
   },
   computed: {
-    currentFontSizeOption() {
-      return this.fontSizeOptions[this.fontSizeIndex] || this.fontSizeOptions[1]
+    fontSizePercent() {
+      return Math.round(this.fontSizeScale * 100)
     },
     fontSizePreviewStyle() {
       return {
-        '--preview-font-scale': this.currentFontSizeOption.scale,
+        '--preview-font-scale': this.fontSizeScale,
       }
     },
     canSaveProfile() {
@@ -273,10 +275,9 @@ export default {
     },
   },
   watch: {
-    fontSizeIndex() {
-      const option = this.currentFontSizeOption
-      this.displayForm.fontSize = option.value
-      setFontSizePreference(option.value)
+    fontSizeScale(value) {
+      const scale = setFontSizePreference(value)
+      this.displayForm.fontSize = scale
     },
   },
   mounted() {
@@ -408,7 +409,7 @@ export default {
 
     saveDisplaySettings() {
       // TODO: Sync font-size preference with backend profile settings when the API is available.
-      setFontSizePreference(this.displayForm.fontSize)
+      setFontSizePreference(this.fontSizeScale)
       // TODO: Wire language preference to i18n after the official English translation table is provided.
       setLocalItem(LANGUAGE_KEY, this.displayForm.language)
       this.toast.add({
