@@ -94,6 +94,22 @@ def _normalize_submission_status(raw_status):
     return normalized_status
 
 
+def _is_locked_review_submission(submission: ArchiveSubmission) -> bool:
+    normalized_status = _normalize_submission_status(submission.status)
+    return (
+        normalized_status in {SubmissionStatus.TAKEDOWN, SubmissionStatus.DELETED}
+        or submission.deleted_at is not None
+    )
+
+
+def _ensure_review_submission_mutable(submission: ArchiveSubmission) -> None:
+    if _is_locked_review_submission(submission):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="此投稿已下架或已刪除，僅能查看，不能再編輯或變更審核狀態。",
+        )
+
+
 async def _get_deleted_course_id_for_submission(
     db: AsyncSession,
     submission: ArchiveSubmission,
@@ -770,6 +786,7 @@ async def update_archive_submission_for_admin(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    _ensure_review_submission_mutable(submission)
 
     if submission_data.subject is not None:
         submission.subject = format_course_display_name(submission_data.subject)
@@ -864,6 +881,7 @@ async def approve_archive_submission(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    _ensure_review_submission_mutable(submission)
 
     formatted_course_name = format_course_display_name(submission.requested_course_name or submission.subject)
     course_name = _normalize_course_name(formatted_course_name)
@@ -969,6 +987,7 @@ async def reject_archive_submission(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    _ensure_review_submission_mutable(submission)
 
     submission.status = SubmissionStatus.REJECTED
     submission.reviewer_id = current_user.user_id
@@ -992,6 +1011,7 @@ async def takedown_archive_submission(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    _ensure_review_submission_mutable(submission)
 
     normalized_status = _normalize_submission_status(submission.status)
     if normalized_status in {SubmissionStatus.DELETED, SubmissionStatus.TAKEDOWN}:
@@ -1022,6 +1042,7 @@ async def republish_archive_submission(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    _ensure_review_submission_mutable(submission)
 
     normalized_status = _normalize_submission_status(submission.status)
     if normalized_status != SubmissionStatus.TAKEDOWN:
@@ -1079,6 +1100,7 @@ async def delete_archive_submission_for_admin(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    _ensure_review_submission_mutable(submission)
 
     if submission.status == SubmissionStatus.DELETED:
         now = datetime.now(timezone.utc)

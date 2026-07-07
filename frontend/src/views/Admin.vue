@@ -1974,6 +1974,14 @@
           </span>
           <span v-else>這筆投稿會掛到既有課程。</span>
         </div>
+        <Message
+          v-if="archiveRequestReadonlyMessage"
+          severity="info"
+          :closable="false"
+          class="mb-4"
+        >
+          {{ archiveRequestReadonlyMessage }}
+        </Message>
         <div class="grid">
           <template v-if="archiveRequestEditForm.requested_category_key">
             <div class="col-12 md:col-6 flex flex-column gap-2">
@@ -2252,10 +2260,10 @@
             @click="previewArchiveRequestFile"
           />
           <Button
+            v-if="canEditSelectedArchiveRequest"
             label="儲存修改"
             icon="pi pi-save"
             aria-label="儲存修改"
-            :disabled="!canEditSelectedArchiveRequest"
             :loading="reviewEditLoading"
             @click="saveArchiveRequestEdit"
           />
@@ -2965,7 +2973,6 @@ const archiveTypeOptions = [
 ]
 
 const currentUserId = computed(() => getCurrentUser()?.id)
-const canEditSelectedArchiveRequest = computed(() => Boolean(selectedArchiveRequest.value))
 const submissionStatusPriority = {
   pending: 1,
   approved: 2,
@@ -3025,6 +3032,24 @@ const getReviewItemStatus = (item) => {
   if (item?.deletedAt || item?.deleted_at) return 'deleted'
   return normalizeSubmissionStatus(item?.status)
 }
+const isReadonlyReviewSubmission = (item) => {
+  return ['takedown', 'deleted'].includes(getReviewItemStatus(item))
+}
+const getReadonlyReviewSubmissionMessage = (item) => {
+  const status = getReviewItemStatus(item)
+  if (status === 'takedown') return '此投稿已下架，僅能查看，不能再編輯內容。'
+  if (status === 'deleted') return '此投稿已刪除，僅能查看，請至垃圾桶處理復原或永久刪除。'
+  return ''
+}
+const canEditSelectedArchiveRequest = computed(() => {
+  return (
+    Boolean(selectedArchiveRequest.value) &&
+    !isReadonlyReviewSubmission(selectedArchiveRequest.value)
+  )
+})
+const archiveRequestReadonlyMessage = computed(() => {
+  return getReadonlyReviewSubmissionMessage(selectedArchiveRequest.value)
+})
 const getReviewItemStatusPriority = (item) => {
   return submissionStatusPriority[getReviewItemStatus(item)] || 99
 }
@@ -3674,25 +3699,12 @@ const getReviewRowActions = (item) => {
   if (status === 'rejected') {
     return [reviewActionDefinitions.approve, reviewActionDefinitions.delete]
   }
-  if (status === 'takedown') {
-    if (isReviewBlockedByCourseTrash(item)) {
-      return []
-    }
-    return [reviewActionDefinitions.republish, reviewActionDefinitions.delete]
-  }
   return []
 }
 
 const isCourseTrashLifecycleReason = (reason) => {
   if (!reason) return false
   return reason === 'course_trashed' || reason.startsWith('course_trashed|')
-}
-
-const isReviewBlockedByCourseTrash = (item) => {
-  return (
-    getReviewItemStatus(item) === 'takedown' &&
-    (isCourseTrashLifecycleReason(item?.lifecycle_reason) || item?.linked_course_deleted === true)
-  )
 }
 
 const getReviewTrashNote = (item, fullText = false) => {
@@ -3737,11 +3749,20 @@ const getReviewTrashNoteIcon = (item) => {
 
 const runReviewRowAction = (item, action) => {
   if (!item?.id) return
+  if (isReadonlyReviewSubmission(item)) {
+    toast.add({
+      severity: 'info',
+      summary: '僅能查看',
+      detail: getReadonlyReviewSubmissionMessage(item) || '此投稿目前不能變更審核狀態。',
+      life: 3000,
+    })
+    return
+  }
   if (action === 'delete') {
     confirmDeleteArchiveSubmission(item)
     return
   }
-  reviewArchiveSubmission(item.id, action)
+  reviewArchiveSubmission(item, action)
 }
 
 const getArchiveSubmissionKind = (item) => {
@@ -4662,6 +4683,15 @@ const openArchiveRequestDialog = async (request) => {
 
 const saveArchiveRequestEdit = async () => {
   if (!selectedArchiveRequest.value) return
+  if (!canEditSelectedArchiveRequest.value) {
+    toast.add({
+      severity: 'info',
+      summary: '僅能查看',
+      detail: archiveRequestReadonlyMessage.value || '此投稿目前不能編輯。',
+      life: 3000,
+    })
+    return
+  }
   reviewEditLoading.value = true
   try {
     const { data } = await archiveService.updateSubmission(
@@ -4852,16 +4882,26 @@ const getRequesterDisplay = (request) => {
   return request.requester_name || request.requester_email || `使用者 #${request.requester_id}`
 }
 
-const reviewArchiveSubmission = async (submissionId, action) => {
+const reviewArchiveSubmission = async (submission, action) => {
+  if (!submission?.id) return
+  if (isReadonlyReviewSubmission(submission)) {
+    toast.add({
+      severity: 'info',
+      summary: '僅能查看',
+      detail: getReadonlyReviewSubmissionMessage(submission) || '此投稿目前不能變更審核狀態。',
+      life: 3000,
+    })
+    return
+  }
   try {
     if (action === 'approve') {
-      await archiveService.approveSubmission(submissionId)
+      await archiveService.approveSubmission(submission.id)
     } else if (action === 'takedown') {
-      await archiveService.takedownSubmission(submissionId)
+      await archiveService.takedownSubmission(submission.id)
     } else if (action === 'republish') {
-      await archiveService.republishSubmission(submissionId)
+      await archiveService.republishSubmission(submission.id)
     } else {
-      await archiveService.rejectSubmission(submissionId)
+      await archiveService.rejectSubmission(submission.id)
     }
     const actionMessages = {
       approve: '考古題投稿已通過',
