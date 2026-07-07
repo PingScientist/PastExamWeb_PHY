@@ -31,17 +31,28 @@
               <template #content>
                 <form class="settings-form" @submit.prevent="saveDisplaySettings">
                   <div class="settings-grid">
-                    <div id="font-size-setting" class="field settings-anchor">
-                      <label for="font-size">字體大小</label>
-                      <Select
-                        id="font-size"
-                        v-model="displayForm.fontSize"
-                        :options="fontSizeOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                      />
-                      <small>已先保存偏好值，之後可接入全域字體大小機制。</small>
+                    <div id="font-size-setting" class="field settings-anchor font-size-setting">
+                      <div class="font-size-controls">
+                        <label id="font-size-label">字體大小</label>
+                        <div class="font-size-slider-row">
+                          <Slider
+                            v-model="fontSizeIndex"
+                            :min="0"
+                            :max="fontSizeOptions.length - 1"
+                            :step="1"
+                            class="font-size-slider"
+                            aria-labelledby="font-size-label"
+                          />
+                          <span class="font-size-current">{{ currentFontSizeOption.label }}</span>
+                        </div>
+                        <small>偏好值會保存於此裝置，重新整理後仍會保留。</small>
+                      </div>
+
+                      <div class="font-size-preview" :style="fontSizePreviewStyle">
+                        <h3>清大物理考古系統</h3>
+                        <p>這是一段用來預覽目前字體大小的文字。</p>
+                        <small>篩選、預覽、下載等操作文字會依設定調整。</small>
+                      </div>
                     </div>
 
                     <div id="language-setting" class="field settings-anchor">
@@ -209,6 +220,9 @@ export default {
         fontSize: getFontSizePreference(),
         language: getLocalItem(LANGUAGE_KEY) || 'zh-TW',
       },
+      fontSizeIndex: FONT_SIZE_OPTIONS.findIndex(
+        (option) => option.value === getFontSizePreference()
+      ),
       activeSection: 'display-settings',
       sectionObserver: null,
       navItems: [
@@ -227,6 +241,14 @@ export default {
     }
   },
   computed: {
+    currentFontSizeOption() {
+      return this.fontSizeOptions[this.fontSizeIndex] || this.fontSizeOptions[1]
+    },
+    fontSizePreviewStyle() {
+      return {
+        '--preview-font-scale': this.currentFontSizeOption.scale,
+      }
+    },
     canSaveProfile() {
       return (
         Boolean(this.profileForm.name.trim()) && this.profileForm.name.trim() !== this.originalName
@@ -248,6 +270,13 @@ export default {
         Boolean(this.passwordForm.confirmPassword) &&
         !this.passwordMismatch
       )
+    },
+  },
+  watch: {
+    fontSizeIndex() {
+      const option = this.currentFontSizeOption
+      this.displayForm.fontSize = option.value
+      setFontSizePreference(option.value)
     },
   },
   mounted() {
@@ -527,6 +556,63 @@ h1 {
   margin: 0;
 }
 
+.font-size-setting {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 320px) minmax(240px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.font-size-controls {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.font-size-slider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4rem;
+  gap: 1rem;
+  align-items: center;
+}
+
+.font-size-slider {
+  min-width: 0;
+}
+
+.font-size-current {
+  color: var(--text-primary);
+  font-weight: 700;
+  text-align: right;
+}
+
+.font-size-preview {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-primary) 72%, var(--bg-secondary));
+  font-size: calc(1rem * var(--preview-font-scale));
+}
+
+.font-size-preview h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.05em;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.font-size-preview p {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.65;
+}
+
+.font-size-preview small {
+  font-size: 0.86em;
+}
+
 label {
   color: var(--text-primary);
   font-weight: 650;
@@ -583,6 +669,14 @@ small {
 
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .font-size-setting {
+    grid-template-columns: 1fr;
+  }
+
+  .font-size-slider-row {
+    grid-template-columns: minmax(0, 1fr) 3.5rem;
   }
 
   .form-actions :deep(.p-button) {
