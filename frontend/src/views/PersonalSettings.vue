@@ -29,7 +29,7 @@
             <Card class="settings-section">
               <template #title>顯示設定</template>
               <template #content>
-                <form class="settings-form" @submit.prevent="saveDisplaySettings">
+                <div class="settings-form">
                   <div class="settings-grid">
                     <div id="font-size-setting" class="field settings-anchor font-size-setting">
                       <div class="font-size-controls">
@@ -69,10 +69,8 @@
                     </div>
                   </div>
 
-                  <div class="form-actions">
-                    <Button label="儲存顯示設定" icon="pi pi-save" type="submit" />
-                  </div>
-                </form>
+                  <p class="autosave-hint">顯示偏好會自動儲存在此裝置。</p>
+                </div>
               </template>
             </Card>
           </section>
@@ -279,6 +277,10 @@ export default {
       const scale = setFontSizePreference(value)
       this.displayForm.fontSize = scale
     },
+    'displayForm.language'(value) {
+      // TODO: Wire language preference to i18n after the official English translation table is provided.
+      setLocalItem(LANGUAGE_KEY, value)
+    },
   },
   mounted() {
     void this.loadProfile()
@@ -404,19 +406,6 @@ export default {
         summary: '尚未送出',
         detail: '密碼 API 尚未接入，已先保留前端表單。',
         life: 3000,
-      })
-    },
-
-    saveDisplaySettings() {
-      // TODO: Sync font-size preference with backend profile settings when the API is available.
-      setFontSizePreference(this.fontSizeScale)
-      // TODO: Wire language preference to i18n after the official English translation table is provided.
-      setLocalItem(LANGUAGE_KEY, this.displayForm.language)
-      this.toast.add({
-        severity: 'success',
-        summary: '儲存成功',
-        detail: '顯示設定偏好已保存',
-        life: 2500,
       })
     },
   },
@@ -633,6 +622,13 @@ h1 {
 
 .font-size-preview small {
   font-size: 0.86em;
+}
+
+.autosave-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 label {
