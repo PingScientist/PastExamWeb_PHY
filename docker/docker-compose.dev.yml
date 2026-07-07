@@ -82,6 +82,21 @@ services:
     networks:
       - app_network
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pastexam-dev-pgadmin
+    restart: always
+    ports:
+      - "8081:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    networks:
+      - app_network
+
   minio:
     image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: pastexam-dev-minio
