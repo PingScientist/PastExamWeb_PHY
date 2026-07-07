@@ -854,7 +854,7 @@
                   :value="newCourseArchiveRequests"
                   :loading="reviewLoading"
                   class="admin-data-table review-request-table review-request-table--new"
-                  tableStyle="min-width: 60rem"
+                  tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
                   breakpoint="1023px"
                 >
@@ -953,6 +953,18 @@
                             <span class="review-mobile-info-label">投稿時間</span>
                             <span class="review-mobile-info-value">{{
                               formatReviewSubmissionTime(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">審核人</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewer(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">審核時間</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewedTime(data)
                             }}</span>
                           </div>
                         </div>
@@ -1074,6 +1086,18 @@
                       }}</span>
                     </template>
                   </Column>
+                  <Column header="審核人">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
+                    </template>
+                  </Column>
+                  <Column header="審核時間">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{
+                        formatReviewReviewedTime(data)
+                      }}</span>
+                    </template>
+                  </Column>
                   <Column field="status">
                     <template #header>
                       <button
@@ -1167,7 +1191,7 @@
                   :value="existingCourseArchiveRequests"
                   :loading="reviewLoading"
                   class="admin-data-table review-request-table"
-                  tableStyle="min-width: 60rem"
+                  tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
                   breakpoint="1023px"
                 >
@@ -1255,6 +1279,18 @@
                             <span class="review-mobile-info-label">投稿時間</span>
                             <span class="review-mobile-info-value">{{
                               formatReviewSubmissionTime(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">審核人</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewer(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">審核時間</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewedTime(data)
                             }}</span>
                           </div>
                         </div>
@@ -1345,6 +1381,18 @@
                     <template #body="{ data }">
                       <span class="review-card-meta-text">{{
                         formatReviewSubmissionTime(data)
+                      }}</span>
+                    </template>
+                  </Column>
+                  <Column header="審核人">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
+                    </template>
+                  </Column>
+                  <Column header="審核時間">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{
+                        formatReviewReviewedTime(data)
                       }}</span>
                     </template>
                   </Column>
@@ -3080,6 +3128,15 @@ const formatReviewSubmissionTime = (item) => {
     return value.display || value.label || '—'
   }
   return formatRelativeTime(value)
+}
+const formatReviewReviewer = (item) => {
+  return (
+    item?.reviewer_name || item?.reviewerName || item?.reviewer_username || item?.reviewer_id || '—'
+  )
+}
+const formatReviewReviewedTime = (item) => {
+  const value = item?.reviewed_at || item?.reviewedAt || item?.status_changed_at
+  return value ? formatRelativeTime(value) : '—'
 }
 const getReviewSortValue = (item, key) => {
   if (key === 'status') return getReviewItemStatusPriority(item)

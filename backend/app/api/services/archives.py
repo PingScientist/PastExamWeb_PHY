@@ -567,6 +567,8 @@ async def list_archive_submissions_for_admin(
                 LOWER(CAST(archive_submissions.status AS TEXT)) AS status,
                 archive_submissions.requester_id,
                 archive_submissions.reviewer_id,
+                reviewers.name AS reviewer_name,
+                reviewers.email AS reviewer_email,
                 archive_submissions.review_note,
                 (
                     archive_submissions.is_admin_upload
@@ -578,11 +580,13 @@ async def list_archive_submissions_for_admin(
                 (courses.deleted_at IS NOT NULL) AS linked_course_deleted,
                 archive_submissions.created_at,
                 archive_submissions.reviewed_at,
-                users.name AS requester_name,
-                users.email AS requester_email
+                requesters.name AS requester_name,
+                requesters.email AS requester_email
             FROM archive_submissions
-            LEFT JOIN users
-                ON users.id = archive_submissions.requester_id
+            LEFT JOIN users AS requesters
+                ON requesters.id = archive_submissions.requester_id
+            LEFT JOIN users AS reviewers
+                ON reviewers.id = archive_submissions.reviewer_id
             LEFT JOIN archives
                 ON archives.id = archive_submissions.created_archive_id
             LEFT JOIN courses
@@ -1118,6 +1122,7 @@ async def delete_archive_submission_for_admin(
         user_id=current_user.user_id,
         reason="admin deleted",
     )
+    submission.reviewer_id = current_user.user_id
     submission.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     return {"success": True, "id": submission.id, "deleted": result}
