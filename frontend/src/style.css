@@ -13,6 +13,10 @@
   --title-gradient-end: #b9821d;
   --code-bg-svg-fill: rgba(29, 116, 130, 0.16);
   --app-font-scale: 1;
+  --app-font-size-base: calc(1rem * var(--app-font-scale));
+  --app-font-size-sm: calc(var(--app-font-size-base) * 0.92);
+  --app-font-size-lg: calc(var(--app-font-size-base) * 1.08);
+  --app-icon-size: calc(var(--app-font-size-base) * 0.96);
 
   /* Code highlighting - Light theme */
   --code-keyword: #d73a49;
@@ -63,7 +67,38 @@ body {
 }
 
 #app {
-  font-size: calc(1rem * var(--app-font-scale));
+  font-size: var(--app-font-size-base);
+}
+
+.p-button,
+.p-splitbutton,
+.p-menubar,
+.p-menu,
+.p-select,
+.p-dropdown,
+.p-multiselect,
+.p-inputtext,
+.p-password,
+.p-textarea,
+.p-datatable,
+.p-card {
+  font-size: var(--app-font-size-base);
+}
+
+.p-button-label,
+.p-menuitem-label,
+.p-menubar .p-menuitem-link,
+.p-menu .p-menuitem-link,
+.p-select-label,
+.p-dropdown-label,
+.p-multiselect-label,
+.p-datatable .p-datatable-thead > tr > th,
+.p-datatable .p-datatable-tbody > tr > td,
+.p-splitbutton .p-button-label,
+.p-card .p-card-title,
+.p-card .p-card-subtitle,
+.p-card .p-card-content {
+  font-size: inherit;
 }
 
 html {
