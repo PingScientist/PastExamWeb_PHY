@@ -38,6 +38,98 @@
           </form>
         </template>
       </Card>
+
+      <Card class="settings-section">
+        <template #title>密碼設定</template>
+        <template #content>
+          <form class="settings-form" @submit.prevent="savePassword">
+            <div class="field">
+              <label for="current-password">目前密碼</label>
+              <Password
+                id="current-password"
+                v-model="passwordForm.currentPassword"
+                class="w-full"
+                inputClass="w-full"
+                toggleMask
+                :feedback="false"
+              />
+            </div>
+
+            <div class="field">
+              <label for="new-password">新密碼</label>
+              <Password
+                id="new-password"
+                v-model="passwordForm.newPassword"
+                class="w-full"
+                inputClass="w-full"
+                toggleMask
+              />
+            </div>
+
+            <div class="field">
+              <label for="confirm-password">確認新密碼</label>
+              <Password
+                id="confirm-password"
+                v-model="passwordForm.confirmPassword"
+                class="w-full"
+                inputClass="w-full"
+                toggleMask
+                :feedback="false"
+                :invalid="Boolean(passwordMismatch)"
+              />
+              <small v-if="passwordMismatch" class="field-error">{{ passwordMismatch }}</small>
+            </div>
+
+            <div class="form-actions">
+              <Button
+                label="儲存密碼"
+                icon="pi pi-key"
+                type="submit"
+                :disabled="!canSubmitPassword"
+              />
+            </div>
+          </form>
+        </template>
+      </Card>
+
+      <Card class="settings-section">
+        <template #title>顯示設定</template>
+        <template #content>
+          <form class="settings-form" @submit.prevent="saveDisplaySettings">
+            <div class="settings-grid">
+              <div class="field">
+                <label for="font-size">字體大小</label>
+                <Select
+                  id="font-size"
+                  v-model="displayForm.fontSize"
+                  :options="fontSizeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="w-full"
+                />
+                <small>已先保存偏好值，之後可接入全域字體大小機制。</small>
+              </div>
+
+              <div class="field">
+                <label for="language">語言</label>
+                <Select
+                  id="language"
+                  v-model="displayForm.language"
+                  :options="languageOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="w-full"
+                />
+                <small>語言功能目前僅為 UI placeholder，正式英文翻譯表之後才會提供。</small>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <Button label="儲存顯示設定" icon="pi pi-save" type="submit" />
+            </div>
+          </form>
+        </template>
+      </Card>
     </section>
   </main>
 </template>
@@ -45,7 +137,11 @@
 <script>
 import { userService } from '../api'
 import { getCurrentUser } from '../utils/auth'
+import { getLocalItem, setLocalItem } from '../utils/storage'
 import { useToast } from 'primevue/usetoast'
+
+const FONT_SIZE_KEY = 'personal-settings-font-size'
+const LANGUAGE_KEY = 'personal-settings-language'
 
 export default {
   name: 'PersonalSettings',
@@ -67,12 +163,48 @@ export default {
         name: (currentUser?.name || '').trim(),
         email: (currentUser?.email || '').trim(),
       },
+      passwordForm: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      },
+      displayForm: {
+        fontSize: getLocalItem(FONT_SIZE_KEY) || 'default',
+        language: getLocalItem(LANGUAGE_KEY) || 'zh-TW',
+      },
+      fontSizeOptions: [
+        { label: '小', value: 'small' },
+        { label: '預設', value: 'default' },
+        { label: '大', value: 'large' },
+        { label: '特大', value: 'x-large' },
+      ],
+      languageOptions: [
+        { label: '繁體中文', value: 'zh-TW' },
+        { label: 'English', value: 'en' },
+      ],
     }
   },
   computed: {
     canSaveProfile() {
       return (
         Boolean(this.profileForm.name.trim()) && this.profileForm.name.trim() !== this.originalName
+      )
+    },
+    passwordMismatch() {
+      if (!this.passwordForm.confirmPassword) {
+        return ''
+      }
+
+      return this.passwordForm.newPassword === this.passwordForm.confirmPassword
+        ? ''
+        : '兩次輸入的新密碼不一致'
+    },
+    canSubmitPassword() {
+      return (
+        Boolean(this.passwordForm.currentPassword) &&
+        Boolean(this.passwordForm.newPassword) &&
+        Boolean(this.passwordForm.confirmPassword) &&
+        !this.passwordMismatch
       )
     },
   },
@@ -129,6 +261,39 @@ export default {
         this.profileSaving = false
       }
     },
+
+    savePassword() {
+      if (!this.canSubmitPassword) {
+        return
+      }
+
+      // TODO: Connect to a password update API when the backend endpoint is available.
+      console.info('Password update is a UI placeholder until the backend API is ready.')
+      this.passwordForm = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }
+      this.toast.add({
+        severity: 'info',
+        summary: '尚未送出',
+        detail: '密碼 API 尚未接入，已先保留前端表單。',
+        life: 3000,
+      })
+    },
+
+    saveDisplaySettings() {
+      // TODO: Apply font-size preference through a centralized global display setting.
+      setLocalItem(FONT_SIZE_KEY, this.displayForm.fontSize)
+      // TODO: Language selection is UI-only until the English translation table is provided.
+      setLocalItem(LANGUAGE_KEY, this.displayForm.language)
+      this.toast.add({
+        severity: 'success',
+        summary: '儲存成功',
+        detail: '顯示設定偏好已保存',
+        life: 2500,
+      })
+    },
   },
 }
 </script>
@@ -164,9 +329,19 @@ h1 {
   background: var(--bg-secondary);
 }
 
+.settings-section + .settings-section {
+  margin-top: 1rem;
+}
+
 .settings-form {
   display: grid;
   gap: 1.25rem;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .field {
@@ -184,6 +359,14 @@ small {
   color: var(--text-secondary);
 }
 
+.field-error {
+  color: #dc2626;
+}
+
+.dark .field-error {
+  color: #fca5a5;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -196,6 +379,10 @@ small {
 
   .form-actions {
     justify-content: stretch;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
   }
 
   .form-actions :deep(.p-button) {
