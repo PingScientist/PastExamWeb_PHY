@@ -547,6 +547,10 @@ export default {
       this.$router.push('/admin')
     },
 
+    handleNavigatePersonalSettings() {
+      this.$router.push('/personal-settings')
+    },
+
     openIssueReportDialog() {
       this.issueReportVisible = true
       trackEvent(EVENTS.OPEN_ISSUE_REPORT)
@@ -833,6 +837,11 @@ export default {
       }
 
       const items = [
+        {
+          label: '個人化設定',
+          icon: 'pi pi-sliders-h',
+          command: () => this.invokeMenuAction(() => this.handleNavigatePersonalSettings()),
+        },
         {
           label: '公告中心',
           icon: 'pi pi-bell',

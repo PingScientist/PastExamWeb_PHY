@@ -22,6 +22,13 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
+    path: '/personal-settings',
+    name: 'PersonalSettings',
+    component: () =>
+      import(/* webpackChunkName: "personal-settings" */ '../views/PersonalSettings.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/login/callback',
     name: 'LoginCallback',
     component: () => import(/* webpackChunkName: "login-callback" */ '../views/LoginCallback.vue'),
