@@ -43,7 +43,7 @@
                             class="font-size-slider"
                             aria-labelledby="font-size-label"
                           />
-                          <span class="font-size-current">{{ fontSizePercent }}%</span>
+                          <span class="font-size-current">{{ fontSizeDisplayText }}</span>
                         </div>
                         <small>偏好值會保存於此裝置，重新整理後仍會保留。</small>
                       </div>
@@ -243,6 +243,18 @@ export default {
   computed: {
     fontSizePercent() {
       return Math.round(this.fontSizeScale * 100)
+    },
+    fontSizeToneLabel() {
+      if (this.fontSizeScale < 0.96) {
+        return '偏小'
+      }
+      if (this.fontSizeScale > 1.04) {
+        return '偏大'
+      }
+      return '預設'
+    },
+    fontSizeDisplayText() {
+      return `目前大小：${this.fontSizePercent}%（${this.fontSizeToneLabel}）`
     },
     fontSizePreviewStyle() {
       return {
@@ -580,7 +592,7 @@ h1 {
 
 .font-size-slider-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 4rem;
+  grid-template-columns: minmax(0, 1fr) minmax(8.5rem, auto);
   gap: 1rem;
   align-items: center;
 }
@@ -593,6 +605,7 @@ h1 {
   color: var(--text-primary);
   font-weight: 700;
   text-align: right;
+  white-space: nowrap;
 }
 
 .font-size-preview {
@@ -700,7 +713,12 @@ small {
   }
 
   .font-size-slider-row {
-    grid-template-columns: minmax(0, 1fr) 3.5rem;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .font-size-current {
+    text-align: left;
   }
 
   .form-actions :deep(.p-button) {
