@@ -917,8 +917,10 @@
                       </div>
                       <div class="review-mobile-card-header">
                         <div class="review-mobile-card-title-block">
-                          <div class="review-mobile-card-course-row">
-                            <div class="review-mobile-card-course-name">{{ data.subject }}</div>
+                          <div class="review-mobile-card-course-name">
+                            {{ getReviewMobileCourseName(data) }}
+                          </div>
+                          <div class="review-mobile-type-badges">
                             <Tag
                               v-if="data.is_admin_upload"
                               class="soft-badge soft-badge--admin review-admin-upload-chip"
@@ -926,22 +928,50 @@
                             >
                               管理員投稿
                             </Tag>
+                            <Tag
+                              :class="[
+                                'soft-badge',
+                                'review-card-chip',
+                                'review-mobile-card-type-badge',
+                                getArchiveSubmissionKindClass(data),
+                              ]"
+                              :severity="getArchiveSubmissionKindSeverity(data)"
+                            >
+                              {{ getArchiveSubmissionKind(data) }}
+                            </Tag>
                           </div>
-                          <Tag
-                            :class="[
-                              'soft-badge',
-                              'review-card-chip',
-                              'review-mobile-card-type-badge',
-                              getArchiveSubmissionKindClass(data),
-                            ]"
-                            :severity="getArchiveSubmissionKindSeverity(data)"
-                          >
-                            {{ getArchiveSubmissionKind(data) }}
-                          </Tag>
                         </div>
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-status-chip',
+                            'review-mobile-card-status-badge',
+                            getSubmissionStatusClass(data.status),
+                          ]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          {{ getSubmissionLabel(data.status) }}
+                        </Tag>
                       </div>
                       <div class="review-mobile-summary">
+                        <div v-if="data.name" class="review-mobile-exam-name">{{ data.name }}</div>
                         <div class="review-mobile-info-grid">
+                          <div
+                            v-if="data.id !== null && data.id !== undefined"
+                            class="review-mobile-info-item"
+                          >
+                            <span class="review-mobile-info-label">投稿編號</span>
+                            <span class="review-mobile-info-value">{{
+                              formatSubmissionLabel(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">申請時間</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewSubmissionTime(data)
+                            }}</span>
+                          </div>
                           <div v-if="data.academic_year" class="review-mobile-info-item">
                             <span class="review-mobile-info-label">學期</span>
                             <span class="review-mobile-info-value">{{
@@ -951,33 +981,6 @@
                           <div v-if="data.professor" class="review-mobile-info-item">
                             <span class="review-mobile-info-label">授課教師</span>
                             <span class="review-mobile-info-value">{{ data.professor }}</span>
-                          </div>
-                          <div v-if="data.name" class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">考試名稱</span>
-                            <span class="review-mobile-info-value">{{ data.name }}</span>
-                          </div>
-                          <div
-                            v-if="formatReviewSubmissionTime(data) !== '—'"
-                            class="review-mobile-info-item"
-                          >
-                            <span class="review-mobile-info-label">申請時間</span>
-                            <span class="review-mobile-info-value">{{
-                              formatReviewSubmissionTime(data)
-                            }}</span>
-                          </div>
-                          <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">狀態</span>
-                            <Tag
-                              :class="[
-                                'soft-badge',
-                                'review-card-chip',
-                                'review-status-chip',
-                                getSubmissionStatusClass(data.status),
-                              ]"
-                              :severity="getSubmissionSeverity(data.status)"
-                            >
-                              {{ getSubmissionLabel(data.status) }}
-                            </Tag>
                           </div>
                           <div class="review-mobile-info-item">
                             <span class="review-mobile-info-label">審核人</span>
@@ -989,15 +992,6 @@
                             <span class="review-mobile-info-label">審核時間</span>
                             <span class="review-mobile-info-value">{{
                               formatReviewReviewedTime(data)
-                            }}</span>
-                          </div>
-                          <div
-                            v-if="data.id !== null && data.id !== undefined"
-                            class="review-mobile-info-item"
-                          >
-                            <span class="review-mobile-info-label">投稿編號</span>
-                            <span class="review-mobile-info-value">{{
-                              formatSubmissionLabel(data)
                             }}</span>
                           </div>
                         </div>
@@ -1231,10 +1225,11 @@
                       </div>
                       <div class="review-mobile-card-header">
                         <div class="review-mobile-card-title-block">
-                          <div class="review-mobile-card-course-row">
-                            <div class="review-mobile-card-course-name">{{ data.subject }}</div>
+                          <div class="review-mobile-card-course-name">
+                            {{ getReviewMobileCourseName(data) }}
+                          </div>
+                          <div v-if="data.is_admin_upload" class="review-mobile-type-badges">
                             <Tag
-                              v-if="data.is_admin_upload"
                               class="soft-badge soft-badge--admin review-admin-upload-chip"
                               severity="info"
                             >
@@ -1242,9 +1237,37 @@
                             </Tag>
                           </div>
                         </div>
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-status-chip',
+                            'review-mobile-card-status-badge',
+                            getSubmissionStatusClass(data.status),
+                          ]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          {{ getSubmissionLabel(data.status) }}
+                        </Tag>
                       </div>
                       <div class="review-mobile-summary">
+                        <div v-if="data.name" class="review-mobile-exam-name">{{ data.name }}</div>
                         <div class="review-mobile-info-grid">
+                          <div
+                            v-if="data.id !== null && data.id !== undefined"
+                            class="review-mobile-info-item"
+                          >
+                            <span class="review-mobile-info-label">投稿編號</span>
+                            <span class="review-mobile-info-value">{{
+                              formatSubmissionLabel(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">投稿時間</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewSubmissionTime(data)
+                            }}</span>
+                          </div>
                           <div v-if="data.academic_year" class="review-mobile-info-item">
                             <span class="review-mobile-info-label">學期</span>
                             <span class="review-mobile-info-value">{{
@@ -1254,33 +1277,6 @@
                           <div v-if="data.professor" class="review-mobile-info-item">
                             <span class="review-mobile-info-label">授課教師</span>
                             <span class="review-mobile-info-value">{{ data.professor }}</span>
-                          </div>
-                          <div v-if="data.name" class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">考試名稱</span>
-                            <span class="review-mobile-info-value">{{ data.name }}</span>
-                          </div>
-                          <div
-                            v-if="formatReviewSubmissionTime(data) !== '—'"
-                            class="review-mobile-info-item"
-                          >
-                            <span class="review-mobile-info-label">投稿時間</span>
-                            <span class="review-mobile-info-value">{{
-                              formatReviewSubmissionTime(data)
-                            }}</span>
-                          </div>
-                          <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">狀態</span>
-                            <Tag
-                              :class="[
-                                'soft-badge',
-                                'review-card-chip',
-                                'review-status-chip',
-                                getSubmissionStatusClass(data.status),
-                              ]"
-                              :severity="getSubmissionSeverity(data.status)"
-                            >
-                              {{ getSubmissionLabel(data.status) }}
-                            </Tag>
                           </div>
                           <div class="review-mobile-info-item">
                             <span class="review-mobile-info-label">審核人</span>
@@ -1292,15 +1288,6 @@
                             <span class="review-mobile-info-label">審核時間</span>
                             <span class="review-mobile-info-value">{{
                               formatReviewReviewedTime(data)
-                            }}</span>
-                          </div>
-                          <div
-                            v-if="data.id !== null && data.id !== undefined"
-                            class="review-mobile-info-item"
-                          >
-                            <span class="review-mobile-info-label">投稿編號</span>
-                            <span class="review-mobile-info-value">{{
-                              formatSubmissionLabel(data)
                             }}</span>
                           </div>
                         </div>
@@ -3147,6 +3134,9 @@ const formatReviewReviewer = (item) => {
 const formatReviewReviewedTime = (item) => {
   const value = item?.reviewed_at || item?.reviewedAt || item?.status_changed_at
   return value ? formatRelativeTime(value) : '—'
+}
+const getReviewMobileCourseName = (item) => {
+  return item?.requested_course_name || item?.requestedCourseName || item?.subject || '—'
 }
 const getReviewSortValue = (item, key) => {
   if (key === 'status') return getReviewItemStatusPriority(item)
@@ -8125,20 +8115,20 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-request-table .p-datatable-tbody > tr) {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     width: 100%;
+    min-width: 0;
     box-sizing: border-box;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem 0.75rem;
-    padding: 0.85rem;
+    gap: 0.75rem;
+    padding: 0.95rem;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background: color-mix(in srgb, var(--bg-primary) 94%, var(--bg-secondary) 6%);
   }
 
   :deep(.review-request-table .p-datatable-tbody > tr > td) {
-    display: flex;
-    align-items: flex-start;
+    display: none;
     width: 100%;
     min-width: 0;
     padding: 0 !important;
@@ -8150,18 +8140,26 @@ onBeforeUnmount(() => {
     display: none !important;
   }
 
-  :deep(.review-request-table .p-datatable-tbody > tr > td:first-child) {
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(
+    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:first-child
+  ),
+  :deep(.review-request-table .p-datatable-tbody > tr > td:last-child) {
     display: flex;
     flex-direction: column;
-    order: 1;
-    grid-column: 1 / -1;
+    align-items: stretch;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr > td:last-child) {
+    padding-top: 0.75rem !important;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent) !important;
   }
 
   :deep(.review-mobile-card-header) {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.65rem;
+    gap: 0.8rem;
     width: 100%;
     min-width: 0;
   }
@@ -8171,24 +8169,29 @@ onBeforeUnmount(() => {
     flex: 1 1 auto;
     min-width: 0;
     flex-direction: column;
-    gap: 0.34rem;
-  }
-
-  :deep(.review-mobile-card-course-row) {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    gap: 0.4rem;
   }
 
   :deep(.review-mobile-card-course-name) {
     min-width: 0;
     color: var(--text-primary);
-    font-size: 1rem;
+    font-size: 1.02rem;
     font-weight: 800;
     line-height: 1.3;
     overflow-wrap: anywhere;
+  }
+
+  :deep(.review-mobile-type-badges) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  :deep(.review-mobile-type-badges .review-admin-upload-chip) {
+    font-size: 0.72rem;
+    font-weight: 700;
   }
 
   :deep(.review-mobile-card-type-badge) {
@@ -8201,59 +8204,6 @@ onBeforeUnmount(() => {
     justify-content: center;
     white-space: normal;
     text-align: center;
-  }
-
-  :deep(
-    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(2)
-  ),
-  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(3)) {
-    display: none !important;
-  }
-
-  :deep(
-    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(3)
-  ),
-  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(4)) {
-    display: none !important;
-  }
-
-  :deep(
-    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(4)
-  ),
-  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(5)) {
-    display: none !important;
-  }
-
-  :deep(
-    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(5)
-  ),
-  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(6)) {
-    display: none !important;
-  }
-
-  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(2)) {
-    display: none !important;
-  }
-
-  :deep(
-    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(6)
-  ),
-  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(7)) {
-    display: none !important;
-  }
-
-  :deep(
-    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(7)
-  ),
-  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(8)) {
-    order: 4;
-    grid-column: 1 / -1;
-  }
-
-  :deep(
-    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:nth-child(6)
-  ) {
-    grid-column: 1 / -1;
   }
 
   :deep(.review-card-title) {
@@ -8345,16 +8295,20 @@ onBeforeUnmount(() => {
     margin: 0;
   }
 
+  :deep(.p-datatable .review-card-actions),
   :deep(.review-card-actions) {
     order: 2;
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-start;
     width: 100%;
     gap: 0.45rem;
+    overflow-x: auto;
+    padding-bottom: 0.05rem;
   }
 
+  :deep(.p-datatable .review-card-actions .p-button),
   :deep(.review-card-actions .p-button) {
     width: auto;
     flex: 0 0 auto;
@@ -8364,34 +8318,37 @@ onBeforeUnmount(() => {
     justify-content: center;
   }
 
+  :deep(.p-datatable .review-card-actions .p-button .p-button-label),
   :deep(.review-card-actions .p-button .p-button-label) {
     display: inline-flex;
   }
 
+  :deep(.p-datatable .review-card-actions .p-button .pi),
   :deep(.review-card-actions .p-button .pi) {
     margin-inline-end: 0.35rem;
     line-height: 1;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   :deep(.review-request-table .p-datatable-tbody > tr) {
-    grid-template-columns: 1fr;
     gap: 0.4rem;
     padding: 0.8rem;
   }
 
   :deep(.review-request-table .p-datatable-tbody > tr > td) {
-    grid-column: 1 / -1 !important;
+    width: 100%;
   }
 
+  :deep(.p-datatable .review-card-actions),
   :deep(.review-card-actions) {
     display: flex;
     flex-wrap: nowrap;
-    justify-content: flex-start;
+    justify-content: stretch;
     overflow-x: visible;
   }
 
+  :deep(.p-datatable .review-card-actions .p-button),
   :deep(.review-card-actions .p-button) {
     flex: 1 1 0;
     width: auto;
@@ -8400,10 +8357,12 @@ onBeforeUnmount(() => {
     padding-inline: 0.45rem;
   }
 
+  :deep(.p-datatable .review-card-actions .p-button .p-button-label),
   :deep(.review-card-actions .p-button .p-button-label) {
     display: none;
   }
 
+  :deep(.p-datatable .review-card-actions .p-button .pi),
   :deep(.review-card-actions .p-button .pi) {
     margin: 0;
   }
