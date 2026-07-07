@@ -5925,8 +5925,21 @@ onBeforeUnmount(() => {
 }
 
 .admin-toolbar__search {
+  position: relative;
+  display: block;
   flex: 1 1 20rem;
   min-width: min(100%, 16rem);
+}
+
+.admin-toolbar__search .search-icon {
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.admin-toolbar__search :deep(.p-inputtext) {
+  width: 100%;
 }
 
 .admin-toolbar__select {
@@ -8525,7 +8538,7 @@ onBeforeUnmount(() => {
 
   .admin-toolbar__search,
   .admin-toolbar__select {
-    flex: 1 1 100%;
+    flex: 0 1 auto;
     width: 100% !important;
     min-width: 0;
   }
