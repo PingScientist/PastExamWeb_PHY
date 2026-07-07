@@ -5,145 +5,164 @@
         <h1>個人化設定</h1>
       </header>
 
-      <section class="settings-group">
-        <div class="settings-group-header">
-          <h2>顯示設定</h2>
-          <p>調整網站閱讀與顯示偏好。</p>
+      <div class="settings-layout">
+        <aside class="settings-nav" aria-label="個人化設定目錄">
+          <button
+            v-for="item in navItems"
+            :key="item.id"
+            type="button"
+            class="settings-nav-item"
+            :class="[`settings-nav-item--${item.level}`, { active: activeSection === item.id }]"
+            @click="scrollToSection(item.id)"
+          >
+            {{ item.label }}
+          </button>
+        </aside>
+
+        <div class="settings-content">
+          <section id="display-settings" class="settings-group settings-anchor">
+            <div class="settings-group-header">
+              <h2>顯示設定</h2>
+              <p>調整網站閱讀與顯示偏好。</p>
+            </div>
+
+            <Card class="settings-section">
+              <template #title>顯示設定</template>
+              <template #content>
+                <form class="settings-form" @submit.prevent="saveDisplaySettings">
+                  <div class="settings-grid">
+                    <div id="font-size-setting" class="field settings-anchor">
+                      <label for="font-size">字體大小</label>
+                      <Select
+                        id="font-size"
+                        v-model="displayForm.fontSize"
+                        :options="fontSizeOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full"
+                      />
+                      <small>已先保存偏好值，之後可接入全域字體大小機制。</small>
+                    </div>
+
+                    <div id="language-setting" class="field settings-anchor">
+                      <label for="language">語言</label>
+                      <Select
+                        id="language"
+                        v-model="displayForm.language"
+                        :options="languageOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full"
+                      />
+                      <small>語言功能目前僅為 UI placeholder，正式英文翻譯表之後才會提供。</small>
+                    </div>
+                  </div>
+
+                  <div class="form-actions">
+                    <Button label="儲存顯示設定" icon="pi pi-save" type="submit" />
+                  </div>
+                </form>
+              </template>
+            </Card>
+          </section>
+
+          <section id="account-settings" class="settings-group settings-anchor">
+            <div class="settings-group-header">
+              <h2>帳號設定</h2>
+              <p>管理名稱、電子郵件與密碼。</p>
+            </div>
+
+            <Card id="profile-setting" class="settings-section settings-anchor">
+              <template #title>基本資料</template>
+              <template #content>
+                <form class="settings-form" @submit.prevent="saveProfile">
+                  <div class="field">
+                    <label for="display-name">名稱</label>
+                    <InputText
+                      id="display-name"
+                      v-model="profileForm.name"
+                      class="w-full"
+                      maxlength="15"
+                      :disabled="profileLoading"
+                    />
+                    <small>最多 15 字，會優先作為站內顯示名稱。</small>
+                  </div>
+
+                  <div class="field">
+                    <label for="email">電子郵件</label>
+                    <InputText id="email" v-model="profileForm.email" class="w-full" readonly />
+                  </div>
+
+                  <div class="form-actions">
+                    <Button
+                      label="儲存基本資料"
+                      icon="pi pi-save"
+                      type="submit"
+                      :loading="profileSaving"
+                      :disabled="profileLoading || !canSaveProfile"
+                    />
+                  </div>
+                </form>
+              </template>
+            </Card>
+
+            <Card id="password-setting" class="settings-section settings-anchor">
+              <template #title>密碼設定</template>
+              <template #content>
+                <form class="settings-form" @submit.prevent="savePassword">
+                  <div class="field">
+                    <label for="current-password">目前密碼</label>
+                    <Password
+                      id="current-password"
+                      v-model="passwordForm.currentPassword"
+                      class="w-full"
+                      inputClass="w-full"
+                      toggleMask
+                      :feedback="false"
+                    />
+                  </div>
+
+                  <div class="field">
+                    <label for="new-password">新密碼</label>
+                    <Password
+                      id="new-password"
+                      v-model="passwordForm.newPassword"
+                      class="w-full"
+                      inputClass="w-full"
+                      toggleMask
+                    />
+                  </div>
+
+                  <div class="field">
+                    <label for="confirm-password">確認新密碼</label>
+                    <Password
+                      id="confirm-password"
+                      v-model="passwordForm.confirmPassword"
+                      class="w-full"
+                      inputClass="w-full"
+                      toggleMask
+                      :feedback="false"
+                      :invalid="Boolean(passwordMismatch)"
+                    />
+                    <small v-if="passwordMismatch" class="field-error">{{
+                      passwordMismatch
+                    }}</small>
+                  </div>
+
+                  <div class="form-actions">
+                    <Button
+                      label="儲存密碼"
+                      icon="pi pi-key"
+                      type="submit"
+                      :disabled="!canSubmitPassword"
+                    />
+                  </div>
+                </form>
+              </template>
+            </Card>
+          </section>
         </div>
-
-        <Card class="settings-section">
-          <template #title>顯示設定</template>
-          <template #content>
-            <form class="settings-form" @submit.prevent="saveDisplaySettings">
-              <div class="settings-grid">
-                <div class="field">
-                  <label for="font-size">字體大小</label>
-                  <Select
-                    id="font-size"
-                    v-model="displayForm.fontSize"
-                    :options="fontSizeOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="w-full"
-                  />
-                  <small>已先保存偏好值，之後可接入全域字體大小機制。</small>
-                </div>
-
-                <div class="field">
-                  <label for="language">語言</label>
-                  <Select
-                    id="language"
-                    v-model="displayForm.language"
-                    :options="languageOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="w-full"
-                  />
-                  <small>語言功能目前僅為 UI placeholder，正式英文翻譯表之後才會提供。</small>
-                </div>
-              </div>
-
-              <div class="form-actions">
-                <Button label="儲存顯示設定" icon="pi pi-save" type="submit" />
-              </div>
-            </form>
-          </template>
-        </Card>
-      </section>
-
-      <section class="settings-group">
-        <div class="settings-group-header">
-          <h2>帳號設定</h2>
-          <p>管理名稱、電子郵件與密碼。</p>
-        </div>
-
-        <Card class="settings-section">
-          <template #title>基本資料</template>
-          <template #content>
-            <form class="settings-form" @submit.prevent="saveProfile">
-              <div class="field">
-                <label for="display-name">名稱</label>
-                <InputText
-                  id="display-name"
-                  v-model="profileForm.name"
-                  class="w-full"
-                  maxlength="15"
-                  :disabled="profileLoading"
-                />
-                <small>最多 15 字，會優先作為站內顯示名稱。</small>
-              </div>
-
-              <div class="field">
-                <label for="email">電子郵件</label>
-                <InputText id="email" v-model="profileForm.email" class="w-full" readonly />
-              </div>
-
-              <div class="form-actions">
-                <Button
-                  label="儲存基本資料"
-                  icon="pi pi-save"
-                  type="submit"
-                  :loading="profileSaving"
-                  :disabled="profileLoading || !canSaveProfile"
-                />
-              </div>
-            </form>
-          </template>
-        </Card>
-
-        <Card class="settings-section">
-          <template #title>密碼設定</template>
-          <template #content>
-            <form class="settings-form" @submit.prevent="savePassword">
-              <div class="field">
-                <label for="current-password">目前密碼</label>
-                <Password
-                  id="current-password"
-                  v-model="passwordForm.currentPassword"
-                  class="w-full"
-                  inputClass="w-full"
-                  toggleMask
-                  :feedback="false"
-                />
-              </div>
-
-              <div class="field">
-                <label for="new-password">新密碼</label>
-                <Password
-                  id="new-password"
-                  v-model="passwordForm.newPassword"
-                  class="w-full"
-                  inputClass="w-full"
-                  toggleMask
-                />
-              </div>
-
-              <div class="field">
-                <label for="confirm-password">確認新密碼</label>
-                <Password
-                  id="confirm-password"
-                  v-model="passwordForm.confirmPassword"
-                  class="w-full"
-                  inputClass="w-full"
-                  toggleMask
-                  :feedback="false"
-                  :invalid="Boolean(passwordMismatch)"
-                />
-                <small v-if="passwordMismatch" class="field-error">{{ passwordMismatch }}</small>
-              </div>
-
-              <div class="form-actions">
-                <Button
-                  label="儲存密碼"
-                  icon="pi pi-key"
-                  type="submit"
-                  :disabled="!canSubmitPassword"
-                />
-              </div>
-            </form>
-          </template>
-        </Card>
-      </section>
+      </div>
     </section>
   </main>
 </template>
@@ -186,6 +205,16 @@ export default {
         fontSize: getLocalItem(FONT_SIZE_KEY) || 'default',
         language: getLocalItem(LANGUAGE_KEY) || 'zh-TW',
       },
+      activeSection: 'display-settings',
+      sectionObserver: null,
+      navItems: [
+        { id: 'display-settings', label: '顯示設定', level: 'group' },
+        { id: 'font-size-setting', label: '字體大小', level: 'item' },
+        { id: 'language-setting', label: '語言', level: 'item' },
+        { id: 'account-settings', label: '帳號設定', level: 'group' },
+        { id: 'profile-setting', label: '基本資料', level: 'item' },
+        { id: 'password-setting', label: '密碼設定', level: 'item' },
+      ],
       fontSizeOptions: [
         { label: '小', value: 'small' },
         { label: '預設', value: 'default' },
@@ -224,8 +253,61 @@ export default {
   },
   mounted() {
     void this.loadProfile()
+    this.$nextTick(() => {
+      this.setupSectionObserver()
+    })
+  },
+  beforeUnmount() {
+    this.teardownSectionObserver()
   },
   methods: {
+    scrollToSection(sectionId) {
+      const target = document.getElementById(sectionId)
+      if (!target) {
+        return
+      }
+
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      this.activeSection = sectionId
+    },
+
+    setupSectionObserver() {
+      this.teardownSectionObserver()
+
+      if (typeof IntersectionObserver === 'undefined') {
+        return
+      }
+
+      const targets = this.navItems.map((item) => document.getElementById(item.id)).filter(Boolean)
+      const root = document.querySelector('.content-container')
+
+      this.sectionObserver = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+
+          if (visible[0]?.target?.id) {
+            this.activeSection = visible[0].target.id
+          }
+        },
+        {
+          root,
+          rootMargin: '-16% 0px -68% 0px',
+          threshold: [0, 0.2, 0.6],
+        }
+      )
+
+      targets.forEach((target) => this.sectionObserver.observe(target))
+    },
+
+    teardownSectionObserver() {
+      if (this.sectionObserver) {
+        this.sectionObserver.disconnect()
+        this.sectionObserver = null
+      }
+    },
+
     async loadProfile() {
       this.profileLoading = true
 
@@ -337,6 +419,58 @@ h1 {
   letter-spacing: 0;
 }
 
+.settings-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.settings-nav {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-secondary) 82%, transparent);
+}
+
+.settings-nav-item {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-nav-item:hover,
+.settings-nav-item.active {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+}
+
+.settings-nav-item--item {
+  padding-left: 1.25rem;
+  font-size: 0.86rem;
+}
+
+.settings-content {
+  min-width: 0;
+}
+
+.settings-anchor {
+  scroll-margin-top: 1rem;
+}
+
 .settings-group {
   padding-top: 0.5rem;
 }
@@ -419,6 +553,29 @@ small {
 @media (max-width: 640px) {
   .personal-settings-shell {
     padding: 1.25rem 0.75rem 2rem;
+  }
+
+  .settings-layout {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .settings-nav {
+    position: static;
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.35rem;
+    overflow-x: auto;
+  }
+
+  .settings-nav-item {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .settings-nav-item--item {
+    padding-left: 0.6rem;
   }
 
   .form-actions {
