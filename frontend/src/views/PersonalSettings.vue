@@ -460,7 +460,7 @@ h1 {
   display: grid;
   gap: 0.2rem;
   padding: 0.35rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-secondary) 82%, transparent);
 }
@@ -484,6 +484,10 @@ h1 {
 .settings-nav-item.active {
   color: var(--text-primary);
   background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+}
+
+.settings-nav-item.active {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--title-gradient-start) 72%, transparent);
 }
 
 .settings-nav-item--item {
@@ -529,9 +533,25 @@ h1 {
 }
 
 .settings-section {
-  border: 1px solid var(--border-color);
+  border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
   border-radius: 8px;
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--bg-secondary) 92%, var(--bg-primary));
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.settings-section :deep(.p-card-body) {
+  padding: 1.15rem;
+}
+
+.settings-section :deep(.p-card-title) {
+  color: var(--text-primary);
+  font-size: 1.03rem;
+  font-weight: 740;
+  letter-spacing: 0;
+}
+
+.settings-section :deep(.p-card-content) {
+  padding-top: 0.9rem;
 }
 
 .settings-section + .settings-section {
@@ -593,6 +613,7 @@ h1 {
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-primary) 72%, var(--bg-secondary));
   font-size: calc(1rem * var(--preview-font-scale));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent);
 }
 
 .font-size-preview h3 {
@@ -635,11 +656,7 @@ small {
   justify-content: flex-start;
 }
 
-@media (max-width: 640px) {
-  .personal-settings-shell {
-    padding: 1.25rem 0.75rem 2rem;
-  }
-
+@media (max-width: 860px) {
   .settings-layout {
     display: grid;
     gap: 1rem;
@@ -659,8 +676,18 @@ small {
     white-space: nowrap;
   }
 
+  .settings-nav-item.active {
+    box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--title-gradient-start) 72%, transparent);
+  }
+
   .settings-nav-item--item {
     padding-left: 0.6rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .personal-settings-shell {
+    padding: 1.25rem 0.75rem 2rem;
   }
 
   .form-actions {
