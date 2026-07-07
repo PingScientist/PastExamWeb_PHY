@@ -5964,6 +5964,10 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.admin-toolbar__actions .review-refresh-button {
+  margin-left: 0;
+}
+
 .admin-toolbar--trash-shell {
   align-items: flex-start;
 }
@@ -8477,20 +8481,25 @@ onBeforeUnmount(() => {
   }
 
   .admin-toolbar__filters {
-    flex: 1 1 34rem;
+    flex: 1 1 30rem;
     flex-direction: row;
   }
 
   .admin-toolbar__search {
-    flex: 1 1 20rem;
+    flex: 1 1 16rem;
     width: auto !important;
-    min-width: min(100%, 18rem);
+    min-width: min(100%, 16rem);
   }
 
   .admin-toolbar__select {
-    flex: 0 1 17rem;
+    flex: 0 1 13.5rem;
     width: auto !important;
     min-width: 12rem;
+  }
+
+  .review-search-toolbar .admin-toolbar__search.relative,
+  .review-search-toolbar .review-category-filter.admin-toolbar__select {
+    width: auto !important;
   }
 
   .admin-toolbar__actions {
