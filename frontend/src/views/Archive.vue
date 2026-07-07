@@ -1167,22 +1167,20 @@ async function fetchArchives() {
     if (!Array.isArray(response.data)) {
       throw new Error('Archive list response is not an array')
     }
-    archives.value = archiveRows
-      .filter((archive) => archive && archive.id !== null && archive.id !== undefined)
-      .map((archive) => ({
-        id: archive.id,
-        year: archive.academic_year || '',
-        name: archive.name || '未命名考古題',
-        type: archive.archive_type || 'other',
-        professor: archive.professor || '—',
-        hasAnswers: Boolean(archive.has_answers),
-        subject: selectedSubject.value,
-        uploader_id: archive.uploader_id || null,
-        downloadCount: Number(archive.download_count || 0),
-        sourceSubmissionIds: Array.isArray(archive.source_submission_ids)
-          ? archive.source_submission_ids
-          : [],
-      }))
+    archives.value = archiveRows.filter(isVisibleArchiveRow).map((archive) => ({
+      id: archive.id,
+      year: archive.academic_year || '',
+      name: archive.name || '未命名考古題',
+      type: archive.archive_type || 'other',
+      professor: archive.professor || '—',
+      hasAnswers: Boolean(archive.has_answers),
+      subject: selectedSubject.value,
+      uploader_id: archive.uploader_id || null,
+      downloadCount: Number(archive.download_count || 0),
+      sourceSubmissionIds: Array.isArray(archive.source_submission_ids)
+        ? archive.source_submission_ids
+        : [],
+    }))
 
     const uniqueYears = new Set()
     const uniqueProfessors = new Set()
@@ -1236,6 +1234,19 @@ async function fetchArchives() {
 
 const downloadingId = ref(null)
 
+function isVisibleArchiveRow(archive) {
+  const status = String(archive?.status || archive?.state || '').toLowerCase()
+  return (
+    archive &&
+    archive.id !== null &&
+    archive.id !== undefined &&
+    !archive.deleted_at &&
+    !archive.deletedAt &&
+    !archive.is_deleted &&
+    !['deleted', 'removed', 'trashed'].includes(status)
+  )
+}
+
 async function syncArchiveDownloadCount(archiveId) {
   if (!selectedCourse.value) return
 
@@ -1244,7 +1255,8 @@ async function syncArchiveDownloadCount(archiveId) {
 
   try {
     const response = await courseService.getCourseArchives(selectedCourse.value)
-    const serverMap = new Map(response.data.map((item) => [item.id, item]))
+    const serverRows = Array.isArray(response.data) ? response.data : []
+    const serverMap = new Map(serverRows.filter(isVisibleArchiveRow).map((item) => [item.id, item]))
 
     archives.value = archives.value.map((archive) => {
       const serverArchive = serverMap.get(archive.id)
