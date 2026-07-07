@@ -992,6 +992,7 @@ export default {
   border: 0;
   border-radius: 0;
   background: transparent;
+  font-size: var(--app-font-size-sm);
 }
 
 .nav-action-group {
@@ -1017,6 +1018,7 @@ export default {
   line-height: 1;
   margin: auto 0;
   color: rgba(23, 37, 34, 0.78);
+  font-size: var(--app-font-size-base);
 }
 
 .navbar-dark .user-name {
@@ -1039,6 +1041,7 @@ export default {
 
 :deep(.p-button.p-button-text) {
   color: rgba(23, 37, 34, 0.72);
+  font-size: var(--app-font-size-sm);
   border-radius: 7px;
 }
 
@@ -1098,9 +1101,18 @@ export default {
   background: transparent !important;
 }
 
+:deep(.p-menubar .p-menubar-root-list > .p-menuitem-link) {
+  font-size: var(--app-font-size-sm);
+  line-height: 1;
+}
+
 :deep(.p-menubar .p-menubar-root-list > .p-menuitem-link:focus) {
   background: transparent !important;
   box-shadow: none !important;
+}
+
+:deep(.p-menubar .p-menuitem-icon) {
+  font-size: var(--app-icon-size);
 }
 
 :deep(.p-menubar .p-menuitem) {
