@@ -33,6 +33,7 @@ declare module 'vue' {
     InputText: typeof import('primevue/inputtext')['default']
     Menu: typeof import('primevue/menu')['default']
     Menubar: typeof import('primevue/menubar')['default']
+    Message: typeof import('primevue/message')['default']
     Navbar: typeof import('./src/components/Navbar.vue')['default']
     NotificationCenterModal: typeof import('./src/components/NotificationCenterModal.vue')['default']
     NotificationModal: typeof import('./src/components/NotificationModal.vue')['default']
