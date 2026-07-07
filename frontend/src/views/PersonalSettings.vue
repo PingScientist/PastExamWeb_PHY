@@ -171,9 +171,13 @@
 import { userService } from '../api'
 import { getCurrentUser } from '../utils/auth'
 import { getLocalItem, setLocalItem } from '../utils/storage'
+import {
+  FONT_SIZE_OPTIONS,
+  getFontSizePreference,
+  setFontSizePreference,
+} from '../utils/fontSizePreference'
 import { useToast } from 'primevue/usetoast'
 
-const FONT_SIZE_KEY = 'personal-settings-font-size'
 const LANGUAGE_KEY = 'personal-settings-language'
 
 export default {
@@ -202,7 +206,7 @@ export default {
         confirmPassword: '',
       },
       displayForm: {
-        fontSize: getLocalItem(FONT_SIZE_KEY) || 'default',
+        fontSize: getFontSizePreference(),
         language: getLocalItem(LANGUAGE_KEY) || 'zh-TW',
       },
       activeSection: 'display-settings',
@@ -215,12 +219,7 @@ export default {
         { id: 'profile-setting', label: '基本資料', level: 'item' },
         { id: 'password-setting', label: '密碼設定', level: 'item' },
       ],
-      fontSizeOptions: [
-        { label: '小', value: 'small' },
-        { label: '預設', value: 'default' },
-        { label: '大', value: 'large' },
-        { label: '特大', value: 'x-large' },
-      ],
+      fontSizeOptions: FONT_SIZE_OPTIONS,
       languageOptions: [
         { label: '繁體中文', value: 'zh-TW' },
         { label: 'English', value: 'en' },
@@ -379,8 +378,8 @@ export default {
     },
 
     saveDisplaySettings() {
-      // TODO: Apply font-size preference through a centralized global display setting.
-      setLocalItem(FONT_SIZE_KEY, this.displayForm.fontSize)
+      // TODO: Sync font-size preference with backend profile settings when the API is available.
+      setFontSizePreference(this.displayForm.fontSize)
       // TODO: Language selection is UI-only until the English translation table is provided.
       setLocalItem(LANGUAGE_KEY, this.displayForm.language)
       this.toast.add({

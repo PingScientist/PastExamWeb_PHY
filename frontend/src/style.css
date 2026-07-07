@@ -12,6 +12,7 @@
   --title-gradient-start: #176f7b;
   --title-gradient-end: #b9821d;
   --code-bg-svg-fill: rgba(29, 116, 130, 0.16);
+  --app-font-scale: 1;
 
   /* Code highlighting - Light theme */
   --code-keyword: #d73a49;
@@ -59,6 +60,10 @@
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
+}
+
+#app {
+  font-size: calc(1rem * var(--app-font-scale));
 }
 
 html {
