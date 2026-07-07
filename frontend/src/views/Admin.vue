@@ -922,13 +922,6 @@
                           </div>
                           <div class="review-mobile-type-badges">
                             <Tag
-                              v-if="data.is_admin_upload"
-                              class="soft-badge soft-badge--admin review-admin-upload-chip"
-                              severity="info"
-                            >
-                              管理員投稿
-                            </Tag>
-                            <Tag
                               :class="[
                                 'soft-badge',
                                 'review-card-chip',
@@ -938,6 +931,13 @@
                               :severity="getArchiveSubmissionKindSeverity(data)"
                             >
                               {{ getArchiveSubmissionKind(data) }}
+                            </Tag>
+                            <Tag
+                              v-if="data.is_admin_upload"
+                              class="soft-badge soft-badge--admin review-admin-upload-chip"
+                              severity="info"
+                            >
+                              管理員投稿
                             </Tag>
                           </div>
                         </div>
@@ -8150,7 +8150,15 @@ onBeforeUnmount(() => {
     align-items: stretch;
   }
 
+  :deep(.review-request-table--new .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(
+    .review-request-table:not(.review-request-table--new) .p-datatable-tbody > tr > td:first-child
+  ) {
+    order: 1;
+  }
+
   :deep(.review-request-table .p-datatable-tbody > tr > td:last-child) {
+    order: 2;
     padding-top: 0.75rem !important;
     border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent) !important;
   }
