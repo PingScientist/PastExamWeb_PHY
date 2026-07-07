@@ -861,6 +861,34 @@
                   <template #empty>
                     <div class="review-empty-state">沒有符合搜尋條件的投稿。</div>
                   </template>
+                  <Column>
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('new', 'kind')"
+                      >
+                        投稿類型
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('new', 'kind')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
+                    </template>
+                    <template #body="{ data }">
+                      <Tag
+                        :class="[
+                          'soft-badge',
+                          'review-card-chip',
+                          getArchiveSubmissionKindClass(data),
+                        ]"
+                        :severity="getArchiveSubmissionKindSeverity(data)"
+                      >
+                        {{ getArchiveSubmissionKind(data) }}
+                      </Tag>
+                    </template>
+                  </Column>
                   <Column field="subject">
                     <template #header>
                       <button
@@ -911,49 +939,45 @@
                             {{ getArchiveSubmissionKind(data) }}
                           </Tag>
                         </div>
-                        <Tag
-                          :class="[
-                            'soft-badge',
-                            'review-card-chip',
-                            'review-status-chip',
-                            'review-mobile-card-status-badge',
-                            getSubmissionStatusClass(data.status),
-                          ]"
-                          :severity="getSubmissionSeverity(data.status)"
-                        >
-                          {{ getSubmissionLabel(data.status) }}
-                        </Tag>
                       </div>
                       <div class="review-mobile-summary">
-                        <div v-if="data.name" class="review-mobile-exam-name">{{ data.name }}</div>
                         <div class="review-mobile-info-grid">
-                          <div
-                            v-if="data.id !== null && data.id !== undefined"
-                            class="review-mobile-info-item"
-                          >
-                            <span class="review-mobile-info-label">投稿編號</span>
-                            <span class="review-mobile-info-value">{{
-                              formatSubmissionLabel(data)
-                            }}</span>
-                          </div>
-                          <div v-if="data.professor" class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">授課教師</span>
-                            <span class="review-mobile-info-value">{{ data.professor }}</span>
-                          </div>
                           <div v-if="data.academic_year" class="review-mobile-info-item">
                             <span class="review-mobile-info-label">學期</span>
                             <span class="review-mobile-info-value">{{
                               formatAcademicTerm(data.academic_year)
                             }}</span>
                           </div>
+                          <div v-if="data.professor" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">授課教師</span>
+                            <span class="review-mobile-info-value">{{ data.professor }}</span>
+                          </div>
+                          <div v-if="data.name" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">考試名稱</span>
+                            <span class="review-mobile-info-value">{{ data.name }}</span>
+                          </div>
                           <div
                             v-if="formatReviewSubmissionTime(data) !== '—'"
                             class="review-mobile-info-item"
                           >
-                            <span class="review-mobile-info-label">投稿時間</span>
+                            <span class="review-mobile-info-label">申請時間</span>
                             <span class="review-mobile-info-value">{{
                               formatReviewSubmissionTime(data)
                             }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">狀態</span>
+                            <Tag
+                              :class="[
+                                'soft-badge',
+                                'review-card-chip',
+                                'review-status-chip',
+                                getSubmissionStatusClass(data.status),
+                              ]"
+                              :severity="getSubmissionSeverity(data.status)"
+                            >
+                              {{ getSubmissionLabel(data.status) }}
+                            </Tag>
                           </div>
                           <div class="review-mobile-info-item">
                             <span class="review-mobile-info-label">審核人</span>
@@ -967,36 +991,59 @@
                               formatReviewReviewedTime(data)
                             }}</span>
                           </div>
+                          <div
+                            v-if="data.id !== null && data.id !== undefined"
+                            class="review-mobile-info-item"
+                          >
+                            <span class="review-mobile-info-label">投稿編號</span>
+                            <span class="review-mobile-info-value">{{
+                              formatSubmissionLabel(data)
+                            }}</span>
+                          </div>
                         </div>
                       </div>
                     </template>
                   </Column>
-                  <Column>
+                  <Column field="academic_year">
                     <template #header>
                       <button
                         type="button"
                         class="review-sort-header"
-                        @click="toggleReviewSort('new', 'kind')"
+                        @click="toggleReviewSort('new', 'academic_year')"
                       >
-                        投稿類型
+                        學期
                         <i
                           class="review-sort-icon"
-                          :class="getReviewSortHeaderIcon('new', 'kind')"
+                          :class="getReviewSortHeaderIcon('new', 'academic_year')"
                           aria-hidden="true"
                         ></i>
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag
-                        :class="[
-                          'soft-badge',
-                          'review-card-chip',
-                          getArchiveSubmissionKindClass(data),
-                        ]"
-                        :severity="getArchiveSubmissionKindSeverity(data)"
+                      <span class="review-card-meta-text">{{
+                        formatAcademicTerm(data.academic_year)
+                      }}</span>
+                    </template>
+                  </Column>
+                  <Column field="professor">
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('new', 'professor')"
                       >
-                        {{ getArchiveSubmissionKind(data) }}
-                      </Tag>
+                        授課教師
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('new', 'professor')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
+                    </template>
+                    <template #body="{ data }">
+                      <span class="mobile-metadata-text review-card-meta-text">{{
+                        data.professor
+                      }}</span>
                     </template>
                   </Column>
                   <Column field="name">
@@ -1023,48 +1070,6 @@
                       >
                     </template>
                   </Column>
-                  <Column field="professor">
-                    <template #header>
-                      <button
-                        type="button"
-                        class="review-sort-header"
-                        @click="toggleReviewSort('new', 'professor')"
-                      >
-                        授課教師
-                        <i
-                          class="review-sort-icon"
-                          :class="getReviewSortHeaderIcon('new', 'professor')"
-                          aria-hidden="true"
-                        ></i>
-                      </button>
-                    </template>
-                    <template #body="{ data }">
-                      <span class="mobile-metadata-text review-card-meta-text">{{
-                        data.professor
-                      }}</span>
-                    </template>
-                  </Column>
-                  <Column field="academic_year">
-                    <template #header>
-                      <button
-                        type="button"
-                        class="review-sort-header"
-                        @click="toggleReviewSort('new', 'academic_year')"
-                      >
-                        學期
-                        <i
-                          class="review-sort-icon"
-                          :class="getReviewSortHeaderIcon('new', 'academic_year')"
-                          aria-hidden="true"
-                        ></i>
-                      </button>
-                    </template>
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatAcademicTerm(data.academic_year)
-                      }}</span>
-                    </template>
-                  </Column>
                   <Column>
                     <template #header>
                       <button
@@ -1083,18 +1088,6 @@
                     <template #body="{ data }">
                       <span class="review-card-meta-text">{{
                         formatReviewSubmissionTime(data)
-                      }}</span>
-                    </template>
-                  </Column>
-                  <Column header="審核人">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
-                    </template>
-                  </Column>
-                  <Column header="審核時間">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewReviewedTime(data)
                       }}</span>
                     </template>
                   </Column>
@@ -1125,6 +1118,18 @@
                       >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
+                    </template>
+                  </Column>
+                  <Column header="審核人">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
+                    </template>
+                  </Column>
+                  <Column header="審核時間">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{
+                        formatReviewReviewedTime(data)
+                      }}</span>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -1237,40 +1242,22 @@
                             </Tag>
                           </div>
                         </div>
-                        <Tag
-                          :class="[
-                            'soft-badge',
-                            'review-card-chip',
-                            'review-status-chip',
-                            'review-mobile-card-status-badge',
-                            getSubmissionStatusClass(data.status),
-                          ]"
-                          :severity="getSubmissionSeverity(data.status)"
-                        >
-                          {{ getSubmissionLabel(data.status) }}
-                        </Tag>
                       </div>
                       <div class="review-mobile-summary">
-                        <div v-if="data.name" class="review-mobile-exam-name">{{ data.name }}</div>
                         <div class="review-mobile-info-grid">
-                          <div
-                            v-if="data.id !== null && data.id !== undefined"
-                            class="review-mobile-info-item"
-                          >
-                            <span class="review-mobile-info-label">投稿編號</span>
+                          <div v-if="data.academic_year" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">學期</span>
                             <span class="review-mobile-info-value">{{
-                              formatSubmissionLabel(data)
+                              formatAcademicTerm(data.academic_year)
                             }}</span>
                           </div>
                           <div v-if="data.professor" class="review-mobile-info-item">
                             <span class="review-mobile-info-label">授課教師</span>
                             <span class="review-mobile-info-value">{{ data.professor }}</span>
                           </div>
-                          <div v-if="data.academic_year" class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">學期</span>
-                            <span class="review-mobile-info-value">{{
-                              formatAcademicTerm(data.academic_year)
-                            }}</span>
+                          <div v-if="data.name" class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">考試名稱</span>
+                            <span class="review-mobile-info-value">{{ data.name }}</span>
                           </div>
                           <div
                             v-if="formatReviewSubmissionTime(data) !== '—'"
@@ -1280,6 +1267,20 @@
                             <span class="review-mobile-info-value">{{
                               formatReviewSubmissionTime(data)
                             }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">狀態</span>
+                            <Tag
+                              :class="[
+                                'soft-badge',
+                                'review-card-chip',
+                                'review-status-chip',
+                                getSubmissionStatusClass(data.status),
+                              ]"
+                              :severity="getSubmissionSeverity(data.status)"
+                            >
+                              {{ getSubmissionLabel(data.status) }}
+                            </Tag>
                           </div>
                           <div class="review-mobile-info-item">
                             <span class="review-mobile-info-label">審核人</span>
@@ -1293,8 +1294,59 @@
                               formatReviewReviewedTime(data)
                             }}</span>
                           </div>
+                          <div
+                            v-if="data.id !== null && data.id !== undefined"
+                            class="review-mobile-info-item"
+                          >
+                            <span class="review-mobile-info-label">投稿編號</span>
+                            <span class="review-mobile-info-value">{{
+                              formatSubmissionLabel(data)
+                            }}</span>
+                          </div>
                         </div>
                       </div>
+                    </template>
+                  </Column>
+                  <Column field="academic_year">
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('existing', 'academic_year')"
+                      >
+                        學期
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('existing', 'academic_year')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
+                    </template>
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{
+                        formatAcademicTerm(data.academic_year)
+                      }}</span>
+                    </template>
+                  </Column>
+                  <Column field="professor">
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('existing', 'professor')"
+                      >
+                        授課教師
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('existing', 'professor')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
+                    </template>
+                    <template #body="{ data }">
+                      <span class="mobile-metadata-text review-card-meta-text">{{
+                        data.professor
+                      }}</span>
                     </template>
                   </Column>
                   <Column field="name">
@@ -1321,48 +1373,6 @@
                       >
                     </template>
                   </Column>
-                  <Column field="professor">
-                    <template #header>
-                      <button
-                        type="button"
-                        class="review-sort-header"
-                        @click="toggleReviewSort('existing', 'professor')"
-                      >
-                        授課教師
-                        <i
-                          class="review-sort-icon"
-                          :class="getReviewSortHeaderIcon('existing', 'professor')"
-                          aria-hidden="true"
-                        ></i>
-                      </button>
-                    </template>
-                    <template #body="{ data }">
-                      <span class="mobile-metadata-text review-card-meta-text">{{
-                        data.professor
-                      }}</span>
-                    </template>
-                  </Column>
-                  <Column field="academic_year">
-                    <template #header>
-                      <button
-                        type="button"
-                        class="review-sort-header"
-                        @click="toggleReviewSort('existing', 'academic_year')"
-                      >
-                        學期
-                        <i
-                          class="review-sort-icon"
-                          :class="getReviewSortHeaderIcon('existing', 'academic_year')"
-                          aria-hidden="true"
-                        ></i>
-                      </button>
-                    </template>
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatAcademicTerm(data.academic_year)
-                      }}</span>
-                    </template>
-                  </Column>
                   <Column>
                     <template #header>
                       <button
@@ -1381,18 +1391,6 @@
                     <template #body="{ data }">
                       <span class="review-card-meta-text">{{
                         formatReviewSubmissionTime(data)
-                      }}</span>
-                    </template>
-                  </Column>
-                  <Column header="審核人">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
-                    </template>
-                  </Column>
-                  <Column header="審核時間">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewReviewedTime(data)
                       }}</span>
                     </template>
                   </Column>
@@ -1423,6 +1421,18 @@
                       >
                         {{ getSubmissionLabel(data.status) }}
                       </Tag>
+                    </template>
+                  </Column>
+                  <Column header="審核人">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
+                    </template>
+                  </Column>
+                  <Column header="審核時間">
+                    <template #body="{ data }">
+                      <span class="review-card-meta-text">{{
+                        formatReviewReviewedTime(data)
+                      }}</span>
                     </template>
                   </Column>
                   <Column header="操作">
