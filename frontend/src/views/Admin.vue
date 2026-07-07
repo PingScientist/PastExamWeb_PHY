@@ -13,20 +13,21 @@
           <TabPanel value="0">
             <div class="p-2 md:p-4">
               <section class="admin-section mb-5">
-                <div
-                  class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center gap-3 mb-3"
-                >
+                <div class="admin-toolbar admin-toolbar--course admin-toolbar--section mb-3">
                   <div>
                     <h3 class="m-0">課程分類</h3>
                     <p class="m-0 text-sm text-500">管理左側分類順序、分類名稱與科目標籤</p>
                   </div>
-                  <Button
-                    label="新增分類"
-                    icon="pi pi-plus"
-                    severity="success"
-                    outlined
-                    @click="openCreateCategoryDialog"
-                  />
+                  <div class="admin-toolbar__actions">
+                    <Button
+                      class="admin-toolbar__button"
+                      label="新增分類"
+                      icon="pi pi-plus"
+                      severity="success"
+                      outlined
+                      @click="openCreateCategoryDialog"
+                    />
+                  </div>
                 </div>
                 <DataTable
                   :value="courseCategories"
@@ -218,11 +219,9 @@
                 </div>
               </section>
 
-              <div
-                class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-4 gap-3"
-              >
-                <div class="flex flex-column md:flex-row gap-3 w-full md:w-auto">
-                  <div class="relative w-full md:w-auto">
+              <div class="admin-toolbar admin-toolbar--course mb-4">
+                <div class="admin-toolbar__filters">
+                  <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
                     <InputText v-model="searchQuery" placeholder="搜尋課程" class="w-full pl-6" />
                   </div>
@@ -233,16 +232,18 @@
                     optionValue="value"
                     placeholder="篩選分類"
                     showClear
-                    class="w-full md:w-14rem"
+                    class="admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
-                <Button
-                  label="新增課程"
-                  icon="pi pi-plus"
-                  severity="success"
-                  @click="openCreateDialog"
-                  class="w-full md:w-auto"
-                />
+                <div class="admin-toolbar__actions">
+                  <Button
+                    label="新增課程"
+                    icon="pi pi-plus"
+                    severity="success"
+                    @click="openCreateDialog"
+                    class="admin-toolbar__button w-full md:w-auto"
+                  />
+                </div>
               </div>
 
               <ProgressSpinner
@@ -401,11 +402,9 @@
 
           <TabPanel value="1">
             <div class="p-2 md:p-4">
-              <div
-                class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-4 gap-3"
-              >
-                <div class="flex flex-column md:flex-row gap-3 w-full md:w-auto">
-                  <div class="relative w-full md:w-auto">
+              <div class="admin-toolbar admin-toolbar--users mb-4">
+                <div class="admin-toolbar__filters">
+                  <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
                       v-model="userSearchQuery"
@@ -420,16 +419,18 @@
                     optionValue="value"
                     placeholder="篩選類型"
                     showClear
-                    class="w-full md:w-14rem"
+                    class="admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
-                <Button
-                  label="新增使用者"
-                  icon="pi pi-plus"
-                  severity="success"
-                  @click="openCreateUserDialog"
-                  class="w-full md:w-auto"
-                />
+                <div class="admin-toolbar__actions">
+                  <Button
+                    label="新增使用者"
+                    icon="pi pi-plus"
+                    severity="success"
+                    @click="openCreateUserDialog"
+                    class="admin-toolbar__button w-full md:w-auto"
+                  />
+                </div>
               </div>
 
               <ProgressSpinner
@@ -613,11 +614,9 @@
 
           <TabPanel value="2">
             <div class="p-2 md:p-4">
-              <div
-                class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-4 gap-3"
-              >
-                <div class="flex flex-column md:flex-row gap-3 w-full md:w-auto">
-                  <div class="relative w-full md:w-auto">
+              <div class="admin-toolbar admin-toolbar--announcement mb-4">
+                <div class="admin-toolbar__filters">
+                  <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
                       v-model="notificationSearchQuery"
@@ -632,16 +631,18 @@
                     optionValue="value"
                     placeholder="篩選重要程度"
                     showClear
-                    class="w-full md:w-14rem"
+                    class="admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
-                <Button
-                  label="新增公告"
-                  icon="pi pi-plus"
-                  severity="success"
-                  @click="openNotificationCreateDialog"
-                  class="w-full md:w-auto"
-                />
+                <div class="admin-toolbar__actions">
+                  <Button
+                    label="新增公告"
+                    icon="pi pi-plus"
+                    severity="success"
+                    @click="openNotificationCreateDialog"
+                    class="admin-toolbar__button w-full md:w-auto"
+                  />
+                </div>
               </div>
 
               <ProgressSpinner
@@ -818,9 +819,9 @@
               <div v-if="reviewLoadError" class="review-load-error">
                 {{ reviewLoadError }}
               </div>
-              <div class="review-search-toolbar">
-                <div class="search-container">
-                  <div class="relative w-full md:w-24rem">
+              <div class="review-search-toolbar admin-toolbar admin-toolbar--review">
+                <div class="search-container admin-toolbar__filters">
+                  <div class="admin-toolbar__search relative w-full md:w-24rem">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
                       v-model="reviewSearchQuery"
@@ -835,16 +836,18 @@
                     optionValue="value"
                     placeholder="篩選分類"
                     showClear
-                    class="review-category-filter w-full md:w-14rem"
+                    class="review-category-filter admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
-                <Button
-                  class="review-refresh-button"
-                  icon="pi pi-refresh"
-                  label="重新整理"
-                  outlined
-                  @click="loadReviewItems"
-                />
+                <div class="admin-toolbar__actions">
+                  <Button
+                    class="review-refresh-button admin-toolbar__button"
+                    icon="pi pi-refresh"
+                    label="重新整理"
+                    outlined
+                    @click="loadReviewItems"
+                  />
+                </div>
               </div>
               <div class="review-section">
                 <div class="review-section-header">
@@ -1482,50 +1485,61 @@
 
           <TabPanel value="4">
             <div class="p-2 md:p-4 trash-center">
-              <div
-                class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center gap-3 mb-4"
-              >
+              <div class="admin-toolbar admin-toolbar--trash-shell mb-4">
                 <div>
                   <h3 class="m-0">垃圾桶</h3>
                   <p class="m-0 text-sm text-500">還原或永久刪除管理中心已刪除項目</p>
                 </div>
-                <div class="flex flex-column md:flex-row gap-2 w-full md:w-auto">
-                  <Select
-                    v-model="trashFilterType"
-                    :options="trashFilterOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="w-full md:w-12rem"
-                    @change="loadTrashItems"
-                  />
-                  <Button icon="pi pi-refresh" label="重新整理" outlined @click="loadTrashItems" />
-                  <Button
-                    icon="pi pi-sitemap"
-                    :label="getTrashRelationButtonLabel()"
-                    outlined
-                    :disabled="!isTrashRelationHierarchyFilterOnly"
-                    :severity="isTrashRelationHierarchyEnabled ? 'primary' : 'secondary'"
-                    :title="
-                      isTrashRelationHierarchyFilterOnly ? '' : '相關性顯示僅適用於「全部」篩選。'
-                    "
-                    @click="toggleTrashRelationHierarchy"
-                  />
-                  <Button
-                    icon="pi pi-info-circle"
-                    label="依賴與阻擋說明"
-                    outlined
-                    aria-label="依賴與阻擋說明"
-                    title="依賴與阻擋說明"
-                    @click="showTrashDependencyHelpDialog = true"
-                  />
-                  <Button
-                    icon="pi pi-times-circle"
-                    label="清空目前範圍"
-                    severity="danger"
-                    outlined
-                    :disabled="!trashItems.length || trashLoading"
-                    @click="confirmBulkDeleteTrash"
-                  />
+                <div class="admin-toolbar admin-toolbar--trash">
+                  <div class="admin-toolbar__filters admin-toolbar__filters--trash">
+                    <Select
+                      v-model="trashFilterType"
+                      :options="trashFilterOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      class="admin-toolbar__select admin-toolbar__select--trash w-full md:w-12rem"
+                      @change="loadTrashItems"
+                    />
+                  </div>
+                  <div class="admin-toolbar__actions admin-toolbar__actions--trash">
+                    <Button
+                      class="admin-toolbar__button"
+                      icon="pi pi-refresh"
+                      label="重新整理"
+                      outlined
+                      @click="loadTrashItems"
+                    />
+                    <Button
+                      class="admin-toolbar__button"
+                      icon="pi pi-sitemap"
+                      :label="getTrashRelationButtonLabel()"
+                      outlined
+                      :disabled="!isTrashRelationHierarchyFilterOnly"
+                      :severity="isTrashRelationHierarchyEnabled ? 'primary' : 'secondary'"
+                      :title="
+                        isTrashRelationHierarchyFilterOnly ? '' : '相關性顯示僅適用於「全部」篩選。'
+                      "
+                      @click="toggleTrashRelationHierarchy"
+                    />
+                    <Button
+                      class="admin-toolbar__button"
+                      icon="pi pi-info-circle"
+                      label="依賴與阻擋說明"
+                      outlined
+                      aria-label="依賴與阻擋說明"
+                      title="依賴與阻擋說明"
+                      @click="showTrashDependencyHelpDialog = true"
+                    />
+                    <Button
+                      class="admin-toolbar__button admin-toolbar__button--danger"
+                      icon="pi pi-times-circle"
+                      label="清空目前範圍"
+                      severity="danger"
+                      outlined
+                      :disabled="!trashItems.length || trashLoading"
+                      @click="confirmBulkDeleteTrash"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -5887,6 +5901,74 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-toolbar--section {
+  align-items: flex-start;
+}
+
+.admin-toolbar__filters {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.admin-toolbar__search {
+  flex: 1 1 20rem;
+  min-width: min(100%, 16rem);
+}
+
+.admin-toolbar__select {
+  flex: 0 1 16rem;
+  min-width: min(100%, 12rem);
+}
+
+.admin-toolbar__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+:deep(.admin-toolbar__button.p-button),
+:deep(.admin-toolbar__actions .p-button) {
+  width: auto;
+  min-height: 2.45rem;
+  white-space: nowrap;
+}
+
+.admin-toolbar--trash-shell {
+  align-items: flex-start;
+}
+
+.admin-toolbar--trash {
+  flex: 1 1 34rem;
+  justify-content: flex-end;
+  width: auto;
+}
+
+.admin-toolbar__filters--trash {
+  flex: 0 1 13rem;
+}
+
+.admin-toolbar__actions--trash {
+  flex: 0 1 auto;
+}
+
 :deep(.review-refresh-button .p-button-icon) {
   font-size: 0.95rem;
 }
@@ -8373,6 +8455,110 @@ onBeforeUnmount(() => {
   :deep(.p-datatable .review-card-actions .p-button .pi),
   :deep(.review-card-actions .p-button .pi) {
     margin: 0;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  .admin-toolbar {
+    align-items: center;
+  }
+
+  .admin-toolbar__filters {
+    flex: 1 1 34rem;
+    flex-direction: row;
+  }
+
+  .admin-toolbar__search {
+    flex: 1 1 20rem;
+    width: auto !important;
+    min-width: min(100%, 18rem);
+  }
+
+  .admin-toolbar__select {
+    flex: 0 1 17rem;
+    width: auto !important;
+    min-width: 12rem;
+  }
+
+  .admin-toolbar__actions {
+    width: auto;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  :deep(.admin-toolbar__button.p-button),
+  :deep(.admin-toolbar__actions .p-button) {
+    flex: 0 0 auto;
+    width: auto !important;
+    min-width: 0;
+    padding-inline: 0.8rem;
+  }
+
+  .admin-toolbar--trash {
+    flex: 1 1 38rem;
+  }
+
+  .admin-toolbar__filters--trash {
+    flex: 0 1 14rem;
+  }
+
+  .admin-toolbar__actions--trash {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-toolbar {
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .admin-toolbar__filters,
+  .admin-toolbar__actions {
+    width: 100%;
+  }
+
+  .admin-toolbar__filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-toolbar__search,
+  .admin-toolbar__select {
+    flex: 1 1 100%;
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .admin-toolbar__actions {
+    justify-content: flex-end;
+  }
+
+  :deep(.admin-toolbar__button.p-button),
+  :deep(.admin-toolbar__actions .p-button) {
+    width: auto !important;
+    min-width: 0;
+  }
+
+  .admin-toolbar--trash {
+    width: 100%;
+  }
+
+  .admin-toolbar__filters--trash {
+    flex: 1 1 100%;
+  }
+
+  .admin-toolbar__actions--trash {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+
+  :deep(.admin-toolbar__actions--trash .p-button) {
+    width: 100% !important;
+    min-width: 0;
+    padding-inline: 0.45rem;
+    white-space: normal;
   }
 }
 
