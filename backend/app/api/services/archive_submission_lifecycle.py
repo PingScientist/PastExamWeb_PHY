@@ -518,6 +518,7 @@ async def hard_delete_archive_submission_group(
         await db.delete(item)
     for message in messages:
         await db.delete(message)
+    await db.flush()
     for item in group.archives:
         await db.delete(item)
 

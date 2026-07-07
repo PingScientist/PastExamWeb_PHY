@@ -786,6 +786,7 @@ async def _hard_delete_archive(
     ).scalars().all()
     for message in messages:
         await db.delete(message)
+    await db.flush()
     await db.delete(archive)
     return {
         "deleted": 1,
@@ -1926,13 +1927,17 @@ async def permanently_delete_trash_item(
     except Exception as error:
         await db.rollback()
         logger.exception("Failed to permanently delete trash item %s/%s", item_type, item_id)
+        error_text = str(error)
+        message = "永久刪除失敗，請稍後再試或查看伺服器日誌。"
+        if "archive_discussion_messages" in error_text:
+            message = "永久刪除失敗：仍有考古題留言引用此考古題，請查看伺服器日誌。"
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "success": False,
                 "deleted": 0,
                 "failed": 1,
-                "message": "永久刪除失敗，請稍後再試或查看伺服器日誌。",
+                "message": message,
                 "blockingDependencies": [],
                 "warnings": warnings,
             },
