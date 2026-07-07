@@ -306,9 +306,9 @@ export default {
 }
 
 .personal-settings-shell {
-  width: min(100%, 960px);
+  width: min(100%, 1040px);
   margin: 0 auto;
-  padding: 2rem 1rem 3rem;
+  padding: 2.25rem 1.5rem 3.5rem;
 }
 
 .settings-header {
@@ -330,12 +330,13 @@ h1 {
 }
 
 .settings-section + .settings-section {
-  margin-top: 1rem;
+  margin-top: 1.25rem;
 }
 
 .settings-form {
   display: grid;
   gap: 1.25rem;
+  width: min(100%, 640px);
 }
 
 .settings-grid {
@@ -369,7 +370,7 @@ small {
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 @media (max-width: 640px) {
