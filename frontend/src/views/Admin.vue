@@ -8529,6 +8529,89 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (min-width: 641px) and (max-width: 760px) {
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    ) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem 0.75rem;
+  }
+
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    > .admin-toolbar__filters {
+    display: contents;
+  }
+
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    .admin-toolbar__search {
+    grid-column: 1 / -1;
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    .admin-toolbar__select {
+    grid-column: 1;
+    width: 100% !important;
+    min-width: min(100%, 15rem);
+  }
+
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    > .admin-toolbar__actions {
+    grid-column: 2;
+    justify-self: end;
+    width: auto;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1023px) {
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    ) {
+    display: grid;
+    grid-template-columns: minmax(16rem, 1fr) minmax(12rem, 15rem) auto;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    > .admin-toolbar__filters {
+    display: contents;
+  }
+
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    .admin-toolbar__search,
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    .admin-toolbar__select {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
+      .admin-toolbar--section
+    )
+    > .admin-toolbar__actions {
+    justify-self: end;
+    width: auto;
+  }
+}
+
 @media (max-width: 640px) {
   .admin-toolbar {
     align-items: stretch;
