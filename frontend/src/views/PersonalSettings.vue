@@ -409,7 +409,7 @@ export default {
     saveDisplaySettings() {
       // TODO: Sync font-size preference with backend profile settings when the API is available.
       setFontSizePreference(this.displayForm.fontSize)
-      // TODO: Language selection is UI-only until the English translation table is provided.
+      // TODO: Wire language preference to i18n after the official English translation table is provided.
       setLocalItem(LANGUAGE_KEY, this.displayForm.language)
       this.toast.add({
         severity: 'success',
