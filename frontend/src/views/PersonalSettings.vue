@@ -5,131 +5,145 @@
         <h1>個人化設定</h1>
       </header>
 
-      <Card class="settings-section">
-        <template #title>基本資料</template>
-        <template #content>
-          <form class="settings-form" @submit.prevent="saveProfile">
-            <div class="field">
-              <label for="display-name">名稱</label>
-              <InputText
-                id="display-name"
-                v-model="profileForm.name"
-                class="w-full"
-                maxlength="15"
-                :disabled="profileLoading"
-              />
-              <small>最多 15 字，會優先作為站內顯示名稱。</small>
-            </div>
+      <section class="settings-group">
+        <div class="settings-group-header">
+          <h2>顯示設定</h2>
+          <p>調整網站閱讀與顯示偏好。</p>
+        </div>
 
-            <div class="field">
-              <label for="email">電子郵件</label>
-              <InputText id="email" v-model="profileForm.email" class="w-full" readonly />
-            </div>
+        <Card class="settings-section">
+          <template #title>顯示設定</template>
+          <template #content>
+            <form class="settings-form" @submit.prevent="saveDisplaySettings">
+              <div class="settings-grid">
+                <div class="field">
+                  <label for="font-size">字體大小</label>
+                  <Select
+                    id="font-size"
+                    v-model="displayForm.fontSize"
+                    :options="fontSizeOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    class="w-full"
+                  />
+                  <small>已先保存偏好值，之後可接入全域字體大小機制。</small>
+                </div>
 
-            <div class="form-actions">
-              <Button
-                label="儲存基本資料"
-                icon="pi pi-save"
-                type="submit"
-                :loading="profileSaving"
-                :disabled="profileLoading || !canSaveProfile"
-              />
-            </div>
-          </form>
-        </template>
-      </Card>
+                <div class="field">
+                  <label for="language">語言</label>
+                  <Select
+                    id="language"
+                    v-model="displayForm.language"
+                    :options="languageOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    class="w-full"
+                  />
+                  <small>語言功能目前僅為 UI placeholder，正式英文翻譯表之後才會提供。</small>
+                </div>
+              </div>
 
-      <Card class="settings-section">
-        <template #title>密碼設定</template>
-        <template #content>
-          <form class="settings-form" @submit.prevent="savePassword">
-            <div class="field">
-              <label for="current-password">目前密碼</label>
-              <Password
-                id="current-password"
-                v-model="passwordForm.currentPassword"
-                class="w-full"
-                inputClass="w-full"
-                toggleMask
-                :feedback="false"
-              />
-            </div>
+              <div class="form-actions">
+                <Button label="儲存顯示設定" icon="pi pi-save" type="submit" />
+              </div>
+            </form>
+          </template>
+        </Card>
+      </section>
 
-            <div class="field">
-              <label for="new-password">新密碼</label>
-              <Password
-                id="new-password"
-                v-model="passwordForm.newPassword"
-                class="w-full"
-                inputClass="w-full"
-                toggleMask
-              />
-            </div>
+      <section class="settings-group">
+        <div class="settings-group-header">
+          <h2>帳號設定</h2>
+          <p>管理名稱、電子郵件與密碼。</p>
+        </div>
 
-            <div class="field">
-              <label for="confirm-password">確認新密碼</label>
-              <Password
-                id="confirm-password"
-                v-model="passwordForm.confirmPassword"
-                class="w-full"
-                inputClass="w-full"
-                toggleMask
-                :feedback="false"
-                :invalid="Boolean(passwordMismatch)"
-              />
-              <small v-if="passwordMismatch" class="field-error">{{ passwordMismatch }}</small>
-            </div>
-
-            <div class="form-actions">
-              <Button
-                label="儲存密碼"
-                icon="pi pi-key"
-                type="submit"
-                :disabled="!canSubmitPassword"
-              />
-            </div>
-          </form>
-        </template>
-      </Card>
-
-      <Card class="settings-section">
-        <template #title>顯示設定</template>
-        <template #content>
-          <form class="settings-form" @submit.prevent="saveDisplaySettings">
-            <div class="settings-grid">
+        <Card class="settings-section">
+          <template #title>基本資料</template>
+          <template #content>
+            <form class="settings-form" @submit.prevent="saveProfile">
               <div class="field">
-                <label for="font-size">字體大小</label>
-                <Select
-                  id="font-size"
-                  v-model="displayForm.fontSize"
-                  :options="fontSizeOptions"
-                  optionLabel="label"
-                  optionValue="value"
+                <label for="display-name">名稱</label>
+                <InputText
+                  id="display-name"
+                  v-model="profileForm.name"
                   class="w-full"
+                  maxlength="15"
+                  :disabled="profileLoading"
                 />
-                <small>已先保存偏好值，之後可接入全域字體大小機制。</small>
+                <small>最多 15 字，會優先作為站內顯示名稱。</small>
               </div>
 
               <div class="field">
-                <label for="language">語言</label>
-                <Select
-                  id="language"
-                  v-model="displayForm.language"
-                  :options="languageOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  class="w-full"
-                />
-                <small>語言功能目前僅為 UI placeholder，正式英文翻譯表之後才會提供。</small>
+                <label for="email">電子郵件</label>
+                <InputText id="email" v-model="profileForm.email" class="w-full" readonly />
               </div>
-            </div>
 
-            <div class="form-actions">
-              <Button label="儲存顯示設定" icon="pi pi-save" type="submit" />
-            </div>
-          </form>
-        </template>
-      </Card>
+              <div class="form-actions">
+                <Button
+                  label="儲存基本資料"
+                  icon="pi pi-save"
+                  type="submit"
+                  :loading="profileSaving"
+                  :disabled="profileLoading || !canSaveProfile"
+                />
+              </div>
+            </form>
+          </template>
+        </Card>
+
+        <Card class="settings-section">
+          <template #title>密碼設定</template>
+          <template #content>
+            <form class="settings-form" @submit.prevent="savePassword">
+              <div class="field">
+                <label for="current-password">目前密碼</label>
+                <Password
+                  id="current-password"
+                  v-model="passwordForm.currentPassword"
+                  class="w-full"
+                  inputClass="w-full"
+                  toggleMask
+                  :feedback="false"
+                />
+              </div>
+
+              <div class="field">
+                <label for="new-password">新密碼</label>
+                <Password
+                  id="new-password"
+                  v-model="passwordForm.newPassword"
+                  class="w-full"
+                  inputClass="w-full"
+                  toggleMask
+                />
+              </div>
+
+              <div class="field">
+                <label for="confirm-password">確認新密碼</label>
+                <Password
+                  id="confirm-password"
+                  v-model="passwordForm.confirmPassword"
+                  class="w-full"
+                  inputClass="w-full"
+                  toggleMask
+                  :feedback="false"
+                  :invalid="Boolean(passwordMismatch)"
+                />
+                <small v-if="passwordMismatch" class="field-error">{{ passwordMismatch }}</small>
+              </div>
+
+              <div class="form-actions">
+                <Button
+                  label="儲存密碼"
+                  icon="pi pi-key"
+                  type="submit"
+                  :disabled="!canSubmitPassword"
+                />
+              </div>
+            </form>
+          </template>
+        </Card>
+      </section>
     </section>
   </main>
 </template>
@@ -321,6 +335,35 @@ h1 {
   font-size: 1.75rem;
   font-weight: 760;
   letter-spacing: 0;
+}
+
+.settings-group {
+  padding-top: 0.5rem;
+}
+
+.settings-group + .settings-group {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-group-header {
+  max-width: 640px;
+  margin-bottom: 0.85rem;
+}
+
+.settings-group-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.18rem;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.settings-group-header p {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 .settings-section {
