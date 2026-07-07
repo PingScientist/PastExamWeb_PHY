@@ -101,6 +101,18 @@ body {
   font-size: inherit;
 }
 
+.pi,
+.p-button-icon,
+.p-menuitem-icon,
+.p-menuitem-submenu-icon,
+.p-menubar .p-menuitem-icon,
+.p-splitbutton .p-button-icon,
+.p-dropdown .p-dropdown-trigger-icon,
+.p-select .p-select-dropdown-icon {
+  font-size: var(--app-icon-size);
+  line-height: 1;
+}
+
 html {
   color-scheme: light;
 }
