@@ -218,6 +218,18 @@ async def _ensure_or_create_requested_category_for_approval(
     )
 
 
+async def _next_course_order_index(db: AsyncSession, category: str) -> int:
+    max_order = (
+        await db.execute(
+            select(func.max(Course.order_index)).where(
+                Course.category == category,
+                Course.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    return 0 if max_order is None else int(max_order) + 1
+
+
 async def _acquire_course_approval_lock(db: AsyncSession, *, category_key: str, course_name: str) -> None:
     scope_key = f"archive_approval:{category_key}:{course_name.lower().strip()}"
     await db.execute(
@@ -328,7 +340,11 @@ async def upload_archive(
         course = result.scalar_one_or_none()
 
         if not course:
-            course = Course(name=subject, category=category)
+            course = Course(
+                name=subject,
+                category=category,
+                order_index=await _next_course_order_index(db, category),
+            )
             db.add(course)
             await db.commit()
             await db.refresh(course)
@@ -852,7 +868,11 @@ async def update_archive_submission_for_admin(
             )
         ).scalar_one_or_none()
         if not course:
-            course = Course(name=course_name, category=category_key)
+            course = Course(
+                name=course_name,
+                category=category_key,
+                order_index=await _next_course_order_index(db, category_key),
+            )
             db.add(course)
             await db.commit()
             await db.refresh(course)
@@ -936,7 +956,12 @@ async def approve_archive_submission(
                 detail="已有同名課程在垃圾桶，請先復原或永久刪除後再通過。",
             )
 
-        course = Course(name=formatted_course_name, category=category_key)
+        order_index = await _next_course_order_index(db, category_key)
+        course = Course(
+            name=formatted_course_name,
+            category=category_key,
+            order_index=order_index,
+        )
         db.add(course)
         await db.commit()
         await db.refresh(course)
@@ -1046,13 +1071,46 @@ async def republish_archive_submission(
     submission = await db.get(ArchiveSubmission, submission_id)
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-    _ensure_review_submission_mutable(submission)
-
     normalized_status = _normalize_submission_status(submission.status)
+    if submission.deleted_at is not None or normalized_status == SubmissionStatus.DELETED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="此投稿已刪除，無法重新上架。",
+        )
     if normalized_status != SubmissionStatus.TAKEDOWN:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only taken down submissions can be republished",
+        )
+
+    if submission.created_archive_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="無法重新上架：找不到對應考古題。",
+        )
+
+    archive = await db.get(Archive, submission.created_archive_id)
+    if not archive:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="無法重新上架：關聯考古題不存在",
+        )
+    if archive.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="無法重新上架：關聯考古題已下架，請先復原考古題。",
+        )
+
+    course = await db.get(Course, archive.course_id)
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="無法重新上架：關聯課程不存在",
+        )
+    if course.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="無法重新上架：關聯課程已在垃圾桶，請先復原原課程。",
         )
 
     if submission.lifecycle_reason == LIFECYCLE_LINKED_ARCHIVE_PERMANENTLY_DELETED:
@@ -1060,26 +1118,16 @@ async def republish_archive_submission(
             status_code=status.HTTP_409_CONFLICT,
             detail="無法復原：關聯考古題已永久刪除",
         )
-
-    if submission.lifecycle_reason == LIFECYCLE_ARCHIVE_TRASHED and submission.created_archive_id:
-        archive = await db.get(Archive, submission.created_archive_id)
-        if archive and archive.deleted_at is not None:
-            course = await db.get(Course, archive.course_id)
-            if not course or course.deleted_at is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="無法重新上架，請先至垃圾桶復原原課程",
-                )
-            archive.deleted_at = None
-            archive.deleted_by_id = None
-            archive.deleted_reason = None
-            archive.restored_at = datetime.now(timezone.utc)
-            archive.restored_by_id = current_user.user_id
+    if submission.lifecycle_reason == LIFECYCLE_ARCHIVE_TRASHED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="無法重新上架：此投稿先前因關聯考古題刪除而下架",
+        )
 
     if is_course_trash_lifecycle_reason(submission.lifecycle_reason):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="無法重新上架，請先至垃圾桶復原原課程",
+            detail="無法重新上架：此投稿先前因關聯課程刪除而下架",
         )
 
     submission.status = SubmissionStatus.APPROVED

@@ -857,6 +857,11 @@
                   :value="newCourseArchiveRequests"
                   :loading="reviewLoading"
                   class="admin-data-table review-request-table review-request-table--new"
+                  paginator
+                  :rows="newSubmissionRows"
+                  :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                  :first="newSubmissionFirst"
+                  @page="handleNewSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
                   breakpoint="1023px"
@@ -1193,6 +1198,11 @@
                   :value="existingCourseArchiveRequests"
                   :loading="reviewLoading"
                   class="admin-data-table review-request-table"
+                  paginator
+                  :rows="existingSubmissionRows"
+                  :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                  :first="existingSubmissionFirst"
+                  @page="handleExistingSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
                   breakpoint="1023px"
@@ -2988,6 +2998,10 @@ const reviewLoading = ref(false)
 const reviewLoadError = ref('')
 const reviewSearchQuery = ref('')
 const reviewCategoryFilter = ref(null)
+const newSubmissionFirst = ref(0)
+const newSubmissionRows = ref(10)
+const existingSubmissionFirst = ref(0)
+const existingSubmissionRows = ref(10)
 const archiveRequests = ref([])
 const trashLoading = ref(false)
 const trashItems = ref([])
@@ -3305,6 +3319,29 @@ const existingCourseArchiveRequests = computed(() =>
     'existing'
   )
 )
+const clampReviewPaginatorFirst = (firstRef, rows, totalItems) => {
+  const normalizedRows = Math.max(1, Number(rows) || 10)
+  if (totalItems <= 0) {
+    firstRef.value = 0
+    return
+  }
+  const maxFirst = Math.max(0, Math.floor((totalItems - 1) / normalizedRows) * normalizedRows)
+  if (firstRef.value > maxFirst) {
+    firstRef.value = maxFirst
+  }
+}
+const handleNewSubmissionPage = (event = {}) => {
+  const first = Math.max(0, Number(event?.first) || 0)
+  const rows = Math.max(1, Number(event?.rows) || newSubmissionRows.value || 10)
+  newSubmissionRows.value = rows
+  newSubmissionFirst.value = first
+}
+const handleExistingSubmissionPage = (event = {}) => {
+  const first = Math.max(0, Number(event?.first) || 0)
+  const rows = Math.max(1, Number(event?.rows) || existingSubmissionRows.value || 10)
+  existingSubmissionRows.value = rows
+  existingSubmissionFirst.value = first
+}
 const getFilteredTrashRows = () => {
   const filterType = getValidTrashFilterType(trashFilterType.value)
   const rows = Array.isArray(trashItems.value) ? trashItems.value : []
@@ -3390,6 +3427,22 @@ watch(trashFilterType, (nextFilterType) => {
   showTrashRelationHierarchy.value = true
   trashSortState.value = { key: null, direction: 'asc' }
 })
+
+watch([reviewSearchQuery, reviewCategoryFilter], () => {
+  newSubmissionFirst.value = 0
+  existingSubmissionFirst.value = 0
+})
+
+watch([() => newCourseArchiveRequests.value.length, newSubmissionRows], ([count, rows]) => {
+  clampReviewPaginatorFirst(newSubmissionFirst, rows, count)
+})
+
+watch(
+  [() => existingCourseArchiveRequests.value.length, existingSubmissionRows],
+  ([count, rows]) => {
+    clampReviewPaginatorFirst(existingSubmissionFirst, rows, count)
+  }
+)
 
 const getTrashItemKey = (item, fallbackIndex = 0) => {
   const type = item?.item_type || 'unknown'
@@ -3767,6 +3820,9 @@ const getReviewRowActions = (item) => {
       reviewActionDefinitions.delete,
     ]
   }
+  if (status === 'takedown' && canShowRepublishReviewSubmission(item)) {
+    return [reviewActionDefinitions.republish]
+  }
   if (status === 'rejected') {
     return [reviewActionDefinitions.approve, reviewActionDefinitions.delete]
   }
@@ -3776,6 +3832,22 @@ const getReviewRowActions = (item) => {
 const isCourseTrashLifecycleReason = (reason) => {
   if (!reason) return false
   return reason === 'course_trashed' || reason.startsWith('course_trashed|')
+}
+
+const canShowRepublishReviewSubmission = (item) => {
+  if (getReviewItemStatus(item) !== 'takedown') return false
+  if (!item?.created_archive_id) return false
+  if (item?.linked_course_deleted === true || item?.linked_archive_deleted === true) {
+    return false
+  }
+  if (
+    isCourseTrashLifecycleReason(item?.lifecycle_reason) ||
+    item?.lifecycle_reason === 'archive_trashed' ||
+    item?.lifecycle_reason === 'linked_archive_permanently_deleted'
+  ) {
+    return false
+  }
+  return true
 }
 
 const getReviewTrashNote = (item, fullText = false) => {
@@ -3820,7 +3892,7 @@ const getReviewTrashNoteIcon = (item) => {
 
 const runReviewRowAction = (item, action) => {
   if (!item?.id) return
-  if (isReadonlyReviewSubmission(item)) {
+  if (isReadonlyReviewSubmission(item) && action !== 'republish') {
     toast.add({
       severity: 'info',
       summary: '僅能查看',
@@ -4955,7 +5027,7 @@ const getRequesterDisplay = (request) => {
 
 const reviewArchiveSubmission = async (submission, action) => {
   if (!submission?.id) return
-  if (isReadonlyReviewSubmission(submission)) {
+  if (isReadonlyReviewSubmission(submission) && action !== 'republish') {
     toast.add({
       severity: 'info',
       summary: '僅能查看',
