@@ -29,8 +29,8 @@
             <Card class="settings-section">
               <template #title>顯示設定</template>
               <template #content>
-                <div class="settings-form">
-                  <div class="settings-grid">
+                <div class="settings-form display-settings-form">
+                  <div class="display-settings-layout">
                     <div id="font-size-setting" class="field settings-anchor font-size-setting">
                       <div class="font-size-controls">
                         <div class="font-size-control-header">
@@ -49,64 +49,64 @@
                         </div>
                         <small>偏好值會保存於此裝置，重新整理後仍會保留。</small>
                       </div>
-
-                      <div class="font-size-preview" :style="fontSizePreviewStyle">
-                        <section class="preview-course-sample" aria-label="字體大小預覽">
-                          <div class="preview-course-heading">
-                            <Tag severity="secondary" class="subject-tag preview-tag">必修</Tag>
-                            <div class="preview-course-title-block">
-                              <h3>理論力學(二)</h3>
-                              <p>共 5 份考古題 · 最新：114下學期</p>
-                            </div>
-                          </div>
-
-                          <div class="preview-filter-row">
-                            <span class="preview-filter-chip">學期</span>
-                            <span class="preview-filter-chip">教授</span>
-                            <span class="preview-filter-chip">類型</span>
-                            <span class="preview-filter-chip preview-filter-chip--check">
-                              <i class="pi pi-check-square" aria-hidden="true"></i>
-                              附解答
-                            </span>
-                          </div>
-
-                          <article class="preview-archive-card">
-                            <div class="preview-archive-main">
-                              <Tag severity="secondary" class="exam-type-tag preview-tag">
-                                期中考
-                              </Tag>
-                              <div>
-                                <h4>midterm2</h4>
-                                <p>考題目 · 0 次下載</p>
-                              </div>
-                            </div>
-                            <div class="preview-actions">
-                              <Button icon="pi pi-eye" label="預覽" size="small" outlined />
-                              <Button icon="pi pi-download" label="下載" size="small" />
-                              <Button
-                                icon="pi pi-trash"
-                                label="刪除"
-                                size="small"
-                                severity="danger"
-                                outlined
-                              />
-                            </div>
-                          </article>
-
-                          <div class="preview-admin-tags">
-                            <Tag class="soft-badge review-status-pending" severity="warning">
-                              待審核
-                            </Tag>
-                            <Tag class="soft-badge submission-status-deleted" severity="danger">
-                              已刪除
-                            </Tag>
-                            <Tag severity="success" class="preview-tag">啟用中</Tag>
-                          </div>
-                        </section>
-                      </div>
                     </div>
 
-                    <div id="language-setting" class="field settings-anchor">
+                    <div class="font-size-preview" :style="fontSizePreviewStyle">
+                      <section class="preview-course-sample" aria-label="字體大小預覽">
+                        <div class="preview-course-heading">
+                          <Tag severity="secondary" class="subject-tag preview-tag">必修</Tag>
+                          <div class="preview-course-title-block">
+                            <h3>理論力學(二)</h3>
+                            <p>共 5 份考古題 · 最新：114下學期</p>
+                          </div>
+                        </div>
+
+                        <div class="preview-filter-row">
+                          <span class="preview-filter-chip">學期</span>
+                          <span class="preview-filter-chip">教授</span>
+                          <span class="preview-filter-chip">類型</span>
+                          <span class="preview-filter-chip preview-filter-chip--check">
+                            <i class="pi pi-check-square" aria-hidden="true"></i>
+                            附解答
+                          </span>
+                        </div>
+
+                        <article class="preview-archive-card">
+                          <div class="preview-archive-main">
+                            <Tag severity="secondary" class="exam-type-tag preview-tag">
+                              期中考
+                            </Tag>
+                            <div>
+                              <h4>midterm2</h4>
+                              <p>考題目 · 0 次下載</p>
+                            </div>
+                          </div>
+                          <div class="preview-actions">
+                            <Button icon="pi pi-eye" label="預覽" size="small" outlined />
+                            <Button icon="pi pi-download" label="下載" size="small" />
+                            <Button
+                              icon="pi pi-trash"
+                              label="刪除"
+                              size="small"
+                              severity="danger"
+                              outlined
+                            />
+                          </div>
+                        </article>
+
+                        <div class="preview-admin-tags">
+                          <Tag class="soft-badge review-status-pending" severity="warning">
+                            待審核
+                          </Tag>
+                          <Tag class="soft-badge submission-status-deleted" severity="danger">
+                            已刪除
+                          </Tag>
+                          <Tag severity="success" class="preview-tag">啟用中</Tag>
+                        </div>
+                      </section>
+                    </div>
+
+                    <div id="language-setting" class="field settings-anchor language-setting">
                       <label for="language">語言</label>
                       <Select
                         id="language"
@@ -618,10 +618,24 @@ h1 {
   width: min(100%, 640px);
 }
 
+.display-settings-form {
+  width: 100%;
+}
+
+.display-settings-layout,
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.display-settings-layout {
+  grid-template-columns: minmax(16rem, 0.88fr) minmax(18rem, 1.12fr);
+  grid-template-areas:
+    'font preview'
+    'language preview';
+  align-items: start;
+  gap: 1rem 1.15rem;
 }
 
 .field {
@@ -631,10 +645,11 @@ h1 {
 }
 
 .font-size-setting {
-  grid-column: 1 / -1;
-  grid-template-columns: minmax(min(100%, 18rem), 20rem) minmax(240px, 1fr);
-  gap: 1rem;
-  align-items: start;
+  grid-area: font;
+}
+
+.language-setting {
+  grid-area: language;
 }
 
 .font-size-controls {
@@ -681,6 +696,7 @@ h1 {
 }
 
 .font-size-preview {
+  grid-area: preview;
   display: grid;
   gap: 0.65em;
   padding: 1rem;
@@ -857,12 +873,16 @@ small {
     justify-content: stretch;
   }
 
+  .display-settings-layout,
   .settings-grid {
     grid-template-columns: 1fr;
   }
 
-  .font-size-setting {
-    grid-template-columns: 1fr;
+  .display-settings-layout {
+    grid-template-areas:
+      'font'
+      'preview'
+      'language';
   }
 
   .font-size-slider-row {
