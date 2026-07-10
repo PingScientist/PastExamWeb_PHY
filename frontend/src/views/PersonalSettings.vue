@@ -715,6 +715,17 @@ h1 {
   width: 100%;
 }
 
+.font-size-slider.p-slider {
+  height: 4px !important;
+  min-height: 4px !important;
+  margin: 0;
+}
+
+.font-size-slider :deep(.p-slider-range) {
+  top: 0 !important;
+  height: 4px !important;
+}
+
 .font-size-controls > small {
   display: block;
   line-height: 1.35;
