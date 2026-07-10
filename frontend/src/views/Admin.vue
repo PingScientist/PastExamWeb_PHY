@@ -6165,7 +6165,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: var(--soft-note-bg, color-mix(in srgb, var(--surface-ground) 55%, transparent));
   color: var(--soft-note-color, var(--text-color-secondary));
-  font-size: 0.78rem;
+  font-size: var(--app-font-size-xs);
   font-weight: 600;
   line-height: 1.35;
   white-space: normal;
@@ -6176,7 +6176,7 @@ onBeforeUnmount(() => {
 .review-card-action-note .pi {
   flex: 0 0 auto;
   flex-shrink: 0;
-  font-size: 0.78rem;
+  font-size: 0.95em;
 }
 
 .review-card-action-note span {
@@ -9023,8 +9023,12 @@ onBeforeUnmount(() => {
 .review-center .review-admin-upload-chip,
 .review-center .review-card-action-note,
 .review-center .review-card-action-note__text {
-  font-size: var(--app-badge-font-size) !important;
+  font-size: var(--app-font-size-xs) !important;
   line-height: 1.25 !important;
+}
+
+.review-center .review-card-action-note .pi {
+  font-size: calc(var(--app-font-size-xs) * 0.95) !important;
 }
 
 .review-center :deep(.p-button),
