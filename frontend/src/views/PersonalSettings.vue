@@ -33,7 +33,10 @@
                   <div class="settings-grid">
                     <div id="font-size-setting" class="field settings-anchor font-size-setting">
                       <div class="font-size-controls">
-                        <label id="font-size-label">字體大小</label>
+                        <div class="font-size-control-header">
+                          <label id="font-size-label">字體大小</label>
+                          <span class="font-size-current">{{ fontSizeDisplayText }}</span>
+                        </div>
                         <div class="font-size-slider-row">
                           <Slider
                             v-model="fontSizeScale"
@@ -43,7 +46,6 @@
                             class="font-size-slider"
                             aria-labelledby="font-size-label"
                           />
-                          <span class="font-size-current">{{ fontSizeDisplayText }}</span>
                         </div>
                         <small>偏好值會保存於此裝置，重新整理後仍會保留。</small>
                       </div>
@@ -580,7 +582,7 @@ h1 {
 
 .font-size-setting {
   grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 320px) minmax(240px, 1fr);
+  grid-template-columns: minmax(min(100%, 18rem), 20rem) minmax(240px, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -588,24 +590,31 @@ h1 {
 .font-size-controls {
   display: grid;
   gap: 0.8rem;
+  min-width: 0;
+}
+
+.font-size-control-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .font-size-slider-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(8.5rem, auto);
-  gap: 1rem;
-  align-items: center;
+  width: 100%;
+  min-width: min(100%, 14rem);
 }
 
 .font-size-slider {
-  min-width: 0;
+  width: 100%;
+  min-width: min(100%, 14rem);
 }
 
 .font-size-current {
   color: var(--text-primary);
   font-weight: 700;
-  text-align: right;
-  white-space: nowrap;
+  line-height: 1.35;
 }
 
 .font-size-preview {
@@ -713,8 +722,7 @@ small {
   }
 
   .font-size-slider-row {
-    grid-template-columns: 1fr;
-    gap: 0.65rem;
+    min-width: 100%;
   }
 
   .font-size-current {
