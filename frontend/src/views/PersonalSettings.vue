@@ -609,6 +609,13 @@ h1 {
   letter-spacing: 0;
 }
 
+#display-settings .settings-section :deep(.p-card-title) {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  line-height: 28px;
+}
+
 .settings-section :deep(.p-card-content) {
   padding-top: 0.9rem;
 }
@@ -658,22 +665,19 @@ h1 {
 }
 
 .font-size-controls {
-  position: relative;
-  display: block;
+  display: grid;
+  grid-template-rows: 64px 36px auto;
+  gap: 8px;
   min-width: 0;
-  min-height: 8.1rem;
-  padding-top: 6.45rem;
 }
 
 .font-size-control-header {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.25rem;
+  gap: 4px;
   align-items: start;
-  min-height: 3.45rem;
+  min-height: 0;
+  overflow: visible;
 }
 
 .font-size-control-header label {
@@ -683,14 +687,11 @@ h1 {
 }
 
 .font-size-slider-row {
-  position: absolute;
-  inset-inline: 0;
-  top: 4.05rem;
   display: flex;
   align-items: center;
   width: 100%;
-  height: 2rem;
-  min-height: 2rem;
+  height: 36px;
+  min-height: 36px;
   min-width: min(100%, 14rem);
 }
 
@@ -938,12 +939,7 @@ small {
   }
 
   .font-size-controls {
-    min-height: 8.45rem;
-    padding-top: 6.65rem;
-  }
-
-  .font-size-slider-row {
-    top: 4.2rem;
+    grid-template-rows: 68px 36px auto;
   }
 
   .form-actions :deep(.p-button) {
