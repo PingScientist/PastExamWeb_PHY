@@ -857,11 +857,6 @@
                   :value="newCourseArchiveRequests"
                   :loading="reviewLoading"
                   class="admin-data-table review-request-table review-request-table--new"
-                  paginator
-                  :rows="newSubmissionRows"
-                  :rowsPerPageOptions="[5, 10, 15, 25, 50]"
-                  :first="newSubmissionFirst"
-                  @page="handleNewSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
                   breakpoint="1023px"
@@ -1198,11 +1193,6 @@
                   :value="existingCourseArchiveRequests"
                   :loading="reviewLoading"
                   class="admin-data-table review-request-table"
-                  paginator
-                  :rows="existingSubmissionRows"
-                  :rowsPerPageOptions="[5, 10, 15, 25, 50]"
-                  :first="existingSubmissionFirst"
-                  @page="handleExistingSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
                   breakpoint="1023px"
@@ -1554,18 +1544,9 @@
               </div>
 
               <DataTable
-                :value="pagedTrashItems"
+                :value="sortedTrashItems"
                 :loading="trashLoading"
                 class="admin-data-table trash-table"
-                paginator
-                :rows="trashRows"
-                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
-                :first="trashFirst"
-                :totalRecords="totalFilteredTrashItems"
-                :lazy="true"
-                showCurrentPageReport
-                currentPageReportTemplate="第 {first} - {last} 筆，共 {totalRecords} 筆（關聯資料會同頁顯示）"
-                @page="handleTrashPage"
                 tableStyle="min-width: 72rem"
                 responsiveLayout="stack"
                 breakpoint="1023px"
@@ -1762,7 +1743,7 @@
 
               <div v-if="!trashLoading" class="trash-mobile-list">
                 <article
-                  v-for="data in pagedTrashItems"
+                  v-for="data in sortedTrashItems"
                   :key="getTrashItemKey(data)"
                   :class="['trash-mobile-card', getTrashRowClass(data)]"
                 >
@@ -3007,19 +2988,12 @@ const reviewLoading = ref(false)
 const reviewLoadError = ref('')
 const reviewSearchQuery = ref('')
 const reviewCategoryFilter = ref(null)
-const newSubmissionFirst = ref(0)
-const newSubmissionRows = ref(10)
-const existingSubmissionFirst = ref(0)
-const existingSubmissionRows = ref(10)
 const archiveRequests = ref([])
 const trashLoading = ref(false)
 const trashItems = ref([])
-const safeTrashItems = computed(() => (Array.isArray(trashItems.value) ? trashItems.value : []))
 const showTrashRelationHierarchy = ref(true)
 const TRASH_FILTER_ALL_VALUE = 'all'
 const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
-const trashFirst = ref(0)
-const trashRows = ref(10)
 const courseCategories = ref([])
 const reviewEditLoading = ref(false)
 const showArchiveRequestDialog = ref(false)
@@ -3331,112 +3305,14 @@ const existingCourseArchiveRequests = computed(() =>
     'existing'
   )
 )
-const clampReviewPaginatorFirst = (firstRef, rows, totalItems) => {
-  const normalizedRows = Math.max(1, Number(rows) || 10)
-  if (totalItems <= 0) {
-    firstRef.value = 0
-    return
-  }
-  const maxFirst = Math.max(0, Math.floor((totalItems - 1) / normalizedRows) * normalizedRows)
-  if (firstRef.value > maxFirst) {
-    firstRef.value = maxFirst
-  }
-}
-const handleNewSubmissionPage = (event = {}) => {
-  const first = Math.max(0, Number(event?.first) || 0)
-  const rows = Math.max(1, Number(event?.rows) || newSubmissionRows.value || 10)
-  newSubmissionRows.value = rows
-  newSubmissionFirst.value = first
-}
-const handleExistingSubmissionPage = (event = {}) => {
-  const first = Math.max(0, Number(event?.first) || 0)
-  const rows = Math.max(1, Number(event?.rows) || existingSubmissionRows.value || 10)
-  existingSubmissionRows.value = rows
-  existingSubmissionFirst.value = first
-}
 const getFilteredTrashRows = () => {
   const filterType = getValidTrashFilterType(trashFilterType.value)
-  const rows = safeTrashItems.value
+  const rows = Array.isArray(trashItems.value) ? trashItems.value : []
   if (!filterType) {
     return rows
   }
   return rows.filter((item) => item?.item_type === filterType)
 }
-
-const clampTrashPaginatorFirst = (totalPages = 1) => {
-  const safeRows = Math.max(1, Number(trashRows.value) || 10)
-  const normalizedPages = Math.max(1, Number.isFinite(Number(totalPages)) ? Number(totalPages) : 1)
-  const maxFirst = Math.max(0, (normalizedPages - 1) * safeRows)
-  if (trashFirst.value > maxFirst) {
-    trashFirst.value = maxFirst
-  }
-}
-
-const getTrashCurrentPageIndex = (totalPages = 1) => {
-  const normalizedPages = Math.max(0, Number.isFinite(Number(totalPages)) ? Number(totalPages) : 1)
-  if (normalizedPages <= 1) return 0
-  const safeRows = Math.max(1, Number(trashRows.value) || 10)
-  const safeFirst = Math.max(0, Number(trashFirst.value) || 0)
-  const maxPage = Math.max(0, normalizedPages - 1)
-  const page = Math.floor(safeFirst / safeRows)
-  return Number.isFinite(page) ? Math.min(maxPage, Math.max(0, page)) : 0
-}
-
-function paginateTrashGroups(groups = [], rows = 10) {
-  const safeGroups = Array.isArray(groups) ? groups : []
-  const safeRows = Math.max(1, Number(rows) || 10)
-  const pages = []
-  let currentPage = []
-  let currentCount = 0
-
-  for (const rawGroup of safeGroups) {
-    const group = rawGroup ?? {}
-    const groupItems = Array.isArray(group.items) ? group.items : []
-    const groupSize = groupItems.length
-
-    if (currentPage.length > 0 && currentCount + groupSize > safeRows) {
-      pages.push(currentPage)
-      currentPage = []
-      currentCount = 0
-    }
-    currentPage.push({
-      ...group,
-      items: groupItems,
-    })
-    currentCount += groupSize
-  }
-
-  if (currentPage.length > 0) {
-    pages.push(currentPage)
-  }
-  return pages
-}
-
-function buildTrashGroups(rows = []) {
-  const groups = []
-  const safeRows = Array.isArray(rows) ? rows : []
-  for (const row of safeRows) {
-    if (!row || typeof row !== 'object') {
-      continue
-    }
-    const hasGroup = Number(row?.trash_relation_group_size || 0) > 1
-    const groupIndex = row?.trash_relation_group_index
-    if (hasGroup && groupIndex !== null && groupIndex !== undefined) {
-      const last = groups[groups.length - 1]
-      const lastKey = last?.groupIndex
-      if (last && lastKey === groupIndex) {
-        last.items.push(row)
-      } else {
-        groups.push({ items: [row], groupIndex })
-      }
-      continue
-    }
-
-    groups.push({ items: [row], groupIndex: null })
-  }
-  return groups
-}
-
 const getTrashSortValue = (item, key) => {
   if (key === 'deleted_at') return getTrashDeletedTimestamp(item)
   if (key === 'type') return getTrashTypeLabel(item?.item_type)
@@ -3496,94 +3372,24 @@ const toggleTrashSort = (key) => {
 }
 const sortedTrashItems = computed(() => {
   const filteredRows = getFilteredTrashRows()
-  const safeFilteredRows = Array.isArray(filteredRows) ? filteredRows : []
   const sortKey = trashSortState.value.key
+  if (isTrashRelationHierarchyEnabled.value) {
+    return buildTrashHierarchy(filteredRows, getValidTrashFilterType(trashFilterType.value))
+  }
   if (!sortKey) {
-    return (
-      buildTrashHierarchy(safeFilteredRows, getValidTrashFilterType(trashFilterType.value)) || []
-    )
+    return filteredRows
   }
-  if (!isTrashRelationHierarchyEnabled.value) {
-    return (
-      buildTrashHierarchy(
-        sortTrashItems(safeFilteredRows),
-        getValidTrashFilterType(trashFilterType.value)
-      ) || []
-    )
-  }
-  return buildTrashHierarchy(safeFilteredRows, getValidTrashFilterType(trashFilterType.value)) || []
+  return sortTrashItems(filteredRows)
 })
-const trashPages = computed(() => {
-  const groups = buildTrashGroups(sortedTrashItems.value)
-  return paginateTrashGroups(groups, safeTrashRows.value)
-})
-const totalFilteredTrashItems = computed(() => {
-  return Array.isArray(sortedTrashItems.value) ? sortedTrashItems.value.length : 0
-})
-const safeTrashRows = computed(() => Math.max(1, Number(trashRows.value) || 10))
-const currentTrashPageIndex = computed(() =>
-  getTrashCurrentPageIndex(Array.isArray(trashPages.value) ? trashPages.value.length : 0)
-)
-const pagedTrashItems = computed(() => {
-  const pages = Array.isArray(trashPages.value) ? trashPages.value : []
-  const page = pages[currentTrashPageIndex.value] ?? []
-  const safePage = Array.isArray(page) ? page : []
-  return safePage.flatMap((group) => (Array.isArray(group?.items) ? group.items : []))
-})
-
-const handleTrashPage = (event = {}) => {
-  const rows = Math.max(1, Number(event?.rows) || trashRows.value || 10)
-  const first = Math.max(0, Number(event?.first) || 0)
-  trashRows.value = rows
-  trashFirst.value = first
-  clampTrashPaginatorFirst(Array.isArray(trashPages.value) ? trashPages.value.length : 0)
-}
 
 watch(trashFilterType, (nextFilterType) => {
   if (nextFilterType !== TRASH_FILTER_ALL_VALUE) {
     showTrashRelationHierarchy.value = false
-    trashFirst.value = 0
     return
   }
   showTrashRelationHierarchy.value = true
   trashSortState.value = { key: null, direction: 'asc' }
-  trashFirst.value = 0
 })
-
-watch(
-  [
-    () => trashFilterType.value,
-    () => trashSortState.value.key,
-    () => trashSortState.value.direction,
-  ],
-  () => {
-    trashFirst.value = 0
-  }
-)
-
-watch([() => totalFilteredTrashItems.value, () => trashRows.value], ([count]) => {
-  if (!count) {
-    trashFirst.value = 0
-    return
-  }
-  clampTrashPaginatorFirst(Array.isArray(trashPages.value) ? trashPages.value.length : 0)
-})
-
-watch([reviewSearchQuery, reviewCategoryFilter], () => {
-  newSubmissionFirst.value = 0
-  existingSubmissionFirst.value = 0
-})
-
-watch([() => newCourseArchiveRequests.value.length, newSubmissionRows], ([count, rows]) => {
-  clampReviewPaginatorFirst(newSubmissionFirst, rows, count)
-})
-
-watch(
-  [() => existingCourseArchiveRequests.value.length, existingSubmissionRows],
-  ([count, rows]) => {
-    clampReviewPaginatorFirst(existingSubmissionFirst, rows, count)
-  }
-)
 
 const getTrashItemKey = (item, fallbackIndex = 0) => {
   const type = item?.item_type || 'unknown'
@@ -3626,7 +3432,7 @@ const getValidTrashFilterType = (value) => {
 
 const getTrashFilterApiValue = (value) => getValidTrashFilterType(value)
 
-function buildTrashHierarchy(items, filterType) {
+const buildTrashHierarchy = (items, filterType) => {
   const normalizedFilterType = getValidTrashFilterType(filterType)
   const rowMap = new Map()
   for (const [index, rawItem] of (Array.isArray(items) ? items : []).entries()) {
