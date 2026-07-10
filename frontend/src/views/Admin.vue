@@ -9107,4 +9107,60 @@ onBeforeUnmount(() => {
 .admin-mobile-list--categories :deep(.p-button-label) {
   font-size: inherit !important;
 }
+
+.admin-toolbar--announcement,
+.admin-toolbar--announcement :deep(.p-component),
+.notification-management-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-toolbar--announcement .search-icon,
+.admin-toolbar--announcement :deep(.pi),
+.notification-management-table :deep(.pi),
+.admin-mobile-list--notifications :deep(.pi) {
+  font-size: var(--app-icon-size) !important;
+}
+
+.admin-toolbar--announcement :deep(.p-inputtext),
+.admin-toolbar--announcement :deep(.p-inputtext::placeholder),
+.admin-toolbar--announcement :deep(.p-select),
+.admin-toolbar--announcement :deep(.p-select-label),
+.notification-management-table :deep(.p-datatable-thead > tr > th),
+.notification-management-table :deep(.p-datatable-tbody > tr > td),
+.notification-management-table :deep(.p-paginator),
+.notification-management-table :deep(.p-paginator-page),
+.notification-management-table :deep(.p-paginator-current),
+.notification-management-table :deep(.text-sm),
+.notification-management-table :deep(.text-700),
+.admin-mobile-list--notifications .admin-card-meta-text {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.notification-management-table .mobile-primary-text,
+.admin-announcement-card .admin-card-title,
+.admin-announcement-mobile-card .admin-card-title {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.notification-management-table :deep(.p-tag),
+.admin-mobile-list--notifications :deep(.p-tag) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.admin-toolbar--announcement :deep(.p-button),
+.notification-management-table :deep(.p-button),
+.admin-mobile-list--notifications :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.admin-toolbar--announcement :deep(.p-button-label),
+.notification-management-table :deep(.p-button-label),
+.admin-mobile-list--notifications :deep(.p-button-label) {
+  font-size: inherit !important;
+}
 </style>
