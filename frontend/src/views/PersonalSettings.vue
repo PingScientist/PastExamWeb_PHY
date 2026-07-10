@@ -301,10 +301,10 @@ export default {
       return Math.round(this.fontSizeScale * 100)
     },
     fontSizeToneLabel() {
-      if (this.fontSizeScale < 0.96) {
+      if (this.fontSizePercent < 100) {
         return '偏小'
       }
-      if (this.fontSizeScale > 1.04) {
+      if (this.fontSizePercent > 100) {
         return '偏大'
       }
       return '預設'
