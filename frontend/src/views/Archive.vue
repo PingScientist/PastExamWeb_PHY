@@ -3386,9 +3386,22 @@ const mobileMenuItems = computed(() => {
 :deep(.my-submission-status-badge.soft-badge) {
   min-height: 1.72rem !important;
   padding: 0.22rem 0.62rem !important;
-  font-size: 0.9rem !important;
+  font-size: var(--app-badge-font-size) !important;
   font-weight: 650 !important;
   line-height: 1.25 !important;
+}
+
+:deep(.submission-admin-badge.soft-badge),
+:deep(.submission-meta-chip.soft-badge),
+:deep(.my-submission-type-badge.soft-badge) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+:deep(.submission-status-badge.soft-badge .pi),
+:deep(.submission-admin-badge.soft-badge .pi),
+:deep(.submission-meta-chip.soft-badge .pi) {
+  font-size: 0.95em !important;
 }
 
 .submission-status-note {
