@@ -8970,4 +8970,66 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 }
+
+.review-center,
+.review-center :deep(.p-component) {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.review-center .search-icon,
+.review-center :deep(.pi),
+.review-center :deep(.p-button-icon),
+.review-center .review-sort-icon,
+.review-center .review-card-action-note .pi {
+  font-size: var(--app-icon-size) !important;
+}
+
+.review-center :deep(.p-inputtext),
+.review-center :deep(.p-inputtext::placeholder),
+.review-center :deep(.p-select),
+.review-center :deep(.p-select-label),
+.review-center :deep(.p-datatable),
+.review-center :deep(.p-datatable-thead > tr > th),
+.review-center :deep(.p-datatable-tbody > tr > td),
+.review-center :deep(.p-paginator),
+.review-center :deep(.p-paginator-page),
+.review-center .review-card-meta-text,
+.review-center .review-sort-header,
+.review-center .review-empty-state,
+.review-center .review-mobile-info-label,
+.review-center .review-mobile-info-value,
+.review-center .review-mobile-exam-name,
+.review-center .text-xs {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.review-center .review-card-title,
+.review-center .review-mobile-card-course-name {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.review-center :deep(.p-tag),
+.review-center :deep(.soft-badge),
+.review-center .review-card-chip,
+.review-center .review-status-chip,
+.review-center .review-admin-upload-chip,
+.review-center .review-card-action-note,
+.review-center .review-card-action-note__text {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.review-center :deep(.p-button),
+.review-center .review-action-button {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.review-center :deep(.p-button-label),
+.review-center :deep(.p-button-icon) {
+  font-size: inherit !important;
+}
 </style>
