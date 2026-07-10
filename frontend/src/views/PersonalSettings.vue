@@ -639,7 +639,8 @@ h1 {
 
 .font-size-controls {
   display: grid;
-  gap: 0.8rem;
+  grid-template-rows: minmax(1.9rem, auto) minmax(2rem, auto) auto;
+  gap: 0.65rem;
   min-width: 0;
 }
 
@@ -649,16 +650,28 @@ h1 {
   gap: 0.35rem 0.75rem;
   align-items: baseline;
   justify-content: space-between;
+  min-height: 1.9rem;
 }
 
 .font-size-slider-row {
+  display: flex;
+  align-items: center;
   width: 100%;
+  min-height: 2rem;
   min-width: min(100%, 14rem);
 }
 
 .font-size-slider {
   width: 100%;
+  min-height: 1rem;
   min-width: min(100%, 14rem);
+  flex: 1 1 auto;
+  align-self: center;
+}
+
+.font-size-slider :deep(.p-slider) {
+  align-self: center;
+  width: 100%;
 }
 
 .font-size-current {
