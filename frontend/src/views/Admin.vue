@@ -3382,7 +3382,7 @@ const getTrashCurrentPageIndex = (totalPages = 1) => {
   return Number.isFinite(page) ? Math.min(maxPage, Math.max(0, page)) : 0
 }
 
-const paginateTrashGroups = (groups = [], rows = 10) => {
+function paginateTrashGroups(groups = [], rows = 10) {
   const safeGroups = Array.isArray(groups) ? groups : []
   const safeRows = Math.max(1, Number(rows) || 10)
   const pages = []
@@ -3412,7 +3412,7 @@ const paginateTrashGroups = (groups = [], rows = 10) => {
   return pages
 }
 
-const buildTrashGroups = (rows = []) => {
+function buildTrashGroups(rows = []) {
   const groups = []
   const safeRows = Array.isArray(rows) ? rows : []
   for (const row of safeRows) {
@@ -3626,7 +3626,7 @@ const getValidTrashFilterType = (value) => {
 
 const getTrashFilterApiValue = (value) => getValidTrashFilterType(value)
 
-const buildTrashHierarchy = (items, filterType) => {
+function buildTrashHierarchy(items, filterType) {
   const normalizedFilterType = getValidTrashFilterType(filterType)
   const rowMap = new Map()
   for (const [index, rawItem] of (Array.isArray(items) ? items : []).entries()) {
