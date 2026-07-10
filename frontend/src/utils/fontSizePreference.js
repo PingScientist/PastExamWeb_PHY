@@ -3,8 +3,8 @@ import { getLocalItem, setLocalItem } from './storage'
 export const FONT_SIZE_STORAGE_KEY = 'personal-settings-font-size'
 
 export const FONT_SIZE_BASELINE_SCALE = 0.9
-export const FONT_SIZE_MIN = 80
-export const FONT_SIZE_MAX = 125
+export const FONT_SIZE_MIN = 50
+export const FONT_SIZE_MAX = 150
 export const FONT_SIZE_STEP = 1
 export const FONT_SIZE_DEFAULT = 100
 
