@@ -2054,7 +2054,7 @@ const mobileMenuItems = computed(() => {
 .sidebar-shell {
   width: 100%;
   opacity: 1;
-  white-space: nowrap;
+  white-space: normal;
   height: 100%;
   transition: opacity 0.2s ease-in-out;
   display: flex;
@@ -2121,7 +2121,11 @@ const mobileMenuItems = computed(() => {
 
 .subject-title {
   color: var(--text-primary);
-  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-size: clamp(
+    calc(1.25rem * var(--app-font-scale)),
+    2vw,
+    calc(1.75rem * var(--app-font-scale))
+  );
   font-weight: 800;
   line-height: 1.12;
 }
@@ -2132,7 +2136,7 @@ const mobileMenuItems = computed(() => {
   gap: 0.35rem 0.75rem;
   margin-top: 0.28rem;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--app-font-size-sm);
   font-weight: 650;
 }
 
@@ -2171,7 +2175,7 @@ const mobileMenuItems = computed(() => {
   flex: 1 1 16rem;
   min-width: 12rem;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--app-font-size-sm);
   font-weight: 650;
 }
 
@@ -2194,7 +2198,7 @@ const mobileMenuItems = computed(() => {
   min-height: 2.35rem;
   padding: 0 0.25rem;
   color: var(--text-secondary);
-  font-size: 0.92rem;
+  font-size: var(--app-font-size-sm);
   font-weight: 650;
 }
 
@@ -2247,13 +2251,18 @@ const mobileMenuItems = computed(() => {
 
 :deep(.p-panelmenu-header-link) {
   padding: 0.85rem 1rem;
+  font-size: var(--app-font-size-base) !important;
   font-weight: 800;
+  line-height: 1.35;
 }
 
 :deep(.p-panelmenu-item-link) {
   border-radius: 7px;
   margin: 0.15rem 0.45rem;
   padding: 0.55rem 0.75rem;
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 :deep(.active-course-menu-item .p-panelmenu-item-link),
@@ -2288,7 +2297,7 @@ const mobileMenuItems = computed(() => {
   padding: 0.82rem 1rem;
   border: 0;
   background: #f0f7f4;
-  font-size: 1rem;
+  font-size: var(--app-font-size-base);
   font-weight: 800;
 }
 
@@ -2312,7 +2321,7 @@ const mobileMenuItems = computed(() => {
 
 .term-count {
   color: #60776f;
-  font-size: 0.86rem;
+  font-size: calc(var(--app-font-size-base) * 0.86);
   font-weight: 750;
 }
 
@@ -2364,7 +2373,7 @@ const mobileMenuItems = computed(() => {
   min-width: 0;
   margin: 0;
   color: var(--text-primary);
-  font-size: 1.02rem;
+  font-size: var(--app-font-size-base);
   font-weight: 800;
   line-height: 1.28;
   overflow-wrap: anywhere;
@@ -2380,7 +2389,7 @@ const mobileMenuItems = computed(() => {
 .archive-record-meta-line {
   gap: 0.35rem 0.65rem;
   color: var(--text-secondary);
-  font-size: 0.86rem;
+  font-size: calc(var(--app-font-size-base) * 0.86);
   font-weight: 560;
 }
 
@@ -2405,6 +2414,7 @@ const mobileMenuItems = computed(() => {
   min-height: 2.05rem;
   padding-top: 0.36rem;
   padding-bottom: 0.36rem;
+  font-size: var(--app-font-size-sm) !important;
 }
 
 .archive-record-actions :deep(.archive-action-icon.p-button) {
@@ -2459,12 +2469,16 @@ const mobileMenuItems = computed(() => {
   }
 
   .subject-title {
-    font-size: clamp(1.12rem, 2.4vw, 1.5rem);
+    font-size: clamp(
+      calc(1.12rem * var(--app-font-scale)),
+      2.4vw,
+      calc(1.5rem * var(--app-font-scale))
+    );
   }
 
   .subject-subtitle {
     margin-top: 0.22rem;
-    font-size: 0.84rem;
+    font-size: calc(var(--app-font-size-base) * 0.84);
   }
 
   .archive-filter-bar {
@@ -2479,7 +2493,7 @@ const mobileMenuItems = computed(() => {
   .filter-summary {
     flex: 1 1 100%;
     min-width: 0;
-    font-size: 0.84rem;
+    font-size: calc(var(--app-font-size-base) * 0.84);
     line-height: 1.35;
   }
 
@@ -2502,14 +2516,14 @@ const mobileMenuItems = computed(() => {
   .archive-filter-controls :deep(.p-select-label) {
     padding-top: 0.42rem;
     padding-bottom: 0.42rem;
-    font-size: 0.88rem;
+    font-size: calc(var(--app-font-size-base) * 0.88);
   }
 
   .answer-filter {
     min-height: 2.25rem;
     justify-content: center;
     padding: 0 0.45rem;
-    font-size: 0.86rem;
+    font-size: calc(var(--app-font-size-base) * 0.86);
   }
 
   :deep(.p-accordion) {
@@ -2523,7 +2537,7 @@ const mobileMenuItems = computed(() => {
 
   :deep(.p-accordionheader) {
     padding: 0.68rem 0.78rem;
-    font-size: 0.95rem;
+    font-size: var(--app-control-font-size);
   }
 
   :deep(.p-accordioncontent-content) {
@@ -2535,11 +2549,11 @@ const mobileMenuItems = computed(() => {
   }
 
   .archive-record-card h3 {
-    font-size: 0.98rem;
+    font-size: calc(var(--app-font-size-base) * 0.98);
   }
 
   .archive-record-meta-line {
-    font-size: 0.82rem;
+    font-size: var(--app-badge-font-size);
   }
 
   .archive-record-actions :deep(.p-button) {
@@ -2654,12 +2668,12 @@ const mobileMenuItems = computed(() => {
   }
 
   .subject-title {
-    font-size: 1.22rem;
+    font-size: calc(1.22rem * var(--app-font-scale));
   }
 
   .subject-subtitle {
     gap: 0.22rem 0.55rem;
-    font-size: 0.8rem;
+    font-size: calc(var(--app-font-size-base) * 0.8);
     line-height: 1.35;
   }
 
@@ -2681,7 +2695,7 @@ const mobileMenuItems = computed(() => {
   }
 
   .filter-summary {
-    font-size: 0.8rem;
+    font-size: calc(var(--app-font-size-base) * 0.8);
   }
 
   .archive-filter-controls {
@@ -2694,7 +2708,7 @@ const mobileMenuItems = computed(() => {
 
   .archive-filter-controls :deep(.p-select-label) {
     padding: 0.34rem 0.55rem;
-    font-size: 0.82rem;
+    font-size: var(--app-badge-font-size);
   }
 
   .archive-filter-controls :deep(.p-select-dropdown) {
@@ -2703,7 +2717,7 @@ const mobileMenuItems = computed(() => {
 
   .answer-filter {
     min-height: 2.08rem;
-    font-size: 0.82rem;
+    font-size: var(--app-badge-font-size);
     line-height: 1;
   }
 
@@ -2724,11 +2738,11 @@ const mobileMenuItems = computed(() => {
 
   :deep(.p-accordionheader) {
     padding: 0.58rem 0.65rem;
-    font-size: 0.92rem;
+    font-size: var(--app-font-size-sm);
   }
 
   .term-count {
-    font-size: 0.78rem;
+    font-size: var(--app-font-size-xs);
   }
 
   :deep(.p-accordioncontent-content) {
@@ -2755,7 +2769,7 @@ const mobileMenuItems = computed(() => {
   .archive-record-meta-line {
     order: 2;
     gap: 0.26rem 0.52rem;
-    font-size: 0.79rem;
+    font-size: calc(var(--app-font-size-base) * 0.79);
     line-height: 1.45;
   }
 
@@ -2776,7 +2790,7 @@ const mobileMenuItems = computed(() => {
   .archive-record-actions :deep(.p-button) {
     min-height: 1.92rem;
     padding: 0.28rem 0.55rem;
-    font-size: 0.8rem;
+    font-size: calc(var(--app-font-size-base) * 0.8);
   }
 
   .archive-record-actions :deep(.archive-action-icon.p-button) {
@@ -2800,7 +2814,7 @@ const mobileMenuItems = computed(() => {
   }
 
   .archive-record-card h3 {
-    font-size: 0.95rem;
+    font-size: var(--app-control-font-size);
   }
 
   .exam-type-tag {
@@ -2827,7 +2841,7 @@ const mobileMenuItems = computed(() => {
 }
 
 .search-results .text-sm {
-  font-size: 0.875rem;
+  font-size: var(--app-font-size-sm);
 }
 
 /* Mobile sidebar specific styles */
