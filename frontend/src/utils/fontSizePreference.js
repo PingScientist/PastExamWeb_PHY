@@ -78,6 +78,8 @@ export function applyFontSizePreference(value = getFontSizePreference()) {
   if (typeof document !== 'undefined') {
     document.documentElement.style.setProperty('--app-font-scale', String(scale))
     document.documentElement.dataset.appFontSize = String(scale)
+    document.documentElement.dataset.appFontScale = String(scale)
+    document.documentElement.dataset.appFontSizeDisplayPercent = String(percent)
   }
 
   return percent
