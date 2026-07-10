@@ -502,7 +502,7 @@ export default {
 h1 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1.75rem;
+  font-size: calc(var(--app-font-size-base) * 1.75);
   font-weight: 760;
   letter-spacing: 0;
 }
@@ -583,7 +583,7 @@ h1 {
 .settings-group-header h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1.18rem;
+  font-size: calc(var(--app-font-size-base) * 1.18);
   font-weight: 760;
   letter-spacing: 0;
 }
@@ -591,6 +591,7 @@ h1 {
 .settings-group-header p {
   margin: 0.35rem 0 0;
   color: var(--text-secondary);
+  font-size: var(--app-font-size-base);
   line-height: 1.6;
 }
 
@@ -607,7 +608,7 @@ h1 {
 
 .settings-section :deep(.p-card-title) {
   color: var(--text-primary);
-  font-size: 1.03rem;
+  font-size: calc(var(--app-font-size-base) * 1.03);
   font-weight: 740;
   letter-spacing: 0;
 }
@@ -878,7 +879,7 @@ h1 {
 .autosave-hint {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.92rem;
+  font-size: var(--app-font-size-sm);
   line-height: 1.5;
 }
 
