@@ -9163,4 +9163,62 @@ onBeforeUnmount(() => {
 .admin-mobile-list--notifications :deep(.p-button-label) {
   font-size: inherit !important;
 }
+
+.admin-toolbar--users,
+.admin-toolbar--users :deep(.p-component),
+.user-management-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-toolbar--users .search-icon,
+.admin-toolbar--users :deep(.pi),
+.user-management-table :deep(.pi),
+.admin-mobile-list--users :deep(.pi),
+.user-online-badge .pi {
+  font-size: var(--app-icon-size) !important;
+}
+
+.admin-toolbar--users :deep(.p-inputtext),
+.admin-toolbar--users :deep(.p-inputtext::placeholder),
+.admin-toolbar--users :deep(.p-select),
+.admin-toolbar--users :deep(.p-select-label),
+.user-management-table :deep(.p-datatable-thead > tr > th),
+.user-management-table :deep(.p-datatable-tbody > tr > td),
+.user-management-table :deep(.p-paginator),
+.user-management-table :deep(.p-paginator-page),
+.user-management-table :deep(.p-paginator-current),
+.user-management-table :deep(.text-sm),
+.admin-mobile-list--users .admin-card-email,
+.admin-mobile-list--users .admin-card-meta-text,
+.user-online-badge {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.user-management-table .mobile-primary-text,
+.admin-user-card .admin-card-title,
+.admin-user-mobile-card .admin-card-title {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.user-management-table :deep(.p-tag),
+.admin-mobile-list--users :deep(.p-tag) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.admin-toolbar--users :deep(.p-button),
+.user-management-table :deep(.p-button),
+.admin-mobile-list--users :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.admin-toolbar--users :deep(.p-button-label),
+.user-management-table :deep(.p-button-label),
+.admin-mobile-list--users :deep(.p-button-label) {
+  font-size: inherit !important;
+}
 </style>
