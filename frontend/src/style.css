@@ -352,6 +352,164 @@ body {
   min-height: calc(2.2rem * var(--app-font-scale));
 }
 
+.p-dialog .p-stepper,
+.p-dialog .p-step,
+.p-dialog .p-step-title,
+.p-dialog .p-steppanel,
+.p-dialog .p-datatable,
+.p-dialog .p-datatable-header,
+.p-dialog .p-datatable-thead,
+.p-dialog .p-datatable-tbody,
+.p-dialog .p-paginator,
+.p-dialog .p-paginator-page,
+.p-dialog .p-message,
+.p-dialog .p-inputnumber,
+.p-dialog .p-inputnumber-input,
+.p-dialog .p-toggleswitch,
+.p-dialog .p-datepicker,
+.p-dialog .request-mode-panel,
+.p-dialog .new-category-grid,
+.p-dialog .submission-status-list,
+.p-dialog .submission-status-card,
+.p-dialog .submission-status-title,
+.p-dialog .submission-status-meta,
+.p-dialog .submission-status-note,
+.p-dialog .discussion-panel,
+.p-dialog .discussion-header,
+.p-dialog .discussion-footer,
+.p-dialog .notification-table,
+.p-dialog .notification-body,
+.p-dialog .markdown-content,
+.p-dialog .request-summary,
+.p-dialog .comparison-basis,
+.p-dialog .submission-detail-comparison,
+.p-dialog .submission-detail-comparison-mobile,
+.p-dialog .comparison-mobile-card,
+.p-dialog .comparison-mobile-meta,
+.p-dialog .review-history,
+.p-dialog .review-requester,
+.p-dialog .review-history-row,
+.p-dialog .compare-preview-error,
+.p-dialog .compare-preview-pane,
+.p-dialog .category-color-options,
+.p-dialog .category-color-option,
+.p-dialog .category-badge-preview,
+.p-dialog .trash-dependency-help,
+.p-dialog .trash-dependency-help-section,
+.p-dialog .trash-dependency-help-label-card,
+.p-dialog .trash-dependency-help-flow-card,
+.p-dialog .trash-dependency-help-rule-list,
+.p-dialog .trash-dependency-help-note,
+.issue-report-dialog,
+.issue-report-dialog .p-fluid {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog .p-step-title,
+.p-dialog .p-datatable-thead > tr > th,
+.p-dialog .p-datatable-tbody > tr > td,
+.p-dialog .p-paginator,
+.p-dialog .p-paginator-page,
+.p-dialog .p-message,
+.p-dialog .text-xs,
+.p-dialog .text-sm,
+.p-dialog .text-500,
+.p-dialog .text-700,
+.p-dialog .request-summary small,
+.p-dialog .submission-status-title small,
+.p-dialog .my-submission-id,
+.p-dialog .submission-meta-chip,
+.p-dialog .comparison-mobile-meta-label,
+.p-dialog .comparison-mobile-meta-value,
+.p-dialog .review-history-title small,
+.p-dialog .review-requester,
+.p-dialog .trash-dependency-help p,
+.p-dialog .trash-dependency-help-note,
+.issue-report-dialog small,
+.issue-report-dialog .text-sm {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.4;
+}
+
+.p-dialog .p-tag,
+.p-dialog .p-badge,
+.p-dialog .soft-badge,
+.p-dialog .submission-status-badge,
+.p-dialog .submission-admin-badge,
+.p-dialog .review-card-chip,
+.p-dialog .review-status-chip,
+.p-dialog .trash-dependency-help-chip,
+.p-dialog .category-badge-preview .p-tag,
+.p-dialog .category-color-option,
+.p-dialog .discussion-pin-tag {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.p-dialog .p-button,
+.p-dialog .discussion-more-btn,
+.p-dialog .discussion-pin-btn,
+.p-dialog .discussion-delete-btn,
+.p-dialog .discussion-settings-btn,
+.p-dialog .comparison-row-actions .p-button,
+.p-dialog .comparison-mobile-actions .p-button,
+.p-dialog .review-dialog-actions .p-button,
+.issue-report-dialog .p-button {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.p-dialog .discussion-pin-btn,
+.p-dialog .discussion-delete-btn {
+  min-width: calc(1.45rem * var(--app-font-scale));
+  width: calc(1.45rem * var(--app-font-scale));
+  height: calc(1.45rem * var(--app-font-scale));
+}
+
+.p-dialog .discussion-settings-btn {
+  min-width: calc(1.7rem * var(--app-font-scale));
+  width: calc(1.7rem * var(--app-font-scale));
+  height: calc(1.7rem * var(--app-font-scale));
+}
+
+.p-dialog .p-button-label,
+.p-dialog .p-button-icon,
+.p-dialog .discussion-more-btn,
+.p-dialog .discussion-pin-btn .p-button-icon,
+.p-dialog .discussion-delete-btn .p-button-icon,
+.p-dialog .discussion-settings-btn .p-button-icon,
+.issue-report-dialog .p-button-label,
+.issue-report-dialog .p-button-icon {
+  font-size: inherit !important;
+}
+
+.p-dialog .p-inputtext,
+.p-dialog .p-password input,
+.p-dialog .p-textarea,
+.p-dialog textarea,
+.p-dialog .p-select,
+.p-dialog .p-autocomplete-input,
+.p-dialog .p-datepicker input,
+.issue-report-dialog .p-inputtext,
+.issue-report-dialog textarea,
+.issue-report-dialog .p-select {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog .pdf-container,
+.p-dialog .pdf-frame,
+.p-dialog .compare-preview-pane iframe {
+  font-size: initial !important;
+}
+
+.p-dialog .pdf-frame,
+.p-dialog .compare-preview-pane iframe {
+  width: 100%;
+  max-width: 100%;
+}
+
 .pi.text-xs {
   font-size: calc(0.75rem * var(--app-font-scale));
 }
