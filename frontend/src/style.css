@@ -14,8 +14,11 @@
   --code-bg-svg-fill: rgba(29, 116, 130, 0.16);
   --app-font-scale: 1;
   --app-font-size-base: calc(1rem * var(--app-font-scale));
+  --app-font-size-xs: calc(var(--app-font-size-base) * 0.78);
   --app-font-size-sm: calc(var(--app-font-size-base) * 0.92);
   --app-font-size-lg: calc(var(--app-font-size-base) * 1.08);
+  --app-control-font-size: calc(var(--app-font-size-base) * 0.95);
+  --app-badge-font-size: calc(var(--app-font-size-base) * 0.82);
   --app-icon-size: calc(var(--app-font-size-base) * 0.96);
 
   /* Code highlighting - Light theme */
@@ -71,46 +74,143 @@ body {
 }
 
 .p-button,
+.p-button-label,
+.p-button-icon,
 .p-splitbutton,
 .p-menubar,
 .p-menu,
+.p-menuitem,
+.p-menuitem-content,
 .p-select,
+.p-select-label,
 .p-dropdown,
+.p-dropdown-label,
 .p-multiselect,
+.p-multiselect-label,
 .p-inputtext,
 .p-password,
+.p-password input,
 .p-textarea,
+.p-textarea textarea,
+.p-autocomplete,
+.p-autocomplete-input,
+.p-datepicker,
+.p-checkbox,
+.p-toolbar,
+.p-tab,
+.p-tabs,
 .p-datatable,
+.p-datatable-header,
+.p-datatable-thead,
+.p-datatable-tbody,
+.p-paginator,
+.p-paginator-page,
+.p-paginator-current,
+.p-tag,
+.p-badge,
 .p-card {
-  font-size: var(--app-font-size-base);
+  font-size: var(--app-font-size-base) !important;
 }
 
 .p-button-label,
+.p-button-icon,
+.p-menuitem-text,
 .p-menuitem-label,
+.p-menuitem-icon,
 .p-menubar .p-menuitem-link,
 .p-menu .p-menuitem-link,
+.p-panelmenu-header-label,
+.p-panelmenu-item-label,
+.p-panelmenu-header-icon,
+.p-panelmenu-item-icon,
+.p-panelmenu-submenu-icon,
 .p-select-label,
 .p-dropdown-label,
 .p-multiselect-label,
+.p-inputtext::placeholder,
+.p-password input::placeholder,
+.p-textarea::placeholder,
 .p-datatable .p-datatable-thead > tr > th,
 .p-datatable .p-datatable-tbody > tr > td,
 .p-splitbutton .p-button-label,
+.p-paginator .p-paginator-page,
+.p-paginator .p-paginator-current,
+.p-paginator .p-select-label,
+.p-tag .p-tag-label,
+.p-badge,
 .p-card .p-card-title,
 .p-card .p-card-subtitle,
 .p-card .p-card-content {
-  font-size: inherit;
+  font-size: inherit !important;
 }
 
 .pi,
 .p-button-icon,
+.p-icon,
 .p-menuitem-icon,
 .p-menuitem-submenu-icon,
+.p-panelmenu-header-icon,
+.p-panelmenu-item-icon,
+.p-panelmenu-submenu-icon,
 .p-menubar .p-menuitem-icon,
 .p-splitbutton .p-button-icon,
 .p-dropdown .p-dropdown-trigger-icon,
-.p-select .p-select-dropdown-icon {
-  font-size: var(--app-icon-size);
+.p-select .p-select-dropdown-icon,
+.p-select-dropdown,
+.p-dropdown-trigger,
+.p-paginator-prev,
+.p-paginator-next,
+.p-sortable-column-icon {
+  font-size: var(--app-icon-size) !important;
   line-height: 1;
+}
+
+.p-button {
+  min-height: calc(2.35rem * var(--app-font-scale));
+}
+
+.p-button.p-button-sm,
+.p-button-sm > .p-button {
+  min-height: calc(2rem * var(--app-font-scale));
+}
+
+.p-inputtext,
+.p-password input,
+.p-textarea,
+.p-select,
+.p-dropdown,
+.p-multiselect {
+  min-height: calc(2.35rem * var(--app-font-scale));
+}
+
+.p-tag,
+.p-badge,
+.badge,
+.tag,
+.status,
+.info-pill,
+.action-button,
+.sidebar,
+.soft-badge,
+[class*='-badge'],
+[class*='-tag'],
+[class*='-status'],
+[class*='info-pill'],
+[class*='action-button'] {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25;
+}
+
+.sidebar,
+.sidebar .p-inputtext,
+.sidebar .p-button,
+.sidebar .p-panelmenu {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.action-button,
+[class*='action-button'] {
+  min-height: calc(2rem * var(--app-font-scale));
 }
 
 .pi.text-xs {
