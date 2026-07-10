@@ -661,10 +661,10 @@ h1 {
   position: relative;
   display: grid;
   grid-template-rows: 2rem auto;
-  gap: 0.55rem;
+  gap: 0.5rem;
   min-width: 0;
-  min-height: 6.1rem;
-  padding-top: 3rem;
+  min-height: 7.15rem;
+  padding-top: 4.05rem;
 }
 
 .font-size-control-header {
@@ -672,10 +672,16 @@ h1 {
   inset-block-start: 0;
   inset-inline: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(8rem, max-content);
-  gap: 0.35rem 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.25rem;
   align-items: start;
-  min-height: 2.45rem;
+  min-height: 3.45rem;
+}
+
+.font-size-control-header label {
+  min-width: max-content;
+  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .font-size-slider-row {
@@ -704,8 +710,8 @@ h1 {
   color: var(--text-primary);
   font-weight: 700;
   line-height: 1.25;
-  justify-self: end;
-  text-align: right;
+  justify-self: start;
+  text-align: left;
   overflow-wrap: anywhere;
 }
 
@@ -925,18 +931,8 @@ small {
   }
 
   .font-size-controls {
-    min-height: 6.4rem;
-    padding-top: 3.3rem;
-  }
-
-  .font-size-control-header {
-    grid-template-columns: 1fr;
-    gap: 0.2rem;
-  }
-
-  .font-size-current {
-    justify-self: start;
-    text-align: left;
+    min-height: 7.25rem;
+    padding-top: 4.15rem;
   }
 
   .form-actions :deep(.p-button) {
