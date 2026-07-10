@@ -935,7 +935,7 @@ small {
   }
 }
 
-@container (max-width: 760px) {
+@container (max-width: 680px) {
   .display-settings-layout {
     grid-template-columns: 1fr;
   }
