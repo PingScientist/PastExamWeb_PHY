@@ -3364,7 +3364,7 @@ const getFilteredTrashRows = () => {
 
 const clampTrashPaginatorFirst = (totalPages = 1) => {
   const safeRows = Math.max(1, Number(trashRows.value) || 10)
-  const normalizedPages = Math.max(1, Number(totalPages) || 1)
+  const normalizedPages = Math.max(1, Number.isFinite(Number(totalPages)) ? Number(totalPages) : 1)
   const maxFirst = Math.max(0, (normalizedPages - 1) * safeRows)
   if (trashFirst.value > maxFirst) {
     trashFirst.value = maxFirst
@@ -3372,27 +3372,36 @@ const clampTrashPaginatorFirst = (totalPages = 1) => {
 }
 
 const getTrashCurrentPageIndex = (totalPages = 1) => {
-  if (totalPages <= 1) return 0
+  const normalizedPages = Math.max(0, Number.isFinite(Number(totalPages)) ? Number(totalPages) : 1)
+  if (normalizedPages <= 1) return 0
   const safeRows = Math.max(1, Number(trashRows.value) || 10)
-  const maxPage = Math.max(0, totalPages - 1)
-  return Math.min(maxPage, Math.floor((trashFirst.value || 0) / safeRows))
+  const safeFirst = Math.max(0, Number(trashFirst.value) || 0)
+  const maxPage = Math.max(0, normalizedPages - 1)
+  const page = Math.floor(safeFirst / safeRows)
+  return Number.isFinite(page) ? Math.min(maxPage, Math.max(0, page)) : 0
 }
 
 const paginateTrashGroups = (groups = [], rows = 10) => {
+  const safeGroups = Array.isArray(groups) ? groups : []
   const safeRows = Math.max(1, Number(rows) || 10)
   const pages = []
   let currentPage = []
   let currentCount = 0
 
-  for (const group of groups) {
-    const groupSize = group.items.length
+  for (const rawGroup of safeGroups) {
+    const group = rawGroup ?? {}
+    const groupItems = Array.isArray(group.items) ? group.items : []
+    const groupSize = groupItems.length
 
     if (currentPage.length > 0 && currentCount + groupSize > safeRows) {
       pages.push(currentPage)
       currentPage = []
       currentCount = 0
     }
-    currentPage.push(group)
+    currentPage.push({
+      ...group,
+      items: groupItems,
+    })
     currentCount += groupSize
   }
 
@@ -3406,6 +3415,9 @@ const buildTrashGroups = (rows = []) => {
   const groups = []
   const safeRows = Array.isArray(rows) ? rows : []
   for (const row of safeRows) {
+    if (!row || typeof row !== 'object') {
+      continue
+    }
     const hasGroup = Number(row?.trash_relation_group_size || 0) > 1
     const groupIndex = row?.trash_relation_group_index
     if (hasGroup && groupIndex !== null && groupIndex !== undefined) {
@@ -3497,13 +3509,17 @@ const sortedTrashItems = computed(() => {
 })
 const trashPages = computed(() => {
   const groups = buildTrashGroups(sortedTrashItems.value)
-  return paginateTrashGroups(groups, trashRows.value)
+  return paginateTrashGroups(groups, safeTrashRows.value)
 })
 const totalFilteredTrashItems = computed(() => sortedTrashItems.value.length)
+const safeTrashRows = computed(() => Math.max(1, Number(trashRows.value) || 10))
 const currentTrashPageIndex = computed(() => getTrashCurrentPageIndex(trashPages.value.length))
-const pagedTrashItems = computed(() =>
-  (trashPages.value[currentTrashPageIndex.value] || []).flatMap((group) => group.items)
-)
+const pagedTrashItems = computed(() => {
+  const pages = Array.isArray(trashPages.value) ? trashPages.value : []
+  const page = pages[currentTrashPageIndex.value] ?? []
+  const safePage = Array.isArray(page) ? page : []
+  return safePage.flatMap((group) => (Array.isArray(group?.items) ? group.items : []))
+})
 
 const handleTrashPage = (event = {}) => {
   const rows = Math.max(1, Number(event?.rows) || trashRows.value || 10)
