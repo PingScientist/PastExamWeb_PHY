@@ -189,10 +189,20 @@ body {
 .badge,
 .tag,
 .status,
+.status-badge,
+.status-chip,
+.status-pill,
 .info-pill,
+.meta-pill,
 .action-button,
 .sidebar,
 .soft-badge,
+.submission-badge,
+.submission-status,
+.review-status,
+.admin-badge,
+.course-tag,
+.category-tag,
 [class*='-badge'],
 [class*='-tag'],
 [class*='-status'],
@@ -200,6 +210,30 @@ body {
 [class*='action-button'] {
   font-size: var(--app-badge-font-size) !important;
   line-height: 1.25;
+}
+
+.p-tag .pi,
+.p-badge .pi,
+.badge .pi,
+.tag .pi,
+.status .pi,
+.status-badge .pi,
+.status-chip .pi,
+.status-pill .pi,
+.info-pill .pi,
+.meta-pill .pi,
+.soft-badge .pi,
+.submission-badge .pi,
+.submission-status .pi,
+.review-status .pi,
+.admin-badge .pi,
+.course-tag .pi,
+.category-tag .pi,
+[class*='-badge'] .pi,
+[class*='-tag'] .pi,
+[class*='-status'] .pi {
+  font-size: 0.95em !important;
+  line-height: 1;
 }
 
 .sidebar,
@@ -567,7 +601,7 @@ html.dark {
   border-radius: 999px;
   background: var(--soft-badge-bg, rgba(100, 116, 139, 0.08)) !important;
   color: var(--soft-badge-color, #334155) !important;
-  font-size: 0.78rem !important;
+  font-size: var(--app-badge-font-size) !important;
   font-weight: 600 !important;
   letter-spacing: 0;
   line-height: 1.25 !important;
