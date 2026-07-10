@@ -3014,6 +3014,7 @@ const existingSubmissionRows = ref(10)
 const archiveRequests = ref([])
 const trashLoading = ref(false)
 const trashItems = ref([])
+const safeTrashItems = computed(() => (Array.isArray(trashItems.value) ? trashItems.value : []))
 const showTrashRelationHierarchy = ref(true)
 const TRASH_FILTER_ALL_VALUE = 'all'
 const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
@@ -3355,7 +3356,7 @@ const handleExistingSubmissionPage = (event = {}) => {
 }
 const getFilteredTrashRows = () => {
   const filterType = getValidTrashFilterType(trashFilterType.value)
-  const rows = Array.isArray(trashItems.value) ? trashItems.value : []
+  const rows = safeTrashItems.value
   if (!filterType) {
     return rows
   }
@@ -3495,25 +3496,34 @@ const toggleTrashSort = (key) => {
 }
 const sortedTrashItems = computed(() => {
   const filteredRows = getFilteredTrashRows()
+  const safeFilteredRows = Array.isArray(filteredRows) ? filteredRows : []
   const sortKey = trashSortState.value.key
   if (!sortKey) {
-    return buildTrashHierarchy(filteredRows, getValidTrashFilterType(trashFilterType.value))
-  }
-  if (!isTrashRelationHierarchyEnabled.value) {
-    return buildTrashHierarchy(
-      sortTrashItems(filteredRows),
-      getValidTrashFilterType(trashFilterType.value)
+    return (
+      buildTrashHierarchy(safeFilteredRows, getValidTrashFilterType(trashFilterType.value)) || []
     )
   }
-  return buildTrashHierarchy(filteredRows, getValidTrashFilterType(trashFilterType.value))
+  if (!isTrashRelationHierarchyEnabled.value) {
+    return (
+      buildTrashHierarchy(
+        sortTrashItems(safeFilteredRows),
+        getValidTrashFilterType(trashFilterType.value)
+      ) || []
+    )
+  }
+  return buildTrashHierarchy(safeFilteredRows, getValidTrashFilterType(trashFilterType.value)) || []
 })
 const trashPages = computed(() => {
   const groups = buildTrashGroups(sortedTrashItems.value)
   return paginateTrashGroups(groups, safeTrashRows.value)
 })
-const totalFilteredTrashItems = computed(() => sortedTrashItems.value.length)
+const totalFilteredTrashItems = computed(() => {
+  return Array.isArray(sortedTrashItems.value) ? sortedTrashItems.value.length : 0
+})
 const safeTrashRows = computed(() => Math.max(1, Number(trashRows.value) || 10))
-const currentTrashPageIndex = computed(() => getTrashCurrentPageIndex(trashPages.value.length))
+const currentTrashPageIndex = computed(() =>
+  getTrashCurrentPageIndex(Array.isArray(trashPages.value) ? trashPages.value.length : 0)
+)
 const pagedTrashItems = computed(() => {
   const pages = Array.isArray(trashPages.value) ? trashPages.value : []
   const page = pages[currentTrashPageIndex.value] ?? []
@@ -3526,7 +3536,7 @@ const handleTrashPage = (event = {}) => {
   const first = Math.max(0, Number(event?.first) || 0)
   trashRows.value = rows
   trashFirst.value = first
-  clampTrashPaginatorFirst(trashPages.value.length)
+  clampTrashPaginatorFirst(Array.isArray(trashPages.value) ? trashPages.value.length : 0)
 }
 
 watch(trashFilterType, (nextFilterType) => {
@@ -3551,12 +3561,12 @@ watch(
   }
 )
 
-watch([() => sortedTrashItems.value.length, () => trashRows.value], ([count]) => {
+watch([() => totalFilteredTrashItems.value, () => trashRows.value], ([count]) => {
   if (!count) {
     trashFirst.value = 0
     return
   }
-  clampTrashPaginatorFirst(trashPages.value.length)
+  clampTrashPaginatorFirst(Array.isArray(trashPages.value) ? trashPages.value.length : 0)
 })
 
 watch([reviewSearchQuery, reviewCategoryFilter], () => {
