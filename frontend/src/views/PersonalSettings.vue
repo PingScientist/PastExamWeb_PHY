@@ -242,6 +242,7 @@ import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   FONT_SIZE_STEP,
+  actualScaleFromDisplayPercent,
   getFontSizePreference,
   setFontSizePreference,
 } from '../utils/fontSizePreference'
@@ -300,7 +301,10 @@ export default {
   },
   computed: {
     fontSizePercent() {
-      return Math.round(this.fontSizeScale * 100)
+      return Math.round(this.fontSizeScale)
+    },
+    fontSizeActualScale() {
+      return actualScaleFromDisplayPercent(this.fontSizePercent)
     },
     fontSizeToneLabel() {
       if (this.fontSizePercent < 100) {
@@ -316,7 +320,7 @@ export default {
     },
     fontSizePreviewStyle() {
       return {
-        '--preview-font-scale': this.fontSizeScale,
+        '--preview-font-scale': this.fontSizeActualScale,
       }
     },
     canSaveProfile() {
