@@ -56,14 +56,19 @@
                         <div class="preview-course-heading">
                           <Tag severity="secondary" class="subject-tag preview-tag">必修</Tag>
                           <div class="preview-course-title-block">
-                            <h3>理論力學(二)</h3>
+                            <h3>原子彈製作</h3>
                             <p>共 5 份考古題 · 最新：114下學期</p>
                           </div>
+                        </div>
+                        <div class="preview-meta-row">
+                          <span>奧本海默</span>
+                          <span>114下學期</span>
+                          <span>期中考 / midterm2</span>
                         </div>
 
                         <div class="preview-filter-row">
                           <span class="preview-filter-chip">學期</span>
-                          <span class="preview-filter-chip">教授</span>
+                          <span class="preview-filter-chip">教授：奧本海默</span>
                           <span class="preview-filter-chip">類型</span>
                           <span class="preview-filter-chip preview-filter-chip--check">
                             <i class="pi pi-check-square" aria-hidden="true"></i>
@@ -78,7 +83,7 @@
                             </Tag>
                             <div>
                               <h4>midterm2</h4>
-                              <p>考題目 · 0 次下載</p>
+                              <p>奧本海默 · 考題目 · 0 次下載</p>
                             </div>
                           </div>
                           <div class="preview-actions">
@@ -738,6 +743,27 @@ h1 {
   margin: 0;
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+.preview-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em 0.65em;
+  color: var(--text-secondary);
+  font-size: 0.82em;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.preview-meta-row span + span::before {
+  content: '';
+  display: inline-block;
+  width: 0.22em;
+  height: 0.22em;
+  margin-right: 0.65em;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: color-mix(in srgb, var(--text-secondary) 65%, transparent);
 }
 
 .preview-filter-row,
