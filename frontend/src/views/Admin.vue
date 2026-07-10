@@ -9221,4 +9221,62 @@ onBeforeUnmount(() => {
 .admin-mobile-list--users :deep(.p-button-label) {
   font-size: inherit !important;
 }
+
+.trash-center,
+.trash-center :deep(.p-component),
+.trash-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.trash-center :deep(.pi),
+.trash-center :deep(.p-button-icon),
+.trash-table :deep(.pi),
+.trash-mobile-list :deep(.pi) {
+  font-size: var(--app-icon-size) !important;
+}
+
+.trash-center :deep(.p-select),
+.trash-center :deep(.p-select-label),
+.trash-table :deep(.p-datatable-thead > tr > th),
+.trash-table :deep(.p-datatable-tbody > tr > td),
+.trash-table :deep(.p-paginator),
+.trash-table :deep(.p-paginator-page),
+.trash-table :deep(.p-paginator-current),
+.trash-name-cell,
+.trash-name-cell small,
+.trash-mobile-info-label,
+.trash-mobile-info-value {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.trash-name-title,
+.trash-mobile-card-title {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.trash-center :deep(.p-tag),
+.trash-center :deep(.soft-badge),
+.trash-type-chip,
+.trash-dependency-chip,
+.trash-dependency-help-chip,
+.trash-mobile-dependencies :deep(.trash-dependency-chip) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.trash-center :deep(.p-button),
+.trash-action-button,
+.trash-mobile-card-actions :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.trash-center :deep(.p-button-label),
+.trash-center :deep(.p-button-icon),
+.trash-mobile-card-actions :deep(.p-button-label) {
+  font-size: inherit !important;
+}
 </style>
