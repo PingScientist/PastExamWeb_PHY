@@ -659,12 +659,10 @@ h1 {
 
 .font-size-controls {
   position: relative;
-  display: grid;
-  grid-template-rows: 2rem auto;
-  gap: 0.5rem;
+  display: block;
   min-width: 0;
-  min-height: 7.15rem;
-  padding-top: 4.05rem;
+  min-height: 8.1rem;
+  padding-top: 6.45rem;
 }
 
 .font-size-control-header {
@@ -685,7 +683,10 @@ h1 {
 }
 
 .font-size-slider-row {
-  display: grid;
+  position: absolute;
+  inset-inline: 0;
+  top: 4.05rem;
+  display: flex;
   align-items: center;
   width: 100%;
   height: 2rem;
@@ -701,9 +702,15 @@ h1 {
   align-self: center;
 }
 
+.font-size-slider.p-slider,
 .font-size-slider :deep(.p-slider) {
   align-self: center;
   width: 100%;
+}
+
+.font-size-controls > small {
+  display: block;
+  line-height: 1.35;
 }
 
 .font-size-current {
@@ -931,8 +938,12 @@ small {
   }
 
   .font-size-controls {
-    min-height: 7.25rem;
-    padding-top: 4.15rem;
+    min-height: 8.45rem;
+    padding-top: 6.65rem;
+  }
+
+  .font-size-slider-row {
+    top: 4.2rem;
   }
 
   .form-actions :deep(.p-button) {
