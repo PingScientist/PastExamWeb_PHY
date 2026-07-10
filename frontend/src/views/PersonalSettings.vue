@@ -502,7 +502,7 @@ h1 {
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 0.24fr) minmax(0, 1fr);
   gap: 2rem;
   align-items: start;
 }
@@ -520,17 +520,18 @@ h1 {
 
 .settings-nav-item {
   width: 100%;
-  min-height: 2rem;
+  min-height: 2.1em;
   padding: 0.35rem 0.6rem;
   border: 0;
   border-radius: 6px;
   color: var(--text-secondary);
   background: transparent;
   font: inherit;
-  font-size: 0.92rem;
+  font-size: var(--app-font-size-sm);
   line-height: 1.35;
   text-align: left;
   cursor: pointer;
+  overflow-wrap: anywhere;
 }
 
 .settings-nav-item:hover,
@@ -545,7 +546,7 @@ h1 {
 
 .settings-nav-item--item {
   padding-left: 1.25rem;
-  font-size: 0.86rem;
+  font-size: calc(var(--app-font-size-base) * 0.86);
 }
 
 .settings-content {
@@ -822,7 +823,7 @@ small {
   .settings-nav-item {
     width: auto;
     flex: 0 0 auto;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .settings-nav-item.active {
