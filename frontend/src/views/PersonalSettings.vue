@@ -31,23 +31,38 @@
               <template #content>
                 <div class="settings-form display-settings-form">
                   <div class="display-settings-layout">
-                    <div id="font-size-setting" class="field settings-anchor font-size-setting">
-                      <div class="font-size-controls">
-                        <div class="font-size-control-header">
-                          <label id="font-size-label">字體大小</label>
-                          <span class="font-size-current">{{ fontSizeDisplayText }}</span>
+                    <div class="display-settings-controls">
+                      <div id="font-size-setting" class="field settings-anchor font-size-setting">
+                        <div class="font-size-controls">
+                          <div class="font-size-control-header">
+                            <label id="font-size-label">字體大小</label>
+                            <span class="font-size-current">{{ fontSizeDisplayText }}</span>
+                          </div>
+                          <div class="font-size-slider-row">
+                            <Slider
+                              v-model="fontSizeScale"
+                              :min="fontSizeMin"
+                              :max="fontSizeMax"
+                              :step="fontSizeStep"
+                              class="font-size-slider"
+                              aria-labelledby="font-size-label"
+                            />
+                          </div>
+                          <small>偏好值會保存於此裝置，重新整理後仍會保留。</small>
                         </div>
-                        <div class="font-size-slider-row">
-                          <Slider
-                            v-model="fontSizeScale"
-                            :min="fontSizeMin"
-                            :max="fontSizeMax"
-                            :step="fontSizeStep"
-                            class="font-size-slider"
-                            aria-labelledby="font-size-label"
-                          />
-                        </div>
-                        <small>偏好值會保存於此裝置，重新整理後仍會保留。</small>
+                      </div>
+
+                      <div id="language-setting" class="field settings-anchor language-setting">
+                        <label for="language">語言</label>
+                        <Select
+                          id="language"
+                          v-model="displayForm.language"
+                          :options="languageOptions"
+                          optionLabel="label"
+                          optionValue="value"
+                          class="w-full"
+                        />
+                        <small>語言功能目前僅為 UI placeholder，正式英文翻譯表之後才會提供。</small>
                       </div>
                     </div>
 
@@ -109,19 +124,6 @@
                           <Tag severity="success" class="preview-tag">啟用中</Tag>
                         </div>
                       </section>
-                    </div>
-
-                    <div id="language-setting" class="field settings-anchor language-setting">
-                      <label for="language">語言</label>
-                      <Select
-                        id="language"
-                        v-model="displayForm.language"
-                        :options="languageOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                      />
-                      <small>語言功能目前僅為 UI placeholder，正式英文翻譯表之後才會提供。</small>
                     </div>
                   </div>
 
@@ -632,6 +634,7 @@ h1 {
 
 .display-settings-form {
   width: 100%;
+  container-type: inline-size;
 }
 
 .display-settings-layout,
@@ -642,12 +645,15 @@ h1 {
 }
 
 .display-settings-layout {
-  grid-template-columns: minmax(16rem, 0.88fr) minmax(18rem, 1.12fr);
-  grid-template-areas:
-    'font preview'
-    'language preview';
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(20rem, 1.1fr);
   align-items: start;
-  gap: 0.75rem 1.15rem;
+  gap: 1rem 1.15rem;
+}
+
+.display-settings-controls {
+  display: grid;
+  gap: 0.95rem;
+  min-width: 0;
 }
 
 .field {
@@ -657,16 +663,16 @@ h1 {
 }
 
 .font-size-setting {
-  grid-area: font;
+  min-width: 0;
 }
 
 .language-setting {
-  grid-area: language;
+  min-width: 0;
 }
 
 .font-size-controls {
   display: grid;
-  grid-template-rows: 64px 36px auto;
+  grid-template-rows: 88px 36px auto;
   gap: 8px;
   min-width: 0;
 }
@@ -720,11 +726,12 @@ h1 {
   line-height: 1.25;
   justify-self: start;
   text-align: left;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .font-size-preview {
-  grid-area: preview;
   display: grid;
   gap: 0.65em;
   padding: 1rem;
@@ -733,6 +740,7 @@ h1 {
   background: color-mix(in srgb, var(--bg-primary) 72%, var(--bg-secondary));
   font-size: calc(1rem * var(--preview-font-scale));
   box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent);
+  min-width: 0;
 }
 
 .preview-course-sample {
@@ -913,6 +921,16 @@ small {
   }
 }
 
+@container (max-width: 760px) {
+  .display-settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .font-size-controls {
+    grid-template-rows: 96px 36px auto;
+  }
+}
+
 @media (max-width: 640px) {
   .personal-settings-shell {
     padding: 1.25rem 0.75rem 2rem;
@@ -927,19 +945,12 @@ small {
     grid-template-columns: 1fr;
   }
 
-  .display-settings-layout {
-    grid-template-areas:
-      'font'
-      'preview'
-      'language';
-  }
-
   .font-size-slider-row {
     min-width: 100%;
   }
 
   .font-size-controls {
-    grid-template-rows: 68px 36px auto;
+    grid-template-rows: 104px 36px auto;
   }
 
   .form-actions :deep(.p-button) {
