@@ -2046,6 +2046,19 @@ const mobileMenuItems = computed(() => {
   gap: 0.65rem;
 }
 
+.upload-section :deep(.p-button) {
+  font-size: var(--app-font-size-xs) !important;
+}
+
+.upload-section :deep(.p-button-label) {
+  font-size: inherit !important;
+  line-height: 1.25;
+}
+
+.upload-section :deep(.p-button-icon) {
+  font-size: calc(var(--app-font-size-xs) * 1.05) !important;
+}
+
 .archive-dark .upload-section {
   background: #0b1714;
   border-top-color: #22342f;
