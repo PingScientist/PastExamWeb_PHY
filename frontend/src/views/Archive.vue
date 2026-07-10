@@ -2047,6 +2047,7 @@ const mobileMenuItems = computed(() => {
 }
 
 .upload-section :deep(.p-button) {
+  min-height: max(2.25rem, calc(2rem * var(--app-font-scale)));
   font-size: var(--app-font-size-xs) !important;
 }
 
