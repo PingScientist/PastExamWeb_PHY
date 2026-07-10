@@ -51,9 +51,58 @@
                       </div>
 
                       <div class="font-size-preview" :style="fontSizePreviewStyle">
-                        <h3>清大物理考古系統</h3>
-                        <p>這是一段用來預覽目前字體大小的文字。</p>
-                        <small>篩選、預覽、下載等操作文字會依設定調整。</small>
+                        <section class="preview-course-sample" aria-label="字體大小預覽">
+                          <div class="preview-course-heading">
+                            <Tag severity="secondary" class="subject-tag preview-tag">必修</Tag>
+                            <div class="preview-course-title-block">
+                              <h3>理論力學(二)</h3>
+                              <p>共 5 份考古題 · 最新：114下學期</p>
+                            </div>
+                          </div>
+
+                          <div class="preview-filter-row">
+                            <span class="preview-filter-chip">學期</span>
+                            <span class="preview-filter-chip">教授</span>
+                            <span class="preview-filter-chip">類型</span>
+                            <span class="preview-filter-chip preview-filter-chip--check">
+                              <i class="pi pi-check-square" aria-hidden="true"></i>
+                              附解答
+                            </span>
+                          </div>
+
+                          <article class="preview-archive-card">
+                            <div class="preview-archive-main">
+                              <Tag severity="secondary" class="exam-type-tag preview-tag">
+                                期中考
+                              </Tag>
+                              <div>
+                                <h4>midterm2</h4>
+                                <p>考題目 · 0 次下載</p>
+                              </div>
+                            </div>
+                            <div class="preview-actions">
+                              <Button icon="pi pi-eye" label="預覽" size="small" outlined />
+                              <Button icon="pi pi-download" label="下載" size="small" />
+                              <Button
+                                icon="pi pi-trash"
+                                label="刪除"
+                                size="small"
+                                severity="danger"
+                                outlined
+                              />
+                            </div>
+                          </article>
+
+                          <div class="preview-admin-tags">
+                            <Tag class="soft-badge review-status-pending" severity="warning">
+                              待審核
+                            </Tag>
+                            <Tag class="soft-badge submission-status-deleted" severity="danger">
+                              已刪除
+                            </Tag>
+                            <Tag severity="success" class="preview-tag">啟用中</Tag>
+                          </div>
+                        </section>
                       </div>
                     </div>
 
@@ -619,7 +668,7 @@ h1 {
 
 .font-size-preview {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.65em;
   padding: 1rem;
   border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
   border-radius: 8px;
@@ -628,22 +677,103 @@ h1 {
   box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent);
 }
 
-.font-size-preview h3 {
+.preview-course-sample {
+  display: grid;
+  gap: 0.75em;
+  min-width: 0;
+}
+
+.preview-course-heading {
+  display: flex;
+  gap: 0.6em;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.preview-course-title-block {
+  min-width: 0;
+}
+
+.font-size-preview h3,
+.font-size-preview h4 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1.05em;
+  font-size: 1.08em;
   font-weight: 760;
   letter-spacing: 0;
+  line-height: 1.25;
 }
 
 .font-size-preview p {
   margin: 0;
-  color: var(--text-primary);
-  line-height: 1.65;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
-.font-size-preview small {
-  font-size: 0.86em;
+.preview-filter-row,
+.preview-actions,
+.preview-admin-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45em;
+  min-width: 0;
+}
+
+.preview-filter-chip {
+  display: inline-flex;
+  gap: 0.35em;
+  align-items: center;
+  min-height: 1.9em;
+  padding: 0.28em 0.62em;
+  border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  border-radius: 6px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-secondary) 78%, transparent);
+  font-size: 0.88em;
+  line-height: 1.25;
+}
+
+.preview-archive-card {
+  display: grid;
+  gap: 0.65em;
+  padding: 0.75em;
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-secondary) 68%, transparent);
+}
+
+.preview-archive-main {
+  display: flex;
+  gap: 0.55em;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.font-size-preview :deep(.p-button) {
+  min-height: 2.25em;
+  padding: 0.42em 0.68em;
+  font-size: 0.88em;
+  line-height: 1.25;
+}
+
+.font-size-preview :deep(.p-button-label),
+.font-size-preview :deep(.p-button-icon) {
+  font-size: inherit;
+  line-height: 1;
+}
+
+.font-size-preview :deep(.pi) {
+  font-size: 1em;
+}
+
+.font-size-preview :deep(.p-tag),
+.font-size-preview .preview-tag,
+.font-size-preview .soft-badge {
+  min-height: 1.65em !important;
+  padding: 0.22em 0.55em !important;
+  font-size: 0.82em !important;
+  line-height: 1.2 !important;
+  white-space: normal;
 }
 
 .autosave-hint {
