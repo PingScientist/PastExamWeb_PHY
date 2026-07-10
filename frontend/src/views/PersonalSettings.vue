@@ -640,7 +640,7 @@ h1 {
     'font preview'
     'language preview';
   align-items: start;
-  gap: 1rem 1.15rem;
+  gap: 0.75rem 1.15rem;
 }
 
 .field {
