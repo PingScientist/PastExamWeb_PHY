@@ -6165,7 +6165,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: var(--soft-note-bg, color-mix(in srgb, var(--surface-ground) 55%, transparent));
   color: var(--soft-note-color, var(--text-color-secondary));
-  font-size: 0.78rem;
+  font-size: var(--app-font-size-xs);
   font-weight: 600;
   line-height: 1.35;
   white-space: normal;
@@ -6176,7 +6176,7 @@ onBeforeUnmount(() => {
 .review-card-action-note .pi {
   flex: 0 0 auto;
   flex-shrink: 0;
-  font-size: 0.78rem;
+  font-size: 0.95em;
 }
 
 .review-card-action-note span {
@@ -6537,19 +6537,25 @@ onBeforeUnmount(() => {
 :deep(.trash-type-chip.soft-badge) {
   min-height: 1.75rem !important;
   padding: 0.22rem 0.62rem !important;
-  font-size: 0.9rem !important;
+  font-size: var(--app-badge-font-size) !important;
   line-height: 1.25 !important;
 }
 
 :deep(.review-admin-upload-chip.soft-badge) {
   min-height: 1.45rem !important;
   padding: 0.16rem 0.48rem !important;
-  font-size: 0.78rem !important;
+  font-size: var(--app-badge-font-size) !important;
   line-height: 1.25 !important;
 }
 
 :deep(.review-status-chip.soft-badge) {
   font-weight: 650 !important;
+}
+
+:deep(.review-card-chip.soft-badge .pi),
+:deep(.review-status-chip.soft-badge .pi),
+:deep(.review-admin-upload-chip.soft-badge .pi) {
+  font-size: 0.95em !important;
 }
 
 :deep(.trash-dependency-chip.soft-badge) {
@@ -8969,5 +8975,322 @@ onBeforeUnmount(() => {
   .trash-mobile-info-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.review-center,
+.review-center :deep(.p-component) {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.review-center .search-icon,
+.review-center :deep(.pi),
+.review-center :deep(.p-button-icon),
+.review-center .review-sort-icon,
+.review-center .review-card-action-note .pi {
+  font-size: var(--app-icon-size) !important;
+}
+
+.review-center :deep(.p-inputtext),
+.review-center :deep(.p-inputtext::placeholder),
+.review-center :deep(.p-select),
+.review-center :deep(.p-select-label),
+.review-center :deep(.p-datatable),
+.review-center :deep(.p-datatable-thead > tr > th),
+.review-center :deep(.p-datatable-tbody > tr > td),
+.review-center :deep(.p-paginator),
+.review-center :deep(.p-paginator-page),
+.review-center .review-card-meta-text,
+.review-center .review-sort-header,
+.review-center .review-empty-state,
+.review-center .review-mobile-info-label,
+.review-center .review-mobile-info-value,
+.review-center .review-mobile-exam-name,
+.review-center .text-xs {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.review-center .review-card-title,
+.review-center .review-mobile-card-course-name {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.review-center :deep(.p-tag),
+.review-center :deep(.soft-badge),
+.review-center .review-card-chip,
+.review-center .review-status-chip,
+.review-center .review-admin-upload-chip {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.review-center .review-card-action-note,
+.review-center .review-card-action-note__text {
+  font-size: var(--app-font-size-xs) !important;
+  line-height: 1.25 !important;
+}
+
+.review-center .review-card-action-note .pi {
+  font-size: calc(var(--app-font-size-xs) * 0.95) !important;
+}
+
+.review-center :deep(.p-button),
+.review-center .review-action-button {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.review-center :deep(.p-button-label),
+.review-center :deep(.p-button-icon) {
+  font-size: inherit !important;
+}
+
+.admin-container :deep(.p-tab) {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.admin-toolbar--course,
+.admin-toolbar--course :deep(.p-component),
+.course-management-table,
+.category-management-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-toolbar--course .search-icon,
+.admin-toolbar--course :deep(.pi),
+.course-management-table :deep(.pi),
+.category-management-table :deep(.pi),
+.admin-mobile-list--courses :deep(.pi),
+.admin-mobile-list--categories :deep(.pi) {
+  font-size: var(--app-icon-size) !important;
+}
+
+.admin-toolbar--course :deep(.p-inputtext),
+.admin-toolbar--course :deep(.p-inputtext::placeholder),
+.admin-toolbar--course :deep(.p-select),
+.admin-toolbar--course :deep(.p-select-label),
+.course-management-table :deep(.p-datatable-thead > tr > th),
+.course-management-table :deep(.p-datatable-tbody > tr > td),
+.category-management-table :deep(.p-datatable-thead > tr > th),
+.category-management-table :deep(.p-datatable-tbody > tr > td),
+.course-card-order,
+.category-card-order,
+.category-card-key-value,
+.mobile-field-label,
+.mobile-field-value {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.course-card-title,
+.category-card-title,
+.category-name-desktop,
+.category-mobile-title,
+.mobile-primary-text {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.course-management-table :deep(.p-tag),
+.category-management-table :deep(.p-tag),
+.admin-mobile-list--courses :deep(.p-tag),
+.admin-mobile-list--categories :deep(.p-tag),
+.course-card-category {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.admin-toolbar--course :deep(.p-button),
+.course-management-table :deep(.p-button),
+.category-management-table :deep(.p-button),
+.admin-mobile-list--courses :deep(.p-button),
+.admin-mobile-list--categories :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.admin-toolbar--course :deep(.p-button-label),
+.course-management-table :deep(.p-button-label),
+.category-management-table :deep(.p-button-label),
+.admin-mobile-list--courses :deep(.p-button-label),
+.admin-mobile-list--categories :deep(.p-button-label) {
+  font-size: inherit !important;
+}
+
+.admin-toolbar--announcement,
+.admin-toolbar--announcement :deep(.p-component),
+.notification-management-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-toolbar--announcement .search-icon,
+.admin-toolbar--announcement :deep(.pi),
+.notification-management-table :deep(.pi),
+.admin-mobile-list--notifications :deep(.pi) {
+  font-size: var(--app-icon-size) !important;
+}
+
+.admin-toolbar--announcement :deep(.p-inputtext),
+.admin-toolbar--announcement :deep(.p-inputtext::placeholder),
+.admin-toolbar--announcement :deep(.p-select),
+.admin-toolbar--announcement :deep(.p-select-label),
+.notification-management-table :deep(.p-datatable-thead > tr > th),
+.notification-management-table :deep(.p-datatable-tbody > tr > td),
+.notification-management-table :deep(.p-paginator),
+.notification-management-table :deep(.p-paginator-page),
+.notification-management-table :deep(.p-paginator-current),
+.notification-management-table :deep(.text-sm),
+.notification-management-table :deep(.text-700),
+.admin-mobile-list--notifications .admin-card-meta-text {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.notification-management-table .mobile-primary-text,
+.admin-announcement-card .admin-card-title,
+.admin-announcement-mobile-card .admin-card-title {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.notification-management-table :deep(.p-tag),
+.admin-mobile-list--notifications :deep(.p-tag) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.admin-toolbar--announcement :deep(.p-button),
+.notification-management-table :deep(.p-button),
+.admin-mobile-list--notifications :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.admin-toolbar--announcement :deep(.p-button-label),
+.notification-management-table :deep(.p-button-label),
+.admin-mobile-list--notifications :deep(.p-button-label) {
+  font-size: inherit !important;
+}
+
+.admin-toolbar--users,
+.admin-toolbar--users :deep(.p-component),
+.user-management-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-toolbar--users .search-icon,
+.admin-toolbar--users :deep(.pi),
+.user-management-table :deep(.pi),
+.admin-mobile-list--users :deep(.pi),
+.user-online-badge .pi {
+  font-size: var(--app-icon-size) !important;
+}
+
+.admin-toolbar--users :deep(.p-inputtext),
+.admin-toolbar--users :deep(.p-inputtext::placeholder),
+.admin-toolbar--users :deep(.p-select),
+.admin-toolbar--users :deep(.p-select-label),
+.user-management-table :deep(.p-datatable-thead > tr > th),
+.user-management-table :deep(.p-datatable-tbody > tr > td),
+.user-management-table :deep(.p-paginator),
+.user-management-table :deep(.p-paginator-page),
+.user-management-table :deep(.p-paginator-current),
+.user-management-table :deep(.text-sm),
+.admin-mobile-list--users .admin-card-email,
+.admin-mobile-list--users .admin-card-meta-text,
+.user-online-badge {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.user-management-table .mobile-primary-text,
+.admin-user-card .admin-card-title,
+.admin-user-mobile-card .admin-card-title {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.user-management-table :deep(.p-tag),
+.admin-mobile-list--users :deep(.p-tag) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.admin-toolbar--users :deep(.p-button),
+.user-management-table :deep(.p-button),
+.admin-mobile-list--users :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.admin-toolbar--users :deep(.p-button-label),
+.user-management-table :deep(.p-button-label),
+.admin-mobile-list--users :deep(.p-button-label) {
+  font-size: inherit !important;
+}
+
+.trash-center,
+.trash-center :deep(.p-component),
+.trash-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.trash-center :deep(.pi),
+.trash-center :deep(.p-button-icon),
+.trash-table :deep(.pi),
+.trash-mobile-list :deep(.pi) {
+  font-size: var(--app-icon-size) !important;
+}
+
+.trash-center :deep(.p-select),
+.trash-center :deep(.p-select-label),
+.trash-table :deep(.p-datatable-thead > tr > th),
+.trash-table :deep(.p-datatable-tbody > tr > td),
+.trash-table :deep(.p-paginator),
+.trash-table :deep(.p-paginator-page),
+.trash-table :deep(.p-paginator-current),
+.trash-name-cell,
+.trash-name-cell small,
+.trash-mobile-info-label,
+.trash-mobile-info-value {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.trash-name-title,
+.trash-mobile-card-title {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.trash-center :deep(.p-tag),
+.trash-center :deep(.soft-badge),
+.trash-type-chip,
+.trash-dependency-chip,
+.trash-dependency-help-chip,
+.trash-mobile-dependencies :deep(.trash-dependency-chip) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.trash-center :deep(.p-button),
+.trash-action-button,
+.trash-mobile-card-actions :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.trash-center :deep(.p-button-label),
+.trash-center :deep(.p-button-icon),
+.trash-mobile-card-actions :deep(.p-button-label) {
+  font-size: inherit !important;
 }
 </style>

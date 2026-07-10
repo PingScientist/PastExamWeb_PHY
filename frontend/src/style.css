@@ -12,6 +12,14 @@
   --title-gradient-start: #176f7b;
   --title-gradient-end: #b9821d;
   --code-bg-svg-fill: rgba(29, 116, 130, 0.16);
+  --app-font-scale: 1;
+  --app-font-size-base: calc(1rem * var(--app-font-scale));
+  --app-font-size-xs: calc(var(--app-font-size-base) * 0.78);
+  --app-font-size-sm: calc(var(--app-font-size-base) * 0.92);
+  --app-font-size-lg: calc(var(--app-font-size-base) * 1.08);
+  --app-control-font-size: calc(var(--app-font-size-base) * 0.95);
+  --app-badge-font-size: calc(var(--app-font-size-base) * 0.82);
+  --app-icon-size: calc(var(--app-font-size-base) * 0.96);
 
   /* Code highlighting - Light theme */
   --code-keyword: #d73a49;
@@ -59,6 +67,517 @@
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  font-size: var(--app-font-size-base);
+}
+
+#app {
+  font-size: var(--app-font-size-base);
+}
+
+.p-button,
+.p-button-label,
+.p-button-icon,
+.p-splitbutton,
+.p-menubar,
+.p-menu,
+.p-menuitem,
+.p-menuitem-content,
+.p-select,
+.p-select-label,
+.p-dropdown,
+.p-dropdown-label,
+.p-multiselect,
+.p-multiselect-label,
+.p-inputtext,
+.p-password,
+.p-password input,
+.p-textarea,
+.p-textarea textarea,
+.p-autocomplete,
+.p-autocomplete-input,
+.p-datepicker,
+.p-checkbox,
+.p-toolbar,
+.p-tab,
+.p-tabs,
+.p-datatable,
+.p-datatable-header,
+.p-datatable-thead,
+.p-datatable-tbody,
+.p-paginator,
+.p-paginator-page,
+.p-paginator-current,
+.p-tag,
+.p-badge,
+.p-card {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-button-label,
+.p-button-icon,
+.p-menuitem-text,
+.p-menuitem-label,
+.p-menuitem-icon,
+.p-menubar .p-menuitem-link,
+.p-menu .p-menuitem-link,
+.p-panelmenu-header-label,
+.p-panelmenu-item-label,
+.p-panelmenu-header-icon,
+.p-panelmenu-item-icon,
+.p-panelmenu-submenu-icon,
+.p-select-label,
+.p-dropdown-label,
+.p-multiselect-label,
+.p-inputtext::placeholder,
+.p-password input::placeholder,
+.p-textarea::placeholder,
+.p-datatable .p-datatable-thead > tr > th,
+.p-datatable .p-datatable-tbody > tr > td,
+.p-splitbutton .p-button-label,
+.p-paginator .p-paginator-page,
+.p-paginator .p-paginator-current,
+.p-paginator .p-select-label,
+.p-tag .p-tag-label,
+.p-badge,
+.p-card .p-card-title,
+.p-card .p-card-subtitle,
+.p-card .p-card-content {
+  font-size: inherit !important;
+}
+
+.pi,
+.p-button-icon,
+.p-icon,
+.p-menuitem-icon,
+.p-menuitem-submenu-icon,
+.p-panelmenu-header-icon,
+.p-panelmenu-item-icon,
+.p-panelmenu-submenu-icon,
+.p-menubar .p-menuitem-icon,
+.p-splitbutton .p-button-icon,
+.p-dropdown .p-dropdown-trigger-icon,
+.p-select .p-select-dropdown-icon,
+.p-select-dropdown,
+.p-dropdown-trigger,
+.p-paginator-prev,
+.p-paginator-next,
+.p-sortable-column-icon {
+  font-size: var(--app-icon-size) !important;
+  line-height: 1;
+}
+
+.p-button {
+  min-height: calc(2.35rem * var(--app-font-scale));
+}
+
+.p-button.p-button-sm,
+.p-button-sm > .p-button {
+  min-height: calc(2rem * var(--app-font-scale));
+}
+
+.p-inputtext,
+.p-password input,
+.p-textarea,
+.p-select,
+.p-dropdown,
+.p-multiselect {
+  min-height: calc(2.35rem * var(--app-font-scale));
+}
+
+.p-tag,
+.p-badge,
+.badge,
+.tag,
+.status,
+.status-badge,
+.status-chip,
+.status-pill,
+.info-pill,
+.meta-pill,
+.action-button,
+.sidebar,
+.soft-badge,
+.submission-badge,
+.submission-status,
+.review-status,
+.admin-badge,
+.course-tag,
+.category-tag,
+[class*='-badge'],
+[class*='-tag'],
+[class*='-status'],
+[class*='info-pill'],
+[class*='action-button'] {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25;
+}
+
+.p-tag .pi,
+.p-badge .pi,
+.badge .pi,
+.tag .pi,
+.status .pi,
+.status-badge .pi,
+.status-chip .pi,
+.status-pill .pi,
+.info-pill .pi,
+.meta-pill .pi,
+.soft-badge .pi,
+.submission-badge .pi,
+.submission-status .pi,
+.review-status .pi,
+.admin-badge .pi,
+.course-tag .pi,
+.category-tag .pi,
+[class*='-badge'] .pi,
+[class*='-tag'] .pi,
+[class*='-status'] .pi {
+  font-size: 0.95em !important;
+  line-height: 1;
+}
+
+.sidebar,
+.sidebar .p-inputtext,
+.sidebar .p-button,
+.sidebar .p-panelmenu {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.action-button,
+[class*='action-button'] {
+  min-height: calc(2rem * var(--app-font-scale));
+}
+
+.p-dialog,
+.p-popover,
+.p-overlaypanel,
+.p-select-overlay,
+.p-dropdown-panel,
+.p-multiselect-overlay,
+.p-menu,
+.p-tieredmenu,
+.p-tooltip,
+.p-datepicker,
+.p-autocomplete-panel,
+.modal,
+.dialog,
+.upload-dialog,
+.submission-dialog,
+.pdf-preview-dialog,
+.report-dialog,
+.announcement-dialog,
+.management-dialog {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog-header,
+.p-dialog-title,
+.p-dialog-content,
+.p-dialog-footer,
+.p-popover-content,
+.p-overlaypanel-content,
+.p-select-list,
+.p-dropdown-items,
+.p-menu-list,
+.p-tieredmenu-list,
+.p-tooltip-text,
+.p-datepicker-panel,
+.p-autocomplete-list {
+  font-size: inherit !important;
+}
+
+.p-dialog-title,
+.p-dialog-header,
+.p-dialog-content,
+.p-dialog-footer,
+.p-dialog label,
+.p-dialog small,
+.p-dialog p,
+.p-dialog h3,
+.p-dialog h4,
+.p-dialog h5,
+.p-dialog .text-xs,
+.p-dialog .text-sm,
+.p-dialog .text-lg,
+.p-dialog .text-xl,
+.p-popover,
+.p-overlaypanel,
+.p-select-option,
+.p-dropdown-item,
+.p-menuitem-text,
+.p-tieredmenu .p-menuitem-text,
+.p-autocomplete-option,
+.p-datepicker td,
+.p-datepicker th,
+.p-tooltip-text {
+  font-size: inherit !important;
+  line-height: 1.4;
+}
+
+.p-dialog .p-button,
+.p-dialog .p-inputtext,
+.p-dialog textarea,
+.p-dialog .p-textarea,
+.p-dialog .p-select,
+.p-dialog .p-dropdown,
+.p-dialog .p-checkbox,
+.p-dialog .p-password,
+.p-dialog .p-password input,
+.p-dialog .p-tag,
+.p-dialog .p-badge,
+.p-popover .p-button,
+.p-popover .p-inputtext,
+.p-overlaypanel .p-button,
+.p-overlaypanel .p-inputtext,
+.p-select-overlay,
+.p-dropdown-panel,
+.p-datepicker,
+.p-autocomplete-panel {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog .p-button-label,
+.p-dialog .p-button-icon,
+.p-dialog .p-inputtext::placeholder,
+.p-dialog textarea::placeholder,
+.p-dialog .p-select-label,
+.p-dialog .p-dropdown-label,
+.p-dialog .p-tag-label,
+.p-dialog .p-badge,
+.p-select-overlay .p-select-option,
+.p-dropdown-panel .p-dropdown-item,
+.p-autocomplete-panel .p-autocomplete-option {
+  font-size: inherit !important;
+}
+
+.p-dialog .pi,
+.p-dialog .p-icon,
+.p-dialog-close-button,
+.p-popover .pi,
+.p-overlaypanel .pi,
+.p-select-overlay .pi,
+.p-dropdown-panel .pi,
+.p-menu .pi,
+.p-tieredmenu .pi,
+.p-tooltip .pi,
+.p-datepicker .pi,
+.p-autocomplete-panel .pi {
+  font-size: var(--app-icon-size) !important;
+}
+
+.p-dialog {
+  max-width: min(96vw, 100%);
+  max-height: min(94vh, 94dvh);
+}
+
+.p-dialog-content {
+  max-height: min(78vh, 78dvh);
+  overflow: auto;
+}
+
+.p-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.p-dialog-close-button {
+  min-width: calc(2.2rem * var(--app-font-scale));
+  min-height: calc(2.2rem * var(--app-font-scale));
+}
+
+.p-dialog .p-stepper,
+.p-dialog .p-step,
+.p-dialog .p-step-title,
+.p-dialog .p-steppanel,
+.p-dialog .p-datatable,
+.p-dialog .p-datatable-header,
+.p-dialog .p-datatable-thead,
+.p-dialog .p-datatable-tbody,
+.p-dialog .p-paginator,
+.p-dialog .p-paginator-page,
+.p-dialog .p-message,
+.p-dialog .p-inputnumber,
+.p-dialog .p-inputnumber-input,
+.p-dialog .p-toggleswitch,
+.p-dialog .p-datepicker,
+.p-dialog .request-mode-panel,
+.p-dialog .new-category-grid,
+.p-dialog .submission-status-list,
+.p-dialog .submission-status-card,
+.p-dialog .submission-status-title,
+.p-dialog .submission-status-meta,
+.p-dialog .submission-status-note,
+.p-dialog .discussion-panel,
+.p-dialog .discussion-header,
+.p-dialog .discussion-footer,
+.p-dialog .notification-table,
+.p-dialog .notification-body,
+.p-dialog .markdown-content,
+.p-dialog .request-summary,
+.p-dialog .comparison-basis,
+.p-dialog .submission-detail-comparison,
+.p-dialog .submission-detail-comparison-mobile,
+.p-dialog .comparison-mobile-card,
+.p-dialog .comparison-mobile-meta,
+.p-dialog .review-history,
+.p-dialog .review-requester,
+.p-dialog .review-history-row,
+.p-dialog .compare-preview-error,
+.p-dialog .compare-preview-pane,
+.p-dialog .category-color-options,
+.p-dialog .category-color-option,
+.p-dialog .category-badge-preview,
+.p-dialog .trash-dependency-help,
+.p-dialog .trash-dependency-help-section,
+.p-dialog .trash-dependency-help-label-card,
+.p-dialog .trash-dependency-help-flow-card,
+.p-dialog .trash-dependency-help-rule-list,
+.p-dialog .trash-dependency-help-note,
+.issue-report-dialog,
+.issue-report-dialog .p-fluid {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog .p-step-title,
+.p-dialog .p-datatable-thead > tr > th,
+.p-dialog .p-datatable-tbody > tr > td,
+.p-dialog .p-paginator,
+.p-dialog .p-paginator-page,
+.p-dialog .p-message,
+.p-dialog .text-xs,
+.p-dialog .text-sm,
+.p-dialog .text-500,
+.p-dialog .text-700,
+.p-dialog .request-summary small,
+.p-dialog .submission-status-title small,
+.p-dialog .my-submission-id,
+.p-dialog .submission-meta-chip,
+.p-dialog .comparison-mobile-meta-label,
+.p-dialog .comparison-mobile-meta-value,
+.p-dialog .review-history-title small,
+.p-dialog .review-requester,
+.p-dialog .trash-dependency-help p,
+.p-dialog .trash-dependency-help-note,
+.issue-report-dialog small,
+.issue-report-dialog .text-sm {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.4;
+}
+
+.p-dialog .p-tag,
+.p-dialog .p-badge,
+.p-dialog .soft-badge,
+.p-dialog .submission-status-badge,
+.p-dialog .submission-admin-badge,
+.p-dialog .review-card-chip,
+.p-dialog .review-status-chip,
+.p-dialog .trash-dependency-help-chip,
+.p-dialog .category-badge-preview .p-tag,
+.p-dialog .category-color-option,
+.p-dialog .discussion-pin-tag {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.p-dialog .p-button,
+.p-dialog .discussion-more-btn,
+.p-dialog .discussion-pin-btn,
+.p-dialog .discussion-delete-btn,
+.p-dialog .discussion-settings-btn,
+.p-dialog .comparison-row-actions .p-button,
+.p-dialog .comparison-mobile-actions .p-button,
+.p-dialog .review-dialog-actions .p-button,
+.issue-report-dialog .p-button {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.p-dialog .discussion-pin-btn,
+.p-dialog .discussion-delete-btn {
+  min-width: calc(1.45rem * var(--app-font-scale));
+  width: calc(1.45rem * var(--app-font-scale));
+  height: calc(1.45rem * var(--app-font-scale));
+}
+
+.p-dialog .discussion-settings-btn {
+  min-width: calc(1.7rem * var(--app-font-scale));
+  width: calc(1.7rem * var(--app-font-scale));
+  height: calc(1.7rem * var(--app-font-scale));
+}
+
+.p-dialog .p-button-label,
+.p-dialog .p-button-icon,
+.p-dialog .discussion-more-btn,
+.p-dialog .discussion-pin-btn .p-button-icon,
+.p-dialog .discussion-delete-btn .p-button-icon,
+.p-dialog .discussion-settings-btn .p-button-icon,
+.issue-report-dialog .p-button-label,
+.issue-report-dialog .p-button-icon {
+  font-size: inherit !important;
+}
+
+.p-dialog .p-inputtext,
+.p-dialog .p-password input,
+.p-dialog .p-textarea,
+.p-dialog textarea,
+.p-dialog .p-select,
+.p-dialog .p-autocomplete-input,
+.p-dialog .p-datepicker input,
+.issue-report-dialog .p-inputtext,
+.issue-report-dialog textarea,
+.issue-report-dialog .p-select {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog .pdf-container,
+.p-dialog .pdf-frame,
+.p-dialog .compare-preview-pane iframe {
+  font-size: initial !important;
+}
+
+.p-dialog .pdf-frame,
+.p-dialog .compare-preview-pane iframe {
+  width: 100%;
+  max-width: 100%;
+}
+
+.pi.text-xs {
+  font-size: calc(0.75rem * var(--app-font-scale));
+}
+
+.pi.text-sm {
+  font-size: calc(0.875rem * var(--app-font-scale));
+}
+
+.pi.text-lg {
+  font-size: calc(1.125rem * var(--app-font-scale));
+}
+
+.pi.text-xl {
+  font-size: calc(1.25rem * var(--app-font-scale));
+}
+
+.pi.text-2xl {
+  font-size: calc(1.5rem * var(--app-font-scale));
+}
+
+.pi.text-3xl {
+  font-size: calc(1.875rem * var(--app-font-scale));
+}
+
+.pi.text-4xl {
+  font-size: calc(2.25rem * var(--app-font-scale));
+}
+
+.pi.text-5xl {
+  font-size: calc(3rem * var(--app-font-scale));
+}
+
+.pi.text-6xl {
+  font-size: calc(3.75rem * var(--app-font-scale));
 }
 
 html {
@@ -82,7 +601,7 @@ html.dark {
   border-radius: 999px;
   background: var(--soft-badge-bg, rgba(100, 116, 139, 0.08)) !important;
   color: var(--soft-badge-color, #334155) !important;
-  font-size: 0.78rem !important;
+  font-size: var(--app-badge-font-size) !important;
   font-weight: 600 !important;
   letter-spacing: 0;
   line-height: 1.25 !important;

@@ -17,6 +17,7 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { setGlobalToast } from './utils/toast'
+import { applyFontSizePreference } from './utils/fontSizePreference'
 
 export default {
   components: {
@@ -30,6 +31,7 @@ export default {
     const confirm = useConfirm()
 
     setGlobalToast(toast)
+    applyFontSizePreference()
 
     provide('sidebarVisible', sidebarVisible)
     provide('toast', toast)
