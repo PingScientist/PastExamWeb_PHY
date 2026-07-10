@@ -67,6 +67,7 @@
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  font-size: var(--app-font-size-base);
 }
 
 #app {
@@ -211,6 +212,144 @@ body {
 .action-button,
 [class*='action-button'] {
   min-height: calc(2rem * var(--app-font-scale));
+}
+
+.p-dialog,
+.p-popover,
+.p-overlaypanel,
+.p-select-overlay,
+.p-dropdown-panel,
+.p-multiselect-overlay,
+.p-menu,
+.p-tieredmenu,
+.p-tooltip,
+.p-datepicker,
+.p-autocomplete-panel,
+.modal,
+.dialog,
+.upload-dialog,
+.submission-dialog,
+.pdf-preview-dialog,
+.report-dialog,
+.announcement-dialog,
+.management-dialog {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog-header,
+.p-dialog-title,
+.p-dialog-content,
+.p-dialog-footer,
+.p-popover-content,
+.p-overlaypanel-content,
+.p-select-list,
+.p-dropdown-items,
+.p-menu-list,
+.p-tieredmenu-list,
+.p-tooltip-text,
+.p-datepicker-panel,
+.p-autocomplete-list {
+  font-size: inherit !important;
+}
+
+.p-dialog-title,
+.p-dialog-header,
+.p-dialog-content,
+.p-dialog-footer,
+.p-dialog label,
+.p-dialog small,
+.p-dialog p,
+.p-dialog h3,
+.p-dialog h4,
+.p-dialog h5,
+.p-dialog .text-xs,
+.p-dialog .text-sm,
+.p-dialog .text-lg,
+.p-dialog .text-xl,
+.p-popover,
+.p-overlaypanel,
+.p-select-option,
+.p-dropdown-item,
+.p-menuitem-text,
+.p-tieredmenu .p-menuitem-text,
+.p-autocomplete-option,
+.p-datepicker td,
+.p-datepicker th,
+.p-tooltip-text {
+  font-size: inherit !important;
+  line-height: 1.4;
+}
+
+.p-dialog .p-button,
+.p-dialog .p-inputtext,
+.p-dialog textarea,
+.p-dialog .p-textarea,
+.p-dialog .p-select,
+.p-dialog .p-dropdown,
+.p-dialog .p-checkbox,
+.p-dialog .p-password,
+.p-dialog .p-password input,
+.p-dialog .p-tag,
+.p-dialog .p-badge,
+.p-popover .p-button,
+.p-popover .p-inputtext,
+.p-overlaypanel .p-button,
+.p-overlaypanel .p-inputtext,
+.p-select-overlay,
+.p-dropdown-panel,
+.p-datepicker,
+.p-autocomplete-panel {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.p-dialog .p-button-label,
+.p-dialog .p-button-icon,
+.p-dialog .p-inputtext::placeholder,
+.p-dialog textarea::placeholder,
+.p-dialog .p-select-label,
+.p-dialog .p-dropdown-label,
+.p-dialog .p-tag-label,
+.p-dialog .p-badge,
+.p-select-overlay .p-select-option,
+.p-dropdown-panel .p-dropdown-item,
+.p-autocomplete-panel .p-autocomplete-option {
+  font-size: inherit !important;
+}
+
+.p-dialog .pi,
+.p-dialog .p-icon,
+.p-dialog-close-button,
+.p-popover .pi,
+.p-overlaypanel .pi,
+.p-select-overlay .pi,
+.p-dropdown-panel .pi,
+.p-menu .pi,
+.p-tieredmenu .pi,
+.p-tooltip .pi,
+.p-datepicker .pi,
+.p-autocomplete-panel .pi {
+  font-size: var(--app-icon-size) !important;
+}
+
+.p-dialog {
+  max-width: min(96vw, 100%);
+  max-height: min(94vh, 94dvh);
+}
+
+.p-dialog-content {
+  max-height: min(78vh, 78dvh);
+  overflow: auto;
+}
+
+.p-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.p-dialog-close-button {
+  min-width: calc(2.2rem * var(--app-font-scale));
+  min-height: calc(2.2rem * var(--app-font-scale));
 }
 
 .pi.text-xs {
