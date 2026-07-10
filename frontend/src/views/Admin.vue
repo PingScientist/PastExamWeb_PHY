@@ -9020,7 +9020,11 @@ onBeforeUnmount(() => {
 .review-center :deep(.soft-badge),
 .review-center .review-card-chip,
 .review-center .review-status-chip,
-.review-center .review-admin-upload-chip,
+.review-center .review-admin-upload-chip {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
 .review-center .review-card-action-note,
 .review-center .review-card-action-note__text {
   font-size: var(--app-font-size-xs) !important;
