@@ -509,8 +509,8 @@ h1 {
 
 .settings-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 0.24fr) minmax(0, 1fr);
-  gap: 2rem;
+  grid-template-columns: minmax(13rem, 0.26fr) minmax(0, 1fr);
+  gap: clamp(1rem, 2.2vw, 2rem);
   align-items: start;
 }
 
@@ -538,7 +538,8 @@ h1 {
   line-height: 1.35;
   text-align: left;
   cursor: pointer;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .settings-nav-item:hover,
@@ -903,9 +904,10 @@ small {
   justify-content: flex-start;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 980px) {
   .settings-layout {
     display: grid;
+    grid-template-columns: 1fr;
     gap: 1rem;
   }
 
@@ -921,6 +923,7 @@ small {
     width: auto;
     flex: 0 0 auto;
     white-space: normal;
+    min-height: 2.35em;
   }
 
   .settings-nav-item.active {
