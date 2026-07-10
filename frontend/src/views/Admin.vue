@@ -6537,19 +6537,25 @@ onBeforeUnmount(() => {
 :deep(.trash-type-chip.soft-badge) {
   min-height: 1.75rem !important;
   padding: 0.22rem 0.62rem !important;
-  font-size: 0.9rem !important;
+  font-size: var(--app-badge-font-size) !important;
   line-height: 1.25 !important;
 }
 
 :deep(.review-admin-upload-chip.soft-badge) {
   min-height: 1.45rem !important;
   padding: 0.16rem 0.48rem !important;
-  font-size: 0.78rem !important;
+  font-size: var(--app-badge-font-size) !important;
   line-height: 1.25 !important;
 }
 
 :deep(.review-status-chip.soft-badge) {
   font-weight: 650 !important;
+}
+
+:deep(.review-card-chip.soft-badge .pi),
+:deep(.review-status-chip.soft-badge .pi),
+:deep(.review-admin-upload-chip.soft-badge .pi) {
+  font-size: 0.95em !important;
 }
 
 :deep(.trash-dependency-chip.soft-badge) {
