@@ -3767,6 +3767,9 @@ const getReviewRowActions = (item) => {
       reviewActionDefinitions.delete,
     ]
   }
+  if (status === 'takedown' && canShowRepublishReviewSubmission(item)) {
+    return [reviewActionDefinitions.republish]
+  }
   if (status === 'rejected') {
     return [reviewActionDefinitions.approve, reviewActionDefinitions.delete]
   }
@@ -3776,6 +3779,22 @@ const getReviewRowActions = (item) => {
 const isCourseTrashLifecycleReason = (reason) => {
   if (!reason) return false
   return reason === 'course_trashed' || reason.startsWith('course_trashed|')
+}
+
+const canShowRepublishReviewSubmission = (item) => {
+  if (getReviewItemStatus(item) !== 'takedown') return false
+  if (!item?.created_archive_id) return false
+  if (item?.linked_course_deleted === true || item?.linked_archive_deleted === true) {
+    return false
+  }
+  if (
+    isCourseTrashLifecycleReason(item?.lifecycle_reason) ||
+    item?.lifecycle_reason === 'archive_trashed' ||
+    item?.lifecycle_reason === 'linked_archive_permanently_deleted'
+  ) {
+    return false
+  }
+  return true
 }
 
 const getReviewTrashNote = (item, fullText = false) => {
@@ -3820,7 +3839,7 @@ const getReviewTrashNoteIcon = (item) => {
 
 const runReviewRowAction = (item, action) => {
   if (!item?.id) return
-  if (isReadonlyReviewSubmission(item)) {
+  if (isReadonlyReviewSubmission(item) && action !== 'republish') {
     toast.add({
       severity: 'info',
       summary: '僅能查看',
@@ -4955,7 +4974,7 @@ const getRequesterDisplay = (request) => {
 
 const reviewArchiveSubmission = async (submission, action) => {
   if (!submission?.id) return
-  if (isReadonlyReviewSubmission(submission)) {
+  if (isReadonlyReviewSubmission(submission) && action !== 'republish') {
     toast.add({
       severity: 'info',
       summary: '僅能查看',
