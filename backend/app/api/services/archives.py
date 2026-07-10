@@ -218,6 +218,18 @@ async def _ensure_or_create_requested_category_for_approval(
     )
 
 
+async def _next_course_order_index(db: AsyncSession, category: str) -> int:
+    max_order = (
+        await db.execute(
+            select(func.max(Course.order_index)).where(
+                Course.category == category,
+                Course.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    return 0 if max_order is None else int(max_order) + 1
+
+
 async def _acquire_course_approval_lock(db: AsyncSession, *, category_key: str, course_name: str) -> None:
     scope_key = f"archive_approval:{category_key}:{course_name.lower().strip()}"
     await db.execute(
@@ -328,7 +340,11 @@ async def upload_archive(
         course = result.scalar_one_or_none()
 
         if not course:
-            course = Course(name=subject, category=category)
+            course = Course(
+                name=subject,
+                category=category,
+                order_index=await _next_course_order_index(db, category),
+            )
             db.add(course)
             await db.commit()
             await db.refresh(course)
@@ -852,7 +868,11 @@ async def update_archive_submission_for_admin(
             )
         ).scalar_one_or_none()
         if not course:
-            course = Course(name=course_name, category=category_key)
+            course = Course(
+                name=course_name,
+                category=category_key,
+                order_index=await _next_course_order_index(db, category_key),
+            )
             db.add(course)
             await db.commit()
             await db.refresh(course)
@@ -936,7 +956,12 @@ async def approve_archive_submission(
                 detail="已有同名課程在垃圾桶，請先復原或永久刪除後再通過。",
             )
 
-        course = Course(name=formatted_course_name, category=category_key)
+        order_index = await _next_course_order_index(db, category_key)
+        course = Course(
+            name=formatted_course_name,
+            category=category_key,
+            order_index=order_index,
+        )
         db.add(course)
         await db.commit()
         await db.refresh(course)

@@ -1175,6 +1175,7 @@ async def update_archive_course(
             new_course = Course(
                 name=formatted_course_name,
                 category=course_update.course_category,
+                order_index=await _next_order_index(db, course_update.course_category),
             )
             db.add(new_course)
             await db.commit()
