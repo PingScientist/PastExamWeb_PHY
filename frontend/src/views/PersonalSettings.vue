@@ -658,25 +658,31 @@ h1 {
 }
 
 .font-size-controls {
+  position: relative;
   display: grid;
-  grid-template-rows: minmax(1.9rem, auto) minmax(2rem, auto) auto;
-  gap: 0.65rem;
+  grid-template-rows: 2rem auto;
+  gap: 0.55rem;
   min-width: 0;
+  min-height: 6.1rem;
+  padding-top: 3rem;
 }
 
 .font-size-control-header {
-  display: flex;
-  flex-wrap: wrap;
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, max-content);
   gap: 0.35rem 0.75rem;
-  align-items: baseline;
-  justify-content: space-between;
-  min-height: 1.9rem;
+  align-items: start;
+  min-height: 2.45rem;
 }
 
 .font-size-slider-row {
-  display: flex;
+  display: grid;
   align-items: center;
   width: 100%;
+  height: 2rem;
   min-height: 2rem;
   min-width: min(100%, 14rem);
 }
@@ -697,7 +703,10 @@ h1 {
 .font-size-current {
   color: var(--text-primary);
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.25;
+  justify-self: end;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .font-size-preview {
@@ -915,7 +924,18 @@ small {
     min-width: 100%;
   }
 
+  .font-size-controls {
+    min-height: 6.4rem;
+    padding-top: 3.3rem;
+  }
+
+  .font-size-control-header {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
   .font-size-current {
+    justify-self: start;
     text-align: left;
   }
 
