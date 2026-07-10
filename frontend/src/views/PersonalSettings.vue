@@ -66,64 +66,67 @@
                       </div>
                     </div>
 
-                    <div class="font-size-preview" :style="fontSizePreviewStyle">
-                      <section class="preview-course-sample" aria-label="字體大小預覽">
-                        <div class="preview-course-heading">
-                          <Tag severity="secondary" class="subject-tag preview-tag">必修</Tag>
-                          <div class="preview-course-title-block">
-                            <h3>原子彈製作</h3>
-                            <p>共 5 份考古題 · 最新：114下學期</p>
-                          </div>
-                        </div>
-                        <div class="preview-meta-row">
-                          <span>奧本海默</span>
-                          <span>114下學期</span>
-                          <span>期中考 / midterm2</span>
-                        </div>
-
-                        <div class="preview-filter-row">
-                          <span class="preview-filter-chip">學期</span>
-                          <span class="preview-filter-chip">教授：奧本海默</span>
-                          <span class="preview-filter-chip">類型</span>
-                          <span class="preview-filter-chip preview-filter-chip--check">
-                            <i class="pi pi-check-square" aria-hidden="true"></i>
-                            附解答
-                          </span>
-                        </div>
-
-                        <article class="preview-archive-card">
-                          <div class="preview-archive-main">
-                            <Tag severity="secondary" class="exam-type-tag preview-tag">
-                              期中考
-                            </Tag>
-                            <div>
-                              <h4>midterm2</h4>
-                              <p>奧本海默 · 考題目 · 0 次下載</p>
+                    <div class="preview-sample-column">
+                      <p class="preview-sample-label">範例顯示：</p>
+                      <div class="font-size-preview" :style="fontSizePreviewStyle">
+                        <section class="preview-course-sample" aria-label="字體大小預覽">
+                          <div class="preview-course-heading">
+                            <Tag severity="secondary" class="subject-tag preview-tag">必修</Tag>
+                            <div class="preview-course-title-block">
+                              <h3>原子彈製作</h3>
+                              <p>共 5 份考古題 · 最新：114下學期</p>
                             </div>
                           </div>
-                          <div class="preview-actions">
-                            <Button icon="pi pi-eye" label="預覽" size="small" outlined />
-                            <Button icon="pi pi-download" label="下載" size="small" />
-                            <Button
-                              icon="pi pi-trash"
-                              label="刪除"
-                              size="small"
-                              severity="danger"
-                              outlined
-                            />
+                          <div class="preview-meta-row">
+                            <span>奧本海默</span>
+                            <span>114下學期</span>
+                            <span>期中考 / midterm2</span>
                           </div>
-                        </article>
 
-                        <div class="preview-admin-tags">
-                          <Tag class="soft-badge review-status-pending" severity="warning">
-                            待審核
-                          </Tag>
-                          <Tag class="soft-badge submission-status-deleted" severity="danger">
-                            已刪除
-                          </Tag>
-                          <Tag severity="success" class="preview-tag">啟用中</Tag>
-                        </div>
-                      </section>
+                          <div class="preview-filter-row">
+                            <span class="preview-filter-chip">學期</span>
+                            <span class="preview-filter-chip">教授：奧本海默</span>
+                            <span class="preview-filter-chip">類型</span>
+                            <span class="preview-filter-chip preview-filter-chip--check">
+                              <i class="pi pi-check-square" aria-hidden="true"></i>
+                              附解答
+                            </span>
+                          </div>
+
+                          <article class="preview-archive-card">
+                            <div class="preview-archive-main">
+                              <Tag severity="secondary" class="exam-type-tag preview-tag">
+                                期中考
+                              </Tag>
+                              <div>
+                                <h4>midterm2</h4>
+                                <p>奧本海默 · 考題目 · 0 次下載</p>
+                              </div>
+                            </div>
+                            <div class="preview-actions">
+                              <Button icon="pi pi-eye" label="預覽" size="small" outlined />
+                              <Button icon="pi pi-download" label="下載" size="small" />
+                              <Button
+                                icon="pi pi-trash"
+                                label="刪除"
+                                size="small"
+                                severity="danger"
+                                outlined
+                              />
+                            </div>
+                          </article>
+
+                          <div class="preview-admin-tags">
+                            <Tag class="soft-badge review-status-pending" severity="warning">
+                              待審核
+                            </Tag>
+                            <Tag class="soft-badge submission-status-deleted" severity="danger">
+                              已刪除
+                            </Tag>
+                            <Tag severity="success" class="preview-tag">啟用中</Tag>
+                          </div>
+                        </section>
+                      </div>
                     </div>
                   </div>
 
@@ -746,6 +749,20 @@ h1 {
   max-width: 100%;
   overflow-wrap: normal;
   word-break: keep-all;
+}
+
+.preview-sample-column {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.preview-sample-label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .font-size-preview {
