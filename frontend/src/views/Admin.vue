@@ -9032,4 +9032,79 @@ onBeforeUnmount(() => {
 .review-center :deep(.p-button-icon) {
   font-size: inherit !important;
 }
+
+.admin-container :deep(.p-tab) {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.admin-toolbar--course,
+.admin-toolbar--course :deep(.p-component),
+.course-management-table,
+.category-management-table {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-toolbar--course .search-icon,
+.admin-toolbar--course :deep(.pi),
+.course-management-table :deep(.pi),
+.category-management-table :deep(.pi),
+.admin-mobile-list--courses :deep(.pi),
+.admin-mobile-list--categories :deep(.pi) {
+  font-size: var(--app-icon-size) !important;
+}
+
+.admin-toolbar--course :deep(.p-inputtext),
+.admin-toolbar--course :deep(.p-inputtext::placeholder),
+.admin-toolbar--course :deep(.p-select),
+.admin-toolbar--course :deep(.p-select-label),
+.course-management-table :deep(.p-datatable-thead > tr > th),
+.course-management-table :deep(.p-datatable-tbody > tr > td),
+.category-management-table :deep(.p-datatable-thead > tr > th),
+.category-management-table :deep(.p-datatable-tbody > tr > td),
+.course-card-order,
+.category-card-order,
+.category-card-key-value,
+.mobile-field-label,
+.mobile-field-value {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.course-card-title,
+.category-card-title,
+.category-name-desktop,
+.category-mobile-title,
+.mobile-primary-text {
+  font-size: var(--app-font-size-base) !important;
+  line-height: 1.32;
+}
+
+.course-management-table :deep(.p-tag),
+.category-management-table :deep(.p-tag),
+.admin-mobile-list--courses :deep(.p-tag),
+.admin-mobile-list--categories :deep(.p-tag),
+.course-card-category {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.admin-toolbar--course :deep(.p-button),
+.course-management-table :deep(.p-button),
+.category-management-table :deep(.p-button),
+.admin-mobile-list--courses :deep(.p-button),
+.admin-mobile-list--categories :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+
+.admin-toolbar--course :deep(.p-button-label),
+.course-management-table :deep(.p-button-label),
+.category-management-table :deep(.p-button-label),
+.admin-mobile-list--courses :deep(.p-button-label),
+.admin-mobile-list--categories :deep(.p-button-label) {
+  font-size: inherit !important;
+}
 </style>
