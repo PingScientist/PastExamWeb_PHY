@@ -854,10 +854,14 @@
                     :options="reviewStatusOptions"
                     optionLabel="name"
                     optionValue="value"
-                    placeholder="篩選狀態"
+                    placeholder="篩選審核狀態"
                     showClear
                     class="review-status-filter admin-toolbar__select w-full md:w-14rem"
-                  />
+                  >
+                    <template #value="{ value }">
+                      <span>{{ getReviewStatusFilterDisplay(value) }}</span>
+                    </template>
+                  </Select>
                 </div>
                 <div class="admin-toolbar__actions">
                   <Button
@@ -1529,9 +1533,14 @@
                       :options="trashFilterOptions"
                       optionLabel="label"
                       optionValue="value"
+                      placeholder="篩選項目類型"
                       class="admin-toolbar__select admin-toolbar__select--trash w-full md:w-12rem"
                       @change="loadTrashItems"
-                    />
+                    >
+                      <template #value="{ value }">
+                        <span>{{ getTrashFilterDisplay(value) }}</span>
+                      </template>
+                    </Select>
                   </div>
                   <div class="admin-toolbar__actions admin-toolbar__actions--trash">
                     <Button
@@ -3179,6 +3188,13 @@ const reviewStatusFilterValues = new Set(
     .map((option) => option.value)
     .filter((value) => value !== REVIEW_STATUS_FILTER_ALL_VALUE)
 )
+const getOptionValue = (option) => (option && typeof option === 'object' ? option.value : option)
+const getReviewStatusFilterDisplay = (value) => {
+  const optionValue = getOptionValue(value)
+  if (!optionValue || optionValue === REVIEW_STATUS_FILTER_ALL_VALUE) return '篩選審核狀態'
+
+  return reviewStatusOptions.find((option) => option.value === optionValue)?.name || '篩選審核狀態'
+}
 const trashFilterOptions = [
   { label: '全部', value: TRASH_FILTER_ALL_VALUE },
   { label: '考古題', value: 'archive' },
@@ -3193,6 +3209,12 @@ const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
   return acc
 }, {})
 const getTrashTypeLabel = (itemType) => trashTypeLabels[itemType] || itemType || '未知'
+const getTrashFilterDisplay = (value) => {
+  const optionValue = getOptionValue(value)
+  if (!optionValue || optionValue === TRASH_FILTER_ALL_VALUE) return '篩選項目類型'
+
+  return trashFilterOptions.find((option) => option.value === optionValue)?.label || '篩選項目類型'
+}
 const getReviewSortDirectionIcon = (direction) =>
   direction === 'asc' ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'
 const getReviewSortNeutralIcon = () => 'pi pi-sort-alt'
