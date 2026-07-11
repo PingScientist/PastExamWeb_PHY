@@ -32,9 +32,9 @@
                 <DataTable
                   :value="courseCategories"
                   class="admin-data-table admin-desktop-data-table category-management-table"
-                  tableStyle="min-width: 40rem"
+                  tableStyle="min-width: 44rem"
                   responsiveLayout="stack"
-                  breakpoint="767px"
+                  breakpoint="1023px"
                 >
                   <Column header="順序" style="width: 12rem">
                     <template #body="{ data }">
@@ -269,11 +269,11 @@
                 :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                 paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
-                tableStyle="min-width: 40rem"
+                tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
                 responsiveLayout="stack"
-                breakpoint="767px"
+                breakpoint="1023px"
                 @page="handleCoursePage"
               >
                 <Column header="順序" style="width: 18%">
@@ -10122,93 +10122,6 @@ onBeforeUnmount(() => {
   .admin-tablet-metadata-value {
     min-width: 0;
     overflow-wrap: anywhere;
-  }
-}
-
-@media (min-width: 768px) {
-  :deep(.admin-desktop-data-table.category-management-table),
-  :deep(.admin-desktop-data-table.course-management-table) {
-    display: block;
-  }
-
-  .admin-mobile-list--categories,
-  .admin-mobile-list--courses {
-    display: none;
-  }
-
-  .category-name-desktop,
-  .category-key-desktop {
-    display: inline;
-  }
-
-  .category-name-mobile {
-    display: none;
-  }
-
-  :deep(.category-management-table .p-datatable-table),
-  :deep(.course-management-table .p-datatable-table) {
-    width: 100%;
-  }
-
-  :deep(.category-management-table .p-datatable-thead),
-  :deep(.course-management-table .p-datatable-thead) {
-    display: table-header-group;
-  }
-
-  :deep(.category-management-table .p-datatable-tbody),
-  :deep(.course-management-table .p-datatable-tbody) {
-    display: table-row-group;
-  }
-
-  :deep(.category-management-table .p-datatable-thead > tr),
-  :deep(.category-management-table .p-datatable-tbody > tr),
-  :deep(.course-management-table .p-datatable-thead > tr),
-  :deep(.course-management-table .p-datatable-tbody > tr) {
-    display: table-row;
-  }
-
-  :deep(.category-management-table .p-datatable-thead > tr > th),
-  :deep(.category-management-table .p-datatable-tbody > tr > td),
-  :deep(.course-management-table .p-datatable-thead > tr > th),
-  :deep(.course-management-table .p-datatable-tbody > tr > td) {
-    display: table-cell;
-    padding: 0.55rem 0.6rem;
-    white-space: normal;
-  }
-
-  :deep(.category-management-table .p-datatable-thead > tr > th:nth-child(1)),
-  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(1)) {
-    width: 8.5rem !important;
-  }
-
-  :deep(.category-management-table .p-datatable-thead > tr > th:nth-child(5)),
-  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(5)) {
-    width: 6rem !important;
-  }
-
-  :deep(.category-management-table .p-datatable-thead > tr > th:nth-child(6)),
-  :deep(.category-management-table .p-datatable-tbody > tr > td:nth-child(6)) {
-    width: 13rem !important;
-  }
-
-  :deep(.category-management-table .admin-card-actions),
-  :deep(.course-management-table .admin-card-actions) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    width: 100%;
-  }
-
-  :deep(.category-management-table .admin-card-actions .p-button),
-  :deep(.course-management-table .admin-card-actions .p-button) {
-    width: auto;
-    min-width: 0;
-    white-space: nowrap;
-  }
-
-  :deep(.category-management-table .p-tag),
-  :deep(.course-management-table .p-tag) {
-    white-space: nowrap;
   }
 }
 </style>
