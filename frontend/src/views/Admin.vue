@@ -166,7 +166,7 @@
                         @click="moveCategory(category, 1)"
                       />
                     </section>
-                    <section class="category-card-main">
+                    <section class="category-card-main category-card-main--tablet">
                       <div class="category-card-title-group">
                         <strong class="category-card-title">{{ category.name }}</strong>
                         <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
@@ -178,7 +178,22 @@
                         <span class="category-card-key-value">{{ category.key }}</span>
                       </span>
                     </section>
-                    <section class="category-card-meta">
+                    <section class="category-card-meta category-card-meta--tablet">
+                      <Tag :severity="category.is_active ? 'success' : 'secondary'">
+                        {{ category.is_active ? '啟用中' : '已停用' }}
+                      </Tag>
+                    </section>
+                    <section class="category-card-main category-card-main--mobile">
+                      <strong class="category-card-title">{{ category.name }}</strong>
+                      <span class="category-card-key">
+                        <span class="category-card-key-label">系統識別碼</span>
+                        <span class="category-card-key-value">{{ category.key }}</span>
+                      </span>
+                    </section>
+                    <section class="category-card-meta category-card-meta--mobile">
+                      <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                        {{ category.label || category.name }}
+                      </Tag>
                       <Tag :severity="category.is_active ? 'success' : 'secondary'">
                         {{ category.is_active ? '啟用中' : '已停用' }}
                       </Tag>
@@ -10127,7 +10142,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (min-width: 641px) and (max-width: 899px) {
+@media (min-width: 768px) and (max-width: 899px) {
   .admin-mobile-list--courses .admin-course-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -10298,7 +10313,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 899px) {
+@media (min-width: 768px) and (max-width: 899px) {
   .admin-mobile-list--categories .category-responsive-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -10397,6 +10412,160 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
     width: 2.65rem;
     min-width: 2.65rem;
+  }
+}
+
+.category-card-main--mobile,
+.category-card-meta--mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .admin-mobile-list--categories .category-responsive-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 1rem;
+  }
+
+  .admin-mobile-list--categories .category-card-main--tablet,
+  .admin-mobile-list--categories .category-card-meta--tablet {
+    display: none;
+  }
+
+  .admin-mobile-list--categories .category-card-main--mobile,
+  .admin-mobile-list--categories .category-card-meta--mobile {
+    display: flex;
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-main--mobile {
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .admin-mobile-list--categories .category-card-key {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    max-width: 48%;
+    padding: 0.32rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
+  }
+
+  .admin-mobile-list--categories .category-card-meta--mobile {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    justify-content: center;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button-label) {
+    display: inline-flex;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.pi) {
+    margin-inline-end: 0.3rem;
+  }
+
+  .admin-mobile-list--courses .admin-course-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-header,
+  .admin-mobile-list--courses .admin-tablet-title-group {
+    display: contents;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
+    display: none;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-tag-group {
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-title {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
+    grid-row: 3;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    justify-content: center;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button-label) {
+    display: inline-flex;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.pi) {
+    margin-inline-end: 0.3rem;
   }
 }
 </style>
