@@ -3486,10 +3486,6 @@ watch(
   }
 )
 
-watch([() => sortedTrashItems.value.length, trashRowsPerPage], () => {
-  clampTrashPage()
-})
-
 const getTrashItemKey = (item, fallbackIndex = 0) => {
   const type = item?.item_type || 'unknown'
   if (item?.id === null || item?.id === undefined) {
@@ -3659,6 +3655,10 @@ const buildTrashHierarchy = (items, filterType) => {
 
   return result
 }
+
+watch([() => sortedTrashItems.value.length, trashRowsPerPage], () => {
+  clampTrashPage()
+})
 
 const getTrashContextLine = (item) => {
   if (!item) return ''
