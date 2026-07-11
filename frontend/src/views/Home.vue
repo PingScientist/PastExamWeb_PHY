@@ -38,7 +38,9 @@
           class="theory-card"
           :class="`formula-${index + 1}`"
         >
-          <span class="formula-expression" v-html="formula.rendered" />
+          <span class="formula-local-body">
+            <span class="formula-expression" v-html="formula.rendered" />
+          </span>
         </div>
       </div>
     </div>
@@ -655,9 +657,7 @@ h1 {
   animation: formulaFieldDrift 6.6s ease-in-out infinite alternate;
 }
 
-.formula-cloud.formula-physics-active .theory-card {
-  opacity: var(--formula-alpha, 0.2);
-  animation: none;
+.formula-cloud.formula-physics-active .formula-local-body {
   will-change: transform;
 }
 
@@ -681,6 +681,11 @@ h1 {
 
 .physics-home:not(.physics-home-dark) .theory-card {
   color: rgba(44, 82, 68, 0.2);
+}
+
+.formula-local-body {
+  display: inline-flex;
+  transform-origin: center;
 }
 
 .formula-expression {
@@ -1519,7 +1524,7 @@ h1 {
   }
 
   .theory-card {
-    opacity: var(--formula-alpha, 0.2);
+    opacity: 1;
   }
 }
 

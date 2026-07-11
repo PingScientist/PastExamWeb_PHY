@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted } from 'vue'
 
 const TAU = Math.PI * 2
 const MAX_FRAME_DELTA = 0.04
@@ -67,7 +67,7 @@ export function useFormulaPhysics(formulaCloud) {
     if (!cloud) return
 
     cloud.classList.remove('formula-physics-active')
-    cloud.querySelectorAll('.theory-card').forEach((element) => {
+    cloud.querySelectorAll('.formula-local-body').forEach((element) => {
       element.style.removeProperty('transform')
     })
   }
@@ -88,6 +88,11 @@ export function useFormulaPhysics(formulaCloud) {
   }
 
   function createBody(element, index, previousBody) {
+    const motionElement = element.querySelector('.formula-local-body')
+    const width = element.offsetWidth
+    const height = element.offsetHeight
+    if (!motionElement || width <= 0 || height <= 0) return null
+
     const phaseSeed = seededValue(index, 1)
     const speedSeed = seededValue(index, 2)
     const amplitudeX = (9 + seededValue(index, 3) * 12) * config.amplitudeScale
@@ -98,14 +103,15 @@ export function useFormulaPhysics(formulaCloud) {
     return {
       id: element.className.match(/formula-\d+/)?.[0] ?? `formula-${index + 1}`,
       element,
+      motionElement,
       baseX,
       baseY,
       x: previousBody ? previousBody.baseX + previousBody.x - baseX : 0,
       y: previousBody ? previousBody.baseY + previousBody.y - baseY : 0,
       vx: previousBody?.vx ?? 0,
       vy: previousBody?.vy ?? 0,
-      width: element.offsetWidth,
-      height: element.offsetHeight,
+      width,
+      height,
       padding: config.collisionPadding,
       amplitudeX,
       amplitudeY,
@@ -113,6 +119,22 @@ export function useFormulaPhysics(formulaCloud) {
       speed: (0.3 + speedSeed * 0.2) * config.speedScale,
       rotationAmplitude: (0.55 + seededValue(index, 5) * 0.95) * config.rotationScale,
     }
+  }
+
+  function resetInvalidBody(body) {
+    if (
+      Number.isFinite(body.x) &&
+      Number.isFinite(body.y) &&
+      Number.isFinite(body.vx) &&
+      Number.isFinite(body.vy)
+    ) {
+      return
+    }
+
+    body.x = 0
+    body.y = 0
+    body.vx = 0
+    body.vy = 0
   }
 
   function clampBodySpeed(body) {
@@ -152,6 +174,9 @@ export function useFormulaPhysics(formulaCloud) {
   }
 
   function resolveCollision(first, second, applyImpulse = true) {
+    resetInvalidBody(first)
+    resetInvalidBody(second)
+
     const firstLeft = first.baseX + first.x - first.padding
     const firstTop = first.baseY + first.y - first.padding
     const secondLeft = second.baseX + second.x - second.padding
@@ -224,11 +249,12 @@ export function useFormulaPhysics(formulaCloud) {
 
   function renderBodies() {
     bodies.forEach((body) => {
+      resetInvalidBody(body)
       const rotation =
         Math.sin(elapsed * body.speed * 0.83 + body.phase * 1.19) * body.rotationAmplitude
-      body.element.style.transform = `translate3d(${body.x.toFixed(2)}px, ${body.y.toFixed(
+      body.motionElement.style.transform = `translate3d(${body.x.toFixed(2)}px, ${body.y.toFixed(
         2
-      )}px, 0) rotate(var(--tilt, 0deg)) rotate(${rotation.toFixed(2)}deg)`
+      )}px, 0) rotate(${rotation.toFixed(2)}deg)`
     })
   }
 
@@ -237,6 +263,7 @@ export function useFormulaPhysics(formulaCloud) {
     const sharedY = Math.cos(elapsed * 0.17) * 1.8 * config.amplitudeScale
 
     bodies.forEach((body) => {
+      resetInvalidBody(body)
       const targetX = sharedX + Math.sin(elapsed * body.speed + body.phase) * body.amplitudeX
       const targetY =
         sharedY + Math.sin(elapsed * body.speed * 0.73 + body.phase * 1.37) * body.amplitudeY
@@ -262,7 +289,8 @@ export function useFormulaPhysics(formulaCloud) {
     if (!running) return
 
     if (!lastTime) lastTime = timestamp
-    const delta = Math.min(Math.max((timestamp - lastTime) / 1000, 0), MAX_FRAME_DELTA)
+    const rawDelta = Number.isFinite(timestamp) ? (timestamp - lastTime) / 1000 : 0
+    const delta = Math.min(Math.max(Number.isFinite(rawDelta) ? rawDelta : 0, 0), MAX_FRAME_DELTA)
     lastTime = timestamp
     elapsed += delta
 
@@ -305,6 +333,12 @@ export function useFormulaPhysics(formulaCloud) {
     bodies = elements
       .filter((element) => getComputedStyle(element).display !== 'none')
       .map((element, index) => createBody(element, index, previousBodies.get(element)))
+      .filter(Boolean)
+
+    if (bodies.length === 0) {
+      scheduleRefresh()
+      return
+    }
 
     if (reducedMotionQuery?.matches) {
       stop()
@@ -343,8 +377,11 @@ export function useFormulaPhysics(formulaCloud) {
     }
   }
 
-  onMounted(() => {
+  onMounted(async () => {
     mounted = true
+    await nextTick()
+    if (!mounted) return
+
     reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     reducedMotionQuery.addEventListener('change', handleReducedMotionChange)
     document.addEventListener('visibilitychange', handleVisibilityChange)
