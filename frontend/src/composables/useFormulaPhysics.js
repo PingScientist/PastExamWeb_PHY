@@ -13,8 +13,9 @@ function seededValue(index, offset = 0) {
 
 function getMotionConfig() {
   const mobile = window.matchMedia('(max-width: 920px)').matches
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  return mobile
+  const motion = mobile
     ? {
         amplitudeScale: 0.52,
         speedScale: 0.72,
@@ -37,6 +38,16 @@ function getMotionConfig() {
         steering: 2.35,
         damping: 1.45,
       }
+
+  if (!reducedMotion) return motion
+
+  return {
+    ...motion,
+    amplitudeScale: motion.amplitudeScale * 0.58,
+    speedScale: motion.speedScale * 0.62,
+    rotationScale: motion.rotationScale * 0.4,
+    maxSpeed: motion.maxSpeed * 0.6,
+  }
 }
 
 export function useFormulaPhysics(formulaCloud) {
@@ -306,7 +317,7 @@ export function useFormulaPhysics(formulaCloud) {
   }
 
   function start() {
-    if (running || document.hidden || reducedMotionQuery?.matches || bodies.length === 0) {
+    if (running || document.hidden || bodies.length === 0) {
       return
     }
 
@@ -340,12 +351,6 @@ export function useFormulaPhysics(formulaCloud) {
       return
     }
 
-    if (reducedMotionQuery?.matches) {
-      stop()
-      clearFormulaTransforms()
-      return
-    }
-
     cloud.classList.add('formula-physics-active')
     separateBodies()
     renderBodies()
@@ -369,12 +374,7 @@ export function useFormulaPhysics(formulaCloud) {
   }
 
   function handleReducedMotionChange() {
-    if (reducedMotionQuery?.matches) {
-      stop()
-      clearFormulaTransforms()
-    } else {
-      refreshBodies()
-    }
+    refreshBodies()
   }
 
   onMounted(async () => {

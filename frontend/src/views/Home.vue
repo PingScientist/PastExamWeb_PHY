@@ -1517,13 +1517,16 @@ h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .formula-cloud,
-  .formula-cloud::before,
-  .theory-card {
-    animation: none !important;
+  .formula-cloud {
+    animation-duration: 18s !important;
+  }
+
+  .formula-cloud::before {
+    animation-duration: 24s !important;
   }
 
   .theory-card {
+    animation: none !important;
     opacity: 1;
   }
 }
