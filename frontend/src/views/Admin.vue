@@ -6926,7 +6926,10 @@ onBeforeUnmount(() => {
   :deep(.p-tablist-content),
   :deep(.p-tablist-tab-list) {
     overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-y: contain;
     scrollbar-width: thin;
+    touch-action: pan-x;
   }
 
   :deep(.p-tab) {
