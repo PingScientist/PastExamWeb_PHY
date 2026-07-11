@@ -9755,4 +9755,91 @@ onBeforeUnmount(() => {
 .trash-mobile-card-actions :deep(.p-button-label) {
   font-size: inherit !important;
 }
+
+@media (min-width: 641px) and (max-width: 1399px) {
+  :deep(.review-request-table .p-datatable-tbody > tr) {
+    gap: 0.6rem;
+    padding: 0.95rem;
+  }
+
+  :deep(.review-mobile-card-title-block) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+  }
+
+  :deep(.review-mobile-card-course-name) {
+    flex: 0 1 auto;
+    max-width: 100%;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  :deep(.review-mobile-type-badges) {
+    flex: 0 0 auto;
+  }
+
+  :deep(.review-mobile-summary) {
+    margin-top: 0.15rem;
+  }
+
+  :deep(.review-mobile-info-grid) {
+    gap: 0.4rem 0.85rem;
+    margin-top: 0.4rem;
+  }
+
+  :deep(.review-mobile-info-item),
+  .trash-mobile-info-item {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
+    min-width: 0;
+  }
+
+  :deep(.review-mobile-info-label),
+  .trash-mobile-info-label {
+    display: inline;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  :deep(.review-mobile-info-value),
+  .trash-mobile-info-value {
+    display: inline;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-top: 0;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  :deep(.review-card-action-note) {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .trash-mobile-card {
+    gap: 0.55rem;
+    padding: 0.9rem;
+  }
+
+  .trash-mobile-info-grid {
+    gap: 0.4rem 0.85rem;
+  }
+
+  .trash-mobile-dependencies {
+    align-items: flex-start;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip) {
+    width: fit-content;
+    max-width: 100%;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+}
 </style>
