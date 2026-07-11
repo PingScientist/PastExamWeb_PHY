@@ -2,17 +2,20 @@ import { nextTick, onBeforeUnmount, onMounted } from 'vue'
 
 const TAU = Math.PI * 2
 const MAX_FRAME_DELTA = 0.04
-const MAX_SUBSTEP = 0.012
-const COLLISION_RESTITUTION = 0.82
-const COLLISION_DAMPING = 0.98
+const FIXED_TIMESTEP = 1 / 120
+const MAX_PHYSICS_STEPS = 5
+const COLLISION_SOLVER_ITERATIONS = 3
+const COLLISION_RESTITUTION = 0.78
+const FRICTION_COEFFICIENT = 0.1
 const BOUNDARY_RESTITUTION = 0.68
-const POSITION_SLOP = 0.75
+const POSITION_SLOP = 1.5
+const POSITION_CORRECTION_PERCENT = 0.28
 const CONTACT_CLEAR_TIME = 0.12
-const CONTACT_STUCK_TIME = 0.12
-const CONTACT_STUCK_FRAMES = 8
-const IMPULSE_COOLDOWN = 0.06
-const NORMAL_HYSTERESIS = 2
-const MIN_IMPULSE_SPEED = 0.15
+const CONTACT_STUCK_TIME = 0.32
+const CONTACT_STUCK_FRAMES = 24
+const STUCK_COOLDOWN = 0.6
+const NORMAL_HYSTERESIS_MIN = 2.5
+const NORMAL_HYSTERESIS_RATIO = 0.18
 
 function smoothstep(value) {
   const clamped = Math.min(Math.max(value, 0), 1)
@@ -38,31 +41,31 @@ function getMotionConfig() {
         speedScale: 0.72,
         rotationScale: 0.45,
         maxSpeed: 20,
-        globalWeight: 0.52,
-        collisionGlobalRatio: 0.42,
-        globalStrength: 1.15,
-        globalMaxForce: 4.2,
-        globalMaxSpeed: 7,
-        globalDriftSpeed: 1.6,
-        localSteering: 1.55,
-        freedomMinX: 10,
+        globalWeight: 0.24,
+        collisionGlobalRatio: 0.3,
+        globalStrength: 0.42,
+        globalMaxForce: 1.5,
+        globalMaxSpeed: 5,
+        globalDriftSpeed: 1.1,
+        localSteering: 0.65,
+        localMaxForce: 1.8,
+        freedomMinX: 12,
         freedomRangeX: 12,
-        freedomMinY: 7,
-        freedomRangeY: 8,
-        edgeSteering: 1.5,
+        freedomMinY: 8,
+        freedomRangeY: 9,
+        edgeSteering: 1,
+        edgeMaxForce: 4,
         collisionPadding: 6,
         avoidancePadding: 8,
-        avoidanceStrength: 3.6,
+        avoidanceStrength: 0.9,
         overscanX: 0.09,
         overscanY: 0.09,
-        damping: 1.42,
-        collisionDampingRatio: 0.72,
-        collisionFreedomDuration: 0.5,
-        escapeSpeed: 3.2,
-        tangentImpulse: 1.25,
-        escapeDuration: 0.42,
-        escapeSteering: 2.2,
-        separationBias: 0.8,
+        damping: 0.72,
+        collisionDampingRatio: 0.58,
+        collisionFreedomDuration: 0.8,
+        bounceThreshold: 8,
+        escapeSpeed: 0.45,
+        escapeDuration: 0.65,
       }
     : {
         amplitudeScale: 1,
@@ -73,31 +76,31 @@ function getMotionConfig() {
         speedScale: 1,
         rotationScale: 1,
         maxSpeed: 42,
-        globalWeight: 0.58,
-        collisionGlobalRatio: 0.38,
-        globalStrength: 1.25,
-        globalMaxForce: 7,
-        globalMaxSpeed: 12,
-        globalDriftSpeed: 2.6,
-        localSteering: 1.7,
-        freedomMinX: 28,
-        freedomRangeX: 27,
-        freedomMinY: 18,
-        freedomRangeY: 20,
-        edgeSteering: 1.65,
+        globalWeight: 0.26,
+        collisionGlobalRatio: 0.25,
+        globalStrength: 0.45,
+        globalMaxForce: 2.4,
+        globalMaxSpeed: 8,
+        globalDriftSpeed: 1.8,
+        localSteering: 0.72,
+        localMaxForce: 3.2,
+        freedomMinX: 30,
+        freedomRangeX: 30,
+        freedomMinY: 20,
+        freedomRangeY: 22,
+        edgeSteering: 1.1,
+        edgeMaxForce: 8,
         collisionPadding: 9,
         avoidancePadding: 14,
-        avoidanceStrength: 5.5,
+        avoidanceStrength: 1.4,
         overscanX: 0.12,
         overscanY: 0.12,
-        damping: 1.18,
-        collisionDampingRatio: 0.72,
-        collisionFreedomDuration: 0.72,
-        escapeSpeed: 5.5,
-        tangentImpulse: 2.1,
-        escapeDuration: 0.58,
-        escapeSteering: 3.6,
-        separationBias: 1.2,
+        damping: 0.55,
+        collisionDampingRatio: 0.55,
+        collisionFreedomDuration: 1.1,
+        bounceThreshold: 12,
+        escapeSpeed: 0.75,
+        escapeDuration: 0.85,
       }
 
   if (!reducedMotion) return motion
@@ -115,6 +118,9 @@ function getMotionConfig() {
     globalMaxForce: motion.globalMaxForce * 0.6,
     globalMaxSpeed: motion.globalMaxSpeed * 0.6,
     globalDriftSpeed: motion.globalDriftSpeed * 0.6,
+    localMaxForce: motion.localMaxForce * 0.7,
+    edgeMaxForce: motion.edgeMaxForce * 0.7,
+    avoidanceStrength: motion.avoidanceStrength * 0.7,
     escapeSpeed: motion.escapeSpeed * 0.65,
   }
 }
@@ -131,11 +137,13 @@ export function useFormulaPhysics(formulaCloud) {
   let mounted = false
   let lastTime = 0
   let elapsed = 0
+  let accumulator = 0
   const contacts = new Map()
 
   function stop() {
     running = false
     lastTime = 0
+    accumulator = 0
 
     if (frameId) {
       cancelAnimationFrame(frameId)
@@ -191,6 +199,7 @@ export function useFormulaPhysics(formulaCloud) {
     const amplitudeY = config.amplitudeMinY + seededValue(index, 4) * config.amplitudeRangeY
     const freedomRadiusX = config.freedomMinX + seededValue(index, 8) * config.freedomRangeX
     const freedomRadiusY = config.freedomMinY + seededValue(index, 9) * config.freedomRangeY
+    const mass = Math.min(1.5, 0.85 + (collisionWidth * collisionHeight) / 12000)
     const baseX = element.offsetLeft
     const baseY = element.offsetTop
 
@@ -204,6 +213,8 @@ export function useFormulaPhysics(formulaCloud) {
       y: previousBody ? previousBody.baseY + previousBody.y - baseY : 0,
       vx: previousBody?.vx ?? 0,
       vy: previousBody?.vy ?? 0,
+      mass,
+      inverseMass: 1 / mass,
       outerX: previousBody?.outerX ?? 0,
       outerY: previousBody?.outerY ?? 0,
       outerVx: previousBody?.outerVx ?? 0,
@@ -244,7 +255,10 @@ export function useFormulaPhysics(formulaCloud) {
       Number.isFinite(body.outerB) &&
       Number.isFinite(body.outerC) &&
       Number.isFinite(body.outerD) &&
-      Number.isFinite(body.collisionFreedomUntil)
+      Number.isFinite(body.collisionFreedomUntil) &&
+      Number.isFinite(body.mass) &&
+      Number.isFinite(body.inverseMass) &&
+      body.inverseMass > 0
     ) {
       return
     }
@@ -262,6 +276,8 @@ export function useFormulaPhysics(formulaCloud) {
     body.outerC = 0
     body.outerD = 1
     body.collisionFreedomUntil = 0
+    body.mass = 1
+    body.inverseMass = 1
   }
 
   function updateOuterMotion(delta = 0) {
@@ -369,7 +385,7 @@ export function useFormulaPhysics(formulaCloud) {
     return contact
   }
 
-  function suppressContactSteering(body, steeringX, steeringY, addEscapeSteering = false) {
+  function suppressContactSteering(body, steeringX, steeringY) {
     let adjustedX = steeringX
     let adjustedY = steeringY
 
@@ -389,22 +405,6 @@ export function useFormulaPhysics(formulaCloud) {
         adjustedX -= towardX * normalSteering * suppression
         adjustedY -= towardY * normalSteering * suppression
       }
-
-      if (addEscapeSteering && escapeRecovery > 0) {
-        const tangentDirection = contact.firstId === body.id ? 1 : -1
-        adjustedX +=
-          -contact.normalY *
-          contact.escapeSign *
-          tangentDirection *
-          config.escapeSteering *
-          escapeRecovery
-        adjustedY +=
-          contact.normalX *
-          contact.escapeSign *
-          tangentDirection *
-          config.escapeSteering *
-          escapeRecovery
-      }
     })
 
     return [adjustedX, adjustedY]
@@ -417,18 +417,18 @@ export function useFormulaPhysics(formulaCloud) {
 
     if (bounds.left < world.left) {
       body.x += world.left - bounds.left
-      body.vx = Math.abs(body.vx) * BOUNDARY_RESTITUTION
+      if (body.vx < 0) body.vx = -body.vx * BOUNDARY_RESTITUTION
     } else if (bounds.right > world.right) {
       body.x -= bounds.right - world.right
-      body.vx = -Math.abs(body.vx) * BOUNDARY_RESTITUTION
+      if (body.vx > 0) body.vx = -body.vx * BOUNDARY_RESTITUTION
     }
 
     if (bounds.top < world.top) {
       body.y += world.top - bounds.top
-      body.vy = Math.abs(body.vy) * BOUNDARY_RESTITUTION
+      if (body.vy < 0) body.vy = -body.vy * BOUNDARY_RESTITUTION
     } else if (bounds.bottom > world.bottom) {
       body.y -= bounds.bottom - world.bottom
-      body.vy = -Math.abs(body.vy) * BOUNDARY_RESTITUTION
+      if (body.vy > 0) body.vy = -body.vy * BOUNDARY_RESTITUTION
     }
   }
 
@@ -456,6 +456,9 @@ export function useFormulaPhysics(formulaCloud) {
         contact ??= createContact(first, second)
         contact.separationTime += delta
         contact.separationFrames += 1
+        contact.contactFrames = 0
+        contact.stalledTime = 0
+        contact.lastPenetration = Infinity
 
         const keepEscapeNormal =
           elapsed < contact.escapeUntil && (contact.normalX || contact.normalY)
@@ -513,8 +516,10 @@ export function useFormulaPhysics(formulaCloud) {
     let normalY = 0
     let penetration = overlapY
 
-    const keepHorizontalNormal = contact?.normalX && overlapX <= overlapY + NORMAL_HYSTERESIS
-    const keepVerticalNormal = contact?.normalY && overlapY <= overlapX + NORMAL_HYSTERESIS
+    const horizontalHysteresis = Math.max(NORMAL_HYSTERESIS_MIN, overlapX * NORMAL_HYSTERESIS_RATIO)
+    const verticalHysteresis = Math.max(NORMAL_HYSTERESIS_MIN, overlapY * NORMAL_HYSTERESIS_RATIO)
+    const keepHorizontalNormal = contact?.normalX && overlapY >= overlapX - horizontalHysteresis
+    const keepVerticalNormal = contact?.normalY && overlapX >= overlapY - verticalHysteresis
 
     if (keepHorizontalNormal) {
       normalX = contact.normalX
@@ -535,14 +540,13 @@ export function useFormulaPhysics(formulaCloud) {
       contact.normalY = normalY
     }
 
-    const sustainedBias = contact
-      ? Math.min(contact.contactTime / CONTACT_STUCK_TIME, 1) * config.separationBias
-      : 0
-    const correction = (penetration + POSITION_SLOP + sustainedBias) * 0.5
-    first.x -= normalX * correction
-    first.y -= normalY * correction
-    second.x += normalX * correction
-    second.y += normalY * correction
+    const inverseMassSum = first.inverseMass + second.inverseMass
+    const correction =
+      (Math.max(penetration - POSITION_SLOP, 0) / inverseMassSum) * POSITION_CORRECTION_PERCENT
+    first.x -= normalX * correction * first.inverseMass
+    first.y -= normalY * correction * first.inverseMass
+    second.x += normalX * correction * second.inverseMass
+    second.y += normalY * correction * second.inverseMass
 
     if (applyImpulse) {
       const relativeVelocity = (second.vx - first.vx) * normalX + (second.vy - first.vy) * normalY
@@ -555,27 +559,35 @@ export function useFormulaPhysics(formulaCloud) {
           : Math.max(0, contact.stalledTime - delta * 0.5)
       contact.lastPenetration = penetration
 
-      if (relativeVelocity < -MIN_IMPULSE_SPEED && elapsed >= contact.cooldownUntil) {
-        const restitution = Math.max(0.34, COLLISION_RESTITUTION - contact.contactTime * 1.8)
-        const impulse = (-(1 + restitution) * relativeVelocity) / 2
-        first.vx -= impulse * normalX
-        first.vy -= impulse * normalY
-        second.vx += impulse * normalX
-        second.vy += impulse * normalY
-        first.vx *= COLLISION_DAMPING
-        first.vy *= COLLISION_DAMPING
-        second.vx *= COLLISION_DAMPING
-        second.vy *= COLLISION_DAMPING
-        const tangentX = -normalY * contact.escapeSign
-        const tangentY = normalX * contact.escapeSign
-        first.vx += tangentX * config.tangentImpulse
-        first.vy += tangentY * config.tangentImpulse
-        second.vx -= tangentX * config.tangentImpulse
-        second.vy -= tangentY * config.tangentImpulse
-        contact.escapeUntil = elapsed + config.escapeDuration
-        beginCollisionFreedom(first, second)
-        contact.cooldownUntil = elapsed + IMPULSE_COOLDOWN
-        contact.lastCollisionTime = elapsed
+      if (relativeVelocity < 0) {
+        const restitution =
+          Math.abs(relativeVelocity) >= config.bounceThreshold ? COLLISION_RESTITUTION : 0
+        const normalImpulse = (-(1 + restitution) * relativeVelocity) / inverseMassSum
+        first.vx -= normalImpulse * normalX * first.inverseMass
+        first.vy -= normalImpulse * normalY * first.inverseMass
+        second.vx += normalImpulse * normalX * second.inverseMass
+        second.vy += normalImpulse * normalY * second.inverseMass
+
+        const tangentX = -normalY
+        const tangentY = normalX
+        const relativeTangentVelocity =
+          (second.vx - first.vx) * tangentX + (second.vy - first.vy) * tangentY
+        const rawFrictionImpulse = -relativeTangentVelocity / inverseMassSum
+        const maximumFrictionImpulse = normalImpulse * FRICTION_COEFFICIENT
+        const frictionImpulse = Math.min(
+          Math.max(rawFrictionImpulse, -maximumFrictionImpulse),
+          maximumFrictionImpulse
+        )
+        first.vx -= frictionImpulse * tangentX * first.inverseMass
+        first.vy -= frictionImpulse * tangentY * first.inverseMass
+        second.vx += frictionImpulse * tangentX * second.inverseMass
+        second.vy += frictionImpulse * tangentY * second.inverseMass
+
+        if (restitution > 0) {
+          contact.escapeUntil = elapsed + config.escapeDuration
+          beginCollisionFreedom(first, second)
+          contact.lastCollisionTime = elapsed
+        }
       }
 
       if (
@@ -585,14 +597,14 @@ export function useFormulaPhysics(formulaCloud) {
       ) {
         const tangentX = -normalY * contact.escapeSign
         const tangentY = normalX * contact.escapeSign
-        first.vx += tangentX * config.escapeSpeed
-        first.vy += tangentY * config.escapeSpeed
-        second.vx -= tangentX * config.escapeSpeed
-        second.vy -= tangentY * config.escapeSpeed
+        first.vx += tangentX * config.escapeSpeed * first.inverseMass
+        first.vy += tangentY * config.escapeSpeed * first.inverseMass
+        second.vx -= tangentX * config.escapeSpeed * second.inverseMass
+        second.vy -= tangentY * config.escapeSpeed * second.inverseMass
         contact.stalledTime = 0
         contact.escapeUntil = elapsed + config.escapeDuration
         beginCollisionFreedom(first, second)
-        contact.cooldownUntil = elapsed + IMPULSE_COOLDOWN * 2
+        contact.cooldownUntil = elapsed + STUCK_COOLDOWN
       }
     }
 
@@ -669,16 +681,23 @@ export function useFormulaPhysics(formulaCloud) {
       let [localForceX, localForceY] = suppressContactSteering(
         body,
         (targetX - body.x) * config.localSteering,
-        (targetY - body.y) * config.localSteering,
-        true
+        (targetY - body.y) * config.localSteering
       )
+      const limitedLocalForce = clampVector(localForceX, localForceY, config.localMaxForce)
+      localForceX = limitedLocalForce[0]
+      localForceY = limitedLocalForce[1]
 
       const overrunX = Math.max(0, Math.abs(body.x) - body.freedomRadiusX)
       const overrunY = Math.max(0, Math.abs(body.y) - body.freedomRadiusY)
       const edgeBlendX = smoothstep(overrunX / Math.max(body.freedomRadiusX * 0.3, 1))
       const edgeBlendY = smoothstep(overrunY / Math.max(body.freedomRadiusY * 0.3, 1))
-      localForceX -= Math.sign(body.x) * overrunX * config.edgeSteering * edgeBlendX
-      localForceY -= Math.sign(body.y) * overrunY * config.edgeSteering * edgeBlendY
+      const [edgeForceX, edgeForceY] = clampVector(
+        -Math.sign(body.x) * overrunX * config.edgeSteering * edgeBlendX,
+        -Math.sign(body.y) * overrunY * config.edgeSteering * edgeBlendY,
+        config.edgeMaxForce
+      )
+      localForceX += edgeForceX
+      localForceY += edgeForceY
 
       const dampingStrength = config.damping * (1 - freedom * (1 - config.collisionDampingRatio))
       const damping = Math.exp(-dampingStrength * delta)
@@ -690,13 +709,19 @@ export function useFormulaPhysics(formulaCloud) {
       body.y += body.vy * delta
     })
 
-    for (let firstIndex = 0; firstIndex < bodies.length; firstIndex += 1) {
-      for (let secondIndex = firstIndex + 1; secondIndex < bodies.length; secondIndex += 1) {
-        resolveCollision(bodies[firstIndex], bodies[secondIndex], delta)
+    for (let iteration = 0; iteration < COLLISION_SOLVER_ITERATIONS; iteration += 1) {
+      for (let firstIndex = 0; firstIndex < bodies.length; firstIndex += 1) {
+        for (let secondIndex = firstIndex + 1; secondIndex < bodies.length; secondIndex += 1) {
+          resolveCollision(bodies[firstIndex], bodies[secondIndex], delta, iteration === 0)
+        }
       }
     }
 
-    bodies.forEach(containBody)
+    bodies.forEach((body) => {
+      containBody(body)
+      clampBodySpeed(body)
+      resetInvalidBody(body)
+    })
   }
 
   function animate(timestamp) {
@@ -706,14 +731,15 @@ export function useFormulaPhysics(formulaCloud) {
     const rawDelta = Number.isFinite(timestamp) ? (timestamp - lastTime) / 1000 : 0
     const delta = Math.min(Math.max(Number.isFinite(rawDelta) ? rawDelta : 0, 0), MAX_FRAME_DELTA)
     lastTime = timestamp
-    elapsed += delta
     updateOuterMotion(delta)
+    accumulator = Math.min(accumulator + delta, FIXED_TIMESTEP * MAX_PHYSICS_STEPS)
 
-    const substeps = Math.max(1, Math.min(4, Math.ceil(delta / MAX_SUBSTEP)))
-    const stepDelta = delta / substeps
-
-    for (let step = 0; step < substeps; step += 1) {
-      updateBodies(stepDelta)
+    let physicsSteps = 0
+    while (accumulator >= FIXED_TIMESTEP && physicsSteps < MAX_PHYSICS_STEPS) {
+      elapsed += FIXED_TIMESTEP
+      updateBodies(FIXED_TIMESTEP)
+      accumulator -= FIXED_TIMESTEP
+      physicsSteps += 1
     }
 
     renderBodies()
@@ -736,6 +762,7 @@ export function useFormulaPhysics(formulaCloud) {
 
     const previousBodies = new Map(bodies.map((body) => [body.element, body]))
     contacts.clear()
+    accumulator = 0
     const elements = Array.from(cloud.querySelectorAll('.theory-card'))
     config = getMotionConfig()
     world = measureWorld(cloud)
