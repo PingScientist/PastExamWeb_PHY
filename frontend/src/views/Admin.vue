@@ -10149,7 +10149,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-@media (max-width: 1199px) {
+@media (max-width: 1399px) {
   :deep(.admin-desktop-data-table.course-management-table),
   :deep(.admin-desktop-data-table.category-management-table) {
     display: none;
@@ -10162,11 +10162,6 @@ onBeforeUnmount(() => {
     gap: 0.8rem;
     width: 100%;
     min-width: 0;
-  }
-
-  .admin-mobile-list--categories {
-    container-type: inline-size;
-    container-name: category-list;
   }
 
   .admin-mobile-list--courses .admin-course-card,
@@ -10402,7 +10397,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (min-width: 768px) and (max-width: 1199px) {
+@media (min-width: 768px) and (max-width: 1399px) {
   .admin-mobile-list--categories .category-responsive-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -10520,7 +10515,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@container category-list (min-width: 56rem) {
+@media (min-width: 1024px) and (max-width: 1399px) {
   .admin-mobile-list--categories .category-card-main--tablet {
     grid-template-columns: minmax(0, 1fr) 12rem;
     grid-template-areas: 'title key';
@@ -10528,7 +10523,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1400px) {
   :deep(.admin-desktop-data-table.course-management-table),
   :deep(.admin-desktop-data-table.category-management-table) {
     display: block;
