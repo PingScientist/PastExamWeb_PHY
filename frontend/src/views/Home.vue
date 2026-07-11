@@ -1091,10 +1091,15 @@ h1 {
   }
 
   .formula-17 {
-    top: 84%;
+    top: 85%;
     left: 62%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.18;
+  }
+
+  .formula-20 {
+    top: 78%;
+    left: 52%;
   }
 
   .formula-18 {
@@ -1140,8 +1145,8 @@ h1 {
   }
 
   .formula-17 {
-    top: 68%;
-    left: 44%;
+    top: 85%;
+    left: 62%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.18;
   }
@@ -1154,8 +1159,8 @@ h1 {
   }
 
   .formula-20 {
-    top: 70%;
-    left: 60%;
+    top: 78%;
+    left: 52%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.16;
   }
