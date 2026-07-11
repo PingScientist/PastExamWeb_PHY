@@ -244,6 +244,15 @@ const formatTimestamp = (value) => {
   text-align: center;
 }
 
+@media (max-width: 768px) {
+  :deep(.notification-table .p-paginator-current) {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-inline-start: 0.5rem;
+    white-space: nowrap;
+  }
+}
+
 .notification-body :deep(a) {
   color: var(--primary-color);
   text-decoration: underline;

@@ -8024,8 +8024,11 @@ onBeforeUnmount(() => {
   }
 
   :deep(.p-paginator-current) {
-    flex: 1 0 100%;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-inline-start: 0.5rem;
     text-align: center;
+    white-space: nowrap;
   }
 
   .compare-preview-grid {
@@ -8192,8 +8195,11 @@ onBeforeUnmount(() => {
   }
 
   .admin-mobile-paginator :deep(.p-paginator-current) {
-    flex: 1 0 100%;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-inline-start: 0.5rem;
     text-align: center;
+    white-space: nowrap;
   }
 
   .admin-mobile-list--users .admin-mobile-card,
