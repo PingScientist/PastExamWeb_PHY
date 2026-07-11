@@ -4,6 +4,36 @@ import { clickWhenVisible } from '../support/ui'
 const STAT_LABELS = ['總用戶數', '總下載次數', '在線用戶', '考古題總數', '課程總數', '今日活躍']
 
 test.describe('Home page', () => {
+  test('centers hero content at the tablet breakpoint', async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 701 })
+    await page.goto('/')
+
+    const centers = await page.evaluate(() => {
+      const textCenter = (element: Element) => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        const { left, right } = range.getBoundingClientRect()
+        return (left + right) / 2
+      }
+
+      const subtitle = document.querySelector('.subtitle')
+      const title = document.querySelector('.hero-title-lockup h1')
+      const actions = document.querySelector('.hero-actions')
+
+      if (!subtitle || !title || !actions) throw new Error('Hero content is missing')
+
+      const actionsRect = actions.getBoundingClientRect()
+      return {
+        subtitle: textCenter(subtitle),
+        title: textCenter(title),
+        actions: (actionsRect.left + actionsRect.right) / 2,
+      }
+    })
+
+    expect(Math.abs(centers.subtitle - centers.title)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(centers.subtitle - centers.actions)).toBeLessThanOrEqual(0.5)
+  })
+
   test('login button initiates OAuth redirect', async ({ page }) => {
     await page.route('**/api/auth/oauth/login', async (route) => {
       await route.fulfill({

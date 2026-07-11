@@ -1554,6 +1554,11 @@ h1 {
     margin-inline: auto;
   }
 
+  .subtitle {
+    width: 100%;
+    max-width: none;
+  }
+
   .hero-actions {
     width: min(100%, 24rem);
     justify-content: center;
