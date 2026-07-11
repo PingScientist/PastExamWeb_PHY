@@ -1769,16 +1769,14 @@
                         </span>
                         {{ data.display_name }}
                       </strong>
-                      <div class="trash-mobile-type-row">
-                        <Tag
-                          class="soft-badge soft-badge--type trash-type-chip"
-                          severity="secondary"
-                        >
-                          {{ getTrashTypeLabel(data.item_type) }}
-                        </Tag>
-                      </div>
                     </div>
                     <div class="trash-mobile-card-badges">
+                      <Tag
+                        class="soft-badge soft-badge--type trash-type-chip trash-mobile-type-badge"
+                        severity="secondary"
+                      >
+                        {{ getTrashTypeLabel(data.item_type) }}
+                      </Tag>
                       <Tag
                         :class="[
                           'soft-badge',
@@ -8861,20 +8859,14 @@ onBeforeUnmount(() => {
     white-space: normal;
   }
 
-  .trash-mobile-type-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.35rem;
-    min-width: 0;
-  }
-
   .trash-mobile-card-badges {
     display: flex;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
     justify-content: flex-end;
     align-items: flex-start;
-    max-width: 42%;
+    gap: 0.35rem;
+    max-width: 54%;
     min-width: 0;
   }
 
@@ -8884,6 +8876,7 @@ onBeforeUnmount(() => {
     white-space: normal;
   }
 
+  :deep(.trash-mobile-type-badge),
   :deep(.trash-mobile-status) {
     max-width: 100%;
   }
@@ -9071,7 +9064,7 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-card-badges {
-    max-width: 40%;
+    max-width: 52%;
   }
 
   .trash-mobile-card-actions {
