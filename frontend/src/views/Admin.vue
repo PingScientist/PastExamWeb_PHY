@@ -10144,81 +10144,18 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (min-width: 641px) and (max-width: 899px) {
-  .admin-mobile-list--courses .admin-course-card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 0.55rem 0.75rem;
-    padding: 0.75rem 0.85rem;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-card-header {
-    grid-column: 2;
-    grid-row: 1;
-    width: auto;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-metadata {
-    display: block;
-    grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: center;
-    width: auto;
-  }
-
-  .admin-mobile-list--courses .course-card-order-item {
-    flex-wrap: nowrap;
-    gap: 0.35rem;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-actions {
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: start;
-    width: auto;
-  }
+.admin-mobile-list--categories .category-card-main--mobile,
+.category-card-top-tags--mobile {
+  display: none;
 }
 
-@media (min-width: 900px) and (max-width: 1399px) {
-  .admin-mobile-list--courses .admin-course-card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.75rem 1rem;
-    padding: 0.75rem 0.9rem;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-card-header {
-    grid-column: 2;
-    width: auto;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-metadata {
-    display: block;
-    grid-column: 1;
-    grid-row: 1;
-    width: auto;
-  }
-
-  .admin-mobile-list--courses .course-card-order-item {
-    flex-wrap: nowrap;
-    gap: 0.35rem;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-actions {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
-    width: auto;
-  }
-}
-
-@media (max-width: 1399px) {
+@media (max-width: 1199px) {
+  :deep(.admin-desktop-data-table.course-management-table),
   :deep(.admin-desktop-data-table.category-management-table) {
     display: none;
   }
 
+  .admin-mobile-list--courses,
   .admin-mobile-list--categories {
     display: flex;
     flex-direction: column;
@@ -10227,25 +10164,28 @@ onBeforeUnmount(() => {
     min-width: 0;
   }
 
+  .admin-mobile-list--courses .admin-course-card,
   .admin-mobile-list--categories .category-responsive-card {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    padding: 0.8rem 0.9rem;
+    padding: 0.85rem 0.9rem;
     border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
     border-radius: 8px;
     background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
   }
 
-  .admin-mobile-list--categories .category-card-topline {
-    flex-wrap: nowrap;
+  .admin-mobile-list--categories .category-card-topline,
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    width: 6.75rem;
     min-width: 6.75rem;
-    width: auto;
   }
 
-  .admin-mobile-list--courses .admin-tablet-metadata {
-    min-width: 6.75rem;
+  .admin-mobile-list--categories .category-card-topline,
+  .admin-mobile-list--courses .course-card-order-item {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
   }
 
   .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
@@ -10261,7 +10201,8 @@ onBeforeUnmount(() => {
   }
 
   .admin-mobile-list--categories .category-card-title-group :deep(.p-tag),
-  .admin-mobile-list--categories .category-card-meta :deep(.p-tag) {
+  .admin-mobile-list--categories .category-card-meta :deep(.p-tag),
+  .admin-mobile-list--courses .admin-tablet-tag-group :deep(.p-tag) {
     flex-shrink: 0;
     white-space: nowrap;
   }
@@ -10270,9 +10211,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-start;
     gap: 0.4rem 0.75rem;
-    width: auto;
     min-width: 0;
   }
 
@@ -10280,8 +10219,9 @@ onBeforeUnmount(() => {
     display: inline-flex;
     flex: 0 1 auto;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.35rem;
+    gap: 0.1rem 0.35rem;
     max-width: 100%;
     padding: 0.28rem 0.5rem;
     border: 1px solid var(--border-color);
@@ -10289,141 +10229,14 @@ onBeforeUnmount(() => {
     background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
   }
 
-  .admin-mobile-list--categories .category-card-meta {
-    width: auto;
-  }
-
-  .admin-mobile-list--categories .category-card-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 0.4rem;
-    width: auto;
-    min-width: 0;
-    overflow-x: visible;
-  }
-
-  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 5rem;
-    white-space: nowrap;
-  }
-
+  :global(.dark) .admin-mobile-list--courses .admin-course-card,
   :global(.dark) .admin-mobile-list--categories .category-responsive-card {
     border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
     background: color-mix(in srgb, var(--bg-secondary) 84%, #000 16%);
   }
 }
 
-@media (max-width: 899px) {
-  .admin-mobile-list--categories .category-responsive-card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 0.5rem 0.75rem;
-  }
-
-  .admin-mobile-list--categories .category-card-topline {
-    grid-column: 1;
-    grid-row: 1 / 4;
-    align-self: center;
-  }
-
-  .admin-mobile-list--categories .category-card-main {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .admin-mobile-list--categories .category-card-meta {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .admin-mobile-list--categories .category-card-actions {
-    grid-column: 2;
-    grid-row: 3;
-    justify-content: flex-start;
-  }
-}
-
-@media (min-width: 900px) and (max-width: 1399px) {
-  .admin-mobile-list--categories .category-responsive-card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 0.75rem 1rem;
-  }
-
-  .admin-mobile-list--categories .category-card-topline {
-    grid-column: 1;
-  }
-
-  .admin-mobile-list--categories .category-card-main {
-    grid-column: 2;
-  }
-
-  .admin-mobile-list--categories .category-card-meta {
-    grid-column: 3;
-  }
-
-  .admin-mobile-list--categories .category-card-actions {
-    grid-column: 4;
-  }
-}
-
-@media (max-width: 640px) {
-  .admin-mobile-list--courses .admin-course-card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 0.5rem 0.65rem;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-metadata {
-    display: block;
-    grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: center;
-    width: auto;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-card-header {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-actions {
-    grid-column: 2;
-    grid-row: 2;
-    justify-content: flex-start;
-    width: auto;
-  }
-
-  .admin-mobile-list--courses .course-card-order-item {
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 5rem;
-  }
-
-  .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
-    display: none;
-  }
-
-  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button),
-  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
-    flex: 0 0 auto;
-    width: 2.65rem;
-    min-width: 2.65rem;
-  }
-}
-
-.admin-mobile-list--categories .category-card-main--mobile,
-.category-card-top-tags--mobile {
-  display: none;
-}
-
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .admin-mobile-list--categories .category-responsive-card {
     display: flex;
     flex-direction: column;
@@ -10575,13 +10388,12 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (min-width: 600px) and (max-width: 767px) {
+@media (min-width: 768px) and (max-width: 1199px) {
   .admin-mobile-list--categories .category-responsive-card {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 0.55rem 0.75rem;
-    padding: 0.8rem 0.9rem;
+    gap: 0.65rem 0.8rem;
   }
 
   .admin-mobile-list--categories .category-card-main--mobile,
@@ -10596,7 +10408,6 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--categories .category-card-topline {
     grid-column: 1;
-    grid-row: 1 / 3;
     align-self: center;
     min-width: 6.75rem;
     width: auto;
@@ -10604,7 +10415,6 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--categories .category-card-main--tablet {
     grid-column: 2;
-    grid-row: 1;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.4rem 0.65rem;
@@ -10614,8 +10424,7 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--categories .category-card-meta--tablet {
     grid-column: 3;
-    grid-row: 1;
-    align-self: start;
+    align-self: center;
     justify-self: end;
     width: auto;
   }
@@ -10630,8 +10439,7 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--categories .category-card-actions {
     display: flex;
-    grid-column: 2 / 4;
-    grid-row: 2;
+    grid-column: 4;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.4rem;
@@ -10645,36 +10453,55 @@ onBeforeUnmount(() => {
     min-height: 2.45rem;
     white-space: nowrap;
   }
-}
 
-@media (min-width: 768px) and (max-width: 899px) {
-  .admin-mobile-list--categories .category-responsive-card {
+  .admin-mobile-list--courses .admin-course-card {
+    display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
+    gap: 0.65rem 0.8rem;
   }
 
-  .admin-mobile-list--categories .category-card-topline {
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    display: block;
     grid-column: 1;
-    grid-row: 1 / 3;
-    align-self: center;
+    grid-row: 1;
+    width: 6.75rem;
   }
 
-  .admin-mobile-list--categories .category-card-main {
+  .admin-mobile-list--courses .admin-tablet-card-header {
     grid-column: 2;
     grid-row: 1;
+    width: auto;
   }
 
-  .admin-mobile-list--categories .category-card-meta {
+  .admin-mobile-list--courses .admin-tablet-actions {
+    display: flex;
     grid-column: 3;
     grid-row: 1;
-    align-self: start;
-    justify-self: end;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: auto;
   }
 
-  .admin-mobile-list--categories .category-card-actions {
-    grid-column: 2 / 4;
-    grid-row: 2;
-    justify-content: flex-end;
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5rem;
+    min-height: 2.45rem;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1200px) {
+  :deep(.admin-desktop-data-table.course-management-table),
+  :deep(.admin-desktop-data-table.category-management-table) {
+    display: block;
+  }
+
+  .admin-mobile-list--courses,
+  .admin-mobile-list--categories {
+    display: none;
   }
 }
 </style>
