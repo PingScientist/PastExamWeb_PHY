@@ -37,6 +37,7 @@ declare module 'vue' {
     Navbar: typeof import('./src/components/Navbar.vue')['default']
     NotificationCenterModal: typeof import('./src/components/NotificationCenterModal.vue')['default']
     NotificationModal: typeof import('./src/components/NotificationModal.vue')['default']
+    Paginator: typeof import('primevue/paginator')['default']
     PanelMenu: typeof import('primevue/panelmenu')['default']
     Password: typeof import('primevue/password')['default']
     PdfPreviewModal: typeof import('./src/components/PdfPreviewModal.vue')['default']

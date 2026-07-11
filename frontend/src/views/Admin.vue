@@ -1554,7 +1554,7 @@
               </div>
 
               <DataTable
-                :value="sortedTrashItems"
+                :value="paginatedTrashItems"
                 :loading="trashLoading"
                 class="admin-data-table trash-table"
                 tableStyle="min-width: 72rem"
@@ -1753,7 +1753,7 @@
 
               <div v-if="!trashLoading" class="trash-mobile-list">
                 <article
-                  v-for="data in sortedTrashItems"
+                  v-for="data in paginatedTrashItems"
                   :key="getTrashItemKey(data)"
                   :class="['trash-mobile-card', getTrashRowClass(data)]"
                 >
@@ -1872,6 +1872,17 @@
                   </section>
                 </article>
               </div>
+              <Paginator
+                v-if="!trashLoading && sortedTrashItems.length"
+                :first="trashFirst"
+                :rows="trashRowsPerPage"
+                :totalRecords="sortedTrashItems.length"
+                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                class="trash-paginator"
+                @page="handleTrashPageChange"
+              />
             </div>
           </TabPanel>
         </TabPanels>
@@ -3008,6 +3019,8 @@ const trashItems = ref([])
 const showTrashRelationHierarchy = ref(true)
 const TRASH_FILTER_ALL_VALUE = 'all'
 const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
+const trashPage = ref(1)
+const trashRowsPerPage = ref(10)
 const courseCategories = ref([])
 const reviewEditLoading = ref(false)
 const showArchiveRequestDialog = ref(false)
@@ -3418,8 +3431,37 @@ const sortedTrashItems = computed(() => {
   }
   return sortTrashItems(filteredRows)
 })
+const trashTotalPages = computed(() =>
+  Math.max(1, Math.ceil(sortedTrashItems.value.length / Math.max(1, trashRowsPerPage.value)))
+)
+const trashFirst = computed(() => {
+  const currentPage = Math.min(Math.max(1, trashPage.value), trashTotalPages.value)
+  return (currentPage - 1) * trashRowsPerPage.value
+})
+const paginatedTrashItems = computed(() => {
+  const start = trashFirst.value
+  return sortedTrashItems.value.slice(start, start + trashRowsPerPage.value)
+})
+
+const clampTrashPage = () => {
+  if (trashPage.value > trashTotalPages.value) {
+    trashPage.value = trashTotalPages.value
+  }
+  if (trashPage.value < 1) {
+    trashPage.value = 1
+  }
+}
+
+const handleTrashPageChange = (event = {}) => {
+  const nextRows = Math.max(1, Number(event?.rows) || trashRowsPerPage.value || 10)
+  const rowsChanged = nextRows !== trashRowsPerPage.value
+  trashRowsPerPage.value = nextRows
+  trashPage.value = rowsChanged ? 1 : Math.max(1, Number(event?.page) + 1 || 1)
+  clampTrashPage()
+}
 
 watch(trashFilterType, (nextFilterType) => {
+  trashPage.value = 1
   if (nextFilterType !== TRASH_FILTER_ALL_VALUE) {
     showTrashRelationHierarchy.value = false
     return
@@ -3443,6 +3485,10 @@ watch(
     clampReviewPaginatorFirst(existingSubmissionFirst, rows, count)
   }
 )
+
+watch([() => sortedTrashItems.value.length, trashRowsPerPage], () => {
+  clampTrashPage()
+})
 
 const getTrashItemKey = (item, fallbackIndex = 0) => {
   const type = item?.item_type || 'unknown'
@@ -9310,7 +9356,8 @@ onBeforeUnmount(() => {
 
 .trash-center,
 .trash-center :deep(.p-component),
-.trash-table {
+.trash-table,
+.trash-paginator {
   font-size: var(--app-font-size-base) !important;
 }
 
@@ -9328,6 +9375,9 @@ onBeforeUnmount(() => {
 .trash-table :deep(.p-paginator),
 .trash-table :deep(.p-paginator-page),
 .trash-table :deep(.p-paginator-current),
+.trash-paginator,
+.trash-paginator :deep(.p-paginator-page),
+.trash-paginator :deep(.p-paginator-current),
 .trash-name-cell,
 .trash-name-cell small,
 .trash-mobile-info-label,
