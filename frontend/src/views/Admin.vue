@@ -267,6 +267,8 @@
                 :first="courseFirst"
                 :rows="courseRows"
                 :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
@@ -412,6 +414,8 @@
                   :totalRecords="filteredCourses.length"
                   :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                   :pageLinkSize="1"
+                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                   aria-label="課程管理分頁"
                   class="admin-mobile-paginator"
                   @page="handleCoursePage"
@@ -470,6 +474,8 @@
                 :first="userFirst"
                 :rows="userRows"
                 :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
@@ -641,6 +647,8 @@
                   :totalRecords="sortedUsers.length"
                   :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                   :pageLinkSize="1"
+                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                   aria-label="使用者管理分頁"
                   class="admin-mobile-paginator"
                   @page="handleUserPage"
@@ -699,6 +707,8 @@
                 :first="notificationFirst"
                 :rows="notificationRows"
                 :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
@@ -860,6 +870,8 @@
                   :totalRecords="sortedNotifications.length"
                   :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                   :pageLinkSize="1"
+                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                   aria-label="公告管理分頁"
                   class="admin-mobile-paginator"
                   @page="handleNotificationPage"
@@ -919,6 +931,8 @@
                   :rows="newSubmissionRows"
                   :rowsPerPageOptions="[5, 10, 15, 25, 50]"
                   :first="newSubmissionFirst"
+                  paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                   @page="handleNewSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
@@ -1260,6 +1274,8 @@
                   :rows="existingSubmissionRows"
                   :rowsPerPageOptions="[5, 10, 15, 25, 50]"
                   :first="existingSubmissionFirst"
+                  paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                   @page="handleExistingSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
@@ -8002,9 +8018,14 @@ onBeforeUnmount(() => {
   :deep(.p-paginator) {
     font-size: 0.875rem;
     justify-content: flex-start;
-    overflow-x: auto;
+    flex-wrap: wrap;
     padding: 0.5rem 0;
     max-width: 100%;
+  }
+
+  :deep(.p-paginator-current) {
+    flex: 1 0 100%;
+    text-align: center;
   }
 
   .compare-preview-grid {
@@ -8146,7 +8167,7 @@ onBeforeUnmount(() => {
 
   .admin-mobile-paginator {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 0.2rem;
     max-width: 100%;
@@ -8168,6 +8189,11 @@ onBeforeUnmount(() => {
   .admin-mobile-paginator :deep(.p-select) {
     flex: 0 0 auto;
     min-width: 4.25rem;
+  }
+
+  .admin-mobile-paginator :deep(.p-paginator-current) {
+    flex: 1 0 100%;
+    text-align: center;
   }
 
   .admin-mobile-list--users .admin-mobile-card,
@@ -9468,6 +9494,8 @@ onBeforeUnmount(() => {
 .course-card-order,
 .category-card-order,
 .category-card-key-value,
+.course-management-table :deep(.p-paginator-current),
+.admin-mobile-paginator :deep(.p-paginator-current),
 .mobile-field-label,
 .mobile-field-value {
   font-size: var(--app-font-size-sm) !important;
