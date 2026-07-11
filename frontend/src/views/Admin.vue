@@ -857,11 +857,7 @@
                     placeholder="篩選審核狀態"
                     showClear
                     class="review-status-filter admin-toolbar__select w-full md:w-14rem"
-                  >
-                    <template #value="{ value }">
-                      <span>{{ getReviewStatusFilterDisplay(value) }}</span>
-                    </template>
-                  </Select>
+                  />
                 </div>
                 <div class="admin-toolbar__actions">
                   <Button
@@ -1534,13 +1530,10 @@
                       optionLabel="label"
                       optionValue="value"
                       placeholder="篩選項目類型"
+                      showClear
                       class="admin-toolbar__select admin-toolbar__select--trash w-full md:w-12rem"
                       @change="loadTrashItems"
-                    >
-                      <template #value="{ value }">
-                        <span>{{ getTrashFilterDisplay(value) }}</span>
-                      </template>
-                    </Select>
+                    />
                   </div>
                   <div class="admin-toolbar__actions admin-toolbar__actions--trash">
                     <Button
@@ -3116,8 +3109,7 @@ const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const reviewLoadError = ref('')
 const reviewSearchQuery = ref('')
-const REVIEW_STATUS_FILTER_ALL_VALUE = 'all'
-const reviewStatusFilter = ref(REVIEW_STATUS_FILTER_ALL_VALUE)
+const reviewStatusFilter = ref(null)
 const newSubmissionFirst = ref(0)
 const newSubmissionRows = ref(10)
 const existingSubmissionFirst = ref(0)
@@ -3127,7 +3119,7 @@ const trashLoading = ref(false)
 const trashItems = ref([])
 const showTrashRelationHierarchy = ref(true)
 const TRASH_FILTER_ALL_VALUE = 'all'
-const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
+const trashFilterType = ref(null)
 const trashPage = ref(1)
 const trashRowsPerPage = ref(10)
 const courseCategories = ref([])
@@ -3176,27 +3168,14 @@ const submissionStatusPriority = {
   deleted: 5,
 }
 const reviewStatusOptions = [
-  { name: '全部', value: REVIEW_STATUS_FILTER_ALL_VALUE },
   { name: '待審核', value: 'pending' },
   { name: '已通過', value: 'approved' },
   { name: '已退回', value: 'rejected' },
   { name: '已下架', value: 'takedown' },
   { name: '已刪除', value: 'deleted' },
 ]
-const reviewStatusFilterValues = new Set(
-  reviewStatusOptions
-    .map((option) => option.value)
-    .filter((value) => value !== REVIEW_STATUS_FILTER_ALL_VALUE)
-)
-const getOptionValue = (option) => (option && typeof option === 'object' ? option.value : option)
-const getReviewStatusFilterDisplay = (value) => {
-  const optionValue = getOptionValue(value)
-  if (!optionValue || optionValue === REVIEW_STATUS_FILTER_ALL_VALUE) return '篩選審核狀態'
-
-  return reviewStatusOptions.find((option) => option.value === optionValue)?.name || '篩選審核狀態'
-}
+const reviewStatusFilterValues = new Set(reviewStatusOptions.map((option) => option.value))
 const trashFilterOptions = [
-  { label: '全部', value: TRASH_FILTER_ALL_VALUE },
   { label: '考古題', value: 'archive' },
   { label: '考古題投稿', value: 'archive_submission' },
   { label: '課程分類', value: 'course_category' },
@@ -3209,12 +3188,7 @@ const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
   return acc
 }, {})
 const getTrashTypeLabel = (itemType) => trashTypeLabels[itemType] || itemType || '未知'
-const getTrashFilterDisplay = (value) => {
-  const optionValue = getOptionValue(value)
-  if (!optionValue || optionValue === TRASH_FILTER_ALL_VALUE) return '篩選項目類型'
-
-  return trashFilterOptions.find((option) => option.value === optionValue)?.label || '篩選項目類型'
-}
+const isTrashAllFilter = (value) => !value || value === TRASH_FILTER_ALL_VALUE
 const getReviewSortDirectionIcon = (direction) =>
   direction === 'asc' ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'
 const getReviewSortNeutralIcon = () => 'pi pi-sort-alt'
@@ -3255,7 +3229,7 @@ const getReviewItemStatus = (item) => {
 }
 const getReviewStatusFilterValue = (status) => {
   const raw = String(status || '').trim()
-  if (!raw || raw === REVIEW_STATUS_FILTER_ALL_VALUE) return ''
+  if (!raw) return ''
 
   const normalized = normalizeSubmissionStatus(raw)
   return reviewStatusFilterValues.has(normalized) ? normalized : ''
@@ -3420,9 +3394,7 @@ const getReviewSortHeaderIcon = (section, key) => {
 const getTrashSortHeaderIcon = (key) => {
   return getTrashSortIndicator(key) || getReviewSortNeutralIcon()
 }
-const isTrashRelationHierarchyFilterOnly = computed(
-  () => trashFilterType.value === TRASH_FILTER_ALL_VALUE
-)
+const isTrashRelationHierarchyFilterOnly = computed(() => isTrashAllFilter(trashFilterType.value))
 const isTrashRelationHierarchyEnabled = computed(
   () => showTrashRelationHierarchy.value && isTrashRelationHierarchyFilterOnly.value
 )
@@ -3584,7 +3556,7 @@ const handleTrashPageChange = (event = {}) => {
 
 watch(trashFilterType, (nextFilterType) => {
   trashPage.value = 1
-  if (nextFilterType !== TRASH_FILTER_ALL_VALUE) {
+  if (!isTrashAllFilter(nextFilterType)) {
     showTrashRelationHierarchy.value = false
     return
   }
@@ -3643,7 +3615,7 @@ const getTrashRowClass = (item) => {
 
 const getValidTrashFilterType = (value) => {
   const validFilterValues = new Set(trashFilterOptions.map((option) => option.value))
-  if (value === TRASH_FILTER_ALL_VALUE) return null
+  if (isTrashAllFilter(value)) return null
   return validFilterValues.has(value) ? value : null
 }
 
@@ -4401,18 +4373,14 @@ const loadReviewItems = async () => {
 const loadTrashItems = async () => {
   trashLoading.value = true
   try {
-    const rawFilterType = getTrashFilterApiValue(trashFilterType.value)
-    const filterType = rawFilterType === null ? null : rawFilterType
+    const filterType = getTrashFilterApiValue(trashFilterType.value)
     const isDefaultFilter = filterType === null
     showTrashRelationHierarchy.value = isDefaultFilter
     if (isDefaultFilter) {
       trashSortState.value = { key: null, direction: 'asc' }
     }
-    if (
-      (rawFilterType === null && trashFilterType.value !== TRASH_FILTER_ALL_VALUE) ||
-      (rawFilterType !== null && rawFilterType !== trashFilterType.value)
-    ) {
-      trashFilterType.value = rawFilterType === null ? TRASH_FILTER_ALL_VALUE : rawFilterType
+    if (filterType !== trashFilterType.value) {
+      trashFilterType.value = filterType
     }
     const { data } = await archiveService.listTrashItems(filterType)
     const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
