@@ -223,9 +223,17 @@
                 <div class="admin-toolbar__filters">
                   <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
-                    <InputText v-model="searchQuery" placeholder="搜尋課程" class="w-full pl-6" />
+                    <InputText
+                      id="admin-course-search"
+                      name="admin-course-search"
+                      v-model="searchQuery"
+                      placeholder="搜尋課程"
+                      class="w-full pl-6"
+                    />
                   </div>
                   <Select
+                    inputId="admin-course-category-filter"
+                    name="admin-course-category-filter"
                     v-model="filterCategory"
                     :options="categoryOptions"
                     optionLabel="name"
@@ -407,12 +415,16 @@
                   <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
+                      id="admin-user-search"
+                      name="admin-user-search"
                       v-model="userSearchQuery"
                       placeholder="搜尋使用者"
                       class="w-full pl-6"
                     />
                   </div>
                   <Select
+                    inputId="admin-user-type-filter"
+                    name="admin-user-type-filter"
                     v-model="filterUserType"
                     :options="userTypeFilterOptions"
                     optionLabel="name"
@@ -619,12 +631,16 @@
                   <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
+                      id="admin-notification-search"
+                      name="admin-notification-search"
                       v-model="notificationSearchQuery"
                       placeholder="搜尋公告"
                       class="w-full pl-6"
                     />
                   </div>
                   <Select
+                    inputId="admin-notification-severity-filter"
+                    name="admin-notification-severity-filter"
                     v-model="notificationSeverityFilter"
                     :options="notificationSeverityFilterOptions"
                     optionLabel="label"
@@ -824,19 +840,23 @@
                   <div class="admin-toolbar__search relative w-full md:w-24rem">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
+                      id="admin-review-search"
+                      name="admin-review-search"
                       v-model="reviewSearchQuery"
                       placeholder="搜尋投稿編號、標題、課程、投稿者…"
                       class="w-full pl-6"
                     />
                   </div>
                   <Select
-                    v-model="reviewCategoryFilter"
-                    :options="categoryOptions"
+                    inputId="admin-review-status-filter"
+                    name="admin-review-status-filter"
+                    v-model="reviewStatusFilter"
+                    :options="reviewStatusOptions"
                     optionLabel="name"
                     optionValue="value"
-                    placeholder="篩選分類"
+                    placeholder="篩選審核狀態"
                     showClear
-                    class="review-category-filter admin-toolbar__select w-full md:w-14rem"
+                    class="review-status-filter admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
                 <div class="admin-toolbar__actions">
@@ -1503,10 +1523,14 @@
                 <div class="admin-toolbar admin-toolbar--trash">
                   <div class="admin-toolbar__filters admin-toolbar__filters--trash">
                     <Select
+                      inputId="admin-trash-filter"
+                      name="admin-trash-filter"
                       v-model="trashFilterType"
                       :options="trashFilterOptions"
                       optionLabel="label"
                       optionValue="value"
+                      placeholder="篩選項目類型"
+                      showClear
                       class="admin-toolbar__select admin-toolbar__select--trash w-full md:w-12rem"
                       @change="loadTrashItems"
                     />
@@ -1554,7 +1578,7 @@
               </div>
 
               <DataTable
-                :value="sortedTrashItems"
+                :value="paginatedTrashItems"
                 :loading="trashLoading"
                 class="admin-data-table trash-table"
                 tableStyle="min-width: 72rem"
@@ -1753,7 +1777,7 @@
 
               <div v-if="!trashLoading" class="trash-mobile-list">
                 <article
-                  v-for="data in sortedTrashItems"
+                  v-for="data in paginatedTrashItems"
                   :key="getTrashItemKey(data)"
                   :class="['trash-mobile-card', getTrashRowClass(data)]"
                 >
@@ -1771,13 +1795,17 @@
                       </strong>
                     </div>
                     <div class="trash-mobile-card-badges">
-                      <Tag class="soft-badge soft-badge--type trash-type-chip" severity="secondary">
+                      <Tag
+                        class="soft-badge soft-badge--type trash-type-chip trash-mobile-type-badge"
+                        severity="secondary"
+                      >
                         {{ getTrashTypeLabel(data.item_type) }}
                       </Tag>
                       <Tag
                         :class="[
                           'soft-badge',
                           'review-status-chip',
+                          'trash-mobile-status',
                           getSubmissionStatusClass(data.status),
                         ]"
                         :severity="getTrashStatusSeverity(data.status)"
@@ -1872,6 +1900,17 @@
                   </section>
                 </article>
               </div>
+              <Paginator
+                v-if="!trashLoading && sortedTrashItems.length"
+                :first="trashFirst"
+                :rows="trashRowsPerPage"
+                :totalRecords="sortedTrashItems.length"
+                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                class="trash-paginator"
+                @page="handleTrashPageChange"
+              />
             </div>
           </TabPanel>
         </TabPanels>
@@ -1891,6 +1930,8 @@
           <div class="flex flex-column gap-2">
             <label>課程名稱</label>
             <InputText
+              id="admin-course-name"
+              name="admin-course-name"
               v-model="courseForm.name"
               placeholder="輸入課程名稱"
               class="w-full"
@@ -1904,6 +1945,8 @@
           <div class="flex flex-column gap-2">
             <label>分類</label>
             <Select
+              inputId="admin-course-category"
+              name="admin-course-category"
               v-model="courseForm.category"
               :options="categoryOptions"
               optionLabel="name"
@@ -1943,6 +1986,8 @@
           <div class="flex flex-column gap-2">
             <label>分類 Key</label>
             <InputText
+              id="admin-category-key"
+              name="admin-category-key"
               v-model="categoryForm.key"
               placeholder="例如 advanced-physics"
               class="w-full"
@@ -1955,6 +2000,8 @@
           <div class="flex flex-column gap-2">
             <label>顯示名稱</label>
             <InputText
+              id="admin-category-name"
+              name="admin-category-name"
               v-model="categoryForm.name"
               placeholder="例如 進階物理"
               class="w-full"
@@ -1966,11 +2013,23 @@
           </div>
           <div class="flex flex-column gap-2">
             <label>科目旁小標籤</label>
-            <InputText v-model="categoryForm.label" placeholder="例如 進階" class="w-full" />
+            <InputText
+              id="admin-category-label"
+              name="admin-category-label"
+              v-model="categoryForm.label"
+              placeholder="例如 進階"
+              class="w-full"
+            />
           </div>
           <div class="flex flex-column gap-2">
             <label>PrimeIcons class</label>
-            <InputText v-model="categoryForm.icon" placeholder="pi pi-fw pi-book" class="w-full" />
+            <InputText
+              id="admin-category-icon"
+              name="admin-category-icon"
+              v-model="categoryForm.icon"
+              placeholder="pi pi-fw pi-book"
+              class="w-full"
+            />
           </div>
           <div class="flex flex-column gap-2">
             <label>分類標籤顏色</label>
@@ -2056,6 +2115,8 @@
             <div class="col-12 md:col-6 flex flex-column gap-2">
               <label>申請分類 Key</label>
               <InputText
+                id="admin-review-requested-category-key"
+                name="admin-review-requested-category-key"
                 v-model="archiveRequestEditForm.requested_category_key"
                 :disabled="!canEditSelectedArchiveRequest"
               />
@@ -2063,6 +2124,8 @@
             <div class="col-12 md:col-6 flex flex-column gap-2">
               <label>申請分類名稱</label>
               <InputText
+                id="admin-review-requested-category-name"
+                name="admin-review-requested-category-name"
                 v-model="archiveRequestEditForm.requested_category_name"
                 :disabled="!canEditSelectedArchiveRequest"
               />
@@ -2070,6 +2133,8 @@
             <div class="col-12 md:col-6 flex flex-column gap-2">
               <label>科目旁小標籤</label>
               <InputText
+                id="admin-review-requested-category-label"
+                name="admin-review-requested-category-label"
                 v-model="archiveRequestEditForm.requested_category_label"
                 :disabled="!canEditSelectedArchiveRequest"
               />
@@ -2081,6 +2146,8 @@
           >
             <label>申請課程名稱</label>
             <InputText
+              id="admin-review-requested-course-name"
+              name="admin-review-requested-course-name"
               v-model="archiveRequestEditForm.requested_course_name"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2088,6 +2155,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>課程</label>
             <InputText
+              id="admin-review-subject"
+              name="admin-review-subject"
               v-model="archiveRequestEditForm.subject"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2098,6 +2167,8 @@
           >
             <label>分類 Key</label>
             <InputText
+              id="admin-review-category-key"
+              name="admin-review-category-key"
               v-model="archiveRequestEditForm.category"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2105,6 +2176,8 @@
           <div v-else class="col-12 md:col-6 flex flex-column gap-2">
             <label>分類</label>
             <Select
+              inputId="admin-review-category"
+              name="admin-review-category"
               v-model="archiveRequestEditForm.category"
               :options="categoryOptions"
               optionLabel="name"
@@ -2115,6 +2188,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>考試名稱</label>
             <InputText
+              id="admin-review-exam-name"
+              name="admin-review-exam-name"
               v-model="archiveRequestEditForm.name"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2122,6 +2197,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>授課教師</label>
             <InputText
+              id="admin-review-professor"
+              name="admin-review-professor"
               v-model="archiveRequestEditForm.professor"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2129,6 +2206,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>學期代碼</label>
             <InputNumber
+              inputId="admin-review-academic-year"
+              name="admin-review-academic-year"
               v-model="archiveRequestEditForm.academic_year"
               :disabled="!canEditSelectedArchiveRequest"
               :useGrouping="false"
@@ -2137,6 +2216,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>考試類型</label>
             <Select
+              inputId="admin-review-archive-type"
+              name="admin-review-archive-type"
               v-model="archiveRequestEditForm.archive_type"
               :options="archiveTypeOptions"
               optionLabel="name"
@@ -2146,11 +2227,13 @@
           </div>
           <div class="col-12 flex align-items-center gap-2">
             <Checkbox
+              inputId="admin-review-has-answers"
+              name="admin-review-has-answers"
               v-model="archiveRequestEditForm.has_answers"
               :binary="true"
               :disabled="!canEditSelectedArchiveRequest"
             />
-            <label>附解答</label>
+            <label for="admin-review-has-answers">附解答</label>
           </div>
         </div>
 
@@ -2436,6 +2519,8 @@
           <div class="flex flex-column gap-2">
             <label>使用者名稱</label>
             <InputText
+              id="admin-user-name"
+              name="admin-user-name"
               v-model="userForm.name"
               placeholder="輸入使用者名稱"
               class="w-full"
@@ -2449,6 +2534,8 @@
           <div class="flex flex-column gap-2">
             <label>電子郵件</label>
             <InputText
+              id="admin-user-email"
+              name="admin-user-email"
               v-model="userForm.email"
               placeholder="輸入電子郵件"
               class="w-full"
@@ -2462,6 +2549,8 @@
           <div v-if="!editingUser" class="flex flex-column gap-2">
             <label>密碼</label>
             <Password
+              inputId="admin-user-password"
+              name="admin-user-password"
               v-model="userForm.password"
               placeholder="輸入密碼"
               class="w-full"
@@ -2476,8 +2565,13 @@
           </div>
 
           <div class="flex align-items-center gap-2">
-            <Checkbox v-model="userForm.is_admin" :binary="true" />
-            <label>管理員權限</label>
+            <Checkbox
+              inputId="admin-user-is-admin"
+              name="admin-user-is-admin"
+              v-model="userForm.is_admin"
+              :binary="true"
+            />
+            <label for="admin-user-is-admin">管理員權限</label>
           </div>
         </div>
 
@@ -2518,6 +2612,8 @@
           <div class="flex flex-column gap-2">
             <label>新密碼</label>
             <Password
+              inputId="admin-reset-new-password"
+              name="admin-reset-new-password"
               v-model="resetPasswordForm.newPassword"
               placeholder="輸入新密碼"
               class="w-full"
@@ -2535,6 +2631,8 @@
           <div class="flex flex-column gap-2">
             <label>確認新密碼</label>
             <Password
+              inputId="admin-reset-confirm-password"
+              name="admin-reset-confirm-password"
               v-model="resetPasswordForm.confirmPassword"
               placeholder="再次輸入新密碼"
               class="w-full"
@@ -2580,6 +2678,8 @@
           <div class="flex flex-column gap-2">
             <label>標題</label>
             <InputText
+              id="admin-notification-title"
+              name="admin-notification-title"
               v-model="notificationForm.title"
               placeholder="輸入公告標題"
               class="w-full"
@@ -2594,6 +2694,8 @@
             <div class="flex-1 flex flex-column gap-2">
               <label>重要程度</label>
               <Select
+                inputId="admin-notification-severity"
+                name="admin-notification-severity"
                 v-model="notificationForm.severity"
                 :options="notificationSeverityOptions"
                 optionLabel="label"
@@ -2603,14 +2705,20 @@
               />
             </div>
             <div class="flex align-items-center gap-2 mt-3 md:mt-5">
-              <ToggleSwitch v-model="notificationForm.is_active" />
-              <label class="m-0 font-medium">啟用公告</label>
+              <ToggleSwitch
+                inputId="admin-notification-is-active"
+                name="admin-notification-is-active"
+                v-model="notificationForm.is_active"
+              />
+              <label for="admin-notification-is-active" class="m-0 font-medium">啟用公告</label>
             </div>
           </div>
 
           <div class="flex flex-column gap-2">
             <label>內容</label>
             <Textarea
+              id="admin-notification-body"
+              name="admin-notification-body"
               v-model="notificationForm.body"
               rows="6"
               autoResize
@@ -2627,6 +2735,8 @@
             <div class="flex flex-column gap-2">
               <label>生效時間 (選填)</label>
               <DatePicker
+                inputId="admin-notification-starts-at"
+                name="admin-notification-starts-at"
                 v-model="notificationForm.starts_at"
                 showTime
                 hourFormat="24"
@@ -2638,6 +2748,8 @@
             <div class="flex flex-column gap-2">
               <label>結束時間 (選填)</label>
               <DatePicker
+                inputId="admin-notification-ends-at"
+                name="admin-notification-ends-at"
                 v-model="notificationForm.ends_at"
                 showTime
                 hourFormat="24"
@@ -2997,7 +3109,7 @@ const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const reviewLoadError = ref('')
 const reviewSearchQuery = ref('')
-const reviewCategoryFilter = ref(null)
+const reviewStatusFilter = ref(null)
 const newSubmissionFirst = ref(0)
 const newSubmissionRows = ref(10)
 const existingSubmissionFirst = ref(0)
@@ -3007,7 +3119,9 @@ const trashLoading = ref(false)
 const trashItems = ref([])
 const showTrashRelationHierarchy = ref(true)
 const TRASH_FILTER_ALL_VALUE = 'all'
-const trashFilterType = ref(TRASH_FILTER_ALL_VALUE)
+const trashFilterType = ref(null)
+const trashPage = ref(1)
+const trashRowsPerPage = ref(10)
 const courseCategories = ref([])
 const reviewEditLoading = ref(false)
 const showArchiveRequestDialog = ref(false)
@@ -3053,8 +3167,15 @@ const submissionStatusPriority = {
   takedown: 4,
   deleted: 5,
 }
+const reviewStatusOptions = [
+  { name: '待審核', value: 'pending' },
+  { name: '已通過', value: 'approved' },
+  { name: '已退回', value: 'rejected' },
+  { name: '已下架', value: 'takedown' },
+  { name: '已刪除', value: 'deleted' },
+]
+const reviewStatusFilterValues = new Set(reviewStatusOptions.map((option) => option.value))
 const trashFilterOptions = [
-  { label: '全部', value: TRASH_FILTER_ALL_VALUE },
   { label: '考古題', value: 'archive' },
   { label: '考古題投稿', value: 'archive_submission' },
   { label: '課程分類', value: 'course_category' },
@@ -3067,6 +3188,7 @@ const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
   return acc
 }, {})
 const getTrashTypeLabel = (itemType) => trashTypeLabels[itemType] || itemType || '未知'
+const isTrashAllFilter = (value) => !value || value === TRASH_FILTER_ALL_VALUE
 const getReviewSortDirectionIcon = (direction) =>
   direction === 'asc' ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'
 const getReviewSortNeutralIcon = () => 'pi pi-sort-alt'
@@ -3104,6 +3226,13 @@ const normalizeSubmissionStatus = (status) => {
 const getReviewItemStatus = (item) => {
   if (item?.deletedAt || item?.deleted_at) return 'deleted'
   return normalizeSubmissionStatus(item?.status)
+}
+const getReviewStatusFilterValue = (status) => {
+  const raw = String(status || '').trim()
+  if (!raw) return ''
+
+  const normalized = normalizeSubmissionStatus(raw)
+  return reviewStatusFilterValues.has(normalized) ? normalized : ''
 }
 const isReadonlyReviewSubmission = (item) => {
   return ['takedown', 'deleted'].includes(getReviewItemStatus(item))
@@ -3227,37 +3356,17 @@ const getReviewSearchHaystack = (item) => {
   return fields.map(normalizeReviewSearchText).filter(Boolean).join(' ')
 }
 
-const getReviewCategoryFilterValue = (item) => {
-  const proposedKey = normalizeReviewSearchText(item?.requested_category_key)
-  if (proposedKey) return proposedKey
-
-  const normalizedCategory = normalizeReviewSearchText(item?.category)
-  if (normalizedCategory) return normalizedCategory
-
-  const normalizedRequestedCategoryName = normalizeReviewSearchText(item?.requested_category_name)
-  if (!normalizedRequestedCategoryName) return ''
-
-  const matchedCategory = Object.values(categoryInfoMap.value).find(
-    (category) =>
-      normalizeReviewSearchText(category?.name) === normalizedRequestedCategoryName ||
-      normalizeReviewSearchText(category?.label) === normalizedRequestedCategoryName ||
-      normalizeReviewSearchText(category?.key) === normalizedRequestedCategoryName
-  )
-
-  return matchedCategory?.key || ''
-}
-
 const filteredArchiveRequests = computed(() => {
   const query = normalizeReviewSearchText(reviewSearchQuery.value)
-  const categoryFilter = normalizeReviewSearchText(reviewCategoryFilter.value)
+  const statusFilter = getReviewStatusFilterValue(reviewStatusFilter.value)
   let filtered = archiveRequests.value
 
   if (query) {
     filtered = filtered.filter((item) => getReviewSearchHaystack(item).includes(query))
   }
 
-  if (!categoryFilter) return filtered
-  return filtered.filter((item) => getReviewCategoryFilterValue(item) === categoryFilter)
+  if (!statusFilter) return filtered
+  return filtered.filter((item) => getReviewStatusFilterValue(item?.status) === statusFilter)
 })
 
 const toggleReviewSort = (section, key) => {
@@ -3285,9 +3394,7 @@ const getReviewSortHeaderIcon = (section, key) => {
 const getTrashSortHeaderIcon = (key) => {
   return getTrashSortIndicator(key) || getReviewSortNeutralIcon()
 }
-const isTrashRelationHierarchyFilterOnly = computed(
-  () => trashFilterType.value === TRASH_FILTER_ALL_VALUE
-)
+const isTrashRelationHierarchyFilterOnly = computed(() => isTrashAllFilter(trashFilterType.value))
 const isTrashRelationHierarchyEnabled = computed(
   () => showTrashRelationHierarchy.value && isTrashRelationHierarchyFilterOnly.value
 )
@@ -3418,9 +3525,38 @@ const sortedTrashItems = computed(() => {
   }
   return sortTrashItems(filteredRows)
 })
+const trashTotalPages = computed(() =>
+  Math.max(1, Math.ceil(sortedTrashItems.value.length / Math.max(1, trashRowsPerPage.value)))
+)
+const trashFirst = computed(() => {
+  const currentPage = Math.min(Math.max(1, trashPage.value), trashTotalPages.value)
+  return (currentPage - 1) * trashRowsPerPage.value
+})
+const paginatedTrashItems = computed(() => {
+  const start = trashFirst.value
+  return sortedTrashItems.value.slice(start, start + trashRowsPerPage.value)
+})
+
+const clampTrashPage = () => {
+  if (trashPage.value > trashTotalPages.value) {
+    trashPage.value = trashTotalPages.value
+  }
+  if (trashPage.value < 1) {
+    trashPage.value = 1
+  }
+}
+
+const handleTrashPageChange = (event = {}) => {
+  const nextRows = Math.max(1, Number(event?.rows) || trashRowsPerPage.value || 10)
+  const rowsChanged = nextRows !== trashRowsPerPage.value
+  trashRowsPerPage.value = nextRows
+  trashPage.value = rowsChanged ? 1 : Math.max(1, Number(event?.page) + 1 || 1)
+  clampTrashPage()
+}
 
 watch(trashFilterType, (nextFilterType) => {
-  if (nextFilterType !== TRASH_FILTER_ALL_VALUE) {
+  trashPage.value = 1
+  if (!isTrashAllFilter(nextFilterType)) {
     showTrashRelationHierarchy.value = false
     return
   }
@@ -3428,7 +3564,7 @@ watch(trashFilterType, (nextFilterType) => {
   trashSortState.value = { key: null, direction: 'asc' }
 })
 
-watch([reviewSearchQuery, reviewCategoryFilter], () => {
+watch([reviewSearchQuery, reviewStatusFilter], () => {
   newSubmissionFirst.value = 0
   existingSubmissionFirst.value = 0
 })
@@ -3479,7 +3615,7 @@ const getTrashRowClass = (item) => {
 
 const getValidTrashFilterType = (value) => {
   const validFilterValues = new Set(trashFilterOptions.map((option) => option.value))
-  if (value === TRASH_FILTER_ALL_VALUE) return null
+  if (isTrashAllFilter(value)) return null
   return validFilterValues.has(value) ? value : null
 }
 
@@ -3613,6 +3749,10 @@ const buildTrashHierarchy = (items, filterType) => {
 
   return result
 }
+
+watch([() => sortedTrashItems.value.length, trashRowsPerPage], () => {
+  clampTrashPage()
+})
 
 const getTrashContextLine = (item) => {
   if (!item) return ''
@@ -4233,18 +4373,14 @@ const loadReviewItems = async () => {
 const loadTrashItems = async () => {
   trashLoading.value = true
   try {
-    const rawFilterType = getTrashFilterApiValue(trashFilterType.value)
-    const filterType = rawFilterType === null ? null : rawFilterType
+    const filterType = getTrashFilterApiValue(trashFilterType.value)
     const isDefaultFilter = filterType === null
     showTrashRelationHierarchy.value = isDefaultFilter
     if (isDefaultFilter) {
       trashSortState.value = { key: null, direction: 'asc' }
     }
-    if (
-      (rawFilterType === null && trashFilterType.value !== TRASH_FILTER_ALL_VALUE) ||
-      (rawFilterType !== null && rawFilterType !== trashFilterType.value)
-    ) {
-      trashFilterType.value = rawFilterType === null ? TRASH_FILTER_ALL_VALUE : rawFilterType
+    if (filterType !== trashFilterType.value) {
+      trashFilterType.value = filterType
     }
     const { data } = await archiveService.listTrashItems(filterType)
     const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
@@ -6876,7 +7012,10 @@ onBeforeUnmount(() => {
   :deep(.p-tablist-content),
   :deep(.p-tablist-tab-list) {
     overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-y: contain;
     scrollbar-width: thin;
+    touch-action: pan-x;
   }
 
   :deep(.p-tab) {
@@ -8243,7 +8382,7 @@ onBeforeUnmount(() => {
     width: min(100%, 26rem) !important;
   }
 
-  .review-search-toolbar .review-category-filter {
+  .review-search-toolbar .review-status-filter {
     width: min(100%, 26rem) !important;
   }
 
@@ -8576,7 +8715,7 @@ onBeforeUnmount(() => {
   }
 
   .review-search-toolbar .admin-toolbar__search.relative,
-  .review-search-toolbar .review-category-filter.admin-toolbar__select {
+  .review-search-toolbar .review-status-filter.admin-toolbar__select {
     width: auto !important;
   }
 
@@ -8761,11 +8900,11 @@ onBeforeUnmount(() => {
   .trash-mobile-card {
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.65rem;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    padding: 0.9rem;
+    padding: 0.78rem;
     border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
     border-radius: 8px;
     background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
@@ -8783,19 +8922,22 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.7rem;
     width: 100%;
     min-width: 0;
   }
 
   .trash-mobile-card-title-block {
+    display: flex;
     flex: 1 1 auto;
     min-width: 0;
+    flex-direction: column;
+    gap: 0.35rem;
   }
 
   .trash-mobile-card-title {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.35rem;
     max-width: 100%;
     color: var(--text-primary);
@@ -8813,7 +8955,7 @@ onBeforeUnmount(() => {
     justify-content: flex-end;
     align-items: flex-start;
     gap: 0.35rem;
-    max-width: 46%;
+    max-width: 54%;
     min-width: 0;
   }
 
@@ -8823,10 +8965,15 @@ onBeforeUnmount(() => {
     white-space: normal;
   }
 
+  :deep(.trash-mobile-type-badge),
+  :deep(.trash-mobile-status) {
+    max-width: 100%;
+  }
+
   .trash-mobile-info-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem 0.75rem;
+    gap: 0.38rem 0.65rem;
     width: 100%;
   }
 
@@ -8835,7 +8982,7 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-item--wide {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .trash-mobile-info-label {
@@ -8858,7 +9005,7 @@ onBeforeUnmount(() => {
   .trash-mobile-dependencies {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 0.35rem;
     width: 100%;
     min-width: 0;
   }
@@ -8907,7 +9054,7 @@ onBeforeUnmount(() => {
     flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-start;
-    gap: 0.5rem;
+    gap: 0.45rem;
     width: 100%;
     min-width: 0;
     overflow-x: auto;
@@ -8918,7 +9065,7 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
     width: auto;
     min-width: 5.25rem;
-    min-height: 2.45rem;
+    min-height: 2.35rem;
     padding-inline: 0.65rem;
     justify-content: center;
     white-space: nowrap;
@@ -9006,7 +9153,7 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-card-badges {
-    max-width: 44%;
+    max-width: 52%;
   }
 
   .trash-mobile-card-actions {
@@ -9033,17 +9180,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 430px) {
-  .trash-mobile-card-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .trash-mobile-card-badges {
-    max-width: 100%;
-    justify-content: flex-end;
-  }
-
+@media (max-width: 360px) {
   .trash-mobile-info-grid {
     grid-template-columns: 1fr;
   }
@@ -9310,7 +9447,8 @@ onBeforeUnmount(() => {
 
 .trash-center,
 .trash-center :deep(.p-component),
-.trash-table {
+.trash-table,
+.trash-paginator {
   font-size: var(--app-font-size-base) !important;
 }
 
@@ -9328,6 +9466,9 @@ onBeforeUnmount(() => {
 .trash-table :deep(.p-paginator),
 .trash-table :deep(.p-paginator-page),
 .trash-table :deep(.p-paginator-current),
+.trash-paginator,
+.trash-paginator :deep(.p-paginator-page),
+.trash-paginator :deep(.p-paginator-current),
 .trash-name-cell,
 .trash-name-cell small,
 .trash-mobile-info-label,

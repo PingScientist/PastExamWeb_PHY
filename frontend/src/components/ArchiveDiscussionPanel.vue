@@ -85,6 +85,7 @@
     <div class="discussion-footer p-3 flex gap-2">
       <div class="flex-1 flex flex-column gap-1 min-w-0">
         <Textarea
+          name="discussion-message"
           v-model="draft"
           placeholder="輸入訊息"
           class="w-full"
@@ -125,14 +126,23 @@
       </template>
       <div class="flex flex-column gap-3">
         <div class="flex flex-column gap-2">
-          <label class="font-semibold">暱稱</label>
-          <InputText v-model="nicknameDraft" placeholder="輸入暱稱" maxlength="15" class="w-full" />
+          <label for="discussion-nickname" class="font-semibold">暱稱</label>
+          <InputText
+            id="discussion-nickname"
+            name="discussion-nickname"
+            v-model="nicknameDraft"
+            placeholder="輸入暱稱"
+            maxlength="15"
+            class="w-full"
+          />
           <small class="text-xs" style="color: var(--text-secondary)">{{ nicknameHint }}</small>
         </div>
         <div class="flex flex-column gap-2">
           <label class="font-semibold">其他</label>
-          <label class="flex align-items-center gap-2">
+          <label for="discussion-desktop-default-open" class="flex align-items-center gap-2">
             <Checkbox
+              inputId="discussion-desktop-default-open"
+              name="discussion-desktop-default-open"
               v-model="desktopDefaultOpen"
               :binary="true"
               @change="handleDesktopDefaultOpenChange"

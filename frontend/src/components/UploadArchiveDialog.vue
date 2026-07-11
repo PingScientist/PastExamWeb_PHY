@@ -33,6 +33,7 @@
                     v-model="form.requestNewCourse"
                     :binary="true"
                     inputId="request-new-course"
+                    name="request-new-course"
                     :disabled="form.requestNewCategory"
                   />
                   <div>
@@ -50,6 +51,7 @@
                     v-model="form.requestNewCategory"
                     :binary="true"
                     inputId="request-new-category"
+                    name="request-new-category"
                   />
                   <div>
                     <label for="request-new-category" class="font-semibold"
@@ -66,6 +68,8 @@
                 <div class="flex flex-column gap-2">
                   <label>新分類 Key</label>
                   <InputText
+                    id="requested-category-key"
+                    name="requested-category-key"
                     v-model="form.requestedCategoryKey"
                     placeholder="例如 astrophysics"
                     class="w-full"
@@ -82,6 +86,8 @@
                 <div class="flex flex-column gap-2">
                   <label>新分類名稱</label>
                   <InputText
+                    id="requested-category-name"
+                    name="requested-category-name"
                     v-model="form.requestedCategoryName"
                     placeholder="例如 天文物理"
                     class="w-full"
@@ -90,6 +96,8 @@
                 <div class="flex flex-column gap-2">
                   <label>科目旁小標籤</label>
                   <InputText
+                    id="requested-category-label"
+                    name="requested-category-label"
                     v-model="form.requestedCategoryLabel"
                     placeholder="例如 天文"
                     class="w-full"
@@ -100,6 +108,8 @@
               <div class="flex flex-column gap-2">
                 <label>課程類別</label>
                 <Select
+                  inputId="upload-category"
+                  name="upload-category"
                   v-model="form.category"
                   :options="categoryOptions"
                   optionLabel="name"
@@ -116,6 +126,8 @@
               <div v-if="form.requestNewCourse" class="flex flex-column gap-2">
                 <label>新課程名稱</label>
                 <InputText
+                  id="requested-course-name"
+                  name="requested-course-name"
                   v-model="form.requestedCourseName"
                   placeholder="輸入要申請的課程名稱"
                   class="w-full"
@@ -125,6 +137,8 @@
               <div v-else class="flex flex-column gap-2">
                 <label>課程名稱</label>
                 <Select
+                  inputId="upload-subject"
+                  name="upload-subject"
                   v-model="form.subject"
                   :options="subjectOptions"
                   optionLabel="name"
@@ -144,6 +158,8 @@
               <div class="flex flex-column gap-2">
                 <label>授課教授</label>
                 <AutoComplete
+                  inputId="upload-professor"
+                  name="upload-professor"
                   :modelValue="form.professor"
                   @update:modelValue="(val) => (form.professor = val)"
                   :suggestions="availableProfessors"
@@ -206,6 +222,8 @@
               <div class="flex flex-column gap-2">
                 <label>考試類型</label>
                 <Select
+                  inputId="upload-exam-type"
+                  name="upload-exam-type"
                   v-model="form.type"
                   :options="[
                     { name: '期中考', value: 'midterm' },
@@ -223,6 +241,8 @@
               <div v-if="requiresExamNumber" class="flex flex-column gap-2">
                 <label>{{ form.type === 'midterm' ? '第幾次期中考' : '第幾次小考' }}</label>
                 <Select
+                  inputId="upload-exam-number"
+                  name="upload-exam-number"
                   v-model="form.examNumber"
                   :options="examNumberOptions"
                   optionLabel="name"
@@ -240,6 +260,7 @@
                 <div class="relative w-full">
                   <InputText
                     id="filename-input"
+                    name="filename-input"
                     v-model="form.otherName"
                     placeholder="例如 retake1"
                     class="w-full pr-8"
@@ -268,12 +289,23 @@
 
               <div v-if="form.type === 'final'" class="flex flex-column gap-2">
                 <label>考試名稱</label>
-                <InputText :modelValue="generatedFilename" class="w-full" disabled />
+                <InputText
+                  id="generated-filename"
+                  name="generated-filename"
+                  :modelValue="generatedFilename"
+                  class="w-full"
+                  disabled
+                />
               </div>
 
               <div class="flex align-items-center gap-2">
-                <Checkbox v-model="form.hasAnswers" :binary="true" />
-                <label>附解答</label>
+                <Checkbox
+                  inputId="upload-has-answers"
+                  name="upload-has-answers"
+                  v-model="form.hasAnswers"
+                  :binary="true"
+                />
+                <label for="upload-has-answers">附解答</label>
               </div>
             </div>
             <div class="flex pt-6 justify-between">

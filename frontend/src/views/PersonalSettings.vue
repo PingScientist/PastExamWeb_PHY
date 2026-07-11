@@ -150,6 +150,7 @@
                     <label for="display-name">名稱</label>
                     <InputText
                       id="display-name"
+                      name="display-name"
                       v-model="profileForm.name"
                       class="w-full"
                       maxlength="15"
@@ -160,7 +161,13 @@
 
                   <div class="field">
                     <label for="email">電子郵件</label>
-                    <InputText id="email" v-model="profileForm.email" class="w-full" readonly />
+                    <InputText
+                      id="email"
+                      name="email"
+                      v-model="profileForm.email"
+                      class="w-full"
+                      readonly
+                    />
                   </div>
 
                   <div class="form-actions">
@@ -183,7 +190,8 @@
                   <div class="field">
                     <label for="current-password">目前密碼</label>
                     <Password
-                      id="current-password"
+                      inputId="current-password"
+                      name="current-password"
                       v-model="passwordForm.currentPassword"
                       class="w-full"
                       inputClass="w-full"
@@ -195,7 +203,8 @@
                   <div class="field">
                     <label for="new-password">新密碼</label>
                     <Password
-                      id="new-password"
+                      inputId="new-password"
+                      name="new-password"
                       v-model="passwordForm.newPassword"
                       class="w-full"
                       inputClass="w-full"
@@ -206,7 +215,8 @@
                   <div class="field">
                     <label for="confirm-password">確認新密碼</label>
                     <Password
-                      id="confirm-password"
+                      inputId="confirm-password"
+                      name="confirm-password"
                       v-model="passwordForm.confirmPassword"
                       class="w-full"
                       inputClass="w-full"
