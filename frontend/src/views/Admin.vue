@@ -70,7 +70,7 @@
                         <span class="category-mobile-header">
                           <span class="category-mobile-title">{{ data.name }}</span>
                           <span class="category-key-mobile">
-                            <span class="mobile-field-label">系統識別碼</span>
+                            <span class="mobile-field-label">Key</span>
                             <span class="mobile-field-value">{{ data.key }}</span>
                           </span>
                         </span>
@@ -165,6 +165,14 @@
                         :disabled="!canMoveCategory(category, 1) || categoryOrderLoading"
                         @click="moveCategory(category, 1)"
                       />
+                      <div class="category-card-top-tags--mobile">
+                        <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                          {{ category.label || category.name }}
+                        </Tag>
+                        <Tag :severity="category.is_active ? 'success' : 'secondary'">
+                          {{ category.is_active ? '啟用中' : '已停用' }}
+                        </Tag>
+                      </div>
                     </section>
                     <section class="category-card-main category-card-main--tablet">
                       <div class="category-card-title-group">
@@ -186,17 +194,9 @@
                     <section class="category-card-main category-card-main--mobile">
                       <strong class="category-card-title">{{ category.name }}</strong>
                       <span class="category-card-key">
-                        <span class="category-card-key-label">系統識別碼</span>
+                        <span class="category-card-key-label">Key</span>
                         <span class="category-card-key-value">{{ category.key }}</span>
                       </span>
-                    </section>
-                    <section class="category-card-meta category-card-meta--mobile">
-                      <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
-                        {{ category.label || category.name }}
-                      </Tag>
-                      <Tag :severity="category.is_active ? 'success' : 'secondary'">
-                        {{ category.is_active ? '啟用中' : '已停用' }}
-                      </Tag>
                     </section>
                     <section
                       class="admin-card-actions admin-mobile-card-actions category-card-actions"
@@ -10142,7 +10142,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (min-width: 768px) and (max-width: 899px) {
+@media (min-width: 641px) and (max-width: 899px) {
   .admin-mobile-list--courses .admin-course-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -10313,7 +10313,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (min-width: 768px) and (max-width: 899px) {
+@media (max-width: 899px) {
   .admin-mobile-list--categories .category-responsive-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -10415,12 +10415,12 @@ onBeforeUnmount(() => {
   }
 }
 
-.category-card-main--mobile,
-.category-card-meta--mobile {
+.admin-mobile-list--categories .category-card-main--mobile,
+.category-card-top-tags--mobile {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 640px) {
   .admin-mobile-list--categories .category-responsive-card {
     display: flex;
     flex-direction: column;
@@ -10433,8 +10433,7 @@ onBeforeUnmount(() => {
     display: none;
   }
 
-  .admin-mobile-list--categories .category-card-main--mobile,
-  .admin-mobile-list--categories .category-card-meta--mobile {
+  .admin-mobile-list--categories .category-card-main--mobile {
     display: flex;
   }
 
@@ -10443,6 +10442,16 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 0.45rem;
     width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-top-tags--mobile {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
     min-width: 0;
   }
 
@@ -10465,13 +10474,6 @@ onBeforeUnmount(() => {
     border: 1px solid var(--border-color);
     border-radius: 0.55rem;
     background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
-  }
-
-  .admin-mobile-list--categories .category-card-meta--mobile {
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.45rem;
-    width: 100%;
   }
 
   .admin-mobile-list--categories .category-card-actions {
