@@ -264,13 +264,17 @@
                 :value="filteredCourses"
                 class="admin-data-table admin-desktop-data-table course-management-table"
                 paginator
-                :rows="10"
-                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                :first="courseFirst"
+                :rows="courseRows"
+                :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
                 responsiveLayout="stack"
                 breakpoint="1023px"
+                @page="handleCoursePage"
               >
                 <Column header="順序" style="width: 18%">
                   <template #body="{ data }">
@@ -344,7 +348,7 @@
               </DataTable>
               <div v-if="!coursesLoading" class="admin-mobile-list admin-mobile-list--courses">
                 <article
-                  v-for="course in filteredCourses"
+                  v-for="course in paginatedCourses"
                   :key="course.id"
                   class="admin-mobile-card admin-course-card"
                 >
@@ -404,6 +408,18 @@
                     />
                   </section>
                 </article>
+                <Paginator
+                  :first="courseFirst"
+                  :rows="courseRows"
+                  :totalRecords="filteredCourses.length"
+                  :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                  :pageLinkSize="1"
+                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                  aria-label="課程管理分頁"
+                  class="admin-mobile-paginator"
+                  @page="handleCoursePage"
+                />
               </div>
             </div>
           </TabPanel>
@@ -452,11 +468,14 @@
               />
               <DataTable
                 v-else
-                :value="filteredUsers"
+                :value="sortedUsers"
                 class="admin-data-table admin-desktop-data-table user-management-table"
                 paginator
-                :rows="10"
-                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                :first="userFirst"
+                :rows="userRows"
+                :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
@@ -465,6 +484,8 @@
                 :multiSortMeta="userSortMeta"
                 sortMode="multiple"
                 removableSort
+                @page="handleUserPage"
+                @sort="handleUserSort"
               >
                 <Column header="使用者名稱" sortable style="width: 15%">
                   <template #body="{ data }">
@@ -562,7 +583,7 @@
               </DataTable>
               <div v-if="!usersLoading" class="admin-mobile-list admin-mobile-list--users">
                 <article
-                  v-for="user in filteredUsers"
+                  v-for="user in paginatedUsers"
                   :key="user.id"
                   class="admin-mobile-card admin-user-card"
                 >
@@ -620,6 +641,18 @@
                     />
                   </section>
                 </article>
+                <Paginator
+                  :first="userFirst"
+                  :rows="userRows"
+                  :totalRecords="sortedUsers.length"
+                  :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                  :pageLinkSize="1"
+                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                  aria-label="使用者管理分頁"
+                  class="admin-mobile-paginator"
+                  @page="handleUserPage"
+                />
               </div>
             </div>
           </TabPanel>
@@ -668,11 +701,14 @@
               />
               <DataTable
                 v-else
-                :value="filteredNotifications"
+                :value="sortedNotifications"
                 class="admin-data-table admin-desktop-data-table notification-management-table"
                 paginator
-                :rows="10"
-                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                :first="notificationFirst"
+                :rows="notificationRows"
+                :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 tableStyle="min-width: 50rem"
                 scrollable
                 scrollHeight="65vh"
@@ -681,6 +717,8 @@
                 sortMode="multiple"
                 :multiSortMeta="notificationSortMeta"
                 removableSort
+                @page="handleNotificationPage"
+                @sort="handleNotificationSort"
               >
                 <Column field="title" header="標題" sortable style="width: 26%">
                   <template #body="{ data }">
@@ -777,7 +815,7 @@
                 class="admin-mobile-list admin-mobile-list--notifications"
               >
                 <article
-                  v-for="notification in filteredNotifications"
+                  v-for="notification in paginatedNotifications"
                   :key="notification.id"
                   class="admin-mobile-card admin-announcement-card"
                 >
@@ -826,6 +864,18 @@
                     />
                   </section>
                 </article>
+                <Paginator
+                  :first="notificationFirst"
+                  :rows="notificationRows"
+                  :totalRecords="sortedNotifications.length"
+                  :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                  :pageLinkSize="1"
+                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                  aria-label="公告管理分頁"
+                  class="admin-mobile-paginator"
+                  @page="handleNotificationPage"
+                />
               </div>
             </div>
           </TabPanel>
@@ -881,6 +931,8 @@
                   :rows="newSubmissionRows"
                   :rowsPerPageOptions="[5, 10, 15, 25, 50]"
                   :first="newSubmissionFirst"
+                  paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                   @page="handleNewSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
@@ -1222,6 +1274,8 @@
                   :rows="existingSubmissionRows"
                   :rowsPerPageOptions="[5, 10, 15, 25, 50]"
                   :first="existingSubmissionFirst"
+                  paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                   @page="handleExistingSubmissionPage"
                   tableStyle="min-width: 72rem"
                   responsiveLayout="stack"
@@ -2976,6 +3030,9 @@ const coursesLoading = ref(false)
 const searchQuery = ref('')
 const filterCategory = ref(null)
 const courseOrderLoading = ref(false)
+const ADMIN_PAGE_SIZE_OPTIONS = [5, 10, 15, 25, 50]
+const courseFirst = ref(0)
+const courseRows = ref(10)
 
 const showCourseDialog = ref(false)
 const editingCourse = ref(null)
@@ -3022,6 +3079,8 @@ const users = ref([])
 const usersLoading = ref(false)
 const userSearchQuery = ref('')
 const filterUserType = ref(null)
+const userFirst = ref(0)
+const userRows = ref(10)
 
 const userSortMeta = ref([
   { field: 'is_admin', order: -1 },
@@ -3080,6 +3139,8 @@ const notifications = ref([])
 const notificationsLoading = ref(false)
 const notificationSearchQuery = ref('')
 const notificationSeverityFilter = ref(null)
+const notificationFirst = ref(0)
+const notificationRows = ref(10)
 
 const notificationSortMeta = ref([
   { field: 'is_active', order: -1 },
@@ -4122,6 +4183,10 @@ const filteredCourses = computed(() => {
   return filtered
 })
 
+const paginatedCourses = computed(() =>
+  filteredCourses.value.slice(courseFirst.value, courseFirst.value + courseRows.value)
+)
+
 const getCategoryCourses = (category) => {
   return sortCourses(courses.value.filter((course) => course.category === category))
 }
@@ -4226,6 +4291,32 @@ const filteredUsers = computed(() => {
   return filtered
 })
 
+const sortRecords = (records, sortMeta) => {
+  if (!sortMeta.length) return records
+
+  return [...records].sort((left, right) => {
+    for (const { field, order } of sortMeta) {
+      const leftValue = left[field]
+      const rightValue = right[field]
+      if (leftValue === rightValue) continue
+      if (leftValue === null || leftValue === undefined) return -1 * order
+      if (rightValue === null || rightValue === undefined) return order
+
+      const comparison = String(leftValue).localeCompare(String(rightValue), 'zh-Hant', {
+        numeric: true,
+        sensitivity: 'base',
+      })
+      if (comparison !== 0) return comparison * order
+    }
+    return 0
+  })
+}
+
+const sortedUsers = computed(() => sortRecords(filteredUsers.value, userSortMeta.value))
+const paginatedUsers = computed(() =>
+  sortedUsers.value.slice(userFirst.value, userFirst.value + userRows.value)
+)
+
 const filteredNotifications = computed(() => {
   let filtered = notifications.value
 
@@ -4251,6 +4342,61 @@ const filteredNotifications = computed(() => {
       effectiveOrder,
     }
   })
+})
+
+const sortedNotifications = computed(() =>
+  sortRecords(filteredNotifications.value, notificationSortMeta.value)
+)
+const paginatedNotifications = computed(() =>
+  sortedNotifications.value.slice(
+    notificationFirst.value,
+    notificationFirst.value + notificationRows.value
+  )
+)
+
+const updatePaginator = (event, firstRef, rowsRef) => {
+  rowsRef.value = event.rows
+  firstRef.value = Math.max(0, event.first)
+}
+
+const handleCoursePage = (event) => updatePaginator(event, courseFirst, courseRows)
+const handleUserPage = (event) => updatePaginator(event, userFirst, userRows)
+const handleNotificationPage = (event) =>
+  updatePaginator(event, notificationFirst, notificationRows)
+
+const handleUserSort = (event) => {
+  userSortMeta.value = event.multiSortMeta || []
+  userFirst.value = 0
+}
+
+const handleNotificationSort = (event) => {
+  notificationSortMeta.value = event.multiSortMeta || []
+  notificationFirst.value = 0
+}
+
+const clampPaginatorFirst = (firstRef, rowsRef, totalRecords) => {
+  const lastFirst =
+    totalRecords > 0 ? Math.floor((totalRecords - 1) / rowsRef.value) * rowsRef.value : 0
+  firstRef.value = Math.min(Math.max(0, firstRef.value), lastFirst)
+}
+
+watch([searchQuery, filterCategory], () => {
+  courseFirst.value = 0
+})
+watch([userSearchQuery, filterUserType], () => {
+  userFirst.value = 0
+})
+watch([notificationSearchQuery, notificationSeverityFilter], () => {
+  notificationFirst.value = 0
+})
+watch([() => filteredCourses.value.length, courseRows], ([totalRecords]) => {
+  clampPaginatorFirst(courseFirst, courseRows, totalRecords)
+})
+watch([() => sortedUsers.value.length, userRows], ([totalRecords]) => {
+  clampPaginatorFirst(userFirst, userRows, totalRecords)
+})
+watch([() => sortedNotifications.value.length, notificationRows], ([totalRecords]) => {
+  clampPaginatorFirst(notificationFirst, notificationRows, totalRecords)
 })
 
 const loadCategories = async () => {
@@ -6950,6 +7096,12 @@ onBeforeUnmount(() => {
   display: none;
 }
 
+.admin-mobile-paginator {
+  width: 100%;
+  min-width: 0;
+  margin-top: 0.2rem;
+}
+
 .user-online-badge {
   display: inline-flex;
   align-items: center;
@@ -7866,9 +8018,17 @@ onBeforeUnmount(() => {
   :deep(.p-paginator) {
     font-size: 0.875rem;
     justify-content: flex-start;
-    overflow-x: auto;
+    flex-wrap: wrap;
     padding: 0.5rem 0;
     max-width: 100%;
+  }
+
+  :deep(.p-paginator-current) {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-inline-start: 0.5rem;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .compare-preview-grid {
@@ -8006,6 +8166,40 @@ onBeforeUnmount(() => {
     gap: 0.8rem;
     width: 100%;
     min-width: 0;
+  }
+
+  .admin-mobile-paginator {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.55rem 0.25rem;
+    overflow: hidden;
+  }
+
+  .admin-mobile-paginator :deep(.p-paginator-first),
+  .admin-mobile-paginator :deep(.p-paginator-prev),
+  .admin-mobile-paginator :deep(.p-paginator-page),
+  .admin-mobile-paginator :deep(.p-paginator-next),
+  .admin-mobile-paginator :deep(.p-paginator-last) {
+    flex: 0 0 auto;
+    min-width: 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .admin-mobile-paginator :deep(.p-select) {
+    flex: 0 0 auto;
+    min-width: 4.25rem;
+  }
+
+  .admin-mobile-paginator :deep(.p-paginator-current) {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-inline-start: 0.5rem;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .admin-mobile-list--users .admin-mobile-card,
@@ -8177,6 +8371,23 @@ onBeforeUnmount(() => {
     min-height: 2.45rem;
     justify-content: center;
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 400px) {
+  .admin-mobile-paginator {
+    gap: 0.1rem;
+    padding-inline: 0;
+  }
+
+  .admin-mobile-paginator :deep(.p-paginator-first),
+  .admin-mobile-paginator :deep(.p-paginator-prev),
+  .admin-mobile-paginator :deep(.p-paginator-page),
+  .admin-mobile-paginator :deep(.p-paginator-next),
+  .admin-mobile-paginator :deep(.p-paginator-last) {
+    min-width: 2rem;
+    width: 2rem;
+    height: 2rem;
   }
 }
 
@@ -9289,6 +9500,8 @@ onBeforeUnmount(() => {
 .course-card-order,
 .category-card-order,
 .category-card-key-value,
+.course-management-table :deep(.p-paginator-current),
+.admin-mobile-paginator :deep(.p-paginator-current),
 .mobile-field-label,
 .mobile-field-value {
   font-size: var(--app-font-size-sm) !important;

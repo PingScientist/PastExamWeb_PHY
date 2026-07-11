@@ -32,7 +32,8 @@
           :rows="5"
           paginator
           :rowsPerPageOptions="[5]"
-          paginatorTemplate="PrevPageLink NextPageLink"
+          paginatorTemplate="PrevPageLink NextPageLink CurrentPageReport"
+          currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
           class="notification-table"
         >
           <Column field="title" header="標題">
@@ -232,6 +233,24 @@ const formatTimestamp = (value) => {
 
 :deep(.notification-table .p-datatable-table) {
   min-width: 640px;
+}
+
+:deep(.notification-table .p-paginator) {
+  flex-wrap: wrap;
+}
+
+:deep(.notification-table .p-paginator-current) {
+  flex: 1 0 100%;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  :deep(.notification-table .p-paginator-current) {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-inline-start: 0.5rem;
+    white-space: nowrap;
+  }
 }
 
 .notification-body :deep(a) {

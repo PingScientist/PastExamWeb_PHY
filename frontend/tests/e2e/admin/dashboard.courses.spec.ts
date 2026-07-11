@@ -1,5 +1,12 @@
 import { adminTest as test, expect } from '../support/adminTest'
-import { mockAdminCourseEndpoints } from '../support/adminFixtures'
+import {
+  mockAdminCourseEndpoints,
+  mockAdminNotificationEndpoints,
+  mockAdminUserEndpoints,
+  type Course,
+  type Notification,
+  type User,
+} from '../support/adminFixtures'
 import { JSON_HEADERS } from '../support/constants'
 import { clickWhenVisible } from '../support/ui'
 
@@ -117,5 +124,93 @@ test.describe('Admin Dashboard › Courses', () => {
 
     expect(deleteIds.length).toBeGreaterThan(0)
     await expect(page.getByRole('row', { name: /線性代數\(一\)/ })).toHaveCount(0)
+  })
+
+  test('keeps mobile pagination operational and synchronized with desktop', async ({ page }) => {
+    const courses: Course[] = Array.from({ length: 12 }, (_, index) => ({
+      id: index + 1,
+      name: `分頁課程 ${String(index + 1).padStart(2, '0')}`,
+      category: 'freshman',
+    }))
+    const users: User[] = Array.from({ length: 12 }, (_, index) => ({
+      id: index + 10,
+      name: `分頁使用者 ${String(index + 1).padStart(2, '0')}`,
+      email: `page-user-${index + 1}@example.com`,
+      is_admin: index % 2 === 0,
+      is_local: true,
+      last_login: null,
+    }))
+    const notifications: Notification[] = Array.from({ length: 11 }, (_, index) => ({
+      id: index + 20,
+      title: `分頁公告 ${String(index + 1).padStart(2, '0')}`,
+      body: `公告內容 ${index + 1}`,
+      severity: index % 2 === 0 ? 'info' : 'danger',
+      is_active: true,
+      created_at: `2025-10-${String(index + 1).padStart(2, '0')}T15:00:00Z`,
+      updated_at: `2025-10-${String(index + 1).padStart(2, '0')}T15:00:00Z`,
+      starts_at: null,
+      ends_at: null,
+    }))
+
+    await mockAdminCourseEndpoints(page, courses)
+    await mockAdminUserEndpoints(page, users)
+    const { deleteIds } = await mockAdminNotificationEndpoints(page, notifications)
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/admin', { waitUntil: 'networkidle' })
+
+    await clickWhenVisible(page.getByRole('tab', { name: '課程管理' }))
+    const courseList = page.locator('.admin-mobile-list--courses')
+    const coursePaginator = courseList.locator('.admin-mobile-paginator')
+    await expect(coursePaginator).toBeVisible()
+    await expect(coursePaginator.locator('.p-paginator-first')).toBeDisabled()
+    await expect(coursePaginator.locator('.p-paginator-prev')).toBeDisabled()
+    await expect(courseList.locator('.admin-course-card')).toHaveCount(10)
+    await clickWhenVisible(coursePaginator.locator('.p-paginator-next'))
+    await expect(courseList.locator('.admin-course-card')).toHaveCount(2)
+    await expect(coursePaginator.locator('.p-paginator-next')).toBeDisabled()
+    await expect(coursePaginator.locator('.p-paginator-last')).toBeDisabled()
+
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await expect(page.getByRole('row', { name: /分頁課程 11/ })).toBeVisible()
+    await page.setViewportSize({ width: 375, height: 812 })
+    await expect(courseList.locator('.admin-course-card')).toHaveCount(2)
+    await clickWhenVisible(coursePaginator.locator('.p-paginator-first'))
+    await expect(coursePaginator.locator('.p-paginator-prev')).toBeDisabled()
+
+    await clickWhenVisible(coursePaginator.getByRole('combobox'))
+    await clickWhenVisible(page.getByRole('option', { name: '5', exact: true }))
+    await expect(courseList.locator('.admin-course-card')).toHaveCount(5)
+    await clickWhenVisible(coursePaginator.locator('.p-paginator-next'))
+    await page.getByPlaceholder('搜尋課程').fill('分頁課程 01')
+    await expect(courseList.locator('.admin-course-card')).toHaveCount(1)
+    await expect(coursePaginator.locator('.p-paginator-prev')).toBeDisabled()
+
+    await clickWhenVisible(page.getByRole('tab', { name: '使用者管理' }))
+    const userList = page.locator('.admin-mobile-list--users')
+    const userPaginator = userList.locator('.admin-mobile-paginator')
+    await expect(userList.locator('.admin-user-card')).toHaveCount(10)
+    await clickWhenVisible(userPaginator.locator('.p-paginator-last'))
+    await expect(userList.locator('.admin-user-card')).toHaveCount(2)
+    await page.getByPlaceholder('搜尋使用者').fill('分頁使用者 01')
+    await expect(userList.locator('.admin-user-card')).toHaveCount(1)
+    await expect(userPaginator.locator('.p-paginator-prev')).toBeDisabled()
+
+    await clickWhenVisible(page.getByRole('tab', { name: '公告管理' }))
+    const notificationList = page.locator('.admin-mobile-list--notifications')
+    const notificationPaginator = notificationList.locator('.admin-mobile-paginator')
+    await clickWhenVisible(notificationPaginator.locator('.p-paginator-last'))
+    await expect(notificationList.locator('.admin-announcement-card')).toHaveCount(1)
+    await clickWhenVisible(
+      notificationList.locator('.admin-announcement-card').getByRole('button', { name: '刪除' })
+    )
+    const dialog = page.getByRole('alertdialog', { name: '刪除確認' })
+    await clickWhenVisible(dialog.getByLabel('刪除'))
+    await expect.poll(() => deleteIds.length).toBe(1)
+    await expect(notificationList.locator('.admin-announcement-card')).toHaveCount(10)
+    await expect(notificationPaginator.locator('.p-paginator-prev')).toBeDisabled()
+
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+    ).toBe(false)
   })
 })
