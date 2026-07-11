@@ -137,7 +137,7 @@
                   <article
                     v-for="category in courseCategories"
                     :key="category.id"
-                    class="admin-mobile-card admin-category-card"
+                    class="admin-mobile-card admin-category-card category-responsive-card"
                   >
                     <section class="category-card-topline">
                       <span class="category-card-order">{{
@@ -167,16 +167,18 @@
                       />
                     </section>
                     <section class="category-card-main">
-                      <strong class="category-card-title">{{ category.name }}</strong>
+                      <div class="category-card-title-group">
+                        <strong class="category-card-title">{{ category.name }}</strong>
+                        <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                          {{ category.label || category.name }}
+                        </Tag>
+                      </div>
                       <span class="category-card-key">
-                        <span class="category-card-key-label">系統識別碼</span>
+                        <span class="category-card-key-label">Key</span>
                         <span class="category-card-key-value">{{ category.key }}</span>
                       </span>
                     </section>
                     <section class="category-card-meta">
-                      <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
-                        {{ category.label || category.name }}
-                      </Tag>
                       <Tag :severity="category.is_active ? 'success' : 'secondary'">
                         {{ category.is_active ? '啟用中' : '已停用' }}
                       </Tag>
@@ -10128,20 +10130,23 @@ onBeforeUnmount(() => {
 @media (min-width: 641px) and (max-width: 899px) {
   .admin-mobile-list--courses .admin-course-card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 0.55rem 0.75rem;
     padding: 0.75rem 0.85rem;
   }
 
   .admin-mobile-list--courses .admin-tablet-card-header {
-    grid-column: 1 / -1;
+    grid-column: 2;
+    grid-row: 1;
     width: auto;
   }
 
   .admin-mobile-list--courses .admin-tablet-metadata {
     display: block;
     grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: center;
     width: auto;
   }
 
@@ -10152,7 +10157,8 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--courses .admin-tablet-actions {
     grid-column: 2;
-    justify-self: end;
+    grid-row: 2;
+    justify-self: start;
     width: auto;
   }
 }
@@ -10160,20 +10166,22 @@ onBeforeUnmount(() => {
 @media (min-width: 900px) and (max-width: 1399px) {
   .admin-mobile-list--courses .admin-course-card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.75rem 1rem;
     padding: 0.75rem 0.9rem;
   }
 
-  .admin-mobile-list--courses .admin-tablet-card-header,
-  .admin-mobile-list--courses .admin-tablet-metadata,
-  .admin-mobile-list--courses .admin-tablet-actions {
+  .admin-mobile-list--courses .admin-tablet-card-header {
+    grid-column: 2;
     width: auto;
   }
 
   .admin-mobile-list--courses .admin-tablet-metadata {
     display: block;
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
   }
 
   .admin-mobile-list--courses .course-card-order-item {
@@ -10182,7 +10190,213 @@ onBeforeUnmount(() => {
   }
 
   .admin-mobile-list--courses .admin-tablet-actions {
+    grid-column: 3;
+    grid-row: 1;
     justify-self: end;
+    width: auto;
+  }
+}
+
+@media (max-width: 1399px) {
+  :deep(.admin-desktop-data-table.category-management-table) {
+    display: none;
+  }
+
+  .admin-mobile-list--categories {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-responsive-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    flex-wrap: nowrap;
+    min-width: 6.75rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    min-width: 6.75rem;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
+    display: none;
+  }
+
+  .admin-mobile-list--categories .category-card-title-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-title-group :deep(.p-tag),
+  .admin-mobile-list--categories .category-card-meta :deep(.p-tag) {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--categories .category-card-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.4rem 0.75rem;
+    width: auto;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-key {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.35rem;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .admin-mobile-list--categories .category-card-meta {
+    width: auto;
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: auto;
+    min-width: 0;
+    overflow-x: visible;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5rem;
+    white-space: nowrap;
+  }
+
+  :global(.dark) .admin-mobile-list--categories .category-responsive-card {
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-secondary) 84%, #000 16%);
+  }
+}
+
+@media (max-width: 899px) {
+  .admin-mobile-list--categories .category-responsive-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    grid-column: 1;
+    grid-row: 1 / 4;
+    align-self: center;
+  }
+
+  .admin-mobile-list--categories .category-card-main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-mobile-list--categories .category-card-meta {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    grid-column: 2;
+    grid-row: 3;
+    justify-content: flex-start;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  .admin-mobile-list--categories .category-responsive-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.75rem 1rem;
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    grid-column: 1;
+  }
+
+  .admin-mobile-list--categories .category-card-main {
+    grid-column: 2;
+  }
+
+  .admin-mobile-list--categories .category-card-meta {
+    grid-column: 3;
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    grid-column: 4;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-mobile-list--courses .admin-course-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem 0.65rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    display: block;
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: center;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-header {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: flex-start;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 5rem;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
+    display: none;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button),
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: 2.65rem;
+    min-width: 2.65rem;
   }
 }
 </style>
