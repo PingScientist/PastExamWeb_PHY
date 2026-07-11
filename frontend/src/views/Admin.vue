@@ -10124,4 +10124,65 @@ onBeforeUnmount(() => {
     overflow-wrap: anywhere;
   }
 }
+
+@media (min-width: 641px) and (max-width: 899px) {
+  .admin-mobile-list--courses .admin-course-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.55rem 0.75rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-header {
+    grid-column: 1 / -1;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    display: block;
+    grid-column: 1;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions {
+    grid-column: 2;
+    justify-self: end;
+    width: auto;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  .admin-mobile-list--courses .admin-course-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-header,
+  .admin-mobile-list--courses .admin-tablet-metadata,
+  .admin-mobile-list--courses .admin-tablet-actions {
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    display: block;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions {
+    justify-self: end;
+  }
+}
 </style>
