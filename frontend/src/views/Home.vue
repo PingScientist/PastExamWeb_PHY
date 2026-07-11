@@ -1711,14 +1711,14 @@ h1 {
 
   .formula-2 {
     top: 9%;
-    left: 48%;
+    left: 55%;
     --formula-font-size: 0.7rem;
     --formula-alpha: 0.17;
   }
 
   .formula-4 {
     top: 20%;
-    left: 14%;
+    left: 7%;
     --formula-font-size: 0.7rem;
     --formula-alpha: 0.17;
   }
@@ -1755,14 +1755,14 @@ h1 {
 
   .formula-13 {
     top: 48%;
-    left: 50%;
+    left: 72%;
     --formula-font-size: 0.68rem;
     --formula-alpha: 0.16;
   }
 
   .formula-16 {
     top: 29%;
-    left: 61%;
+    left: 67%;
     --formula-font-size: 0.69rem;
     --formula-alpha: 0.17;
   }
