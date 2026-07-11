@@ -8580,7 +8580,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1399px) {
   .review-center {
     padding: 0.75rem !important;
   }
@@ -8737,7 +8737,7 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
     max-width: 42%;
     justify-content: center;
-    white-space: normal;
+    white-space: nowrap;
     text-align: center;
   }
 
@@ -8813,7 +8813,8 @@ onBeforeUnmount(() => {
   :deep(.review-card-chip) {
     width: fit-content;
     max-width: 100%;
-    white-space: normal;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   :deep(.review-row-action-area) {
@@ -8835,11 +8836,11 @@ onBeforeUnmount(() => {
     order: 2;
     display: flex;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: flex-start;
     width: 100%;
     gap: 0.45rem;
-    overflow-x: auto;
+    overflow-x: visible;
     padding-bottom: 0.05rem;
   }
 
@@ -8862,6 +8863,21 @@ onBeforeUnmount(() => {
   :deep(.review-card-actions .p-button .pi) {
     margin-inline-end: 0.35rem;
     line-height: 1;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  :deep(.review-mobile-info-grid) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem 1rem;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr) {
+    padding: 1.1rem;
+  }
+
+  :deep(.review-card-actions) {
+    justify-content: flex-end;
   }
 }
 
@@ -9095,7 +9111,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1399px) {
   :deep(.trash-table) {
     display: none !important;
   }
@@ -9171,9 +9187,10 @@ onBeforeUnmount(() => {
   }
 
   :deep(.trash-mobile-card-badges .p-tag) {
+    flex-shrink: 0;
     justify-content: center;
     text-align: center;
-    white-space: normal;
+    white-space: nowrap;
   }
 
   :deep(.trash-mobile-type-badge),
@@ -9262,13 +9279,13 @@ onBeforeUnmount(() => {
 
   .trash-mobile-card-actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-start;
     gap: 0.45rem;
     width: 100%;
     min-width: 0;
-    overflow-x: auto;
+    overflow-x: visible;
     padding-bottom: 0.05rem;
   }
 
@@ -9355,6 +9372,25 @@ onBeforeUnmount(() => {
     border-color: rgba(248, 113, 113, 0.64);
     background: rgba(248, 113, 113, 0.1);
     color: #fecaca;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  .trash-mobile-card {
+    padding: 1rem;
+  }
+
+  .trash-mobile-info-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+  }
+
+  .trash-mobile-info-item--wide {
+    grid-column: span 2;
+  }
+
+  .trash-mobile-card-actions {
+    justify-content: flex-end;
   }
 }
 
