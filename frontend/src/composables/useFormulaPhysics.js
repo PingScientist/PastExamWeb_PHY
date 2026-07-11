@@ -4,7 +4,9 @@ const TAU = Math.PI * 2
 const MAX_FRAME_DELTA = 0.04
 const MAX_SUBSTEP = 0.012
 const COLLISION_RESTITUTION = 0.76
+const COLLISION_DAMPING = 0.98
 const BOUNDARY_RESTITUTION = 0.68
+const POSITION_SLOP = 0.75
 
 function seededValue(index, offset = 0) {
   const value = Math.sin((index + 1) * 12.9898 + offset * 78.233) * 43758.5453
@@ -18,6 +20,10 @@ function getMotionConfig() {
   const motion = mobile
     ? {
         amplitudeScale: 0.52,
+        amplitudeMinX: 5,
+        amplitudeRangeX: 7,
+        amplitudeMinY: 4,
+        amplitudeRangeY: 5,
         speedScale: 0.72,
         rotationScale: 0.45,
         maxSpeed: 20,
@@ -29,6 +35,10 @@ function getMotionConfig() {
       }
     : {
         amplitudeScale: 1,
+        amplitudeMinX: 12,
+        amplitudeRangeX: 12,
+        amplitudeMinY: 8,
+        amplitudeRangeY: 10,
         speedScale: 1,
         rotationScale: 1,
         maxSpeed: 42,
@@ -44,6 +54,10 @@ function getMotionConfig() {
   return {
     ...motion,
     amplitudeScale: motion.amplitudeScale * 0.58,
+    amplitudeMinX: motion.amplitudeMinX * 0.8,
+    amplitudeRangeX: motion.amplitudeRangeX * 0.8,
+    amplitudeMinY: motion.amplitudeMinY * 0.8,
+    amplitudeRangeY: motion.amplitudeRangeY * 0.8,
     speedScale: motion.speedScale * 0.62,
     rotationScale: motion.rotationScale * 0.4,
     maxSpeed: motion.maxSpeed * 0.6,
@@ -102,12 +116,23 @@ export function useFormulaPhysics(formulaCloud) {
     const motionElement = element.querySelector('.formula-local-body')
     const width = element.offsetWidth
     const height = element.offsetHeight
-    if (!motionElement || width <= 0 || height <= 0) return null
+    const visualRect = element.getBoundingClientRect()
+    const collisionWidth = visualRect.width
+    const collisionHeight = visualRect.height
+    if (
+      !motionElement ||
+      width <= 0 ||
+      height <= 0 ||
+      collisionWidth <= 0 ||
+      collisionHeight <= 0
+    ) {
+      return null
+    }
 
     const phaseSeed = seededValue(index, 1)
     const speedSeed = seededValue(index, 2)
-    const amplitudeX = (9 + seededValue(index, 3) * 12) * config.amplitudeScale
-    const amplitudeY = (6 + seededValue(index, 4) * 10) * config.amplitudeScale
+    const amplitudeX = config.amplitudeMinX + seededValue(index, 3) * config.amplitudeRangeX
+    const amplitudeY = config.amplitudeMinY + seededValue(index, 4) * config.amplitudeRangeY
     const baseX = element.offsetLeft
     const baseY = element.offsetTop
 
@@ -121,8 +146,18 @@ export function useFormulaPhysics(formulaCloud) {
       y: previousBody ? previousBody.baseY + previousBody.y - baseY : 0,
       vx: previousBody?.vx ?? 0,
       vy: previousBody?.vy ?? 0,
+      outerX: previousBody?.outerX ?? 0,
+      outerY: previousBody?.outerY ?? 0,
+      outerVx: previousBody?.outerVx ?? 0,
+      outerVy: previousBody?.outerVy ?? 0,
+      outerA: previousBody?.outerA ?? 1,
+      outerB: previousBody?.outerB ?? 0,
+      outerC: previousBody?.outerC ?? 0,
+      outerD: previousBody?.outerD ?? 1,
       width,
       height,
+      collisionWidth,
+      collisionHeight,
       padding: config.collisionPadding,
       amplitudeX,
       amplitudeY,
@@ -137,7 +172,15 @@ export function useFormulaPhysics(formulaCloud) {
       Number.isFinite(body.x) &&
       Number.isFinite(body.y) &&
       Number.isFinite(body.vx) &&
-      Number.isFinite(body.vy)
+      Number.isFinite(body.vy) &&
+      Number.isFinite(body.outerX) &&
+      Number.isFinite(body.outerY) &&
+      Number.isFinite(body.outerVx) &&
+      Number.isFinite(body.outerVy) &&
+      Number.isFinite(body.outerA) &&
+      Number.isFinite(body.outerB) &&
+      Number.isFinite(body.outerC) &&
+      Number.isFinite(body.outerD)
     ) {
       return
     }
@@ -146,6 +189,48 @@ export function useFormulaPhysics(formulaCloud) {
     body.y = 0
     body.vx = 0
     body.vy = 0
+    body.outerX = 0
+    body.outerY = 0
+    body.outerVx = 0
+    body.outerVy = 0
+    body.outerA = 1
+    body.outerB = 0
+    body.outerC = 0
+    body.outerD = 1
+  }
+
+  function updateOuterMotion(delta = 0) {
+    bodies.forEach((body) => {
+      const previousX = body.outerX
+      const previousY = body.outerY
+      const transform = getComputedStyle(body.element).transform
+      let nextX = 0
+      let nextY = 0
+
+      if (transform && transform !== 'none') {
+        try {
+          const matrix = new DOMMatrixReadOnly(transform)
+          nextX = Number.isFinite(matrix.m41) ? matrix.m41 : 0
+          nextY = Number.isFinite(matrix.m42) ? matrix.m42 : 0
+          body.outerA = Number.isFinite(matrix.a) ? matrix.a : 1
+          body.outerB = Number.isFinite(matrix.b) ? matrix.b : 0
+          body.outerC = Number.isFinite(matrix.c) ? matrix.c : 0
+          body.outerD = Number.isFinite(matrix.d) ? matrix.d : 1
+        } catch {
+          nextX = 0
+          nextY = 0
+          body.outerA = 1
+          body.outerB = 0
+          body.outerC = 0
+          body.outerD = 1
+        }
+      }
+
+      body.outerX = nextX
+      body.outerY = nextY
+      body.outerVx = delta > 0 ? (nextX - previousX) / delta : 0
+      body.outerVy = delta > 0 ? (nextY - previousY) / delta : 0
+    })
   }
 
   function clampBodySpeed(body) {
@@ -157,29 +242,38 @@ export function useFormulaPhysics(formulaCloud) {
     body.vy *= scale
   }
 
+  function getBodyBounds(body) {
+    const centerX = body.baseX + body.outerX + body.x + body.width / 2
+    const centerY = body.baseY + body.outerY + body.y + body.height / 2
+
+    return {
+      left: centerX - body.collisionWidth / 2 - body.padding,
+      right: centerX + body.collisionWidth / 2 + body.padding,
+      top: centerY - body.collisionHeight / 2 - body.padding,
+      bottom: centerY + body.collisionHeight / 2 + body.padding,
+      centerX,
+      centerY,
+    }
+  }
+
   function containBody(body) {
     if (!world) return
 
-    const minX = world.left
-    const maxX = Math.max(minX, world.right - body.width)
-    const minY = world.top
-    const maxY = Math.max(minY, world.bottom - body.height)
-    const absoluteX = body.baseX + body.x
-    const absoluteY = body.baseY + body.y
+    const bounds = getBodyBounds(body)
 
-    if (absoluteX < minX) {
-      body.x += minX - absoluteX
+    if (bounds.left < world.left) {
+      body.x += world.left - bounds.left
       body.vx = Math.abs(body.vx) * BOUNDARY_RESTITUTION
-    } else if (absoluteX > maxX) {
-      body.x -= absoluteX - maxX
+    } else if (bounds.right > world.right) {
+      body.x -= bounds.right - world.right
       body.vx = -Math.abs(body.vx) * BOUNDARY_RESTITUTION
     }
 
-    if (absoluteY < minY) {
-      body.y += minY - absoluteY
+    if (bounds.top < world.top) {
+      body.y += world.top - bounds.top
       body.vy = Math.abs(body.vy) * BOUNDARY_RESTITUTION
-    } else if (absoluteY > maxY) {
-      body.y -= absoluteY - maxY
+    } else if (bounds.bottom > world.bottom) {
+      body.y -= bounds.bottom - world.bottom
       body.vy = -Math.abs(body.vy) * BOUNDARY_RESTITUTION
     }
   }
@@ -188,46 +282,37 @@ export function useFormulaPhysics(formulaCloud) {
     resetInvalidBody(first)
     resetInvalidBody(second)
 
-    const firstLeft = first.baseX + first.x - first.padding
-    const firstTop = first.baseY + first.y - first.padding
-    const secondLeft = second.baseX + second.x - second.padding
-    const secondTop = second.baseY + second.y - second.padding
+    const firstBounds = getBodyBounds(first)
+    const secondBounds = getBodyBounds(second)
     const overlapX =
-      Math.min(
-        firstLeft + first.width + first.padding * 2,
-        secondLeft + second.width + second.padding * 2
-      ) - Math.max(firstLeft, secondLeft)
+      Math.min(firstBounds.right, secondBounds.right) -
+      Math.max(firstBounds.left, secondBounds.left)
     const overlapY =
-      Math.min(
-        firstTop + first.height + first.padding * 2,
-        secondTop + second.height + second.padding * 2
-      ) - Math.max(firstTop, secondTop)
+      Math.min(firstBounds.bottom, secondBounds.bottom) -
+      Math.max(firstBounds.top, secondBounds.top)
 
     if (overlapX <= 0 || overlapY <= 0) return false
-
-    const firstCenterX = firstLeft + (first.width + first.padding * 2) / 2
-    const firstCenterY = firstTop + (first.height + first.padding * 2) / 2
-    const secondCenterX = secondLeft + (second.width + second.padding * 2) / 2
-    const secondCenterY = secondTop + (second.height + second.padding * 2) / 2
     let normalX = 0
     let normalY = 0
     let penetration = overlapY
 
     if (overlapX < overlapY) {
-      normalX = secondCenterX >= firstCenterX ? 1 : -1
+      normalX = secondBounds.centerX >= firstBounds.centerX ? 1 : -1
       penetration = overlapX
     } else {
-      normalY = secondCenterY >= firstCenterY ? 1 : -1
+      normalY = secondBounds.centerY >= firstBounds.centerY ? 1 : -1
     }
 
-    const correction = (penetration + 0.5) * 0.52
+    const correction = (penetration + POSITION_SLOP) * 0.5
     first.x -= normalX * correction
     first.y -= normalY * correction
     second.x += normalX * correction
     second.y += normalY * correction
 
     if (applyImpulse) {
-      const relativeVelocity = (second.vx - first.vx) * normalX + (second.vy - first.vy) * normalY
+      const relativeVelocity =
+        (second.vx + second.outerVx - first.vx - first.outerVx) * normalX +
+        (second.vy + second.outerVy - first.vy - first.outerVy) * normalY
 
       if (relativeVelocity < 0) {
         const impulse = (-(1 + COLLISION_RESTITUTION) * relativeVelocity) / 2
@@ -235,6 +320,10 @@ export function useFormulaPhysics(formulaCloud) {
         first.vy -= impulse * normalY
         second.vx += impulse * normalX
         second.vy += impulse * normalY
+        first.vx *= COLLISION_DAMPING
+        first.vy *= COLLISION_DAMPING
+        second.vx *= COLLISION_DAMPING
+        second.vy *= COLLISION_DAMPING
       }
     }
 
@@ -261,9 +350,18 @@ export function useFormulaPhysics(formulaCloud) {
   function renderBodies() {
     bodies.forEach((body) => {
       resetInvalidBody(body)
+      const determinant = body.outerA * body.outerD - body.outerB * body.outerC
+      const localX =
+        Math.abs(determinant) > 0.0001
+          ? (body.outerD * body.x - body.outerC * body.y) / determinant
+          : body.x
+      const localY =
+        Math.abs(determinant) > 0.0001
+          ? (-body.outerB * body.x + body.outerA * body.y) / determinant
+          : body.y
       const rotation =
         Math.sin(elapsed * body.speed * 0.83 + body.phase * 1.19) * body.rotationAmplitude
-      body.motionElement.style.transform = `translate3d(${body.x.toFixed(2)}px, ${body.y.toFixed(
+      body.motionElement.style.transform = `translate3d(${localX.toFixed(2)}px, ${localY.toFixed(
         2
       )}px, 0) rotate(${rotation.toFixed(2)}deg)`
     })
@@ -304,6 +402,7 @@ export function useFormulaPhysics(formulaCloud) {
     const delta = Math.min(Math.max(Number.isFinite(rawDelta) ? rawDelta : 0, 0), MAX_FRAME_DELTA)
     lastTime = timestamp
     elapsed += delta
+    updateOuterMotion(delta)
 
     const substeps = Math.max(1, Math.min(4, Math.ceil(delta / MAX_SUBSTEP)))
     const stepDelta = delta / substeps
@@ -352,6 +451,7 @@ export function useFormulaPhysics(formulaCloud) {
     }
 
     cloud.classList.add('formula-physics-active')
+    updateOuterMotion()
     separateBodies()
     renderBodies()
     start()
