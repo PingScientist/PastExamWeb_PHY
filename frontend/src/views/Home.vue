@@ -31,7 +31,7 @@
         <circle class="mass-core" cx="760" cy="380" r="92" />
       </svg>
 
-      <div class="formula-cloud">
+      <div ref="formulaCloud" class="formula-cloud">
         <div
           v-for="(formula, index) in renderedFormulaCards"
           :key="formula.name"
@@ -94,10 +94,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useTheme } from '../utils/useTheme'
 import { statisticsService } from '../api'
 import { renderToString } from 'katex'
+import { useFormulaPhysics } from '../composables/useFormulaPhysics'
 import 'katex/dist/katex.min.css'
 
 const { isDarkTheme } = useTheme()
 const statsSection = ref(null)
+const formulaCloud = ref(null)
+
+useFormulaPhysics(formulaCloud)
 
 const statisticsData = ref({
   totalUsers: 0,
@@ -649,6 +653,12 @@ h1 {
   inset: -8% -12%;
   z-index: 2;
   animation: formulaFieldDrift 6.6s ease-in-out infinite alternate;
+}
+
+.formula-cloud.formula-physics-active .theory-card {
+  opacity: var(--formula-alpha, 0.2);
+  animation: none;
+  will-change: transform;
 }
 
 .theory-card {
@@ -1498,6 +1508,18 @@ h1 {
 
   to {
     transform: translateX(150vw) skewX(-16deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .formula-cloud,
+  .formula-cloud::before,
+  .theory-card {
+    animation: none !important;
+  }
+
+  .theory-card {
+    opacity: var(--formula-alpha, 0.2);
   }
 }
 
