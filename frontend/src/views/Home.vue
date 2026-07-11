@@ -1091,8 +1091,8 @@ h1 {
   }
 
   .formula-17 {
-    top: 68%;
-    left: 44%;
+    top: 84%;
+    left: 62%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.18;
   }
