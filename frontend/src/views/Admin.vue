@@ -166,9 +166,6 @@
                         @click="moveCategory(category, 1)"
                       />
                       <div class="category-card-top-tags--mobile">
-                        <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
-                          {{ category.label || category.name }}
-                        </Tag>
                         <Tag :severity="category.is_active ? 'success' : 'secondary'">
                           {{ category.is_active ? '啟用中' : '已停用' }}
                         </Tag>
@@ -192,7 +189,12 @@
                       </Tag>
                     </section>
                     <section class="category-card-main category-card-main--mobile">
-                      <strong class="category-card-title">{{ category.name }}</strong>
+                      <div class="category-card-title-group">
+                        <strong class="category-card-title">{{ category.name }}</strong>
+                        <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                          {{ category.label || category.name }}
+                        </Tag>
+                      </div>
                       <span class="category-card-key">
                         <span class="category-card-key-label">Key</span>
                         <span class="category-card-key-value">{{ category.key }}</span>
@@ -10642,6 +10644,37 @@ onBeforeUnmount(() => {
     min-width: 5rem;
     min-height: 2.45rem;
     white-space: nowrap;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 899px) {
+  .admin-mobile-list--categories .category-responsive-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+
+  .admin-mobile-list--categories .category-card-main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-mobile-list--categories .category-card-meta {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    justify-content: flex-end;
   }
 }
 </style>
