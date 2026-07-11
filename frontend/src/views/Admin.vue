@@ -848,15 +848,15 @@
                     />
                   </div>
                   <Select
-                    inputId="admin-review-category-filter"
-                    name="admin-review-category-filter"
-                    v-model="reviewCategoryFilter"
-                    :options="categoryOptions"
+                    inputId="admin-review-status-filter"
+                    name="admin-review-status-filter"
+                    v-model="reviewStatusFilter"
+                    :options="reviewStatusOptions"
                     optionLabel="name"
                     optionValue="value"
-                    placeholder="篩選分類"
+                    placeholder="篩選狀態"
                     showClear
-                    class="review-category-filter admin-toolbar__select w-full md:w-14rem"
+                    class="review-status-filter admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
                 <div class="admin-toolbar__actions">
@@ -3107,7 +3107,8 @@ const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const reviewLoadError = ref('')
 const reviewSearchQuery = ref('')
-const reviewCategoryFilter = ref(null)
+const REVIEW_STATUS_FILTER_ALL_VALUE = 'all'
+const reviewStatusFilter = ref(REVIEW_STATUS_FILTER_ALL_VALUE)
 const newSubmissionFirst = ref(0)
 const newSubmissionRows = ref(10)
 const existingSubmissionFirst = ref(0)
@@ -3165,6 +3166,19 @@ const submissionStatusPriority = {
   takedown: 4,
   deleted: 5,
 }
+const reviewStatusOptions = [
+  { name: '全部', value: REVIEW_STATUS_FILTER_ALL_VALUE },
+  { name: '待審核', value: 'pending' },
+  { name: '已通過', value: 'approved' },
+  { name: '已退回', value: 'rejected' },
+  { name: '已下架', value: 'takedown' },
+  { name: '已刪除', value: 'deleted' },
+]
+const reviewStatusFilterValues = new Set(
+  reviewStatusOptions
+    .map((option) => option.value)
+    .filter((value) => value !== REVIEW_STATUS_FILTER_ALL_VALUE)
+)
 const trashFilterOptions = [
   { label: '全部', value: TRASH_FILTER_ALL_VALUE },
   { label: '考古題', value: 'archive' },
@@ -3216,6 +3230,13 @@ const normalizeSubmissionStatus = (status) => {
 const getReviewItemStatus = (item) => {
   if (item?.deletedAt || item?.deleted_at) return 'deleted'
   return normalizeSubmissionStatus(item?.status)
+}
+const getReviewStatusFilterValue = (status) => {
+  const raw = String(status || '').trim()
+  if (!raw || raw === REVIEW_STATUS_FILTER_ALL_VALUE) return ''
+
+  const normalized = normalizeSubmissionStatus(raw)
+  return reviewStatusFilterValues.has(normalized) ? normalized : ''
 }
 const isReadonlyReviewSubmission = (item) => {
   return ['takedown', 'deleted'].includes(getReviewItemStatus(item))
@@ -3339,37 +3360,17 @@ const getReviewSearchHaystack = (item) => {
   return fields.map(normalizeReviewSearchText).filter(Boolean).join(' ')
 }
 
-const getReviewCategoryFilterValue = (item) => {
-  const proposedKey = normalizeReviewSearchText(item?.requested_category_key)
-  if (proposedKey) return proposedKey
-
-  const normalizedCategory = normalizeReviewSearchText(item?.category)
-  if (normalizedCategory) return normalizedCategory
-
-  const normalizedRequestedCategoryName = normalizeReviewSearchText(item?.requested_category_name)
-  if (!normalizedRequestedCategoryName) return ''
-
-  const matchedCategory = Object.values(categoryInfoMap.value).find(
-    (category) =>
-      normalizeReviewSearchText(category?.name) === normalizedRequestedCategoryName ||
-      normalizeReviewSearchText(category?.label) === normalizedRequestedCategoryName ||
-      normalizeReviewSearchText(category?.key) === normalizedRequestedCategoryName
-  )
-
-  return matchedCategory?.key || ''
-}
-
 const filteredArchiveRequests = computed(() => {
   const query = normalizeReviewSearchText(reviewSearchQuery.value)
-  const categoryFilter = normalizeReviewSearchText(reviewCategoryFilter.value)
+  const statusFilter = getReviewStatusFilterValue(reviewStatusFilter.value)
   let filtered = archiveRequests.value
 
   if (query) {
     filtered = filtered.filter((item) => getReviewSearchHaystack(item).includes(query))
   }
 
-  if (!categoryFilter) return filtered
-  return filtered.filter((item) => getReviewCategoryFilterValue(item) === categoryFilter)
+  if (!statusFilter) return filtered
+  return filtered.filter((item) => getReviewStatusFilterValue(item?.status) === statusFilter)
 })
 
 const toggleReviewSort = (section, key) => {
@@ -3569,7 +3570,7 @@ watch(trashFilterType, (nextFilterType) => {
   trashSortState.value = { key: null, direction: 'asc' }
 })
 
-watch([reviewSearchQuery, reviewCategoryFilter], () => {
+watch([reviewSearchQuery, reviewStatusFilter], () => {
   newSubmissionFirst.value = 0
   existingSubmissionFirst.value = 0
 })
@@ -8391,7 +8392,7 @@ onBeforeUnmount(() => {
     width: min(100%, 26rem) !important;
   }
 
-  .review-search-toolbar .review-category-filter {
+  .review-search-toolbar .review-status-filter {
     width: min(100%, 26rem) !important;
   }
 
@@ -8724,7 +8725,7 @@ onBeforeUnmount(() => {
   }
 
   .review-search-toolbar .admin-toolbar__search.relative,
-  .review-search-toolbar .review-category-filter.admin-toolbar__select {
+  .review-search-toolbar .review-status-filter.admin-toolbar__select {
     width: auto !important;
   }
 
