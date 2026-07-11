@@ -10281,9 +10281,10 @@ onBeforeUnmount(() => {
     align-items: baseline;
     gap: 0.35rem;
     max-width: 100%;
-    padding: 0;
-    border: 0;
-    background: transparent;
+    padding: 0.28rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
   }
 
   .admin-mobile-list--categories .category-card-meta {
@@ -10466,8 +10467,9 @@ onBeforeUnmount(() => {
   .admin-mobile-list--categories .category-card-key {
     display: inline-flex;
     flex: 0 1 auto;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
     gap: 0.1rem;
     max-width: 48%;
     padding: 0.32rem 0.5rem;
@@ -10568,6 +10570,78 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--courses .admin-tablet-actions :deep(.pi) {
     margin-inline-end: 0.3rem;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 767px) {
+  .admin-mobile-list--categories .category-responsive-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.55rem 0.75rem;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .admin-mobile-list--categories .category-card-main--mobile,
+  .admin-mobile-list--categories .category-card-top-tags--mobile {
+    display: none;
+  }
+
+  .admin-mobile-list--categories .category-card-main--tablet,
+  .admin-mobile-list--categories .category-card-meta--tablet {
+    display: flex;
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: center;
+    min-width: 6.75rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--categories .category-card-main--tablet {
+    grid-column: 2;
+    grid-row: 1;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.65rem;
+    width: auto;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-meta--tablet {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
+    width: auto;
+  }
+
+  .admin-mobile-list--categories .category-card-key {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    max-width: 100%;
+    padding: 0.28rem 0.5rem;
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    display: flex;
+    grid-column: 2 / 4;
+    grid-row: 2;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5rem;
+    min-height: 2.45rem;
+    white-space: nowrap;
   }
 }
 </style>
