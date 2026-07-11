@@ -1671,17 +1671,19 @@ h1 {
     contain: paint;
   }
 
+  .physics-board::before {
+    inset: -4%;
+  }
+
   .spacetime-mesh {
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    inset: -14%;
+    width: 128%;
+    height: 128%;
     opacity: 0.48;
-    transform: scale(1.2);
   }
 
   .formula-cloud {
-    inset: 0;
-    overflow: hidden;
+    inset: -10% -18%;
   }
 
   .theory-card {
@@ -1691,8 +1693,13 @@ h1 {
   }
 
   .formula-1,
+  .formula-2,
+  .formula-4,
   .formula-6,
+  .formula-8,
   .formula-11,
+  .formula-13,
+  .formula-16,
   .formula-19,
   .formula-20,
   .formula-22 {
@@ -1700,6 +1707,20 @@ h1 {
     align-items: center;
     width: max-content;
     max-width: min(100%, 72vw);
+  }
+
+  .formula-2 {
+    top: 9%;
+    left: 48%;
+    --formula-font-size: 0.7rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-4 {
+    top: 20%;
+    left: 14%;
+    --formula-font-size: 0.7rem;
+    --formula-alpha: 0.17;
   }
 
   .formula-1 {
@@ -1718,11 +1739,32 @@ h1 {
     --formula-alpha: 0.22;
   }
 
+  .formula-8 {
+    top: 89%;
+    left: 57%;
+    --formula-font-size: 0.69rem;
+    --formula-alpha: 0.16;
+  }
+
   .formula-11 {
     top: 77%;
     left: 12%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.22;
+  }
+
+  .formula-13 {
+    top: 48%;
+    left: 50%;
+    --formula-font-size: 0.68rem;
+    --formula-alpha: 0.16;
+  }
+
+  .formula-16 {
+    top: 29%;
+    left: 61%;
+    --formula-font-size: 0.69rem;
+    --formula-alpha: 0.17;
   }
 
   .formula-19 {
