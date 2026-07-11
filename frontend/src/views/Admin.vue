@@ -1769,15 +1769,21 @@
                         </span>
                         {{ data.display_name }}
                       </strong>
+                      <div class="trash-mobile-type-row">
+                        <Tag
+                          class="soft-badge soft-badge--type trash-type-chip"
+                          severity="secondary"
+                        >
+                          {{ getTrashTypeLabel(data.item_type) }}
+                        </Tag>
+                      </div>
                     </div>
                     <div class="trash-mobile-card-badges">
-                      <Tag class="soft-badge soft-badge--type trash-type-chip" severity="secondary">
-                        {{ getTrashTypeLabel(data.item_type) }}
-                      </Tag>
                       <Tag
                         :class="[
                           'soft-badge',
                           'review-status-chip',
+                          'trash-mobile-status',
                           getSubmissionStatusClass(data.status),
                         ]"
                         :severity="getTrashStatusSeverity(data.status)"
@@ -8807,11 +8813,11 @@ onBeforeUnmount(() => {
   .trash-mobile-card {
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.65rem;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    padding: 0.9rem;
+    padding: 0.78rem;
     border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
     border-radius: 8px;
     background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
@@ -8829,19 +8835,22 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.7rem;
     width: 100%;
     min-width: 0;
   }
 
   .trash-mobile-card-title-block {
+    display: flex;
     flex: 1 1 auto;
     min-width: 0;
+    flex-direction: column;
+    gap: 0.35rem;
   }
 
   .trash-mobile-card-title {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.35rem;
     max-width: 100%;
     color: var(--text-primary);
@@ -8852,14 +8861,20 @@ onBeforeUnmount(() => {
     white-space: normal;
   }
 
+  .trash-mobile-type-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
   .trash-mobile-card-badges {
     display: flex;
-    flex: 0 1 auto;
-    flex-wrap: wrap;
+    flex: 0 0 auto;
     justify-content: flex-end;
     align-items: flex-start;
-    gap: 0.35rem;
-    max-width: 46%;
+    max-width: 42%;
     min-width: 0;
   }
 
@@ -8869,10 +8884,14 @@ onBeforeUnmount(() => {
     white-space: normal;
   }
 
+  :deep(.trash-mobile-status) {
+    max-width: 100%;
+  }
+
   .trash-mobile-info-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem 0.75rem;
+    gap: 0.38rem 0.65rem;
     width: 100%;
   }
 
@@ -8881,7 +8900,7 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-item--wide {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .trash-mobile-info-label {
@@ -8904,7 +8923,7 @@ onBeforeUnmount(() => {
   .trash-mobile-dependencies {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 0.35rem;
     width: 100%;
     min-width: 0;
   }
@@ -8953,7 +8972,7 @@ onBeforeUnmount(() => {
     flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-start;
-    gap: 0.5rem;
+    gap: 0.45rem;
     width: 100%;
     min-width: 0;
     overflow-x: auto;
@@ -8964,7 +8983,7 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
     width: auto;
     min-width: 5.25rem;
-    min-height: 2.45rem;
+    min-height: 2.35rem;
     padding-inline: 0.65rem;
     justify-content: center;
     white-space: nowrap;
@@ -9052,7 +9071,7 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-card-badges {
-    max-width: 44%;
+    max-width: 40%;
   }
 
   .trash-mobile-card-actions {
@@ -9079,17 +9098,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 430px) {
-  .trash-mobile-card-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .trash-mobile-card-badges {
-    max-width: 100%;
-    justify-content: flex-end;
-  }
-
+@media (max-width: 360px) {
   .trash-mobile-info-grid {
     grid-template-columns: 1fr;
   }
