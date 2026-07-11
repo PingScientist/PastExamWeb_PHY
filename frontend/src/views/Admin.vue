@@ -350,43 +350,58 @@
                 <article
                   v-for="course in paginatedCourses"
                   :key="course.id"
-                  class="admin-mobile-card admin-course-card"
+                  class="admin-mobile-card admin-course-card admin-tablet-card"
                 >
-                  <section class="course-card-topline">
-                    <span class="course-card-order">{{ getCoursePosition(course) + 1 }}</span>
-                    <Button
-                      icon="pi pi-arrow-up"
-                      severity="secondary"
-                      text
-                      rounded
-                      size="small"
-                      aria-label="上移"
-                      title="上移"
-                      :disabled="!canMoveCourse(course, -1) || courseOrderLoading"
-                      @click="moveCourse(course, -1)"
-                    />
-                    <Button
-                      icon="pi pi-arrow-down"
-                      severity="secondary"
-                      text
-                      rounded
-                      size="small"
-                      aria-label="下移"
-                      title="下移"
-                      :disabled="!canMoveCourse(course, 1) || courseOrderLoading"
-                      @click="moveCourse(course, 1)"
-                    />
-                    <Tag
-                      severity="secondary"
-                      :class="['course-card-category', getCategoryBadgeClass(course.category)]"
-                    >
-                      {{ getCategoryName(course.category) }}
-                    </Tag>
+                  <header class="admin-tablet-card-header">
+                    <div class="admin-tablet-title-group">
+                      <strong class="course-card-title admin-tablet-card-title">{{
+                        course.name
+                      }}</strong>
+                      <div class="admin-tablet-tag-group">
+                        <Tag
+                          severity="secondary"
+                          :class="['course-card-category', getCategoryBadgeClass(course.category)]"
+                        >
+                          {{ getCategoryName(course.category) }}
+                        </Tag>
+                      </div>
+                    </div>
+                  </header>
+                  <section class="admin-tablet-metadata">
+                    <div class="admin-tablet-metadata-item course-card-order-item">
+                      <span class="admin-tablet-metadata-label">順序</span>
+                      <span class="course-card-order admin-tablet-metadata-value">{{
+                        getCoursePosition(course) + 1
+                      }}</span>
+                      <div class="course-card-order-actions">
+                        <Button
+                          icon="pi pi-arrow-up"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          aria-label="上移"
+                          title="上移"
+                          :disabled="!canMoveCourse(course, -1) || courseOrderLoading"
+                          @click="moveCourse(course, -1)"
+                        />
+                        <Button
+                          icon="pi pi-arrow-down"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          aria-label="下移"
+                          title="下移"
+                          :disabled="!canMoveCourse(course, 1) || courseOrderLoading"
+                          @click="moveCourse(course, 1)"
+                        />
+                      </div>
+                    </div>
                   </section>
-                  <section class="course-card-primary">
-                    <strong class="course-card-title">{{ course.name }}</strong>
-                  </section>
-                  <section class="admin-card-actions admin-mobile-card-actions course-card-actions">
+                  <section
+                    class="admin-card-actions admin-mobile-card-actions course-card-actions admin-tablet-actions"
+                  >
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -585,29 +600,46 @@
                 <article
                   v-for="user in paginatedUsers"
                   :key="user.id"
-                  class="admin-mobile-card admin-user-card"
+                  class="admin-mobile-card admin-user-card admin-tablet-card"
                 >
-                  <section class="admin-card-primary">
-                    <strong class="admin-card-title">{{ user.name }}</strong>
-                    <span class="admin-card-email">{{ user.email }}</span>
-                  </section>
-                  <section class="admin-card-meta">
-                    <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
-                      {{ user.is_admin ? '是' : '否' }}
-                    </Tag>
-                    <Tag :severity="user.is_local ? 'info' : 'warning'" class="text-sm">
-                      {{ user.is_local ? '本地帳號' : '外部帳號' }}
-                    </Tag>
-                    <span class="admin-card-meta-text">
-                      {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
-                    </span>
+                  <header class="admin-tablet-card-header">
+                    <div class="admin-tablet-title-group">
+                      <strong class="admin-card-title admin-tablet-card-title">{{
+                        user.name
+                      }}</strong>
+                      <div class="admin-tablet-tag-group">
+                        <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
+                          {{ user.is_admin ? '管理員' : '一般使用者' }}
+                        </Tag>
+                      </div>
+                    </div>
                     <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
                       <i class="pi pi-circle-fill"></i>
                       <span>{{ getOnlineStatusLabel(user) }}</span>
                     </span>
+                  </header>
+                  <section class="admin-tablet-metadata">
+                    <div class="admin-tablet-metadata-item admin-tablet-metadata-item--wide">
+                      <span class="admin-tablet-metadata-label">Email</span>
+                      <span class="admin-card-email admin-tablet-metadata-value">{{
+                        user.email
+                      }}</span>
+                    </div>
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">帳號類型</span>
+                      <span class="admin-tablet-metadata-value">{{
+                        user.is_local ? '本地帳號' : '外部帳號'
+                      }}</span>
+                    </div>
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">最後登入</span>
+                      <span class="admin-tablet-metadata-value">
+                        {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
+                      </span>
+                    </div>
                   </section>
                   <section
-                    class="admin-card-actions admin-mobile-card-actions user-management-card-actions"
+                    class="admin-card-actions admin-mobile-card-actions user-management-card-actions admin-tablet-actions"
                   >
                     <Button
                       icon="pi pi-pencil"
@@ -817,31 +849,42 @@
                 <article
                   v-for="notification in paginatedNotifications"
                   :key="notification.id"
-                  class="admin-mobile-card admin-announcement-card"
+                  class="admin-mobile-card admin-announcement-card admin-tablet-card"
                 >
-                  <section class="admin-card-primary">
-                    <strong class="admin-card-title">{{ notification.title }}</strong>
-                  </section>
-                  <section class="admin-card-meta">
-                    <Tag :severity="getNotificationSeverity(notification.severity)">
-                      {{ getNotificationSeverityLabel(notification.severity) }}
-                    </Tag>
-                    <Tag :severity="notification.is_active ? 'success' : 'secondary'">
-                      {{ notification.is_active ? '啟用中' : '已停用' }}
-                    </Tag>
-                    <Tag
-                      :severity="isNotificationEffective(notification) ? 'success' : 'secondary'"
-                    >
-                      {{ isNotificationEffective(notification) ? '生效中' : '未生效' }}
-                    </Tag>
-                    <span class="admin-card-meta-text">
-                      {{
-                        formatNotificationDate(notification.updated_at || notification.created_at)
-                      }}
-                    </span>
+                  <header class="admin-tablet-card-header">
+                    <div class="admin-tablet-title-group">
+                      <strong class="admin-card-title admin-tablet-card-title">{{
+                        notification.title
+                      }}</strong>
+                      <div class="admin-tablet-tag-group">
+                        <Tag :severity="getNotificationSeverity(notification.severity)">
+                          {{ getNotificationSeverityLabel(notification.severity) }}
+                        </Tag>
+                      </div>
+                    </div>
+                    <div class="admin-tablet-status-group">
+                      <Tag :severity="notification.is_active ? 'success' : 'secondary'">
+                        {{ notification.is_active ? '啟用中' : '已停用' }}
+                      </Tag>
+                      <Tag
+                        :severity="isNotificationEffective(notification) ? 'success' : 'secondary'"
+                      >
+                        {{ isNotificationEffective(notification) ? '生效中' : '未生效' }}
+                      </Tag>
+                    </div>
+                  </header>
+                  <section class="admin-tablet-metadata">
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">最近更新</span>
+                      <span class="admin-tablet-metadata-value">
+                        {{
+                          formatNotificationDate(notification.updated_at || notification.created_at)
+                        }}
+                      </span>
+                    </div>
                   </section>
                   <section
-                    class="admin-card-actions admin-mobile-card-actions announcement-mobile-actions"
+                    class="admin-card-actions admin-mobile-card-actions announcement-mobile-actions admin-tablet-actions"
                   >
                     <Button
                       icon="pi pi-pencil"
@@ -9840,6 +9883,245 @@ onBeforeUnmount(() => {
     white-space: normal;
     word-break: normal;
     overflow-wrap: break-word;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1399px) {
+  :deep(.admin-desktop-data-table.course-management-table),
+  :deep(.admin-desktop-data-table.user-management-table),
+  :deep(.admin-desktop-data-table.notification-management-table) {
+    display: none;
+  }
+
+  .admin-mobile-list--courses,
+  .admin-mobile-list--users,
+  .admin-mobile-list--notifications {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card,
+  .admin-mobile-list--users .admin-tablet-card,
+  .admin-mobile-list--notifications .admin-tablet-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.95rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  .admin-tablet-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-tablet-title-group {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-card-title {
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-tablet-tag-group,
+  .admin-tablet-status-group {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .admin-tablet-status-group {
+    justify-content: flex-end;
+    max-width: 46%;
+  }
+
+  .admin-tablet-tag-group :deep(.p-tag),
+  .admin-tablet-status-group :deep(.p-tag),
+  .admin-mobile-list--users .user-online-badge {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .admin-tablet-metadata {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem 0.85rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-item {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-label {
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  .admin-tablet-metadata-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text-primary);
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-tablet-metadata .admin-card-email {
+    display: inline;
+    width: auto;
+    margin-top: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .course-card-order-item {
+    align-items: center;
+  }
+
+  .course-card-order-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .course-card-order-actions :deep(.p-button) {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .admin-mobile-paginator {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.55rem 0.25rem;
+    overflow: hidden;
+  }
+
+  .admin-tablet-actions,
+  .admin-mobile-list--users .admin-tablet-actions,
+  .admin-mobile-list--courses .admin-tablet-actions,
+  .admin-mobile-list--notifications .admin-tablet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    overflow-x: visible;
+  }
+
+  .admin-tablet-actions :deep(.p-button),
+  .admin-mobile-list--users .admin-tablet-actions :deep(.p-button),
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button),
+  .admin-mobile-list--notifications .admin-tablet-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5.25rem;
+    white-space: nowrap;
+  }
+
+  :global(.dark) .admin-mobile-list--courses .admin-tablet-card,
+  :global(.dark) .admin-mobile-list--users .admin-tablet-card,
+  :global(.dark) .admin-mobile-list--notifications .admin-tablet-card {
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-secondary) 84%, #000 16%);
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  .admin-tablet-metadata {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-tablet-metadata-item--wide {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-tablet-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-title-group {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-status-group,
+  .admin-tablet-tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .admin-tablet-metadata {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-value {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }
 </style>
