@@ -30,6 +30,16 @@
               userData?.name || 'User'
             }}</span>
             <Button
+              v-if="canAccessAdmin"
+              icon="pi pi-cog"
+              label="管理中心"
+              severity="secondary"
+              size="small"
+              text
+              @click="handleNavigateAdmin"
+              aria-label="管理中心"
+            />
+            <Button
               v-if="moreActions.length"
               icon="pi pi-list"
               label="功能列表"
@@ -62,6 +72,16 @@
           </div>
 
           <div class="flex md:hidden align-items-center gap-2 nav-action-group">
+            <Button
+              v-if="canAccessAdmin"
+              icon="pi pi-cog"
+              @click="handleNavigateAdmin"
+              severity="secondary"
+              size="small"
+              text
+              aria-label="管理中心"
+              title="管理中心"
+            />
             <Button
               v-if="moreActions.length"
               icon="pi pi-list"
@@ -831,6 +851,10 @@ export default {
       return this.notificationStore.latestUnseenNotification?.value || null
     },
 
+    canAccessAdmin() {
+      return Boolean(this.userData?.is_admin)
+    },
+
     moreActions() {
       if (!this.isAuthenticated) {
         return []
@@ -853,14 +877,6 @@ export default {
           command: () => this.invokeMenuAction(() => this.openIssueReportDialog()),
         },
       ]
-
-      if (this.userData?.is_admin) {
-        items.push({
-          label: '系統管理',
-          icon: 'pi pi-cog',
-          command: () => this.invokeMenuAction(() => this.handleNavigateAdmin()),
-        })
-      }
 
       if (this.isAuthenticated && !this.isDesktopView) {
         items.push({ separator: true })
