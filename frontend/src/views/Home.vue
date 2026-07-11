@@ -31,14 +31,16 @@
         <circle class="mass-core" cx="760" cy="380" r="92" />
       </svg>
 
-      <div class="formula-cloud">
+      <div ref="formulaCloud" class="formula-cloud">
         <div
           v-for="(formula, index) in renderedFormulaCards"
           :key="formula.name"
           class="theory-card"
           :class="`formula-${index + 1}`"
         >
-          <span class="formula-expression" v-html="formula.rendered" />
+          <span class="formula-local-body">
+            <span class="formula-expression" v-html="formula.rendered" />
+          </span>
         </div>
       </div>
     </div>
@@ -94,10 +96,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useTheme } from '../utils/useTheme'
 import { statisticsService } from '../api'
 import { renderToString } from 'katex'
+import { useFormulaPhysics } from '../composables/useFormulaPhysics'
 import 'katex/dist/katex.min.css'
 
 const { isDarkTheme } = useTheme()
 const statsSection = ref(null)
+const formulaCloud = ref(null)
+
+useFormulaPhysics(formulaCloud)
 
 const statisticsData = ref({
   totalUsers: 0,
@@ -651,6 +657,10 @@ h1 {
   animation: formulaFieldDrift 6.6s ease-in-out infinite alternate;
 }
 
+.formula-cloud.formula-physics-active .formula-local-body {
+  will-change: transform;
+}
+
 .theory-card {
   position: absolute;
   display: inline-flex;
@@ -671,6 +681,11 @@ h1 {
 
 .physics-home:not(.physics-home-dark) .theory-card {
   color: rgba(44, 82, 68, 0.2);
+}
+
+.formula-local-body {
+  display: inline-flex;
+  transform-origin: center;
 }
 
 .formula-expression {
@@ -1091,10 +1106,15 @@ h1 {
   }
 
   .formula-17 {
-    top: 68%;
-    left: 44%;
+    top: 85%;
+    left: 62%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.18;
+  }
+
+  .formula-20 {
+    top: 78%;
+    left: 52%;
   }
 
   .formula-18 {
@@ -1140,22 +1160,22 @@ h1 {
   }
 
   .formula-17 {
-    top: 68%;
-    left: 44%;
+    top: 85%;
+    left: 62%;
     --formula-font-size: 0.78rem;
     --formula-alpha: 0.18;
   }
 
   .formula-18 {
-    top: 77%;
-    left: 52%;
+    top: 72%;
+    left: 30%;
     --formula-font-size: 0.79rem;
     --formula-alpha: 0.17;
   }
 
   .formula-20 {
-    top: 70%;
-    left: 60%;
+    top: 78%;
+    left: 52%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.16;
   }
@@ -1496,6 +1516,21 @@ h1 {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .formula-cloud {
+    animation-duration: 18s !important;
+  }
+
+  .formula-cloud::before {
+    animation-duration: 24s !important;
+  }
+
+  .theory-card {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
 @media (max-width: 1180px) {
   .hero-shell {
     width: min(100% - 2rem, 42rem);
@@ -1517,6 +1552,11 @@ h1 {
   .hero-title-lockup,
   .title-campus {
     margin-inline: auto;
+  }
+
+  .subtitle {
+    width: 100%;
+    max-width: none;
   }
 
   .hero-actions {
@@ -1671,17 +1711,19 @@ h1 {
     contain: paint;
   }
 
+  .physics-board::before {
+    inset: -4%;
+  }
+
   .spacetime-mesh {
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    inset: -14%;
+    width: 128%;
+    height: 128%;
     opacity: 0.48;
-    transform: scale(1.2);
   }
 
   .formula-cloud {
-    inset: 0;
-    overflow: hidden;
+    inset: -10% -18%;
   }
 
   .theory-card {
@@ -1691,8 +1733,13 @@ h1 {
   }
 
   .formula-1,
+  .formula-2,
+  .formula-4,
   .formula-6,
+  .formula-8,
   .formula-11,
+  .formula-13,
+  .formula-16,
   .formula-19,
   .formula-20,
   .formula-22 {
@@ -1700,6 +1747,20 @@ h1 {
     align-items: center;
     width: max-content;
     max-width: min(100%, 72vw);
+  }
+
+  .formula-2 {
+    top: 9%;
+    left: 55%;
+    --formula-font-size: 0.7rem;
+    --formula-alpha: 0.17;
+  }
+
+  .formula-4 {
+    top: 20%;
+    left: 7%;
+    --formula-font-size: 0.7rem;
+    --formula-alpha: 0.17;
   }
 
   .formula-1 {
@@ -1718,11 +1779,32 @@ h1 {
     --formula-alpha: 0.22;
   }
 
+  .formula-8 {
+    top: 89%;
+    left: 57%;
+    --formula-font-size: 0.69rem;
+    --formula-alpha: 0.16;
+  }
+
   .formula-11 {
     top: 77%;
     left: 12%;
     --formula-font-size: 0.76rem;
     --formula-alpha: 0.22;
+  }
+
+  .formula-13 {
+    top: 48%;
+    left: 72%;
+    --formula-font-size: 0.68rem;
+    --formula-alpha: 0.16;
+  }
+
+  .formula-16 {
+    top: 29%;
+    left: 67%;
+    --formula-font-size: 0.69rem;
+    --formula-alpha: 0.17;
   }
 
   .formula-19 {
