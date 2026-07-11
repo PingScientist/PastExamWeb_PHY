@@ -223,9 +223,17 @@
                 <div class="admin-toolbar__filters">
                   <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
-                    <InputText v-model="searchQuery" placeholder="搜尋課程" class="w-full pl-6" />
+                    <InputText
+                      id="admin-course-search"
+                      name="admin-course-search"
+                      v-model="searchQuery"
+                      placeholder="搜尋課程"
+                      class="w-full pl-6"
+                    />
                   </div>
                   <Select
+                    inputId="admin-course-category-filter"
+                    name="admin-course-category-filter"
                     v-model="filterCategory"
                     :options="categoryOptions"
                     optionLabel="name"
@@ -407,12 +415,16 @@
                   <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
+                      id="admin-user-search"
+                      name="admin-user-search"
                       v-model="userSearchQuery"
                       placeholder="搜尋使用者"
                       class="w-full pl-6"
                     />
                   </div>
                   <Select
+                    inputId="admin-user-type-filter"
+                    name="admin-user-type-filter"
                     v-model="filterUserType"
                     :options="userTypeFilterOptions"
                     optionLabel="name"
@@ -619,12 +631,16 @@
                   <div class="admin-toolbar__search relative w-full md:w-auto">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
+                      id="admin-notification-search"
+                      name="admin-notification-search"
                       v-model="notificationSearchQuery"
                       placeholder="搜尋公告"
                       class="w-full pl-6"
                     />
                   </div>
                   <Select
+                    inputId="admin-notification-severity-filter"
+                    name="admin-notification-severity-filter"
                     v-model="notificationSeverityFilter"
                     :options="notificationSeverityFilterOptions"
                     optionLabel="label"
@@ -824,12 +840,16 @@
                   <div class="admin-toolbar__search relative w-full md:w-24rem">
                     <i class="pi pi-search search-icon"></i>
                     <InputText
+                      id="admin-review-search"
+                      name="admin-review-search"
                       v-model="reviewSearchQuery"
                       placeholder="搜尋投稿編號、標題、課程、投稿者…"
                       class="w-full pl-6"
                     />
                   </div>
                   <Select
+                    inputId="admin-review-category-filter"
+                    name="admin-review-category-filter"
                     v-model="reviewCategoryFilter"
                     :options="categoryOptions"
                     optionLabel="name"
@@ -1503,6 +1523,8 @@
                 <div class="admin-toolbar admin-toolbar--trash">
                   <div class="admin-toolbar__filters admin-toolbar__filters--trash">
                     <Select
+                      inputId="admin-trash-filter"
+                      name="admin-trash-filter"
                       v-model="trashFilterType"
                       :options="trashFilterOptions"
                       optionLabel="label"
@@ -1906,6 +1928,8 @@
           <div class="flex flex-column gap-2">
             <label>課程名稱</label>
             <InputText
+              id="admin-course-name"
+              name="admin-course-name"
               v-model="courseForm.name"
               placeholder="輸入課程名稱"
               class="w-full"
@@ -1919,6 +1943,8 @@
           <div class="flex flex-column gap-2">
             <label>分類</label>
             <Select
+              inputId="admin-course-category"
+              name="admin-course-category"
               v-model="courseForm.category"
               :options="categoryOptions"
               optionLabel="name"
@@ -1958,6 +1984,8 @@
           <div class="flex flex-column gap-2">
             <label>分類 Key</label>
             <InputText
+              id="admin-category-key"
+              name="admin-category-key"
               v-model="categoryForm.key"
               placeholder="例如 advanced-physics"
               class="w-full"
@@ -1970,6 +1998,8 @@
           <div class="flex flex-column gap-2">
             <label>顯示名稱</label>
             <InputText
+              id="admin-category-name"
+              name="admin-category-name"
               v-model="categoryForm.name"
               placeholder="例如 進階物理"
               class="w-full"
@@ -1981,11 +2011,23 @@
           </div>
           <div class="flex flex-column gap-2">
             <label>科目旁小標籤</label>
-            <InputText v-model="categoryForm.label" placeholder="例如 進階" class="w-full" />
+            <InputText
+              id="admin-category-label"
+              name="admin-category-label"
+              v-model="categoryForm.label"
+              placeholder="例如 進階"
+              class="w-full"
+            />
           </div>
           <div class="flex flex-column gap-2">
             <label>PrimeIcons class</label>
-            <InputText v-model="categoryForm.icon" placeholder="pi pi-fw pi-book" class="w-full" />
+            <InputText
+              id="admin-category-icon"
+              name="admin-category-icon"
+              v-model="categoryForm.icon"
+              placeholder="pi pi-fw pi-book"
+              class="w-full"
+            />
           </div>
           <div class="flex flex-column gap-2">
             <label>分類標籤顏色</label>
@@ -2071,6 +2113,8 @@
             <div class="col-12 md:col-6 flex flex-column gap-2">
               <label>申請分類 Key</label>
               <InputText
+                id="admin-review-requested-category-key"
+                name="admin-review-requested-category-key"
                 v-model="archiveRequestEditForm.requested_category_key"
                 :disabled="!canEditSelectedArchiveRequest"
               />
@@ -2078,6 +2122,8 @@
             <div class="col-12 md:col-6 flex flex-column gap-2">
               <label>申請分類名稱</label>
               <InputText
+                id="admin-review-requested-category-name"
+                name="admin-review-requested-category-name"
                 v-model="archiveRequestEditForm.requested_category_name"
                 :disabled="!canEditSelectedArchiveRequest"
               />
@@ -2085,6 +2131,8 @@
             <div class="col-12 md:col-6 flex flex-column gap-2">
               <label>科目旁小標籤</label>
               <InputText
+                id="admin-review-requested-category-label"
+                name="admin-review-requested-category-label"
                 v-model="archiveRequestEditForm.requested_category_label"
                 :disabled="!canEditSelectedArchiveRequest"
               />
@@ -2096,6 +2144,8 @@
           >
             <label>申請課程名稱</label>
             <InputText
+              id="admin-review-requested-course-name"
+              name="admin-review-requested-course-name"
               v-model="archiveRequestEditForm.requested_course_name"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2103,6 +2153,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>課程</label>
             <InputText
+              id="admin-review-subject"
+              name="admin-review-subject"
               v-model="archiveRequestEditForm.subject"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2113,6 +2165,8 @@
           >
             <label>分類 Key</label>
             <InputText
+              id="admin-review-category-key"
+              name="admin-review-category-key"
               v-model="archiveRequestEditForm.category"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2120,6 +2174,8 @@
           <div v-else class="col-12 md:col-6 flex flex-column gap-2">
             <label>分類</label>
             <Select
+              inputId="admin-review-category"
+              name="admin-review-category"
               v-model="archiveRequestEditForm.category"
               :options="categoryOptions"
               optionLabel="name"
@@ -2130,6 +2186,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>考試名稱</label>
             <InputText
+              id="admin-review-exam-name"
+              name="admin-review-exam-name"
               v-model="archiveRequestEditForm.name"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2137,6 +2195,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>授課教師</label>
             <InputText
+              id="admin-review-professor"
+              name="admin-review-professor"
               v-model="archiveRequestEditForm.professor"
               :disabled="!canEditSelectedArchiveRequest"
             />
@@ -2144,6 +2204,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>學期代碼</label>
             <InputNumber
+              inputId="admin-review-academic-year"
+              name="admin-review-academic-year"
               v-model="archiveRequestEditForm.academic_year"
               :disabled="!canEditSelectedArchiveRequest"
               :useGrouping="false"
@@ -2152,6 +2214,8 @@
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label>考試類型</label>
             <Select
+              inputId="admin-review-archive-type"
+              name="admin-review-archive-type"
               v-model="archiveRequestEditForm.archive_type"
               :options="archiveTypeOptions"
               optionLabel="name"
@@ -2161,11 +2225,13 @@
           </div>
           <div class="col-12 flex align-items-center gap-2">
             <Checkbox
+              inputId="admin-review-has-answers"
+              name="admin-review-has-answers"
               v-model="archiveRequestEditForm.has_answers"
               :binary="true"
               :disabled="!canEditSelectedArchiveRequest"
             />
-            <label>附解答</label>
+            <label for="admin-review-has-answers">附解答</label>
           </div>
         </div>
 
@@ -2451,6 +2517,8 @@
           <div class="flex flex-column gap-2">
             <label>使用者名稱</label>
             <InputText
+              id="admin-user-name"
+              name="admin-user-name"
               v-model="userForm.name"
               placeholder="輸入使用者名稱"
               class="w-full"
@@ -2464,6 +2532,8 @@
           <div class="flex flex-column gap-2">
             <label>電子郵件</label>
             <InputText
+              id="admin-user-email"
+              name="admin-user-email"
               v-model="userForm.email"
               placeholder="輸入電子郵件"
               class="w-full"
@@ -2477,6 +2547,8 @@
           <div v-if="!editingUser" class="flex flex-column gap-2">
             <label>密碼</label>
             <Password
+              inputId="admin-user-password"
+              name="admin-user-password"
               v-model="userForm.password"
               placeholder="輸入密碼"
               class="w-full"
@@ -2491,8 +2563,13 @@
           </div>
 
           <div class="flex align-items-center gap-2">
-            <Checkbox v-model="userForm.is_admin" :binary="true" />
-            <label>管理員權限</label>
+            <Checkbox
+              inputId="admin-user-is-admin"
+              name="admin-user-is-admin"
+              v-model="userForm.is_admin"
+              :binary="true"
+            />
+            <label for="admin-user-is-admin">管理員權限</label>
           </div>
         </div>
 
@@ -2533,6 +2610,8 @@
           <div class="flex flex-column gap-2">
             <label>新密碼</label>
             <Password
+              inputId="admin-reset-new-password"
+              name="admin-reset-new-password"
               v-model="resetPasswordForm.newPassword"
               placeholder="輸入新密碼"
               class="w-full"
@@ -2550,6 +2629,8 @@
           <div class="flex flex-column gap-2">
             <label>確認新密碼</label>
             <Password
+              inputId="admin-reset-confirm-password"
+              name="admin-reset-confirm-password"
               v-model="resetPasswordForm.confirmPassword"
               placeholder="再次輸入新密碼"
               class="w-full"
@@ -2595,6 +2676,8 @@
           <div class="flex flex-column gap-2">
             <label>標題</label>
             <InputText
+              id="admin-notification-title"
+              name="admin-notification-title"
               v-model="notificationForm.title"
               placeholder="輸入公告標題"
               class="w-full"
@@ -2609,6 +2692,8 @@
             <div class="flex-1 flex flex-column gap-2">
               <label>重要程度</label>
               <Select
+                inputId="admin-notification-severity"
+                name="admin-notification-severity"
                 v-model="notificationForm.severity"
                 :options="notificationSeverityOptions"
                 optionLabel="label"
@@ -2618,14 +2703,20 @@
               />
             </div>
             <div class="flex align-items-center gap-2 mt-3 md:mt-5">
-              <ToggleSwitch v-model="notificationForm.is_active" />
-              <label class="m-0 font-medium">啟用公告</label>
+              <ToggleSwitch
+                inputId="admin-notification-is-active"
+                name="admin-notification-is-active"
+                v-model="notificationForm.is_active"
+              />
+              <label for="admin-notification-is-active" class="m-0 font-medium">啟用公告</label>
             </div>
           </div>
 
           <div class="flex flex-column gap-2">
             <label>內容</label>
             <Textarea
+              id="admin-notification-body"
+              name="admin-notification-body"
               v-model="notificationForm.body"
               rows="6"
               autoResize
@@ -2642,6 +2733,8 @@
             <div class="flex flex-column gap-2">
               <label>生效時間 (選填)</label>
               <DatePicker
+                inputId="admin-notification-starts-at"
+                name="admin-notification-starts-at"
                 v-model="notificationForm.starts_at"
                 showTime
                 hourFormat="24"
@@ -2653,6 +2746,8 @@
             <div class="flex flex-column gap-2">
               <label>結束時間 (選填)</label>
               <DatePicker
+                inputId="admin-notification-ends-at"
+                name="admin-notification-ends-at"
                 v-model="notificationForm.ends_at"
                 showTime
                 hourFormat="24"

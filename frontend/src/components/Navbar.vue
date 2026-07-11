@@ -147,6 +147,7 @@
           <FloatLabel variant="on" class="w-full">
             <InputText
               id="username"
+              name="username"
               v-model="username"
               class="w-full"
               @keyup.enter="handleLocalLogin"
@@ -157,7 +158,8 @@
         <div class="field mt-3 w-full">
           <FloatLabel variant="on" class="w-full">
             <Password
-              id="password"
+              inputId="password"
+              name="password"
               v-model="password"
               toggleMask
               :feedback="false"
@@ -200,7 +202,8 @@
         <div class="field">
           <label for="issue-type" class="font-semibold">問題類型</label>
           <Select
-            id="issue-type"
+            inputId="issue-type"
+            name="issue-type"
             v-model="issueForm.type"
             :options="issueTypes"
             optionLabel="label"
@@ -214,6 +217,7 @@
           <label for="issue-title" class="font-semibold">問題標題</label>
           <InputText
             id="issue-title"
+            name="issue-title"
             v-model="issueForm.title"
             placeholder="簡短描述遇到的問題"
             class="w-full mt-2"
@@ -226,6 +230,7 @@
           <label for="issue-description" class="font-semibold">詳細描述</label>
           <Textarea
             id="issue-description"
+            name="issue-description"
             v-model="issueForm.description"
             placeholder="請詳細描述遇到的問題，包括：&#10;1. 操作步驟&#10;2. 預期結果&#10;3. 實際結果"
             class="w-full mt-2"
@@ -239,6 +244,7 @@
           <label for="user-info" class="font-semibold">聯絡方式 (選填)</label>
           <InputText
             id="user-info"
+            name="user-info"
             v-model="issueForm.contact"
             placeholder="Email 或其他聯絡方式，方便我們回覆"
             class="w-full mt-2"

@@ -13,7 +13,13 @@
           <div class="search-section p-3">
             <div class="relative w-full">
               <i class="pi pi-search absolute left-4 top-1/2 -mt-2 text-500"></i>
-              <InputText v-model="searchQuery" placeholder="搜尋課程" class="w-full pl-6" />
+              <InputText
+                id="archive-course-search"
+                name="archive-course-search"
+                v-model="searchQuery"
+                placeholder="搜尋課程"
+                class="w-full pl-6"
+              />
             </div>
           </div>
 
@@ -104,7 +110,13 @@
           <div class="search-section pb-3">
             <div class="relative w-full">
               <i class="pi pi-search absolute left-4 top-1/2 -mt-2 text-500"></i>
-              <InputText v-model="searchQuery" placeholder="搜尋課程" class="w-full pl-6" />
+              <InputText
+                id="archive-mobile-course-search"
+                name="archive-mobile-course-search"
+                v-model="searchQuery"
+                placeholder="搜尋課程"
+                class="w-full pl-6"
+              />
             </div>
           </div>
 
@@ -190,6 +202,8 @@
                 </div>
                 <div class="archive-filter-controls">
                   <Select
+                    inputId="archive-filter-year"
+                    name="archive-filter-year"
                     v-model="filters.year"
                     :options="years"
                     optionLabel="name"
@@ -200,6 +214,8 @@
                     filter
                   />
                   <Select
+                    inputId="archive-filter-professor"
+                    name="archive-filter-professor"
                     v-model="filters.professor"
                     :options="professors"
                     optionLabel="name"
@@ -210,6 +226,8 @@
                     filter
                   />
                   <Select
+                    inputId="archive-filter-type"
+                    name="archive-filter-type"
                     v-model="filters.type"
                     :options="archiveTypes"
                     optionLabel="name"
@@ -223,6 +241,7 @@
                       v-model="filters.hasAnswers"
                       :binary="true"
                       inputId="hasAnswersFilter"
+                      name="has-answers-filter"
                     />
                     <label for="hasAnswersFilter">附解答</label>
                   </div>
@@ -475,12 +494,20 @@
             <div class="flex flex-column">
               <div class="flex flex-column gap-2">
                 <label>考試名稱</label>
-                <InputText v-model="editForm.name" placeholder="輸入考試名稱" class="w-full" />
+                <InputText
+                  id="archive-edit-name"
+                  name="archive-edit-name"
+                  v-model="editForm.name"
+                  placeholder="輸入考試名稱"
+                  class="w-full"
+                />
               </div>
 
               <div class="flex flex-column gap-2 mt-3">
                 <label>授課教授</label>
                 <AutoComplete
+                  inputId="archive-edit-professor"
+                  name="archive-edit-professor"
                   :modelValue="editForm.professor"
                   @update:modelValue="(val) => (editForm.professor = val)"
                   :suggestions="availableEditProfessors"
@@ -505,6 +532,8 @@
               <div class="flex flex-column gap-2 mt-3">
                 <label>考試年份</label>
                 <DatePicker
+                  inputId="archive-edit-academic-year"
+                  name="archive-edit-academic-year"
                   v-model="editForm.academicYear"
                   @update:modelValue="(val) => (editForm.academicYear = val)"
                   view="year"
@@ -520,6 +549,8 @@
               <div class="flex flex-column gap-2 mt-3">
                 <label>考試類型</label>
                 <Select
+                  inputId="archive-edit-type"
+                  name="archive-edit-type"
                   v-model="editForm.type"
                   :options="[
                     { name: '期中考', value: 'midterm' },
@@ -535,21 +566,35 @@
               </div>
 
               <div class="flex align-items-center gap-2 mt-3">
-                <Checkbox v-model="editForm.hasAnswers" :binary="true" />
-                <label>附解答</label>
+                <Checkbox
+                  inputId="archive-edit-has-answers"
+                  name="archive-edit-has-answers"
+                  v-model="editForm.hasAnswers"
+                  :binary="true"
+                />
+                <label for="archive-edit-has-answers">附解答</label>
               </div>
 
               <Divider class="mt-3" />
 
               <div class="flex align-items-center gap-2">
-                <Checkbox v-model="editForm.shouldTransfer" :binary="true" />
-                <label class="font-semibold">轉移到其他課程</label>
+                <Checkbox
+                  inputId="archive-edit-should-transfer"
+                  name="archive-edit-should-transfer"
+                  v-model="editForm.shouldTransfer"
+                  :binary="true"
+                />
+                <label for="archive-edit-should-transfer" class="font-semibold"
+                  >轉移到其他課程</label
+                >
               </div>
 
               <div v-if="editForm.shouldTransfer" class="flex flex-column pl-4 mt-3">
                 <div class="flex flex-column gap-2">
                   <label>目標課程類別</label>
                   <Select
+                    inputId="archive-edit-target-category"
+                    name="archive-edit-target-category"
                     v-model="editForm.targetCategory"
                     :options="categoryOptions"
                     optionLabel="name"
@@ -562,6 +607,8 @@
                 <div class="flex flex-column gap-2 mt-3">
                   <label>目標課程名稱</label>
                   <AutoComplete
+                    inputId="archive-edit-target-course"
+                    name="archive-edit-target-course"
                     v-model="editForm.targetCourse"
                     :suggestions="availableCoursesForTransfer"
                     @complete="searchTargetCourse"
