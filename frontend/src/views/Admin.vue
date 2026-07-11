@@ -10193,6 +10193,15 @@ onBeforeUnmount(() => {
     gap: 0.35rem;
   }
 
+  .admin-mobile-list--categories .category-card-order,
+  .admin-mobile-list--categories .category-card-key-label {
+    font-weight: 700;
+  }
+
+  .admin-mobile-list--categories .category-card-key-value {
+    font-weight: 400;
+  }
+
   .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
     display: none;
   }
@@ -10511,7 +10520,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@container category-list (min-width: 70rem) {
+@container category-list (min-width: 56rem) {
   .admin-mobile-list--categories .category-card-main--tablet {
     grid-template-columns: minmax(0, 1fr) 12rem;
     grid-template-areas: 'title key';
