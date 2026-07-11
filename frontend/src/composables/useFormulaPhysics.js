@@ -14,6 +14,11 @@ const IMPULSE_COOLDOWN = 0.06
 const NORMAL_HYSTERESIS = 2
 const MIN_IMPULSE_SPEED = 0.15
 
+function smoothstep(value) {
+  const clamped = Math.min(Math.max(value, 0), 1)
+  return clamped * clamped * (3 - 2 * clamped)
+}
+
 function seededValue(index, offset = 0) {
   const value = Math.sin((index + 1) * 12.9898 + offset * 78.233) * 43758.5453
   return value - Math.floor(value)
@@ -33,13 +38,26 @@ function getMotionConfig() {
         speedScale: 0.72,
         rotationScale: 0.45,
         maxSpeed: 20,
+        globalWeight: 0.52,
+        collisionGlobalRatio: 0.42,
+        globalStrength: 1.15,
+        globalMaxForce: 4.2,
+        globalMaxSpeed: 7,
+        globalDriftSpeed: 1.6,
+        localSteering: 1.55,
+        freedomMinX: 10,
+        freedomRangeX: 12,
+        freedomMinY: 7,
+        freedomRangeY: 8,
+        edgeSteering: 1.5,
         collisionPadding: 6,
         avoidancePadding: 8,
         avoidanceStrength: 3.6,
         overscanX: 0.09,
         overscanY: 0.09,
-        steering: 2.1,
-        damping: 1.7,
+        damping: 1.42,
+        collisionDampingRatio: 0.72,
+        collisionFreedomDuration: 0.5,
         escapeSpeed: 3.2,
         tangentImpulse: 1.25,
         escapeDuration: 0.42,
@@ -55,13 +73,26 @@ function getMotionConfig() {
         speedScale: 1,
         rotationScale: 1,
         maxSpeed: 42,
+        globalWeight: 0.58,
+        collisionGlobalRatio: 0.38,
+        globalStrength: 1.25,
+        globalMaxForce: 7,
+        globalMaxSpeed: 12,
+        globalDriftSpeed: 2.6,
+        localSteering: 1.7,
+        freedomMinX: 28,
+        freedomRangeX: 27,
+        freedomMinY: 18,
+        freedomRangeY: 20,
+        edgeSteering: 1.65,
         collisionPadding: 9,
         avoidancePadding: 14,
         avoidanceStrength: 5.5,
         overscanX: 0.12,
         overscanY: 0.12,
-        steering: 2.35,
-        damping: 1.45,
+        damping: 1.18,
+        collisionDampingRatio: 0.72,
+        collisionFreedomDuration: 0.72,
         escapeSpeed: 5.5,
         tangentImpulse: 2.1,
         escapeDuration: 0.58,
@@ -81,6 +112,9 @@ function getMotionConfig() {
     speedScale: motion.speedScale * 0.62,
     rotationScale: motion.rotationScale * 0.4,
     maxSpeed: motion.maxSpeed * 0.6,
+    globalMaxForce: motion.globalMaxForce * 0.6,
+    globalMaxSpeed: motion.globalMaxSpeed * 0.6,
+    globalDriftSpeed: motion.globalDriftSpeed * 0.6,
     escapeSpeed: motion.escapeSpeed * 0.65,
   }
 }
@@ -155,6 +189,8 @@ export function useFormulaPhysics(formulaCloud) {
     const speedSeed = seededValue(index, 2)
     const amplitudeX = config.amplitudeMinX + seededValue(index, 3) * config.amplitudeRangeX
     const amplitudeY = config.amplitudeMinY + seededValue(index, 4) * config.amplitudeRangeY
+    const freedomRadiusX = config.freedomMinX + seededValue(index, 8) * config.freedomRangeX
+    const freedomRadiusY = config.freedomMinY + seededValue(index, 9) * config.freedomRangeY
     const baseX = element.offsetLeft
     const baseY = element.offsetTop
 
@@ -183,10 +219,13 @@ export function useFormulaPhysics(formulaCloud) {
       padding: config.collisionPadding,
       amplitudeX,
       amplitudeY,
+      freedomRadiusX,
+      freedomRadiusY,
       phase: phaseSeed * TAU,
       phaseY: seededValue(index, 6) * TAU,
       speed: (0.3 + speedSeed * 0.2) * config.speedScale,
       verticalSpeedRatio: 0.68 + seededValue(index, 7) * 0.16,
+      collisionFreedomUntil: previousBody?.collisionFreedomUntil ?? 0,
       rotationAmplitude: (0.55 + seededValue(index, 5) * 0.95) * config.rotationScale,
     }
   }
@@ -204,7 +243,8 @@ export function useFormulaPhysics(formulaCloud) {
       Number.isFinite(body.outerA) &&
       Number.isFinite(body.outerB) &&
       Number.isFinite(body.outerC) &&
-      Number.isFinite(body.outerD)
+      Number.isFinite(body.outerD) &&
+      Number.isFinite(body.collisionFreedomUntil)
     ) {
       return
     }
@@ -221,6 +261,7 @@ export function useFormulaPhysics(formulaCloud) {
     body.outerB = 0
     body.outerC = 0
     body.outerD = 1
+    body.collisionFreedomUntil = 0
   }
 
   function updateOuterMotion(delta = 0) {
@@ -266,9 +307,29 @@ export function useFormulaPhysics(formulaCloud) {
     body.vy *= scale
   }
 
+  function clampVector(x, y, maximum) {
+    const length = Math.hypot(x, y)
+    if (!Number.isFinite(length) || length === 0) return [0, 0]
+    if (length <= maximum) return [x, y]
+
+    const scale = maximum / length
+    return [x * scale, y * scale]
+  }
+
+  function getCollisionFreedom(body) {
+    const remaining = Math.max(0, body.collisionFreedomUntil - elapsed)
+    return smoothstep(remaining / config.collisionFreedomDuration)
+  }
+
+  function beginCollisionFreedom(first, second) {
+    const freedomUntil = elapsed + config.collisionFreedomDuration
+    first.collisionFreedomUntil = Math.max(first.collisionFreedomUntil, freedomUntil)
+    second.collisionFreedomUntil = Math.max(second.collisionFreedomUntil, freedomUntil)
+  }
+
   function getBodyBounds(body) {
-    const centerX = body.baseX + body.outerX + body.x + body.width / 2
-    const centerY = body.baseY + body.outerY + body.y + body.height / 2
+    const centerX = body.baseX + body.x + body.width / 2
+    const centerY = body.baseY + body.y + body.height / 2
 
     return {
       left: centerX - body.collisionWidth / 2 - body.padding,
@@ -308,7 +369,7 @@ export function useFormulaPhysics(formulaCloud) {
     return contact
   }
 
-  function suppressContactSteering(body, steeringX, steeringY) {
+  function suppressContactSteering(body, steeringX, steeringY, addEscapeSteering = false) {
     let adjustedX = steeringX
     let adjustedY = steeringY
 
@@ -329,7 +390,7 @@ export function useFormulaPhysics(formulaCloud) {
         adjustedY -= towardY * normalSteering * suppression
       }
 
-      if (escapeRecovery > 0) {
+      if (addEscapeSteering && escapeRecovery > 0) {
         const tangentDirection = contact.firstId === body.id ? 1 : -1
         adjustedX +=
           -contact.normalY *
@@ -484,9 +545,7 @@ export function useFormulaPhysics(formulaCloud) {
     second.y += normalY * correction
 
     if (applyImpulse) {
-      const relativeVelocity =
-        (second.vx + second.outerVx - first.vx - first.outerVx) * normalX +
-        (second.vy + second.outerVy - first.vy - first.outerVy) * normalY
+      const relativeVelocity = (second.vx - first.vx) * normalX + (second.vy - first.vy) * normalY
 
       const penetrationImprovement = contact.lastPenetration - penetration
       const lowRelativeSpeed = Math.abs(relativeVelocity) < 6
@@ -514,6 +573,7 @@ export function useFormulaPhysics(formulaCloud) {
         second.vx -= tangentX * config.tangentImpulse
         second.vy -= tangentY * config.tangentImpulse
         contact.escapeUntil = elapsed + config.escapeDuration
+        beginCollisionFreedom(first, second)
         contact.cooldownUntil = elapsed + IMPULSE_COOLDOWN
         contact.lastCollisionTime = elapsed
       }
@@ -531,6 +591,7 @@ export function useFormulaPhysics(formulaCloud) {
         second.vy -= tangentY * config.escapeSpeed
         contact.stalledTime = 0
         contact.escapeUntil = elapsed + config.escapeDuration
+        beginCollisionFreedom(first, second)
         contact.cooldownUntil = elapsed + IMPULSE_COOLDOWN * 2
       }
     }
@@ -560,14 +621,16 @@ export function useFormulaPhysics(formulaCloud) {
     bodies.forEach((body) => {
       resetInvalidBody(body)
       const determinant = body.outerA * body.outerD - body.outerB * body.outerC
+      const compensatedX = body.x - body.outerX
+      const compensatedY = body.y - body.outerY
       const localX =
         Math.abs(determinant) > 0.0001
-          ? (body.outerD * body.x - body.outerC * body.y) / determinant
-          : body.x
+          ? (body.outerD * compensatedX - body.outerC * compensatedY) / determinant
+          : compensatedX
       const localY =
         Math.abs(determinant) > 0.0001
-          ? (-body.outerB * body.x + body.outerA * body.y) / determinant
-          : body.y
+          ? (-body.outerB * compensatedX + body.outerA * compensatedY) / determinant
+          : compensatedY
       const rotation =
         Math.sin(elapsed * body.speed * 0.83 + body.phase * 1.19) * body.rotationAmplitude
       body.motionElement.style.transform = `translate3d(${localX.toFixed(2)}px, ${localY.toFixed(
@@ -577,25 +640,51 @@ export function useFormulaPhysics(formulaCloud) {
   }
 
   function updateBodies(delta) {
-    const sharedX = Math.sin(elapsed * 0.22) * 2.4 * config.amplitudeScale
-    const sharedY = Math.cos(elapsed * 0.17) * 1.8 * config.amplitudeScale
-
     bodies.forEach((body) => {
       resetInvalidBody(body)
-      const targetX = sharedX + Math.sin(elapsed * body.speed + body.phase) * body.amplitudeX
+      const targetX = Math.sin(elapsed * body.speed + body.phase) * body.amplitudeX
       const targetY =
-        sharedY +
         Math.sin(elapsed * body.speed * body.verticalSpeedRatio + body.phaseY) * body.amplitudeY
-      const damping = Math.exp(-config.damping * delta)
+      const freedom = getCollisionFreedom(body)
+      const globalControl = 1 - freedom * (1 - config.collisionGlobalRatio)
+      const globalWeight = config.globalWeight * globalControl
 
-      const [steeringX, steeringY] = suppressContactSteering(
-        body,
-        (targetX - body.x) * config.steering,
-        (targetY - body.y) * config.steering
+      const fallbackGlobalX = Math.sin(elapsed * 0.18 + body.phase * 0.08)
+      const fallbackGlobalY = Math.cos(elapsed * 0.15 + body.phaseY * 0.06) * 0.65
+      const [desiredGlobalVx, desiredGlobalVy] = clampVector(
+        body.outerVx * globalWeight + fallbackGlobalX * config.globalDriftSpeed,
+        body.outerVy * globalWeight + fallbackGlobalY * config.globalDriftSpeed,
+        config.globalMaxSpeed
+      )
+      let [globalForceX, globalForceY] = clampVector(
+        (desiredGlobalVx - body.vx) * config.globalStrength * globalControl,
+        (desiredGlobalVy - body.vy) * config.globalStrength * globalControl,
+        config.globalMaxForce * globalControl
       )
 
-      body.vx = (body.vx + steeringX * delta) * damping
-      body.vy = (body.vy + steeringY * delta) * damping
+      const adjustedGlobalForce = suppressContactSteering(body, globalForceX, globalForceY)
+      globalForceX = adjustedGlobalForce[0]
+      globalForceY = adjustedGlobalForce[1]
+
+      let [localForceX, localForceY] = suppressContactSteering(
+        body,
+        (targetX - body.x) * config.localSteering,
+        (targetY - body.y) * config.localSteering,
+        true
+      )
+
+      const overrunX = Math.max(0, Math.abs(body.x) - body.freedomRadiusX)
+      const overrunY = Math.max(0, Math.abs(body.y) - body.freedomRadiusY)
+      const edgeBlendX = smoothstep(overrunX / Math.max(body.freedomRadiusX * 0.3, 1))
+      const edgeBlendY = smoothstep(overrunY / Math.max(body.freedomRadiusY * 0.3, 1))
+      localForceX -= Math.sign(body.x) * overrunX * config.edgeSteering * edgeBlendX
+      localForceY -= Math.sign(body.y) * overrunY * config.edgeSteering * edgeBlendY
+
+      const dampingStrength = config.damping * (1 - freedom * (1 - config.collisionDampingRatio))
+      const damping = Math.exp(-dampingStrength * delta)
+
+      body.vx = (body.vx + (globalForceX + localForceX) * delta) * damping
+      body.vy = (body.vy + (globalForceY + localForceY) * delta) * damping
       clampBodySpeed(body)
       body.x += body.vx * delta
       body.y += body.vy * delta
