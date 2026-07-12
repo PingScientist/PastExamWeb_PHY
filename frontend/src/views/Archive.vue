@@ -408,6 +408,47 @@
               class="w-full flex justify-content-center my-4"
             />
             <div v-else class="submission-status-list">
+              <section class="submission-summary" aria-labelledby="submission-summary-title">
+                <div class="submission-summary-header">
+                  <div>
+                    <h3 id="submission-summary-title">投稿統計</h3>
+                    <strong>共 {{ submissionSummary.total }} 筆投稿</strong>
+                  </div>
+                  <span>不含已刪除</span>
+                </div>
+                <div
+                  class="submission-summary-bar"
+                  role="img"
+                  :aria-label="submissionSummaryAriaLabel"
+                  :title="submissionSummaryAriaLabel"
+                >
+                  <span
+                    v-for="status in submissionSummary.statuses"
+                    :key="status.key"
+                    class="submission-summary-segment"
+                    :style="{ width: `${status.ratio}%`, backgroundColor: status.color }"
+                  ></span>
+                </div>
+                <div v-if="submissionSummary.total === 0" class="submission-summary-empty">
+                  目前沒有可統計的投稿
+                </div>
+                <div v-else class="submission-summary-legend">
+                  <div
+                    v-for="status in submissionSummary.statuses"
+                    :key="`legend-${status.key}`"
+                    class="submission-summary-legend-item"
+                  >
+                    <span
+                      class="submission-summary-dot"
+                      :style="{ backgroundColor: status.color }"
+                      aria-hidden="true"
+                    ></span>
+                    <span>{{ status.label }}</span>
+                    <strong>{{ status.count }} 筆</strong>
+                    <span>{{ status.percentage }}</span>
+                  </div>
+                </div>
+              </section>
               <section>
                 <h3>考古題投稿</h3>
                 <div v-if="archiveSubmissions.length === 0" class="submission-empty">
@@ -760,6 +801,44 @@ const showUploadDialog = ref(false)
 const showSubmissionStatusDialog = ref(false)
 const submissionStatusLoading = ref(false)
 const archiveSubmissions = ref([])
+const submissionStatusConfig = [
+  { key: 'pending', color: '#d29922' },
+  { key: 'approved', color: '#2da44e' },
+  { key: 'rejected', color: '#cf222e' },
+  { key: 'takedown', color: '#6e7781' },
+]
+const submissionSummary = computed(() => {
+  const counts = new Map(submissionStatusConfig.map(({ key }) => [key, 0]))
+  archiveSubmissions.value.forEach((submission) => {
+    const status = getNormalizedSubmissionStatus(submission?.status)
+    if (status !== 'deleted' && counts.has(status)) counts.set(status, counts.get(status) + 1)
+  })
+  const total = Array.from(counts.values()).reduce((sum, count) => sum + count, 0)
+  return {
+    total,
+    statuses: submissionStatusConfig
+      .map(({ key, color }) => {
+        const count = counts.get(key)
+        const ratio = total > 0 ? (count / total) * 100 : 0
+        return {
+          key,
+          color,
+          count,
+          ratio,
+          label: getSubmissionLabel(key),
+          percentage: `${ratio.toFixed(1)}%`,
+        }
+      })
+      .filter(({ count }) => count > 0),
+  }
+})
+const submissionSummaryAriaLabel = computed(() => {
+  if (submissionSummary.value.total === 0) return '投稿統計：目前沒有可統計的投稿，不含已刪除'
+  const details = submissionSummary.value.statuses
+    .map((status) => `${status.label} ${status.count} 筆，${status.percentage}`)
+    .join('；')
+  return `投稿統計：共 ${submissionSummary.value.total} 筆投稿，不含已刪除；${details}`
+})
 const uploadFormProfessors = ref([])
 const expandedPanels = ref([])
 const expandedMenuItems = ref({})
@@ -3352,6 +3431,78 @@ const mobileMenuItems = computed(() => {
   flex-shrink: 0;
 }
 
+.submission-summary {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.submission-summary-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.submission-summary-header h3 {
+  margin-bottom: 0.25rem;
+}
+
+.submission-summary-header strong {
+  font-size: 1rem;
+}
+
+.submission-summary-header > span,
+.submission-summary-empty {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.submission-summary-bar {
+  display: flex;
+  width: 100%;
+  height: 0.65rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+.submission-summary-segment {
+  flex: 0 0 auto;
+  height: 100%;
+}
+
+.submission-summary-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+  margin-top: 0.85rem;
+}
+
+.submission-summary-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.submission-summary-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.submission-summary-empty {
+  margin-top: 0.75rem;
+}
+
 .submission-status-list h3 {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;
@@ -3467,5 +3618,23 @@ const mobileMenuItems = computed(() => {
 .submission-status-note.is-review {
   align-items: flex-start;
   flex-direction: column;
+}
+
+@media (max-width: 767px) {
+  .submission-summary-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .submission-summary-legend {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .submission-summary-legend-item {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 </style>
