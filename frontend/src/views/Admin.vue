@@ -8899,7 +8899,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: flex-end;
     width: 100%;
     gap: 0.45rem;
     overflow-x: visible;
@@ -9343,7 +9343,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 0.45rem;
     width: 100%;
     min-width: 0;
