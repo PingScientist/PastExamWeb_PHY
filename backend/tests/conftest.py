@@ -17,19 +17,64 @@ from app.main import app
 from app.models.models import Archive, User
 from app.utils.auth import get_password_hash
 
-DATABASE_URL = os.getenv("TEST_DATABASE_URL") or (
+RUNTIME_DATABASE_URL = (
     "postgresql+asyncpg://"
     f"{settings.DB_USER}:{settings.DB_PASSWORD}@"
     f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 )
-CONFIGURED_DATABASE_NAME = make_url(DATABASE_URL).database or ""
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+FORBIDDEN_DATABASE_NAMES = {"archive_db"}
 
-if "test" not in CONFIGURED_DATABASE_NAME.lower():
+
+def is_test_database_name(database_name: str | None) -> bool:
+    normalized = str(database_name or "").strip().lower()
+    return bool(normalized) and normalized not in FORBIDDEN_DATABASE_NAMES and (
+        normalized.startswith("test_") or normalized.endswith("_test")
+    )
+
+
+def validate_test_database_url(
+    test_database_url: str | None, runtime_database_url: str
+) -> str:
+    if not test_database_url:
+        raise ValueError("TEST_DATABASE_URL must be explicitly configured")
+    test_url = make_url(test_database_url)
+    runtime_url = make_url(runtime_database_url)
+    test_database_name = test_url.database or ""
+    runtime_database_name = runtime_url.database or ""
+    if test_url == runtime_url or test_database_name == runtime_database_name:
+        raise ValueError("TEST_DATABASE_URL must not target the runtime database")
+    if not is_test_database_name(test_database_name):
+        raise ValueError("Test database name must start with 'test_' or end with '_test'")
+    return test_database_name
+
+
+def validate_connected_database_name(
+    actual_database_name: str | None,
+    configured_database_name: str,
+    runtime_database_name: str,
+) -> None:
+    actual = str(actual_database_name or "").strip()
+    if (
+        actual != configured_database_name
+        or actual == runtime_database_name
+        or not is_test_database_name(actual)
+    ):
+        raise ValueError("Connected database does not match the isolated test database")
+
+
+try:
+    CONFIGURED_DATABASE_NAME = validate_test_database_url(
+        TEST_DATABASE_URL, RUNTIME_DATABASE_URL
+    )
+except (TypeError, ValueError):
     pytest.exit(
-        "Refusing to run backend tests against a non-test database. "
-        "Set TEST_DATABASE_URL to an isolated test database.",
+        "Refusing to run backend tests without an explicit, isolated TEST_DATABASE_URL. "
+        "The database name must start with 'test_' or end with '_test'.",
         returncode=2,
     )
+
+DATABASE_URL = TEST_DATABASE_URL
 
 
 @pytest.fixture(scope="session")
@@ -57,7 +102,13 @@ async def override_db_session(monkeypatch):
 
     async with engine.connect() as connection:
         actual_database_name = await connection.scalar(text("SELECT current_database()"))
-    if "test" not in str(actual_database_name or "").lower():
+    try:
+        validate_connected_database_name(
+            actual_database_name,
+            CONFIGURED_DATABASE_NAME,
+            make_url(RUNTIME_DATABASE_URL).database or "",
+        )
+    except ValueError:
         await engine.dispose()
         pytest.fail("Connected database is not an isolated test database", pytrace=False)
 
