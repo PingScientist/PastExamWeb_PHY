@@ -457,31 +457,33 @@
                   class="submission-status-card"
                 >
                   <div class="submission-status-head">
-                    <Tag
-                      :class="[
-                        'soft-badge',
-                        'submission-status-badge',
-                        'my-submission-status-badge',
-                        getSubmissionStatusClass(item.status),
-                      ]"
-                      :severity="getSubmissionSeverity(item.status)"
-                    >
-                      {{ getSubmissionLabel(item.status) }}
-                    </Tag>
-                    <Tag
-                      v-if="item.is_admin_upload"
-                      class="soft-badge soft-badge--admin submission-admin-badge"
-                      severity="secondary"
-                    >
-                      管理員投稿
-                    </Tag>
+                    <div class="submission-status-badges">
+                      <Tag
+                        :class="[
+                          'soft-badge',
+                          'submission-status-badge',
+                          'my-submission-status-badge',
+                          getSubmissionStatusClass(item.status),
+                        ]"
+                        :severity="getSubmissionSeverity(item.status)"
+                      >
+                        {{ getSubmissionLabel(item.status) }}
+                      </Tag>
+                      <Tag
+                        v-if="item.is_admin_upload"
+                        class="soft-badge soft-badge--admin submission-admin-badge"
+                        severity="secondary"
+                      >
+                        管理員投稿
+                      </Tag>
+                    </div>
                     <div class="submission-status-title">
                       <strong>{{ item.subject }}</strong>
                       <span>{{ item.name }}</span>
-                      <small class="my-submission-id"
-                        >投稿編號：{{ formatMySubmissionId(item) }}</small
-                      >
                     </div>
+                    <small class="my-submission-id"
+                      >投稿編號：{{ formatMySubmissionId(item) }}</small
+                    >
                   </div>
                   <div class="submission-status-meta">
                     <span
@@ -505,6 +507,11 @@
                       <i class="pi pi-user"></i>{{ item.professor }}
                     </span>
                   </div>
+                  <div v-if="item.requested_category_name" class="submission-status-note">
+                    <span class="soft-badge soft-badge--new-course-category">新分類</span>
+                    <strong>{{ item.requested_category_name }}</strong>
+                    <small>{{ item.requested_category_key }}</small>
+                  </div>
                   <div class="submission-time-meta">
                     <span>
                       <i class="pi pi-clock" aria-hidden="true"></i>
@@ -515,14 +522,11 @@
                       審核時間：{{ formatSubmissionReviewedAt(item.reviewed_at) }}
                     </span>
                   </div>
-                  <div v-if="item.requested_category_name" class="submission-status-note">
-                    <span class="soft-badge soft-badge--new-course-category">新分類</span>
-                    <strong>{{ item.requested_category_name }}</strong>
-                    <small>{{ item.requested_category_key }}</small>
-                  </div>
-                  <div v-if="shouldShowReviewNote(item)" class="submission-status-note is-review">
-                    <span>審核備註</span>
-                    <strong>{{ item.review_note }}</strong>
+                  <div class="submission-review-note">
+                    <span class="submission-review-note-label">審核留言</span>
+                    <span class="submission-review-note-divider" aria-hidden="true">｜</span>
+                    <strong v-if="shouldShowReviewNote(item)">{{ item.review_note }}</strong>
+                    <span v-else class="submission-review-note-empty">尚無審核留言</span>
                   </div>
                 </article>
               </section>
@@ -3554,9 +3558,18 @@ const mobileMenuItems = computed(() => {
 }
 
 .submission-status-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: flex-start;
   gap: 0.75rem;
+}
+
+.submission-status-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 12rem;
 }
 
 .submission-status-title {
@@ -3578,11 +3591,13 @@ const mobileMenuItems = computed(() => {
 }
 
 .my-submission-id {
+  align-self: start;
   color: var(--text-secondary);
   font-size: 0.86rem;
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .submission-status-meta {
@@ -3656,9 +3671,34 @@ const mobileMenuItems = computed(() => {
   color: var(--text-secondary);
 }
 
-.submission-status-note.is-review {
+.submission-review-note {
+  display: flex;
   align-items: flex-start;
-  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.submission-review-note-label {
+  flex: 0 0 auto;
+  color: var(--text-color);
+  font-weight: 650;
+}
+
+.submission-review-note strong {
+  min-width: 0;
+  color: var(--text-color);
+  font-weight: 500;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.submission-review-note-empty {
+  min-width: 0;
 }
 
 @media (max-width: 767px) {
@@ -3680,6 +3720,28 @@ const mobileMenuItems = computed(() => {
 
   .submission-time-meta {
     flex-direction: column;
+  }
+
+  .submission-status-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .submission-status-badges {
+    max-width: none;
+  }
+
+  .my-submission-id {
+    text-align: left;
+  }
+
+  .submission-review-note {
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .submission-review-note-divider {
+    display: none;
   }
 }
 </style>
