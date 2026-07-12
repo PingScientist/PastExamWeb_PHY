@@ -608,11 +608,6 @@
                             :key="bucket.key"
                             class="user-login-column-chart__item"
                             tabindex="0"
-                            :title="
-                              bucket.has_data
-                                ? `${bucket.fullLabel}：${bucket.count} 人在線`
-                                : `${bucket.fullLabel}：尚無歷史資料`
-                            "
                             :aria-label="
                               bucket.has_data
                                 ? `${bucket.fullLabel}，${bucket.count} 人在線`
@@ -626,6 +621,13 @@
                                 height: `${(bucket.count / loginChartData.yMax) * 100}%`,
                               }"
                             ></span>
+                            <span class="user-login-column-chart__tooltip" role="tooltip">
+                              {{
+                                bucket.has_data
+                                  ? `${bucket.fullLabel}：${bucket.count} 人在線`
+                                  : `${bucket.fullLabel}：尚無歷史資料`
+                              }}
+                            </span>
                           </div>
                         </div>
                         <div
@@ -7941,12 +7943,60 @@ onBeforeUnmount(() => {
 }
 
 .user-login-column-chart__item {
+  position: relative;
   display: flex;
   min-width: 0;
   height: 100%;
   align-items: flex-end;
   justify-content: center;
   outline: none;
+}
+
+.user-login-column-chart__item:hover,
+.user-login-column-chart__item:focus-visible {
+  z-index: 3;
+}
+
+.user-login-column-chart__tooltip {
+  position: absolute;
+  top: 0.35rem;
+  left: 50%;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 3rem));
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--app-font-size-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 120ms ease;
+}
+
+.user-login-column-chart__item:hover .user-login-column-chart__tooltip,
+.user-login-column-chart__item:focus-visible .user-login-column-chart__tooltip {
+  opacity: 1;
+}
+
+.user-login-column-chart__item:first-child .user-login-column-chart__tooltip {
+  left: 0;
+  transform: none;
+}
+
+.user-login-column-chart__item:last-child .user-login-column-chart__tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-login-column-chart__tooltip {
+    transition: none;
+  }
 }
 
 .user-login-column-chart__item:focus-visible {
