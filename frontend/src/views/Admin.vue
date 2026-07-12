@@ -473,15 +473,14 @@
                     <button
                       type="button"
                       class="contributor-level-total"
-                      :class="{ 'is-active': filterContributorLevel === null }"
-                      :aria-pressed="filterContributorLevel === null"
-                      @click="setContributorLevelFilter(null)"
+                      :class="{ 'is-active': selectedContributorLevels.length === 0 }"
+                      :aria-pressed="selectedContributorLevels.length === 0"
+                      @click="clearContributorLevelFilter"
                     >
                       全部 {{ users.length }} 人
                     </button>
-                    <span v-if="selectedContributorLevel" class="contributor-level-current">
-                      目前：Lv. {{ selectedContributorLevel.level }}
-                      {{ selectedContributorLevel.name }}
+                    <span class="contributor-level-current">
+                      {{ contributorLevelSelectionSummary }}
                     </span>
                     <button
                       type="button"
@@ -511,11 +510,11 @@
                     type="button"
                     class="contributor-level-stat"
                     :class="{
-                      'is-active': filterContributorLevel === stat.level,
+                      'is-active': isContributorLevelSelected(stat.level),
                       'is-empty': stat.count === 0,
                     }"
-                    :aria-pressed="filterContributorLevel === stat.level"
-                    @click="setContributorLevelFilter(stat.level)"
+                    :aria-pressed="isContributorLevelSelected(stat.level)"
+                    @click="toggleContributorLevel(stat.level)"
                   >
                     <ContributorLevelBadge :level="stat.level" :title="stat.name" size="compact" />
                     <span class="contributor-level-stat__name">{{ stat.name }}</span>
@@ -546,14 +545,17 @@
                     showClear
                     class="admin-toolbar__select w-full md:w-14rem"
                   />
-                  <Select
+                  <MultiSelect
                     inputId="admin-user-level-filter"
                     name="admin-user-level-filter"
-                    v-model="filterContributorLevel"
+                    v-model="selectedContributorLevels"
                     :options="contributorLevelFilterOptions"
                     optionLabel="name"
                     optionValue="value"
                     placeholder="篩選投稿等級"
+                    :maxSelectedLabels="1"
+                    selectedItemsLabel="已選 {0} 個等級"
+                    showClear
                     class="admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
@@ -634,7 +636,12 @@
                     </Tag>
                   </template>
                 </Column>
-                <Column header="投稿等級" style="width: 19%; min-width: 10rem">
+                <Column
+                  field="contributor_level"
+                  header="投稿等級"
+                  sortable
+                  style="width: 19%; min-width: 10rem"
+                >
                   <template #body="{ data }">
                     <ContributorLevelBadge
                       :level="data.contributorLevel.level"
@@ -3156,6 +3163,7 @@ defineOptions({
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
+import MultiSelect from 'primevue/multiselect'
 import { getCurrentUser } from '../utils/auth'
 import { isUnauthorizedError } from '../utils/http'
 import { formatRelativeTime } from '../utils/time'
@@ -3238,7 +3246,7 @@ const users = ref([])
 const usersLoading = ref(false)
 const userSearchQuery = ref('')
 const filterUserType = ref(null)
-const filterContributorLevel = ref(null)
+const selectedContributorLevels = ref([])
 const isLevelStatsExpanded = ref(true)
 const userFirst = ref(0)
 const userRows = ref(10)
@@ -4026,13 +4034,10 @@ const userTypeFilterOptions = [
   { name: '一般使用者', value: false },
 ]
 
-const contributorLevelFilterOptions = [
-  { name: '全部投稿等級', value: null },
-  ...SUBMISSION_LEVELS.map((level) => ({
-    name: `Lv. ${level.level} ${level.name}`,
-    value: level.level,
-  })),
-]
+const contributorLevelFilterOptions = SUBMISSION_LEVELS.map((level) => ({
+  name: `Lv. ${level.level} ${level.name}`,
+  value: level.level,
+}))
 
 const contributorLevelStats = computed(() => {
   const counts = new Map(SUBMISSION_LEVELS.map((level) => [level.level, 0]))
@@ -4045,12 +4050,25 @@ const contributorLevelStats = computed(() => {
   }))
 })
 
-const selectedContributorLevel = computed(() =>
-  SUBMISSION_LEVELS.find((level) => level.level === filterContributorLevel.value)
-)
+const contributorLevelSelectionSummary = computed(() => {
+  if (selectedContributorLevels.value.length === 0) return '全部投稿等級'
+  if (selectedContributorLevels.value.length === 1) {
+    return `已選 Lv.${selectedContributorLevels.value[0]}`
+  }
+  return `已選 ${selectedContributorLevels.value.length} 個等級`
+})
 
-const setContributorLevelFilter = (level) => {
-  filterContributorLevel.value = level
+const isContributorLevelSelected = (level) => selectedContributorLevels.value.includes(level)
+
+const toggleContributorLevel = (level) => {
+  selectedContributorLevels.value = isContributorLevelSelected(level)
+    ? selectedContributorLevels.value.filter((selectedLevel) => selectedLevel !== level)
+    : [...selectedContributorLevels.value, level].sort((left, right) => left - right)
+  userFirst.value = 0
+}
+
+const clearContributorLevelFilter = () => {
+  selectedContributorLevels.value = []
   userFirst.value = 0
 }
 
@@ -4477,9 +4495,9 @@ const filteredUsers = computed(() => {
     filtered = filtered.filter((user) => user.is_admin === filterUserType.value)
   }
 
-  if (filterContributorLevel.value !== null) {
-    filtered = filtered.filter(
-      (user) => user.contributorLevel.level === filterContributorLevel.value
+  if (selectedContributorLevels.value.length > 0) {
+    filtered = filtered.filter((user) =>
+      selectedContributorLevels.value.includes(user.contributorLevel.level)
     )
   }
 
@@ -4491,6 +4509,17 @@ const sortRecords = (records, sortMeta) => {
 
   return [...records].sort((left, right) => {
     for (const { field, order } of sortMeta) {
+      if (field === 'contributor_level') {
+        const leftLevel = Number.isInteger(left.contributor_level) ? left.contributor_level : null
+        const rightLevel = Number.isInteger(right.contributor_level)
+          ? right.contributor_level
+          : null
+        if (leftLevel === rightLevel) continue
+        if (leftLevel === null) return 1
+        if (rightLevel === null) return -1
+        return (leftLevel - rightLevel) * order
+      }
+
       const leftValue = left[field]
       const rightValue = right[field]
       if (leftValue === rightValue) continue
@@ -4502,6 +4531,9 @@ const sortRecords = (records, sortMeta) => {
         sensitivity: 'base',
       })
       if (comparison !== 0) return comparison * order
+    }
+    if (sortMeta.some(({ field }) => field === 'contributor_level')) {
+      return left.name.localeCompare(right.name, 'zh-Hant', { sensitivity: 'base' })
     }
     return 0
   })
@@ -4578,7 +4610,7 @@ const clampPaginatorFirst = (firstRef, rowsRef, totalRecords) => {
 watch([searchQuery, filterCategory], () => {
   courseFirst.value = 0
 })
-watch([userSearchQuery, filterUserType, filterContributorLevel], () => {
+watch([userSearchQuery, filterUserType, selectedContributorLevels], () => {
   userFirst.value = 0
 })
 watch([notificationSearchQuery, notificationSeverityFilter], () => {
@@ -4644,10 +4676,14 @@ const loadUsers = async () => {
   usersLoading.value = true
   try {
     const response = await getUsers()
-    users.value = response.data.map((user) => ({
-      ...user,
-      contributorLevel: resolveSubmissionLevel(user.contributor_experience),
-    }))
+    users.value = response.data.map((user) => {
+      const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
+      return {
+        ...user,
+        contributorLevel,
+        contributor_level: contributorLevel.level,
+      }
+    })
   } catch (error) {
     console.error('載入使用者失敗:', error)
     if (isUnauthorizedError(error)) {
@@ -10024,6 +10060,8 @@ onBeforeUnmount(() => {
 .admin-toolbar--users :deep(.p-inputtext::placeholder),
 .admin-toolbar--users :deep(.p-select),
 .admin-toolbar--users :deep(.p-select-label),
+.admin-toolbar--users :deep(.p-multiselect),
+.admin-toolbar--users :deep(.p-multiselect-label),
 .user-management-table :deep(.p-datatable-thead > tr > th),
 .user-management-table :deep(.p-datatable-tbody > tr > td),
 .user-management-table :deep(.p-paginator),
@@ -10035,6 +10073,17 @@ onBeforeUnmount(() => {
 .user-online-badge {
   font-size: var(--app-font-size-sm) !important;
   line-height: 1.35;
+}
+
+.admin-toolbar--users :deep(.p-multiselect) {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin-toolbar--users :deep(.p-multiselect-label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-management-table .mobile-primary-text,

@@ -32,7 +32,7 @@
         class="message p-2.5"
         :class="{ 'is-pinned': msg.is_pinned }"
       >
-        <div class="flex align-items-center justify-content-between gap-3">
+        <div class="discussion-message-header">
           <div class="discussion-author flex align-items-center gap-2 min-w-0">
             <Tag v-if="msg.is_pinned" value="置頂" severity="warning" class="discussion-pin-tag" />
             <div class="discussion-author-name text-sm font-semibold">{{ msg.user_name }}</div>
@@ -44,7 +44,7 @@
               show-title
             />
           </div>
-          <div class="flex align-items-center gap-2">
+          <div class="discussion-message-actions">
             <div class="text-xs" style="color: var(--text-secondary)">
               {{ formatTime(msg.created_at) }}
             </div>
@@ -703,12 +703,35 @@ function handleDesktopDefaultOpenChange() {
 }
 
 .discussion-author {
+  flex: 1 1 12rem;
   flex-wrap: wrap;
 }
 
 .discussion-author-name {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.discussion-message-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  flex-wrap: wrap;
+}
+
+.discussion-message-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.discussion-author :deep(.contributor-level__title) {
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .discussion-setting-option {

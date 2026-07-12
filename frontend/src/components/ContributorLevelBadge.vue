@@ -116,15 +116,13 @@ const accessibleLabel = computed(() =>
 }
 
 .contributor-level__title {
-  padding: 0.16rem 0.48rem 0.16rem 0.42rem;
-  border-left: 2px solid var(--level-badge-bg);
-  background: color-mix(in srgb, var(--level-badge-bg) 12%, var(--bg-secondary));
-  clip-path: polygon(0 0, calc(100% - 0.35rem) 0, 100% 50%, calc(100% - 0.35rem) 100%, 0 100%);
   min-width: 0;
   color: var(--text-color);
   font-size: 1rem;
   font-weight: 700;
+  line-height: 1.25;
   overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .contributor-level--compact {
@@ -139,7 +137,6 @@ const accessibleLabel = computed(() =>
 }
 
 .contributor-level--compact .contributor-level__title {
-  padding-block: 0.08rem;
   font-size: 0.72rem;
 }
 
