@@ -408,12 +408,9 @@
               class="w-full flex justify-content-center my-4"
             />
             <div v-else class="submission-status-list">
-              <section class="submission-summary" aria-labelledby="submission-summary-title">
+              <section class="submission-summary" aria-label="投稿統計">
                 <div class="submission-summary-header">
-                  <div>
-                    <h3 id="submission-summary-title">投稿統計</h3>
-                    <strong>共 {{ submissionSummary.total }} 筆投稿</strong>
-                  </div>
+                  <strong>共 {{ submissionSummary.total }} 筆投稿</strong>
                   <span>不含已刪除</span>
                 </div>
                 <div
@@ -506,6 +503,16 @@
                       class="soft-badge soft-badge--info submission-meta-chip my-submission-meta-chip"
                     >
                       <i class="pi pi-user"></i>{{ item.professor }}
+                    </span>
+                  </div>
+                  <div class="submission-time-meta">
+                    <span>
+                      <i class="pi pi-clock" aria-hidden="true"></i>
+                      投稿時間：{{ formatSubmissionDateTime(item.created_at) }}
+                    </span>
+                    <span>
+                      <i class="pi pi-check-circle" aria-hidden="true"></i>
+                      審核時間：{{ formatSubmissionReviewedAt(item.reviewed_at) }}
                     </span>
                   </div>
                   <div v-if="item.requested_category_name" class="submission-status-note">
@@ -1208,6 +1215,27 @@ function getArchiveSubmissionKindClass(item) {
 function formatMySubmissionId(item) {
   const id = item?.submission_id ?? item?.submissionId ?? item?.id ?? item?.source_submission_id
   return id !== null && id !== undefined && id !== '' ? `#${id}` : '—'
+}
+
+function formatSubmissionDateTime(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  const parts = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]))
+  return `${values.year}/${values.month}/${values.day} ${values.hour}:${values.minute}`
+}
+
+function formatSubmissionReviewedAt(value) {
+  return value ? formatSubmissionDateTime(value) : '尚未審核'
 }
 
 function isBoilerplateReviewNote(note) {
@@ -3442,14 +3470,10 @@ const mobileMenuItems = computed(() => {
 
 .submission-summary-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
-}
-
-.submission-summary-header h3 {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.7rem;
 }
 
 .submission-summary-header strong {
@@ -3567,6 +3591,23 @@ const mobileMenuItems = computed(() => {
   gap: 0.5rem;
 }
 
+.submission-time-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.submission-time-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 :deep(.my-submission-status-badge.soft-badge) {
   min-height: 1.72rem !important;
   padding: 0.22rem 0.62rem !important;
@@ -3635,6 +3676,10 @@ const mobileMenuItems = computed(() => {
   .submission-summary-legend-item {
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+
+  .submission-time-meta {
+    flex-direction: column;
   }
 }
 </style>
