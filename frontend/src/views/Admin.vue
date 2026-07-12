@@ -519,14 +519,14 @@
                       <p>{{ loginDistributionDescription }}</p>
                       <div class="user-insights__range" role="group" aria-label="最近登入統計範圍">
                         <button
-                          v-for="days in LOGIN_RANGE_OPTIONS"
-                          :key="days"
+                          v-for="option in loginRangeOptions"
+                          :key="option"
                           type="button"
-                          :class="{ 'is-active': loginRangeDays === days }"
-                          :aria-pressed="loginRangeDays === days"
-                          @click="loginRangeDays = days"
+                          :class="{ 'is-active': activeLoginRange === option }"
+                          :aria-pressed="activeLoginRange === option"
+                          @click="setActiveLoginRange(option)"
                         >
-                          {{ days }} 日
+                          {{ option }} {{ loginRangeUnit }}
                         </button>
                       </div>
                     </div>
@@ -766,12 +766,9 @@
                   style="width: 19%; min-width: 10rem"
                 >
                   <template #body="{ data }">
-                    <ContributorLevelBadge
-                      :level="data.contributorLevel.level"
-                      :title="data.contributorLevel.name"
-                      size="compact"
-                      show-title
-                    />
+                    <span class="user-table-contributor-level">
+                      Lv. {{ data.contributorLevel.level }}
+                    </span>
                   </template>
                 </Column>
                 <Column header="使用者名稱" sortable style="width: 15%">
@@ -3751,16 +3748,18 @@ const usersLoading = ref(false)
 const userSearchQuery = ref('')
 const filterUserType = ref(null)
 const selectedContributorLevels = ref([])
-const isLevelStatsExpanded = ref(true)
+const isLevelStatsExpanded = ref(false)
 const showContributorLevelSettingsDialog = ref(false)
 const contributorLevelSettingsDraft = ref([])
 const contributorLevelSettingsError = ref('')
 const contributorLevelSettingsSaving = ref(false)
 const userFirst = ref(0)
 const userRows = ref(10)
-const LOGIN_RANGE_OPTIONS = [7, 30, 90]
+const LOGIN_HOUR_RANGE_OPTIONS = [24, 48, 72]
+const LOGIN_DATE_RANGE_OPTIONS = [7, 30, 90]
 const userInsightsView = ref('login-hour')
-const isUserChartsExpanded = ref(true)
+const isUserChartsExpanded = ref(false)
+const loginRangeHours = ref(24)
 const loginRangeDays = ref(30)
 const showUserSubmissionStatsDialog = ref(false)
 const userSubmissionStatsLoading = ref(false)
@@ -4599,9 +4598,26 @@ const userInsightsViewLabel = computed(() => {
 
 const loginDistributionDescription = computed(() =>
   userInsightsView.value === 'login-hour'
-    ? `統計最近 ${loginRangeDays.value} 日範圍內，每位使用者最近登入時間所屬的小時。`
+    ? `統計最近 ${loginRangeHours.value} 小時範圍內，每位使用者最近登入時間所屬的小時。`
     : '依每位使用者目前保存的最近登入日期統計，每位使用者最多計入一次。'
 )
+
+const loginRangeOptions = computed(() =>
+  userInsightsView.value === 'login-hour' ? LOGIN_HOUR_RANGE_OPTIONS : LOGIN_DATE_RANGE_OPTIONS
+)
+const activeLoginRange = computed(() =>
+  userInsightsView.value === 'login-hour' ? loginRangeHours.value : loginRangeDays.value
+)
+const loginRangeUnit = computed(() => (userInsightsView.value === 'login-hour' ? '小時' : '日'))
+const setActiveLoginRange = (value) => {
+  if (userInsightsView.value === 'login-hour') loginRangeHours.value = value
+  else loginRangeDays.value = value
+}
+
+watch(userInsightsView, (mode) => {
+  if (mode === 'login-hour') loginRangeHours.value = 24
+  if (mode === 'login-date') loginRangeDays.value = 30
+})
 
 const getLocalDateKey = (date) => {
   const year = date.getFullYear()
@@ -4611,34 +4627,45 @@ const getLocalDateKey = (date) => {
 }
 
 const loginDateStats = computed(() => {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  start.setDate(start.getDate() - loginRangeDays.value + 1)
-  const end = new Date()
-  end.setHours(24, 0, 0, 0)
+  const dateStart = new Date()
+  dateStart.setHours(0, 0, 0, 0)
+  dateStart.setDate(dateStart.getDate() - loginRangeDays.value + 1)
+  const dateEnd = new Date()
+  dateEnd.setHours(24, 0, 0, 0)
+
+  const hourEnd = new Date()
+  const hourStart = new Date(hourEnd.getTime() - loginRangeHours.value * 60 * 60 * 1000)
 
   const dateCounts = new Map()
-  const hourCounts = Array.from({ length: 24 }, () => 0)
+  const hourCounts = Array.from({ length: loginRangeHours.value }, () => 0)
   let never = 0
-  let outOfRange = 0
+  let dateOutOfRange = 0
+  let hourOutOfRange = 0
   users.value.forEach((user) => {
     if (!user.last_login) {
       never += 1
       return
     }
     const date = new Date(user.last_login)
-    if (Number.isNaN(date.getTime()) || date < start || date >= end) {
-      outOfRange += 1
+    if (Number.isNaN(date.getTime())) {
+      dateOutOfRange += 1
+      hourOutOfRange += 1
       return
     }
-    const key = getLocalDateKey(date)
-    dateCounts.set(key, (dateCounts.get(key) || 0) + 1)
-    hourCounts[date.getHours()] += 1
+    if (date >= dateStart && date < dateEnd) {
+      const key = getLocalDateKey(date)
+      dateCounts.set(key, (dateCounts.get(key) || 0) + 1)
+    } else dateOutOfRange += 1
+
+    if (date >= hourStart && date < hourEnd) {
+      const hourIndex = Math.floor((date.getTime() - hourStart.getTime()) / (60 * 60 * 1000))
+      hourCounts[hourIndex] += 1
+    } else hourOutOfRange += 1
   })
 
   const dateBuckets = Array.from({ length: loginRangeDays.value }, (_, index) => {
-    const date = new Date(start)
-    date.setDate(start.getDate() + index)
+    const date = new Date(dateStart)
+    date.setDate(dateStart.getDate() + index)
     const key = getLocalDateKey(date)
     return {
       key,
@@ -4654,17 +4681,32 @@ const loginDateStats = computed(() => {
       }).format(date),
     }
   })
-  const hourBuckets = hourCounts.map((count, hour) => ({
-    key: `hour-${hour}`,
-    count,
-    label: `${String(hour).padStart(2, '0')} 時`,
-    fullLabel: `${String(hour).padStart(2, '0')}:00–${String(hour).padStart(2, '0')}:59`,
-  }))
-  return { dateBuckets, hourBuckets, never, outOfRange }
+  const hourBuckets = hourCounts.map((count, index) => {
+    const start = new Date(hourStart.getTime() + index * 60 * 60 * 1000)
+    const end = new Date(start.getTime() + 60 * 60 * 1000)
+    return {
+      key: start.toISOString(),
+      count,
+      label: `${String(start.getHours()).padStart(2, '0')} 時`,
+      fullLabel: `${new Intl.DateTimeFormat('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(start)} ${String(start.getHours()).padStart(2, '0')}:${String(
+        start.getMinutes()
+      ).padStart(2, '0')}–${String(end.getHours()).padStart(2, '0')}:${String(
+        end.getMinutes()
+      ).padStart(2, '0')}`,
+    }
+  })
+  return { dateBuckets, hourBuckets, never, dateOutOfRange, hourOutOfRange }
 })
 
 const shouldShowLoginChartLabel = (index, total, mode) => {
-  if (mode === 'login-hour') return index % 3 === 0 || index === total - 1
+  if (mode === 'login-hour') {
+    const interval = total <= 24 ? 3 : total <= 48 ? 6 : 9
+    return index % interval === 0 || index === total - 1
+  }
   if (total <= 7) return true
   const interval = total <= 30 ? 5 : 15
   return index % interval === 0 || index === total - 1
@@ -4694,15 +4736,18 @@ const loginChartData = computed(() => {
     buckets,
     ariaLabel:
       mode === 'login-hour'
-        ? `最近 ${loginRangeDays.value} 日的最近登入時間分布`
+        ? `最近 ${loginRangeHours.value} 小時的最近登入時間分布`
         : `最近 ${loginRangeDays.value} 日的最近登入日期分布`,
   }
 })
 
 const loginDateSummary = computed(() => ({
-  inRange: loginDateStats.value.dateBuckets.reduce((sum, bucket) => sum + bucket.count, 0),
+  inRange: loginChartData.value.buckets.reduce((sum, bucket) => sum + bucket.count, 0),
   never: loginDateStats.value.never,
-  outOfRange: loginDateStats.value.outOfRange,
+  outOfRange:
+    userInsightsView.value === 'login-hour'
+      ? loginDateStats.value.hourOutOfRange
+      : loginDateStats.value.dateOutOfRange,
 }))
 
 const selectedUserContributorLevel = computed(() =>
@@ -7438,7 +7483,7 @@ onBeforeUnmount(() => {
 .contributor-level-insights__grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 0.3rem;
   min-width: 0;
 }
 
@@ -7495,16 +7540,15 @@ onBeforeUnmount(() => {
 }
 
 .contributor-level-stat {
-  display: grid;
+  display: inline-flex;
   flex: 0 0 auto;
-  grid-template-columns: auto minmax(0, 1fr);
-  width: auto;
+  width: max-content;
   max-width: 100%;
-  min-width: 10rem;
+  min-width: 0;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 2.65rem;
-  padding: 0.38rem 0.55rem;
+  gap: 0.25rem;
+  min-height: 2.35rem;
+  padding: 0.28rem 0.32rem;
   border: 1px solid var(--border-color);
   border-radius: 7px;
   background: var(--bg-primary);
@@ -7533,10 +7577,22 @@ onBeforeUnmount(() => {
 .contributor-level-stat__name {
   min-width: 0;
   overflow: hidden;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 650;
   line-height: 1.2;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contributor-level-stat :deep(.contributor-level--compact .contributor-level__badge) {
+  min-width: 2.9rem;
+  padding: 0.12rem 0.34rem;
+  font-size: 0.61rem;
+}
+
+.user-table-contributor-level {
+  color: var(--text-color);
+  font-size: 0.86rem;
   white-space: nowrap;
 }
 
@@ -11883,7 +11939,9 @@ onBeforeUnmount(() => {
 
   .contributor-level-stat {
     max-width: 100%;
-    min-width: 9rem;
+    min-width: 8.5rem;
+    min-height: 2.75rem;
+    padding: 0.35rem 0.5rem;
   }
 
   .contributor-level-settings-row {
