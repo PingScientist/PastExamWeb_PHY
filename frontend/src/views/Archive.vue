@@ -416,15 +416,18 @@
                   <span>{{ submissionLevel.currentExp }} EXP</span>
                 </div>
                 <div
-                  class="submission-level-bar"
+                  class="submission-level-progress-track"
                   role="progressbar"
                   :aria-label="submissionLevelAriaLabel"
                   :aria-valuemin="0"
-                  :aria-valuemax="submissionLevel.progressRange"
-                  :aria-valuenow="submissionLevel.progressInLevel"
+                  :aria-valuemax="100"
+                  :aria-valuenow="submissionLevel.progressPercent"
                   :title="submissionLevelAriaLabel"
                 >
-                  <span :style="{ width: `${submissionLevel.progressPercent}%` }"></span>
+                  <span
+                    class="submission-level-progress-fill"
+                    :style="{ width: `${submissionLevel.progressPercent}%` }"
+                  ></span>
                 </div>
                 <div class="submission-level-meta">
                   <span v-if="submissionLevel.isMaxLevel">已達最高等級</span>
@@ -892,7 +895,7 @@ const submissionLevelAriaLabel = computed(() => {
   if (level.isMaxLevel) {
     return `投稿等級 Lv. ${level.level} ${level.name}，目前 ${level.currentExp} EXP，已達最高等級`
   }
-  return `投稿等級 Lv. ${level.level} ${level.name}，本級進度 ${level.progressInLevel} / ${level.progressRange} EXP，距離下一級還差 ${level.expToNextLevel} EXP`
+  return `投稿等級 Lv. ${level.level} ${level.name}，經驗進度 ${level.progressPercent}%，本級 ${level.progressInLevel} / ${level.progressRange} EXP，距離下一級還差 ${level.expToNextLevel} EXP`
 })
 const submissionStatusConfig = [
   { key: 'pending', color: '#d29922' },
@@ -3577,19 +3580,20 @@ const mobileMenuItems = computed(() => {
   font-size: 0.8rem;
 }
 
-.submission-level-bar {
+.submission-level-progress-track {
+  position: relative;
   width: 100%;
   height: 0.5rem;
   overflow: hidden;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--border-color) 75%, transparent);
+  background: color-mix(in srgb, var(--border-color) 82%, var(--bg-primary) 18%);
 }
 
-.submission-level-bar span {
+.submission-level-progress-fill {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--primary-color);
+  background: var(--p-primary-color, #2563eb);
 }
 
 .submission-level-meta {
