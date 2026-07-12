@@ -10534,4 +10534,18 @@ onBeforeUnmount(() => {
     display: none;
   }
 }
+
+@media (max-width: 1399px) {
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button),
+  .admin-mobile-list--courses .course-card-actions :deep(.p-button),
+  .admin-mobile-list--notifications .announcement-mobile-actions :deep(.p-button),
+  .admin-mobile-list--users .user-management-card-actions :deep(.p-button),
+  .review-center :deep(.review-card-actions .p-button),
+  .trash-center .trash-mobile-card-actions :deep(.p-button) {
+    min-height: calc(2rem * var(--app-font-scale));
+    padding-block: var(--p-button-sm-padding-y, 0.375rem);
+    line-height: 1.25;
+    align-items: center;
+  }
+}
 </style>
