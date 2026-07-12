@@ -70,7 +70,7 @@
                         <span class="category-mobile-header">
                           <span class="category-mobile-title">{{ data.name }}</span>
                           <span class="category-key-mobile">
-                            <span class="mobile-field-label">系統識別碼</span>
+                            <span class="mobile-field-label">Key</span>
                             <span class="mobile-field-value">{{ data.key }}</span>
                           </span>
                         </span>
@@ -137,7 +137,7 @@
                   <article
                     v-for="category in courseCategories"
                     :key="category.id"
-                    class="admin-mobile-card admin-category-card"
+                    class="admin-mobile-card admin-category-card category-responsive-card"
                   >
                     <section class="category-card-topline">
                       <span class="category-card-order">{{
@@ -165,21 +165,40 @@
                         :disabled="!canMoveCategory(category, 1) || categoryOrderLoading"
                         @click="moveCategory(category, 1)"
                       />
+                      <div class="category-card-top-tags--mobile">
+                        <Tag :severity="category.is_active ? 'success' : 'secondary'">
+                          {{ category.is_active ? '啟用中' : '已停用' }}
+                        </Tag>
+                      </div>
                     </section>
-                    <section class="category-card-main">
-                      <strong class="category-card-title">{{ category.name }}</strong>
+                    <section class="category-card-main category-card-main--tablet">
+                      <div class="category-card-title-group">
+                        <strong class="category-card-title">{{ category.name }}</strong>
+                        <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                          {{ category.label || category.name }}
+                        </Tag>
+                      </div>
                       <span class="category-card-key">
-                        <span class="category-card-key-label">系統識別碼</span>
+                        <span class="category-card-key-label">Key</span>
                         <span class="category-card-key-value">{{ category.key }}</span>
                       </span>
                     </section>
-                    <section class="category-card-meta">
-                      <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
-                        {{ category.label || category.name }}
-                      </Tag>
+                    <section class="category-card-meta category-card-meta--tablet">
                       <Tag :severity="category.is_active ? 'success' : 'secondary'">
                         {{ category.is_active ? '啟用中' : '已停用' }}
                       </Tag>
+                    </section>
+                    <section class="category-card-main category-card-main--mobile">
+                      <div class="category-card-title-group">
+                        <strong class="category-card-title">{{ category.name }}</strong>
+                        <Tag severity="secondary" :class="getCategoryBadgeClass(category)">
+                          {{ category.label || category.name }}
+                        </Tag>
+                      </div>
+                      <span class="category-card-key">
+                        <span class="category-card-key-label">Key</span>
+                        <span class="category-card-key-value">{{ category.key }}</span>
+                      </span>
                     </section>
                     <section
                       class="admin-card-actions admin-mobile-card-actions category-card-actions"
@@ -350,43 +369,58 @@
                 <article
                   v-for="course in paginatedCourses"
                   :key="course.id"
-                  class="admin-mobile-card admin-course-card"
+                  class="admin-mobile-card admin-course-card admin-tablet-card"
                 >
-                  <section class="course-card-topline">
-                    <span class="course-card-order">{{ getCoursePosition(course) + 1 }}</span>
-                    <Button
-                      icon="pi pi-arrow-up"
-                      severity="secondary"
-                      text
-                      rounded
-                      size="small"
-                      aria-label="上移"
-                      title="上移"
-                      :disabled="!canMoveCourse(course, -1) || courseOrderLoading"
-                      @click="moveCourse(course, -1)"
-                    />
-                    <Button
-                      icon="pi pi-arrow-down"
-                      severity="secondary"
-                      text
-                      rounded
-                      size="small"
-                      aria-label="下移"
-                      title="下移"
-                      :disabled="!canMoveCourse(course, 1) || courseOrderLoading"
-                      @click="moveCourse(course, 1)"
-                    />
-                    <Tag
-                      severity="secondary"
-                      :class="['course-card-category', getCategoryBadgeClass(course.category)]"
-                    >
-                      {{ getCategoryName(course.category) }}
-                    </Tag>
+                  <header class="admin-tablet-card-header">
+                    <div class="admin-tablet-title-group">
+                      <strong class="course-card-title admin-tablet-card-title">{{
+                        course.name
+                      }}</strong>
+                      <div class="admin-tablet-tag-group">
+                        <Tag
+                          severity="secondary"
+                          :class="['course-card-category', getCategoryBadgeClass(course.category)]"
+                        >
+                          {{ getCategoryName(course.category) }}
+                        </Tag>
+                      </div>
+                    </div>
+                  </header>
+                  <section class="admin-tablet-metadata">
+                    <div class="admin-tablet-metadata-item course-card-order-item">
+                      <span class="admin-tablet-metadata-label">順序</span>
+                      <span class="course-card-order admin-tablet-metadata-value">{{
+                        getCoursePosition(course) + 1
+                      }}</span>
+                      <div class="course-card-order-actions">
+                        <Button
+                          icon="pi pi-arrow-up"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          aria-label="上移"
+                          title="上移"
+                          :disabled="!canMoveCourse(course, -1) || courseOrderLoading"
+                          @click="moveCourse(course, -1)"
+                        />
+                        <Button
+                          icon="pi pi-arrow-down"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          aria-label="下移"
+                          title="下移"
+                          :disabled="!canMoveCourse(course, 1) || courseOrderLoading"
+                          @click="moveCourse(course, 1)"
+                        />
+                      </div>
+                    </div>
                   </section>
-                  <section class="course-card-primary">
-                    <strong class="course-card-title">{{ course.name }}</strong>
-                  </section>
-                  <section class="admin-card-actions admin-mobile-card-actions course-card-actions">
+                  <section
+                    class="admin-card-actions admin-mobile-card-actions course-card-actions admin-tablet-actions"
+                  >
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -585,29 +619,46 @@
                 <article
                   v-for="user in paginatedUsers"
                   :key="user.id"
-                  class="admin-mobile-card admin-user-card"
+                  class="admin-mobile-card admin-user-card admin-tablet-card"
                 >
-                  <section class="admin-card-primary">
-                    <strong class="admin-card-title">{{ user.name }}</strong>
-                    <span class="admin-card-email">{{ user.email }}</span>
-                  </section>
-                  <section class="admin-card-meta">
-                    <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
-                      {{ user.is_admin ? '是' : '否' }}
-                    </Tag>
-                    <Tag :severity="user.is_local ? 'info' : 'warning'" class="text-sm">
-                      {{ user.is_local ? '本地帳號' : '外部帳號' }}
-                    </Tag>
-                    <span class="admin-card-meta-text">
-                      {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
-                    </span>
+                  <header class="admin-tablet-card-header">
+                    <div class="admin-tablet-title-group user-card-title-group">
+                      <strong class="admin-card-title admin-tablet-card-title">{{
+                        user.name
+                      }}</strong>
+                      <div class="admin-tablet-tag-group user-role-tag-group">
+                        <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
+                          {{ user.is_admin ? '管理員' : '一般使用者' }}
+                        </Tag>
+                      </div>
+                    </div>
                     <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
                       <i class="pi pi-circle-fill"></i>
                       <span>{{ getOnlineStatusLabel(user) }}</span>
                     </span>
+                  </header>
+                  <section class="admin-tablet-metadata">
+                    <div class="admin-tablet-metadata-item admin-tablet-metadata-item--wide">
+                      <span class="admin-tablet-metadata-label">Email</span>
+                      <span class="admin-card-email admin-tablet-metadata-value">{{
+                        user.email
+                      }}</span>
+                    </div>
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">帳號類型</span>
+                      <span class="admin-tablet-metadata-value">{{
+                        user.is_local ? '本地帳號' : '外部帳號'
+                      }}</span>
+                    </div>
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">最後登入</span>
+                      <span class="admin-tablet-metadata-value">
+                        {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
+                      </span>
+                    </div>
                   </section>
                   <section
-                    class="admin-card-actions admin-mobile-card-actions user-management-card-actions"
+                    class="admin-card-actions admin-mobile-card-actions user-management-card-actions admin-tablet-actions"
                   >
                     <Button
                       icon="pi pi-pencil"
@@ -817,31 +868,42 @@
                 <article
                   v-for="notification in paginatedNotifications"
                   :key="notification.id"
-                  class="admin-mobile-card admin-announcement-card"
+                  class="admin-mobile-card admin-announcement-card admin-tablet-card"
                 >
-                  <section class="admin-card-primary">
-                    <strong class="admin-card-title">{{ notification.title }}</strong>
-                  </section>
-                  <section class="admin-card-meta">
-                    <Tag :severity="getNotificationSeverity(notification.severity)">
-                      {{ getNotificationSeverityLabel(notification.severity) }}
-                    </Tag>
-                    <Tag :severity="notification.is_active ? 'success' : 'secondary'">
-                      {{ notification.is_active ? '啟用中' : '已停用' }}
-                    </Tag>
-                    <Tag
-                      :severity="isNotificationEffective(notification) ? 'success' : 'secondary'"
-                    >
-                      {{ isNotificationEffective(notification) ? '生效中' : '未生效' }}
-                    </Tag>
-                    <span class="admin-card-meta-text">
-                      {{
-                        formatNotificationDate(notification.updated_at || notification.created_at)
-                      }}
-                    </span>
+                  <header class="admin-tablet-card-header">
+                    <div class="admin-tablet-title-group announcement-card-title-group">
+                      <strong class="admin-card-title admin-tablet-card-title">{{
+                        notification.title
+                      }}</strong>
+                      <div class="admin-tablet-tag-group announcement-type-tag-group">
+                        <Tag :severity="getNotificationSeverity(notification.severity)">
+                          {{ getNotificationSeverityLabel(notification.severity) }}
+                        </Tag>
+                      </div>
+                    </div>
+                    <div class="admin-tablet-status-group">
+                      <Tag :severity="notification.is_active ? 'success' : 'secondary'">
+                        {{ notification.is_active ? '啟用中' : '已停用' }}
+                      </Tag>
+                      <Tag
+                        :severity="isNotificationEffective(notification) ? 'success' : 'secondary'"
+                      >
+                        {{ isNotificationEffective(notification) ? '生效中' : '未生效' }}
+                      </Tag>
+                    </div>
+                  </header>
+                  <section class="admin-tablet-metadata">
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">最近更新</span>
+                      <span class="admin-tablet-metadata-value">
+                        {{
+                          formatNotificationDate(notification.updated_at || notification.created_at)
+                        }}
+                      </span>
+                    </div>
                   </section>
                   <section
-                    class="admin-card-actions admin-mobile-card-actions announcement-mobile-actions"
+                    class="admin-card-actions admin-mobile-card-actions announcement-mobile-actions admin-tablet-actions"
                   >
                     <Button
                       icon="pi pi-pencil"
@@ -8580,7 +8642,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1399px) {
   .review-center {
     padding: 0.75rem !important;
   }
@@ -8737,7 +8799,7 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
     max-width: 42%;
     justify-content: center;
-    white-space: normal;
+    white-space: nowrap;
     text-align: center;
   }
 
@@ -8813,7 +8875,8 @@ onBeforeUnmount(() => {
   :deep(.review-card-chip) {
     width: fit-content;
     max-width: 100%;
-    white-space: normal;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   :deep(.review-row-action-area) {
@@ -8835,11 +8898,11 @@ onBeforeUnmount(() => {
     order: 2;
     display: flex;
     align-items: center;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     width: 100%;
     gap: 0.45rem;
-    overflow-x: auto;
+    overflow-x: visible;
     padding-bottom: 0.05rem;
   }
 
@@ -8862,6 +8925,21 @@ onBeforeUnmount(() => {
   :deep(.review-card-actions .p-button .pi) {
     margin-inline-end: 0.35rem;
     line-height: 1;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  :deep(.review-mobile-info-grid) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem 1rem;
+  }
+
+  :deep(.review-request-table .p-datatable-tbody > tr) {
+    padding: 1.1rem;
+  }
+
+  :deep(.review-card-actions) {
+    justify-content: flex-end;
   }
 }
 
@@ -8958,6 +9036,34 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 641px) and (max-width: 760px) {
+  .admin-mobile-list--users .user-card-title-group,
+  .admin-mobile-list--notifications .announcement-card-title-group {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--users .user-card-title-group .admin-tablet-card-title,
+  .admin-mobile-list--notifications .announcement-card-title-group .admin-tablet-card-title {
+    flex: 0 1 auto;
+    width: fit-content;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--users .user-role-tag-group,
+  .admin-mobile-list--notifications .announcement-type-tag-group {
+    flex: 0 0 auto;
+  }
+
+  .admin-mobile-list--users .user-role-tag-group :deep(.p-tag),
+  .admin-mobile-list--notifications .announcement-type-tag-group :deep(.p-tag) {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
   .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
       .admin-toolbar--section
     ) {
@@ -9095,7 +9201,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1399px) {
   :deep(.trash-table) {
     display: none !important;
   }
@@ -9171,9 +9277,10 @@ onBeforeUnmount(() => {
   }
 
   :deep(.trash-mobile-card-badges .p-tag) {
+    flex-shrink: 0;
     justify-content: center;
     text-align: center;
-    white-space: normal;
+    white-space: nowrap;
   }
 
   :deep(.trash-mobile-type-badge),
@@ -9262,13 +9369,13 @@ onBeforeUnmount(() => {
 
   .trash-mobile-card-actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 0.45rem;
     width: 100%;
     min-width: 0;
-    overflow-x: auto;
+    overflow-x: visible;
     padding-bottom: 0.05rem;
   }
 
@@ -9355,6 +9462,25 @@ onBeforeUnmount(() => {
     border-color: rgba(248, 113, 113, 0.64);
     background: rgba(248, 113, 113, 0.1);
     color: #fecaca;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  .trash-mobile-card {
+    padding: 1rem;
+  }
+
+  .trash-mobile-info-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+  }
+
+  .trash-mobile-info-item--wide {
+    grid-column: span 2;
+  }
+
+  .trash-mobile-card-actions {
+    justify-content: flex-end;
   }
 }
 
@@ -9718,5 +9844,736 @@ onBeforeUnmount(() => {
 .trash-center :deep(.p-button-icon),
 .trash-mobile-card-actions :deep(.p-button-label) {
   font-size: inherit !important;
+}
+
+@media (min-width: 641px) and (max-width: 1399px) {
+  :deep(.review-request-table .p-datatable-tbody > tr) {
+    gap: 0.6rem;
+    padding: 0.95rem;
+  }
+
+  :deep(.review-mobile-card-title-block) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+  }
+
+  :deep(.review-mobile-card-course-name) {
+    flex: 0 1 auto;
+    max-width: 100%;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  :deep(.review-mobile-type-badges) {
+    flex: 0 0 auto;
+  }
+
+  :deep(.review-mobile-summary) {
+    margin-top: 0.15rem;
+  }
+
+  :deep(.review-mobile-info-grid) {
+    gap: 0.4rem 0.85rem;
+    margin-top: 0.4rem;
+  }
+
+  :deep(.review-mobile-info-item),
+  .trash-mobile-info-item {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
+    min-width: 0;
+  }
+
+  :deep(.review-mobile-info-label),
+  .trash-mobile-info-label {
+    display: inline;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  :deep(.review-mobile-info-value),
+  .trash-mobile-info-value {
+    display: inline;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-top: 0;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  :deep(.review-card-action-note) {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .trash-mobile-card {
+    gap: 0.55rem;
+    padding: 0.9rem;
+  }
+
+  .trash-mobile-info-grid {
+    gap: 0.4rem 0.85rem;
+  }
+
+  .trash-mobile-dependencies {
+    align-items: flex-start;
+  }
+
+  :deep(.trash-mobile-dependencies .trash-dependency-chip) {
+    width: fit-content;
+    max-width: 100%;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1399px) {
+  :deep(.admin-desktop-data-table.course-management-table),
+  :deep(.admin-desktop-data-table.user-management-table),
+  :deep(.admin-desktop-data-table.notification-management-table) {
+    display: none;
+  }
+
+  .admin-mobile-list--courses,
+  .admin-mobile-list--users,
+  .admin-mobile-list--notifications {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card,
+  .admin-mobile-list--users .admin-tablet-card,
+  .admin-mobile-list--notifications .admin-tablet-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.95rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  .admin-tablet-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-tablet-title-group {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-card-title {
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-tablet-tag-group,
+  .admin-tablet-status-group {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .admin-tablet-status-group {
+    justify-content: flex-end;
+    max-width: 46%;
+  }
+
+  .admin-tablet-tag-group :deep(.p-tag),
+  .admin-tablet-status-group :deep(.p-tag),
+  .admin-mobile-list--users .user-online-badge {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .admin-tablet-metadata {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem 0.85rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-item {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-label {
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  .admin-tablet-metadata-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text-primary);
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .admin-tablet-metadata .admin-card-email {
+    display: inline;
+    width: auto;
+    margin-top: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .course-card-order-item {
+    align-items: center;
+  }
+
+  .course-card-order-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .course-card-order-actions :deep(.p-button) {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .admin-mobile-paginator {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.55rem 0.25rem;
+    overflow: hidden;
+  }
+
+  .admin-tablet-actions,
+  .admin-mobile-list--users .admin-tablet-actions,
+  .admin-mobile-list--courses .admin-tablet-actions,
+  .admin-mobile-list--notifications .admin-tablet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    overflow-x: visible;
+  }
+
+  .admin-tablet-actions :deep(.p-button),
+  .admin-mobile-list--users .admin-tablet-actions :deep(.p-button),
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button),
+  .admin-mobile-list--notifications .admin-tablet-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5.25rem;
+    white-space: nowrap;
+  }
+
+  :global(.dark) .admin-mobile-list--courses .admin-tablet-card,
+  :global(.dark) .admin-mobile-list--users .admin-tablet-card,
+  :global(.dark) .admin-mobile-list--notifications .admin-tablet-card {
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-secondary) 84%, #000 16%);
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1399px) {
+  .admin-tablet-metadata {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-tablet-metadata-item--wide {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-tablet-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-title-group {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-status-group,
+  .admin-tablet-tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .admin-tablet-metadata {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .admin-tablet-metadata-value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.admin-mobile-list--categories .category-card-main--mobile,
+.category-card-top-tags--mobile {
+  display: none;
+}
+
+@media (max-width: 1399px) {
+  :deep(.admin-desktop-data-table.course-management-table),
+  :deep(.admin-desktop-data-table.category-management-table) {
+    display: none;
+  }
+
+  .admin-mobile-list--courses,
+  .admin-mobile-list--categories {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--courses .admin-course-card,
+  .admin-mobile-list--categories .category-responsive-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  }
+
+  .admin-mobile-list--categories .category-card-topline,
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    width: 6.75rem;
+    min-width: 6.75rem;
+  }
+
+  .admin-mobile-list--categories .category-card-topline,
+  .admin-mobile-list--courses .course-card-order-item {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+  }
+
+  .admin-mobile-list--categories .category-card-order,
+  .admin-mobile-list--categories .category-card-key-label {
+    font-weight: 700;
+  }
+
+  .admin-mobile-list--categories .category-card-key-value {
+    font-weight: 400;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
+    display: none;
+  }
+
+  .admin-mobile-list--categories .category-card-title-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-title-group :deep(.p-tag),
+  .admin-mobile-list--categories .category-card-meta :deep(.p-tag),
+  .admin-mobile-list--courses .admin-tablet-tag-group :deep(.p-tag) {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--categories .category-card-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-key {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.1rem 0.35rem;
+    max-width: 100%;
+    padding: 0.28rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
+  }
+
+  :global(.dark) .admin-mobile-list--courses .admin-course-card,
+  :global(.dark) .admin-mobile-list--categories .category-responsive-card {
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-secondary) 84%, #000 16%);
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-mobile-list--categories .category-responsive-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 1rem;
+  }
+
+  .admin-mobile-list--categories .category-card-main--tablet,
+  .admin-mobile-list--categories .category-card-meta--tablet {
+    display: none;
+  }
+
+  .admin-mobile-list--categories .category-card-main--mobile {
+    display: flex;
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-top-tags--mobile {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-main--mobile {
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .admin-mobile-list--categories .category-card-key {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.1rem;
+    max-width: 48%;
+    padding: 0.32rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color) 12%);
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    justify-content: center;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button-label) {
+    display: inline-flex;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.pi) {
+    margin-inline-end: 0.3rem;
+  }
+
+  .admin-mobile-list--courses .admin-course-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-header,
+  .admin-mobile-list--courses .admin-tablet-title-group {
+    display: contents;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .course-card-order-item .admin-tablet-metadata-label {
+    display: none;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-tag-group {
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-title {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
+    grid-row: 3;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button) {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    justify-content: center;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button-label) {
+    display: inline-flex;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.pi) {
+    margin-inline-end: 0.3rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1399px) {
+  .admin-mobile-list--categories .category-responsive-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.65rem 0.8rem;
+  }
+
+  .admin-mobile-list--categories .category-card-main--mobile,
+  .admin-mobile-list--categories .category-card-top-tags--mobile {
+    display: none;
+  }
+
+  .admin-mobile-list--categories .category-card-meta--tablet {
+    display: flex;
+  }
+
+  .admin-mobile-list--categories .category-card-topline {
+    grid-column: 1;
+    align-self: center;
+    min-width: 6.75rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--categories .category-card-main--tablet {
+    display: grid;
+    grid-column: 2;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'title'
+      'key';
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--categories .category-card-main--tablet .category-card-title-group {
+    grid-area: title;
+  }
+
+  .admin-mobile-list--categories .category-card-main--tablet .category-card-key {
+    grid-area: key;
+    justify-self: start;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--categories .category-card-meta--tablet {
+    grid-column: 3;
+    align-self: center;
+    justify-self: end;
+    width: auto;
+  }
+
+  .admin-mobile-list--categories .category-card-key {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    max-width: 100%;
+    padding: 0.28rem 0.5rem;
+  }
+
+  .admin-mobile-list--categories .category-card-actions {
+    display: flex;
+    grid-column: 4;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5rem;
+    min-height: 2.45rem;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--courses .admin-course-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem 0.8rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-metadata {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    width: 6.75rem;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-card-header {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions {
+    display: flex;
+    grid-column: 3;
+    grid-row: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: auto;
+  }
+
+  .admin-mobile-list--courses .admin-tablet-actions :deep(.p-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 5rem;
+    min-height: 2.45rem;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1399px) {
+  .admin-mobile-list--categories .category-card-main--tablet {
+    grid-template-columns: minmax(0, 1fr) 12rem;
+    grid-template-areas: 'title key';
+    column-gap: 0.75rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  :deep(.admin-desktop-data-table.course-management-table),
+  :deep(.admin-desktop-data-table.category-management-table) {
+    display: block;
+  }
+
+  .admin-mobile-list--courses,
+  .admin-mobile-list--categories {
+    display: none;
+  }
+}
+
+@media (max-width: 1399px) {
+  .admin-mobile-list--categories .category-card-actions :deep(.p-button),
+  .admin-mobile-list--courses .course-card-actions :deep(.p-button),
+  .admin-mobile-list--notifications .announcement-mobile-actions :deep(.p-button),
+  .admin-mobile-list--users .user-management-card-actions :deep(.p-button),
+  .review-center :deep(.review-card-actions .p-button),
+  .trash-center .trash-mobile-card-actions :deep(.p-button) {
+    min-height: calc(2rem * var(--app-font-scale));
+    padding-block: var(--p-button-sm-padding-y, 0.375rem);
+    line-height: 1.25;
+    align-items: center;
+  }
 }
 </style>
