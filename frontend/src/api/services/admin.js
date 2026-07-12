@@ -26,6 +26,10 @@ export const getUsers = () => {
   return api.get('/users/admin/users')
 }
 
+export const getUserSubmissionStats = (userId, config = {}) => {
+  return api.get(`/users/admin/users/${userId}/submission-stats`, config)
+}
+
 export const createUser = (userData) => {
   return api.post('/users/admin/users', userData)
 }

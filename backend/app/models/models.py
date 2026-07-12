@@ -350,6 +350,22 @@ class UserRead(BaseModel):
         from_attributes = True
 
 
+class UserSubmissionStatusCounts(BaseModel):
+    pending: int = 0
+    approved: int = 0
+    rejected: int = 0
+    takedown: int = 0
+    deleted: int = 0
+
+
+class UserSubmissionStatsRead(BaseModel):
+    user_id: int
+    name: str
+    contributor_experience: int = 0
+    total_count: int = 0
+    status_counts: UserSubmissionStatusCounts
+
+
 class UserCreate(BaseModel):
     name: str
     email: str

@@ -22,12 +22,12 @@ export const CONTRIBUTOR_LEVEL_PALETTE = [
   { bg: '#66747b', fg: '#ffffff', border: '#3d474c', accent: '#d8e0e3' },
   { bg: '#285c68', fg: '#ffffff', border: '#173a42', accent: '#b8dce2' },
   { bg: '#23745d', fg: '#ffffff', border: '#12493a', accent: '#afe0cf' },
-  { bg: '#304f68', fg: '#ffffff', border: '#1a3040', accent: '#bfd2df' },
-  { bg: '#1d6c70', fg: '#ffffff', border: '#104447', accent: '#ace0df' },
-  { bg: '#365f8a', fg: '#ffffff', border: '#203a55', accent: '#c3d5e8' },
-  { bg: '#f1eee5', fg: '#263238', border: '#77756f', accent: '#ffffff' },
-  { bg: '#252a2d', fg: '#ffffff', border: '#b9c2c7', accent: '#e3e8ea' },
-  { bg: '#806322', fg: '#ffffff', border: '#493711', accent: '#f6e2a1' },
+  { bg: '#f2f0e8', fg: '#253238', border: '#666d70', accent: '#ffffff' },
+  { bg: '#202427', fg: '#f7faf9', border: '#c6d0d2', accent: '#edf3f2' },
+  { bg: '#174b8f', fg: '#ffffff', border: '#0b2d59', accent: '#b8d6ff' },
+  { bg: '#8d2741', fg: '#ffffff', border: '#541425', accent: '#f4bdca' },
+  { bg: '#9a7420', fg: '#ffffff', border: '#58400d', accent: '#f8e3a3' },
+  { bg: '#674096', fg: '#ffffff', border: '#392257', accent: '#dec7f5' },
 ]
 
 let settingsLoaded = false

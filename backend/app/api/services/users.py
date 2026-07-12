@@ -16,6 +16,8 @@ from app.models.models import (
     UserNicknameUpdate,
     UserRead,
     UserRoles,
+    UserSubmissionStatsRead,
+    UserSubmissionStatusCounts,
     UserUpdate,
 )
 from app.utils.auth import get_current_user, get_password_hash
@@ -110,6 +112,55 @@ async def get_users(
         requester_id: int(experience) for requester_id, experience in experience_result.all()
     }
     return [_to_user_read(user, experience_by_user.get(user.id, 0)) for user in users]
+
+
+@router.get(
+    "/admin/users/{user_id}/submission-stats",
+    response_model=UserSubmissionStatsRead,
+)
+async def get_user_submission_stats(
+    user_id: int,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Return one user's archive submission status totals for administrators."""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+        )
+
+    user_result = await db.execute(
+        select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    )
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    counts_result = await db.execute(
+        select(ArchiveSubmission.status, func.count(ArchiveSubmission.id))
+        .where(ArchiveSubmission.requester_id == user_id)
+        .group_by(ArchiveSubmission.status)
+    )
+    counts = {submission_status.value: 0 for submission_status in SubmissionStatus}
+    for submission_status, count in counts_result.all():
+        status_key = (
+            submission_status.value
+            if isinstance(submission_status, SubmissionStatus)
+            else str(submission_status)
+        )
+        if status_key in counts:
+            counts[status_key] = int(count)
+
+    contributor_experience = counts[SubmissionStatus.APPROVED.value] + counts[
+        SubmissionStatus.TAKEDOWN.value
+    ]
+    return UserSubmissionStatsRead(
+        user_id=user.id,
+        name=user.name,
+        contributor_experience=contributor_experience,
+        total_count=sum(counts.values()),
+        status_counts=UserSubmissionStatusCounts(**counts),
+    )
 
 
 @router.post("/admin/users/{user_id}/reset-password")

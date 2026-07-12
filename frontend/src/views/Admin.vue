@@ -531,6 +531,134 @@
                   </button>
                 </div>
               </section>
+
+              <section class="user-insights" aria-labelledby="user-insights-title">
+                <div class="user-insights__heading">
+                  <div>
+                    <h3 id="user-insights-title">使用者統計圖表</h3>
+                    <p>{{ userInsightsViewLabel }}</p>
+                  </div>
+                  <div class="user-insights__actions">
+                    <div class="user-insights__switch" role="group" aria-label="切換使用者統計圖表">
+                      <button
+                        type="button"
+                        :class="{ 'is-active': userInsightsView === 'login' }"
+                        :aria-pressed="userInsightsView === 'login'"
+                        @click="userInsightsView = 'login'"
+                      >
+                        最近登入日期分布
+                      </button>
+                      <button
+                        type="button"
+                        :class="{ 'is-active': userInsightsView === 'level' }"
+                        :aria-pressed="userInsightsView === 'level'"
+                        @click="userInsightsView = 'level'"
+                      >
+                        投稿等級分布
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="user-insights__toggle"
+                      :aria-expanded="isUserChartsExpanded"
+                      aria-controls="user-insights-content"
+                      :aria-label="
+                        isUserChartsExpanded ? '收合使用者統計圖表' : '展開使用者統計圖表'
+                      "
+                      @click="isUserChartsExpanded = !isUserChartsExpanded"
+                    >
+                      <span>{{ isUserChartsExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="isUserChartsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div v-show="isUserChartsExpanded" id="user-insights-content">
+                  <div v-if="userInsightsView === 'login'" class="user-insights__panel">
+                    <div class="user-insights__panel-header">
+                      <p>依每位使用者目前保存的最近登入時間統計，每位使用者最多計入一次。</p>
+                      <div class="user-insights__range" role="group" aria-label="最近登入統計範圍">
+                        <button
+                          v-for="days in LOGIN_RANGE_OPTIONS"
+                          :key="days"
+                          type="button"
+                          :class="{ 'is-active': loginRangeDays === days }"
+                          :aria-pressed="loginRangeDays === days"
+                          @click="loginRangeDays = days"
+                        >
+                          {{ days }} 日
+                        </button>
+                      </div>
+                    </div>
+                    <div class="user-insights__summary">
+                      <span>範圍內 {{ loginDateSummary.inRange }} 人</span>
+                      <span>從未登入 {{ loginDateSummary.never }} 人</span>
+                      <span>範圍外 {{ loginDateSummary.outOfRange }} 人</span>
+                    </div>
+                    <div
+                      v-if="loginDateDistribution.length"
+                      class="user-login-chart"
+                      role="img"
+                      :aria-label="`最近 ${loginRangeDays} 日的最近登入日期分布`"
+                    >
+                      <div
+                        v-for="bucket in loginDateDistribution"
+                        :key="bucket.key"
+                        class="user-chart-row"
+                        tabindex="0"
+                        :title="`${bucket.label}：${bucket.count} 人`"
+                      >
+                        <span class="user-chart-row__label">{{ bucket.label }}</span>
+                        <div class="user-chart-row__track">
+                          <span
+                            class="user-chart-row__fill user-chart-row__fill--login"
+                            :style="{ width: `${bucket.width}%` }"
+                          ></span>
+                        </div>
+                        <strong>{{ bucket.count }} 人</strong>
+                      </div>
+                    </div>
+                    <div v-else class="user-insights__empty">此範圍內沒有最近登入資料</div>
+                  </div>
+
+                  <div v-else class="user-insights__panel">
+                    <p class="user-insights__description">
+                      依完整使用者集合統計，不受目前搜尋、分頁或等級篩選影響。
+                    </p>
+                    <div class="user-level-chart" aria-label="投稿等級分布">
+                      <div
+                        v-for="stat in contributorLevelDistribution"
+                        :key="`chart-level-${stat.level}`"
+                        class="user-level-chart__row"
+                        :style="{
+                          '--chart-level-color': stat.palette.bg,
+                          '--chart-level-border': stat.palette.border,
+                        }"
+                      >
+                        <ContributorLevelBadge
+                          :level="stat.level"
+                          :title="stat.name"
+                          size="compact"
+                        />
+                        <span class="user-level-chart__name">{{ stat.name }}</span>
+                        <div class="user-level-chart__track">
+                          <span
+                            class="user-level-chart__fill"
+                            :style="{ width: `${stat.percentage}%` }"
+                          ></span>
+                        </div>
+                        <strong>{{ stat.count }} 人</strong>
+                        <span>{{ stat.percentage.toFixed(1) }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               <div class="admin-toolbar admin-toolbar--users mb-4">
                 <div class="admin-toolbar__filters">
                   <div class="admin-toolbar__search relative w-full md:w-auto">
@@ -670,9 +798,18 @@
                     </span>
                   </template>
                 </Column>
-                <Column header="操作" style="width: 24%; min-width: 17rem">
+                <Column header="操作" style="width: 28%; min-width: 21rem">
                   <template #body="{ data }">
                     <div class="user-management-table-actions">
+                      <Button
+                        icon="pi pi-eye"
+                        severity="secondary"
+                        size="small"
+                        @click="openUserSubmissionStats(data)"
+                        label="查看"
+                        aria-label="查看使用者投稿統計"
+                        title="查看使用者投稿統計"
+                      />
                       <Button
                         icon="pi pi-pencil"
                         severity="warning"
@@ -758,6 +895,15 @@
                   <section
                     class="admin-card-actions admin-mobile-card-actions user-management-card-actions admin-tablet-actions"
                   >
+                    <Button
+                      icon="pi pi-eye"
+                      severity="secondary"
+                      size="small"
+                      @click="openUserSubmissionStats(user)"
+                      label="查看"
+                      aria-label="查看使用者投稿統計"
+                      title="查看使用者投稿統計"
+                    />
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -2794,6 +2940,116 @@
       </Dialog>
 
       <Dialog
+        v-model:visible="showUserSubmissionStatsDialog"
+        modal
+        :draggable="false"
+        header="使用者投稿統計"
+        :style="{ width: 'min(760px, 96vw)' }"
+        @hide="closeUserSubmissionStatsDialog"
+      >
+        <div class="user-submission-dialog">
+          <ProgressSpinner
+            v-if="userSubmissionStatsLoading"
+            class="w-full flex justify-content-center"
+            strokeWidth="4"
+          />
+          <Message v-else-if="userSubmissionStatsError" severity="error" :closable="false">
+            {{ userSubmissionStatsError }}
+          </Message>
+          <template v-else-if="userSubmissionStats">
+            <section class="user-submission-summary" aria-label="使用者投稿摘要">
+              <div class="user-submission-summary__identity">
+                <div>
+                  <span class="user-submission-summary__eyebrow">使用者</span>
+                  <h3>{{ userSubmissionStats.name }}</h3>
+                </div>
+                <ContributorLevelBadge
+                  :level="selectedUserContributorLevel.level"
+                  :title="selectedUserContributorLevel.name"
+                  show-title
+                />
+              </div>
+              <div class="user-submission-summary__exp">
+                <strong>{{ userSubmissionStats.contributor_experience }} EXP</strong>
+                <span v-if="selectedUserContributorLevel.isMaxLevel">已達最高等級</span>
+                <span v-else>
+                  距離 Lv.{{ selectedUserContributorLevel.level + 1 }} 還差
+                  {{ selectedUserContributorLevel.expToNextLevel }} EXP
+                </span>
+              </div>
+              <div
+                class="user-submission-level-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-valuenow="selectedUserContributorLevel.progressPercent"
+                :aria-label="`Lv.${selectedUserContributorLevel.level} 經驗進度 ${selectedUserContributorLevel.progressPercent}%`"
+                :style="selectedUserLevelProgressStyle"
+              >
+                <span :style="{ width: `${selectedUserContributorLevel.progressPercent}%` }"></span>
+              </div>
+            </section>
+
+            <section class="user-submission-overview" aria-label="投稿狀態總覽">
+              <div class="user-submission-total">
+                <span>全部投稿</span>
+                <strong>{{ userSubmissionStats.total_count }} 筆</strong>
+              </div>
+              <div class="user-submission-status-cards">
+                <div
+                  v-for="status in selectedUserSubmissionStatuses"
+                  :key="`summary-${status.key}`"
+                  class="user-submission-status-card"
+                >
+                  <span
+                    class="user-submission-status-dot"
+                    :style="{ background: status.color }"
+                  ></span>
+                  <span>{{ status.label }}</span>
+                  <strong>{{ status.count }}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="user-submission-distribution" aria-label="投稿狀態比例">
+              <div
+                v-if="userSubmissionStats.total_count > 0"
+                class="user-submission-distribution__bar"
+                role="img"
+                :aria-label="selectedUserSubmissionDistributionLabel"
+              >
+                <span
+                  v-for="status in selectedUserSubmissionStatuses"
+                  :key="`bar-${status.key}`"
+                  :style="{ width: `${status.percentage}%`, background: status.color }"
+                  :title="`${status.label} ${status.count} 筆（${status.percentage.toFixed(1)}%）`"
+                ></span>
+              </div>
+              <div v-else class="user-insights__empty">此使用者目前沒有投稿</div>
+              <div class="user-submission-distribution__legend">
+                <div
+                  v-for="status in selectedUserSubmissionStatuses"
+                  :key="`legend-${status.key}`"
+                  class="user-submission-legend-row"
+                >
+                  <span
+                    class="user-submission-status-dot"
+                    :style="{ background: status.color }"
+                  ></span>
+                  <span>{{ status.label }}</span>
+                  <strong>{{ status.count }} 筆</strong>
+                  <span>{{ status.percentage.toFixed(1) }}%</span>
+                </div>
+              </div>
+            </section>
+          </template>
+        </div>
+        <template #footer>
+          <Button label="關閉" severity="secondary" @click="closeUserSubmissionStatsDialog" />
+        </template>
+      </Dialog>
+
+      <Dialog
         :visible="showUserDialog"
         @update:visible="showUserDialog = $event"
         :modal="true"
@@ -3243,6 +3499,7 @@ import {
   reorderCourses,
   deleteCourse,
   getUsers,
+  getUserSubmissionStats,
   createUser,
   updateUser,
   deleteUser,
@@ -3258,6 +3515,7 @@ import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
 import {
   SUBMISSION_LEVELS,
+  getContributorLevelPalette,
   getContributorLevelSettingsSnapshot,
   loadContributorLevelSettings,
   resolveSubmissionLevel,
@@ -3330,6 +3588,23 @@ const contributorLevelSettingsError = ref('')
 const contributorLevelSettingsSaving = ref(false)
 const userFirst = ref(0)
 const userRows = ref(10)
+const LOGIN_RANGE_OPTIONS = [7, 30, 90]
+const userInsightsView = ref('login')
+const isUserChartsExpanded = ref(true)
+const loginRangeDays = ref(30)
+const showUserSubmissionStatsDialog = ref(false)
+const userSubmissionStatsLoading = ref(false)
+const userSubmissionStatsError = ref('')
+const userSubmissionStats = ref(null)
+let userSubmissionStatsController = null
+
+const USER_SUBMISSION_STATUS_CONFIG = [
+  { key: 'pending', label: '待審核', color: '#b7791f' },
+  { key: 'approved', label: '已通過', color: '#2f855a' },
+  { key: 'rejected', label: '未通過', color: '#c2414d' },
+  { key: 'takedown', label: '已下架', color: '#64748b' },
+  { key: 'deleted', label: '已刪除', color: '#8c2f46' },
+]
 
 const userSortMeta = ref([
   { field: 'is_admin', order: -1 },
@@ -4125,6 +4400,108 @@ const contributorLevelStats = computed(() => {
   }))
 })
 
+const contributorLevelDistribution = computed(() => {
+  const total = users.value.length
+  return contributorLevelStats.value.map((stat) => ({
+    ...stat,
+    palette: getContributorLevelPalette(stat.level),
+    percentage: total > 0 ? (stat.count / total) * 100 : 0,
+  }))
+})
+
+const userInsightsViewLabel = computed(() =>
+  userInsightsView.value === 'login' ? '最近登入日期分布' : '投稿等級分布'
+)
+
+const getLocalDateKey = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const loginDateStats = computed(() => {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - loginRangeDays.value + 1)
+  const end = new Date()
+  end.setHours(24, 0, 0, 0)
+
+  const counts = new Map()
+  let never = 0
+  let outOfRange = 0
+  users.value.forEach((user) => {
+    if (!user.last_login) {
+      never += 1
+      return
+    }
+    const date = new Date(user.last_login)
+    if (Number.isNaN(date.getTime()) || date < start || date >= end) {
+      outOfRange += 1
+      return
+    }
+    const key = getLocalDateKey(date)
+    counts.set(key, (counts.get(key) || 0) + 1)
+  })
+
+  const buckets = [...counts.entries()]
+    .sort(([left], [right]) => right.localeCompare(left))
+    .map(([key, count]) => ({
+      key,
+      count,
+      label: new Intl.DateTimeFormat('zh-TW', {
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(`${key}T00:00:00`)),
+    }))
+  return { buckets, never, outOfRange }
+})
+
+const loginDateDistribution = computed(() => {
+  const maxCount = Math.max(1, ...loginDateStats.value.buckets.map(({ count }) => count))
+  return loginDateStats.value.buckets.map((bucket) => ({
+    ...bucket,
+    width: (bucket.count / maxCount) * 100,
+  }))
+})
+
+const loginDateSummary = computed(() => ({
+  inRange: loginDateStats.value.buckets.reduce((sum, bucket) => sum + bucket.count, 0),
+  never: loginDateStats.value.never,
+  outOfRange: loginDateStats.value.outOfRange,
+}))
+
+const selectedUserContributorLevel = computed(() =>
+  resolveSubmissionLevel(userSubmissionStats.value?.contributor_experience || 0)
+)
+
+const selectedUserLevelProgressStyle = computed(() => {
+  const palette = getContributorLevelPalette(selectedUserContributorLevel.value.level)
+  return {
+    '--user-level-color': palette.bg,
+    '--user-level-border': palette.border,
+  }
+})
+
+const selectedUserSubmissionStatuses = computed(() => {
+  const counts = userSubmissionStats.value?.status_counts || {}
+  const total = userSubmissionStats.value?.total_count || 0
+  return USER_SUBMISSION_STATUS_CONFIG.map((status) => {
+    const count = Number(counts[status.key]) || 0
+    return {
+      ...status,
+      count,
+      percentage: total > 0 ? (count / total) * 100 : 0,
+    }
+  })
+})
+
+const selectedUserSubmissionDistributionLabel = computed(() =>
+  selectedUserSubmissionStatuses.value
+    .map((status) => `${status.label} ${status.count} 筆`)
+    .join('，')
+)
+
 const contributorLevelSelectionSummary = computed(() => {
   if (selectedContributorLevels.value.length === 0) return '全部投稿等級'
   if (selectedContributorLevels.value.length === 1) {
@@ -4145,6 +4522,46 @@ const toggleContributorLevel = (level) => {
 const clearContributorLevelFilter = () => {
   selectedContributorLevels.value = []
   userFirst.value = 0
+}
+
+const closeUserSubmissionStatsDialog = () => {
+  userSubmissionStatsController?.abort()
+  userSubmissionStatsController = null
+  showUserSubmissionStatsDialog.value = false
+  userSubmissionStatsLoading.value = false
+}
+
+const openUserSubmissionStats = async (user) => {
+  userSubmissionStatsController?.abort()
+  const controller = new AbortController()
+  userSubmissionStatsController = controller
+  userSubmissionStats.value = null
+  userSubmissionStatsError.value = ''
+  userSubmissionStatsLoading.value = true
+  showUserSubmissionStatsDialog.value = true
+
+  try {
+    const { data } = await getUserSubmissionStats(user.id, { signal: controller.signal })
+    if (userSubmissionStatsController === controller) {
+      userSubmissionStats.value = data
+    }
+  } catch (error) {
+    if (error?.code === 'ERR_CANCELED') return
+    if (userSubmissionStatsController === controller) {
+      const statusCode = error?.response?.status
+      userSubmissionStatsError.value =
+        statusCode === 403
+          ? '你沒有權限查看此使用者的投稿統計'
+          : statusCode === 404
+            ? '找不到此使用者'
+            : '投稿統計載入失敗，請稍後再試'
+    }
+  } finally {
+    if (userSubmissionStatsController === controller) {
+      userSubmissionStatsLoading.value = false
+      userSubmissionStatsController = null
+    }
+  }
 }
 
 const resetContributorLevelSettingsDraft = () => {
@@ -6514,6 +6931,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  userSubmissionStatsController?.abort()
   closeArchiveRequestPreview()
   closeComparePreview()
 })
@@ -6790,6 +7208,341 @@ onBeforeUnmount(() => {
 
 .contributor-level-stat > strong {
   flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.user-insights {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 94%, var(--primary-color) 6%);
+}
+
+.user-insights__heading,
+.user-insights__actions,
+.user-insights__panel-header,
+.user-insights__summary,
+.user-insights__switch,
+.user-insights__range {
+  display: flex;
+  align-items: center;
+}
+
+.user-insights__heading {
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.user-insights__heading h3,
+.user-insights__heading p,
+.user-insights__panel p {
+  margin: 0;
+}
+
+.user-insights__heading h3 {
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.user-insights__heading p,
+.user-insights__description,
+.user-insights__panel-header p {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.user-insights__actions,
+.user-insights__summary,
+.user-insights__range,
+.user-insights__switch {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.user-insights__switch,
+.user-insights__range {
+  padding: 0.16rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-primary);
+}
+
+.user-insights__switch button,
+.user-insights__range button,
+.user-insights__toggle {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.user-insights__switch button,
+.user-insights__range button {
+  padding: 0.34rem 0.55rem;
+}
+
+.user-insights__switch button.is-active,
+.user-insights__range button.is-active {
+  background: color-mix(in srgb, var(--primary-color) 15%, var(--bg-primary));
+  color: var(--primary-color);
+}
+
+.user-insights__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.user-insights__switch button:focus-visible,
+.user-insights__range button:focus-visible,
+.user-insights__toggle:focus-visible,
+.user-chart-row:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.user-insights__panel {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  padding-top: 0.2rem;
+}
+
+.user-insights__panel-header {
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.user-insights__summary {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.user-insights__summary span {
+  padding: 0.22rem 0.45rem;
+  border-radius: 5px;
+  background: var(--bg-primary);
+}
+
+.user-login-chart,
+.user-level-chart {
+  display: grid;
+  gap: 0.42rem;
+  min-width: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.15rem 0.2rem 0.15rem 0;
+}
+
+.user-chart-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  color: var(--text-color);
+  font-size: 0.76rem;
+}
+
+.user-chart-row__label,
+.user-chart-row > strong {
+  white-space: nowrap;
+}
+
+.user-chart-row__track,
+.user-level-chart__track {
+  height: 0.72rem;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 42%, var(--bg-primary));
+}
+
+.user-chart-row__fill,
+.user-level-chart__fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+}
+
+.user-chart-row__fill--login {
+  background: var(--primary-color);
+}
+
+.user-level-chart__row {
+  display: grid;
+  grid-template-columns: 4rem minmax(7.5rem, 0.75fr) minmax(8rem, 2fr) 3.7rem 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: var(--text-color);
+  font-size: 0.75rem;
+}
+
+.user-level-chart__name {
+  min-width: 0;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.user-level-chart__fill {
+  box-sizing: border-box;
+  border: 1px solid var(--chart-level-border);
+  background: var(--chart-level-color);
+}
+
+.user-level-chart__row > strong,
+.user-level-chart__row > span:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.user-insights__empty {
+  padding: 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 7px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.user-submission-dialog {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+  max-height: min(68vh, 40rem);
+  overflow-y: auto;
+}
+
+.user-submission-summary,
+.user-submission-overview,
+.user-submission-distribution {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+}
+
+.user-submission-summary__identity,
+.user-submission-summary__exp,
+.user-submission-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.user-submission-summary__identity h3 {
+  margin: 0.1rem 0 0;
+  color: var(--text-color);
+}
+
+.user-submission-summary__eyebrow,
+.user-submission-summary__exp span,
+.user-submission-total span {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.user-submission-level-progress {
+  height: 0.72rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 2px;
+  border: 1px solid var(--user-level-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 55%, var(--bg-primary));
+}
+
+.user-submission-level-progress > span {
+  display: block;
+  height: 100%;
+  border: 1px solid var(--user-level-border);
+  border-radius: inherit;
+  background: var(--user-level-color);
+}
+
+.user-submission-status-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.user-submission-status-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.user-submission-status-card strong {
+  grid-column: 1 / -1;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.user-submission-status-dot {
+  width: 0.58rem;
+  height: 0.58rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.user-submission-distribution__bar {
+  display: flex;
+  width: 100%;
+  height: 0.85rem;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-primary);
+}
+
+.user-submission-distribution__bar > span {
+  height: 100%;
+}
+
+.user-submission-distribution__legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+}
+
+.user-submission-legend-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 3.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.user-submission-legend-row strong,
+.user-submission-legend-row > span:last-child {
+  color: var(--text-color);
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -10468,6 +11221,58 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
+  .user-insights__heading,
+  .user-insights__panel-header,
+  .user-submission-summary__identity,
+  .user-submission-summary__exp {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .user-insights__actions,
+  .user-insights__switch {
+    width: 100%;
+  }
+
+  .user-insights__switch button {
+    flex: 1 1 auto;
+  }
+
+  .user-insights__toggle {
+    margin-left: auto;
+  }
+
+  .user-chart-row {
+    grid-template-columns: 4.4rem minmax(0, 1fr) 3rem;
+    gap: 0.35rem;
+  }
+
+  .user-level-chart__row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.35rem 0.45rem;
+  }
+
+  .user-level-chart__track {
+    grid-column: 1 / 3;
+  }
+
+  .user-level-chart__row > span:last-child {
+    grid-column: 3;
+  }
+
+  .user-submission-status-cards,
+  .user-submission-distribution__legend {
+    grid-template-columns: 1fr;
+  }
+
+  .user-submission-status-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .user-submission-status-card strong {
+    grid-column: auto;
+  }
+
   .contributor-level-insights__heading {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -10519,6 +11324,16 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 641px) and (max-width: 899px) {
+  .user-insights__heading,
+  .user-insights__panel-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .user-submission-status-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .contributor-level-insights__heading {
     align-items: flex-start;
   }
