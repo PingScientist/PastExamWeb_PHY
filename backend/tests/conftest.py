@@ -1,11 +1,13 @@
 import asyncio
+import os
 import uuid
 from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from unittest.mock import AsyncMock
@@ -15,11 +17,19 @@ from app.main import app
 from app.models.models import Archive, User
 from app.utils.auth import get_password_hash
 
-DATABASE_URL = (
+DATABASE_URL = os.getenv("TEST_DATABASE_URL") or (
     "postgresql+asyncpg://"
     f"{settings.DB_USER}:{settings.DB_PASSWORD}@"
     f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 )
+CONFIGURED_DATABASE_NAME = make_url(DATABASE_URL).database or ""
+
+if "test" not in CONFIGURED_DATABASE_NAME.lower():
+    pytest.exit(
+        "Refusing to run backend tests against a non-test database. "
+        "Set TEST_DATABASE_URL to an isolated test database.",
+        returncode=2,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -44,6 +54,12 @@ async def override_db_session(monkeypatch):
         engine,
         expire_on_commit=False,
     )
+
+    async with engine.connect() as connection:
+        actual_database_name = await connection.scalar(text("SELECT current_database()"))
+    if "test" not in str(actual_database_name or "").lower():
+        await engine.dispose()
+        pytest.fail("Connected database is not an isolated test database", pytrace=False)
 
     monkeypatch.setattr("app.db.session.engine", engine)
     monkeypatch.setattr("app.db.session.AsyncSessionLocal", session_maker)
