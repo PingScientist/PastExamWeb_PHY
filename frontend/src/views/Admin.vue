@@ -470,9 +470,17 @@
                     <div class="user-insights__switch" role="group" aria-label="切換使用者統計圖表">
                       <button
                         type="button"
-                        :class="{ 'is-active': userInsightsView === 'login' }"
-                        :aria-pressed="userInsightsView === 'login'"
-                        @click="userInsightsView = 'login'"
+                        :class="{ 'is-active': userInsightsView === 'login-hour' }"
+                        :aria-pressed="userInsightsView === 'login-hour'"
+                        @click="userInsightsView = 'login-hour'"
+                      >
+                        最近登入時間分布
+                      </button>
+                      <button
+                        type="button"
+                        :class="{ 'is-active': userInsightsView === 'login-date' }"
+                        :aria-pressed="userInsightsView === 'login-date'"
+                        @click="userInsightsView = 'login-date'"
                       >
                         最近登入日期分布
                       </button>
@@ -487,7 +495,7 @@
                     </div>
                     <button
                       type="button"
-                      class="user-insights__toggle"
+                      class="user-insights__toggle section-collapse-toggle"
                       :aria-expanded="isUserChartsExpanded"
                       aria-controls="user-insights-content"
                       :aria-label="
@@ -506,9 +514,9 @@
                 </div>
 
                 <div v-show="isUserChartsExpanded" id="user-insights-content">
-                  <div v-if="userInsightsView === 'login'" class="user-insights__panel">
+                  <div v-if="userInsightsView !== 'level'" class="user-insights__panel">
                     <div class="user-insights__panel-header">
-                      <p>依每位使用者目前保存的最近登入時間統計，每位使用者最多計入一次。</p>
+                      <p>{{ loginDistributionDescription }}</p>
                       <div class="user-insights__range" role="group" aria-label="最近登入統計範圍">
                         <button
                           v-for="days in LOGIN_RANGE_OPTIONS"
@@ -528,29 +536,58 @@
                       <span>範圍外 {{ loginDateSummary.outOfRange }} 人</span>
                     </div>
                     <div
-                      v-if="loginDateDistribution.length"
-                      class="user-login-chart"
+                      class="user-login-column-chart"
                       role="img"
-                      :aria-label="`最近 ${loginRangeDays} 日的最近登入日期分布`"
+                      :aria-label="loginChartData.ariaLabel"
                     >
-                      <div
-                        v-for="bucket in loginDateDistribution"
-                        :key="bucket.key"
-                        class="user-chart-row"
-                        tabindex="0"
-                        :title="`${bucket.label}：${bucket.count} 人`"
-                      >
-                        <span class="user-chart-row__label">{{ bucket.label }}</span>
-                        <div class="user-chart-row__track">
+                      <div class="user-login-column-chart__y-axis" aria-hidden="true">
+                        <span v-for="tick in loginChartData.yTicks" :key="`y-${tick}`">
+                          {{ tick }}
+                        </span>
+                      </div>
+                      <div class="user-login-column-chart__plot">
+                        <div class="user-login-column-chart__grid" aria-hidden="true">
                           <span
-                            class="user-chart-row__fill user-chart-row__fill--login"
-                            :style="{ width: `${bucket.width}%` }"
+                            v-for="tick in loginChartData.yTicks"
+                            :key="`grid-${tick}`"
+                            :style="{ bottom: `${(tick / loginChartData.yMax) * 100}%` }"
                           ></span>
                         </div>
-                        <strong>{{ bucket.count }} 人</strong>
+                        <div
+                          class="user-login-column-chart__bars"
+                          :style="{ '--login-chart-columns': loginChartData.buckets.length }"
+                        >
+                          <div
+                            v-for="bucket in loginChartData.buckets"
+                            :key="bucket.key"
+                            class="user-login-column-chart__item"
+                            tabindex="0"
+                            :title="`${bucket.fullLabel}：${bucket.count} 人`"
+                            :aria-label="`${bucket.fullLabel}，${bucket.count} 人`"
+                          >
+                            <span
+                              class="user-login-column-chart__bar"
+                              :class="{ 'has-value': bucket.count > 0 }"
+                              :style="{
+                                height: `${(bucket.count / loginChartData.yMax) * 100}%`,
+                              }"
+                            ></span>
+                          </div>
+                        </div>
+                        <div
+                          class="user-login-column-chart__x-axis"
+                          :style="{ '--login-chart-columns': loginChartData.buckets.length }"
+                          aria-hidden="true"
+                        >
+                          <span
+                            v-for="bucket in loginChartData.buckets"
+                            :key="`label-${bucket.key}`"
+                          >
+                            {{ bucket.showLabel ? bucket.label : '' }}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div v-else class="user-insights__empty">此範圍內沒有最近登入資料</div>
                   </div>
 
                   <div v-else class="user-insights__panel">
@@ -617,7 +654,7 @@
                     />
                     <button
                       type="button"
-                      class="contributor-level-toggle"
+                      class="contributor-level-toggle section-collapse-toggle"
                       :aria-expanded="isLevelStatsExpanded"
                       aria-controls="contributor-level-stats-grid"
                       :aria-label="
@@ -648,6 +685,7 @@
                       'is-active': isContributorLevelSelected(level.level),
                     }"
                     :aria-pressed="isContributorLevelSelected(level.level)"
+                    :title="level.name"
                     @click="toggleContributorLevel(level.level)"
                   >
                     <ContributorLevelBadge
@@ -3721,7 +3759,7 @@ const contributorLevelSettingsSaving = ref(false)
 const userFirst = ref(0)
 const userRows = ref(10)
 const LOGIN_RANGE_OPTIONS = [7, 30, 90]
-const userInsightsView = ref('login')
+const userInsightsView = ref('login-hour')
 const isUserChartsExpanded = ref(true)
 const loginRangeDays = ref(30)
 const showUserSubmissionStatsDialog = ref(false)
@@ -4553,8 +4591,16 @@ const contributorLevelDistribution = computed(() => {
   }))
 })
 
-const userInsightsViewLabel = computed(() =>
-  userInsightsView.value === 'login' ? '最近登入日期分布' : '投稿等級分布'
+const userInsightsViewLabel = computed(() => {
+  if (userInsightsView.value === 'login-hour') return '最近登入時間分布'
+  if (userInsightsView.value === 'login-date') return '最近登入日期分布'
+  return '投稿等級分布'
+})
+
+const loginDistributionDescription = computed(() =>
+  userInsightsView.value === 'login-hour'
+    ? `統計最近 ${loginRangeDays.value} 日範圍內，每位使用者最近登入時間所屬的小時。`
+    : '依每位使用者目前保存的最近登入日期統計，每位使用者最多計入一次。'
 )
 
 const getLocalDateKey = (date) => {
@@ -4571,7 +4617,8 @@ const loginDateStats = computed(() => {
   const end = new Date()
   end.setHours(24, 0, 0, 0)
 
-  const counts = new Map()
+  const dateCounts = new Map()
+  const hourCounts = Array.from({ length: 24 }, () => 0)
   let never = 0
   let outOfRange = 0
   users.value.forEach((user) => {
@@ -4585,32 +4632,75 @@ const loginDateStats = computed(() => {
       return
     }
     const key = getLocalDateKey(date)
-    counts.set(key, (counts.get(key) || 0) + 1)
+    dateCounts.set(key, (dateCounts.get(key) || 0) + 1)
+    hourCounts[date.getHours()] += 1
   })
 
-  const buckets = [...counts.entries()]
-    .sort(([left], [right]) => right.localeCompare(left))
-    .map(([key, count]) => ({
+  const dateBuckets = Array.from({ length: loginRangeDays.value }, (_, index) => {
+    const date = new Date(start)
+    date.setDate(start.getDate() + index)
+    const key = getLocalDateKey(date)
+    return {
       key,
-      count,
+      count: dateCounts.get(key) || 0,
       label: new Intl.DateTimeFormat('zh-TW', {
         month: '2-digit',
         day: '2-digit',
-      }).format(new Date(`${key}T00:00:00`)),
-    }))
-  return { buckets, never, outOfRange }
+      }).format(date),
+      fullLabel: new Intl.DateTimeFormat('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(date),
+    }
+  })
+  const hourBuckets = hourCounts.map((count, hour) => ({
+    key: `hour-${hour}`,
+    count,
+    label: `${String(hour).padStart(2, '0')} 時`,
+    fullLabel: `${String(hour).padStart(2, '0')}:00–${String(hour).padStart(2, '0')}:59`,
+  }))
+  return { dateBuckets, hourBuckets, never, outOfRange }
 })
 
-const loginDateDistribution = computed(() => {
-  const maxCount = Math.max(1, ...loginDateStats.value.buckets.map(({ count }) => count))
-  return loginDateStats.value.buckets.map((bucket) => ({
+const shouldShowLoginChartLabel = (index, total, mode) => {
+  if (mode === 'login-hour') return index % 3 === 0 || index === total - 1
+  if (total <= 7) return true
+  const interval = total <= 30 ? 5 : 15
+  return index % interval === 0 || index === total - 1
+}
+
+const buildIntegerAxis = (buckets) => {
+  const maxCount = Math.max(0, ...buckets.map(({ count }) => count))
+  const step = Math.max(1, Math.ceil(maxCount / 4))
+  const yMax = Math.max(1, Math.ceil(maxCount / step) * step)
+  const yTicks = []
+  for (let value = 0; value <= yMax; value += step) yTicks.push(value)
+  if (yTicks.at(-1) !== yMax) yTicks.push(yMax)
+  return { yMax, yTicks: yTicks.reverse() }
+}
+
+const loginChartData = computed(() => {
+  const mode = userInsightsView.value
+  const source =
+    mode === 'login-hour' ? loginDateStats.value.hourBuckets : loginDateStats.value.dateBuckets
+  const buckets = source.map((bucket, index) => ({
     ...bucket,
-    width: (bucket.count / maxCount) * 100,
+    showLabel: shouldShowLoginChartLabel(index, source.length, mode),
   }))
+  const axis = buildIntegerAxis(buckets)
+  return {
+    ...axis,
+    buckets,
+    ariaLabel:
+      mode === 'login-hour'
+        ? `最近 ${loginRangeDays.value} 日的最近登入時間分布`
+        : `最近 ${loginRangeDays.value} 日的最近登入日期分布`,
+  }
 })
 
 const loginDateSummary = computed(() => ({
-  inRange: loginDateStats.value.buckets.reduce((sum, bucket) => sum + bucket.count, 0),
+  inRange: loginDateStats.value.dateBuckets.reduce((sum, bucket) => sum + bucket.count, 0),
   never: loginDateStats.value.never,
   outOfRange: loginDateStats.value.outOfRange,
 }))
@@ -7346,8 +7436,8 @@ onBeforeUnmount(() => {
 }
 
 .contributor-level-insights__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.45rem;
   min-width: 0;
 }
@@ -7368,9 +7458,10 @@ onBeforeUnmount(() => {
   gap: 0.35rem;
   min-height: 2rem;
   padding: 0.32rem 0.6rem;
-  border: 1px solid var(--border-color);
+  border: 0;
   border-radius: 6px;
-  background: var(--bg-primary);
+  background: transparent;
+  box-shadow: none;
   color: var(--text-color);
   cursor: pointer;
   font: inherit;
@@ -7379,9 +7470,8 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.contributor-level-toggle:hover,
-.contributor-level-toggle:focus-visible {
-  border-color: var(--primary-color);
+.contributor-level-toggle:hover {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
 }
 
 .contributor-level-toggle:focus-visible {
@@ -7389,10 +7479,28 @@ onBeforeUnmount(() => {
   outline-offset: 2px;
 }
 
+.section-collapse-toggle {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.section-collapse-toggle:hover {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+}
+
+.section-collapse-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
 .contributor-level-stat {
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: auto minmax(0, 1fr);
-  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  min-width: 10rem;
   align-items: center;
   gap: 0.5rem;
   min-height: 2.65rem;
@@ -7424,9 +7532,11 @@ onBeforeUnmount(() => {
 
 .contributor-level-stat__name {
   min-width: 0;
+  overflow: hidden;
   font-size: 0.8rem;
   font-weight: 650;
   line-height: 1.2;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -7524,8 +7634,7 @@ onBeforeUnmount(() => {
 
 .user-insights__switch button:focus-visible,
 .user-insights__range button:focus-visible,
-.user-insights__toggle:focus-visible,
-.user-chart-row:focus-visible {
+.user-insights__toggle:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
@@ -7553,7 +7662,6 @@ onBeforeUnmount(() => {
   background: var(--bg-primary);
 }
 
-.user-login-chart,
 .user-level-chart {
   display: grid;
   gap: 0.42rem;
@@ -7563,22 +7671,118 @@ onBeforeUnmount(() => {
   padding: 0.15rem 0.2rem 0.15rem 0;
 }
 
-.user-chart-row {
+.user-login-column-chart {
   display: grid;
-  grid-template-columns: 5rem minmax(0, 1fr) 3.5rem;
-  align-items: center;
-  gap: 0.55rem;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.45rem;
   min-width: 0;
+  height: clamp(13rem, 28vw, 18rem);
+  padding-top: 0.35rem;
   color: var(--text-color);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
 }
 
-.user-chart-row__label,
-.user-chart-row > strong {
+.user-login-column-chart__y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: calc(100% - 1.75rem);
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.user-login-column-chart__plot {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-left: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-login-column-chart__grid,
+.user-login-column-chart__bars {
+  position: absolute;
+  inset: 0 0 1.75rem;
+}
+
+.user-login-column-chart__grid {
+  pointer-events: none;
+}
+
+.user-login-column-chart__grid span {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+.user-login-column-chart__bars,
+.user-login-column-chart__x-axis {
+  display: grid;
+  grid-template-columns: repeat(var(--login-chart-columns), minmax(0, 1fr));
+}
+
+.user-login-column-chart__bars {
+  z-index: 1;
+  align-items: end;
+  gap: clamp(1px, 0.35vw, 5px);
+  padding: 0 clamp(1px, 0.25vw, 4px);
+}
+
+.user-login-column-chart__item {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: flex-end;
+  justify-content: center;
+  outline: none;
+}
+
+.user-login-column-chart__item:focus-visible {
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+
+.user-login-column-chart__bar {
+  display: block;
+  width: min(100%, 1.15rem);
+  min-height: 0;
+  border-radius: 4px 4px 1px 1px;
+  background: transparent;
+}
+
+.user-login-column-chart__bar.has-value {
+  min-height: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--primary-color),
+    var(--primary-dark, var(--primary-color))
+  );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 60%, transparent);
+}
+
+.user-login-column-chart__x-axis {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1.65rem;
+  align-items: start;
+  gap: 1px;
+  padding-top: 0.35rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.user-login-column-chart__x-axis span {
+  min-width: 0;
+  overflow: visible;
+  font-size: clamp(0.55rem, 1.2vw, 0.68rem);
+  line-height: 1;
   white-space: nowrap;
 }
 
-.user-chart-row__track,
 .user-level-chart__track {
   height: 0.72rem;
   overflow: hidden;
@@ -7587,16 +7791,11 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--border-color) 42%, var(--bg-primary));
 }
 
-.user-chart-row__fill,
 .user-level-chart__fill {
   display: block;
   height: 100%;
   min-width: 0;
   border-radius: inherit;
-}
-
-.user-chart-row__fill--login {
-  background: var(--primary-color);
 }
 
 .user-level-chart__row {
@@ -11636,9 +11835,10 @@ onBeforeUnmount(() => {
     margin-left: auto;
   }
 
-  .user-chart-row {
-    grid-template-columns: 4.4rem minmax(0, 1fr) 3rem;
-    gap: 0.35rem;
+  .user-login-column-chart {
+    grid-template-columns: 1.6rem minmax(0, 1fr);
+    height: 13rem;
+    gap: 0.3rem;
   }
 
   .user-level-chart__row {
@@ -11681,12 +11881,9 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
   }
 
-  .contributor-level-insights__grid {
-    grid-template-columns: 1fr;
-  }
-
   .contributor-level-stat {
-    width: 100%;
+    max-width: 100%;
+    min-width: 9rem;
   }
 
   .contributor-level-settings-row {
@@ -11728,16 +11925,6 @@ onBeforeUnmount(() => {
 
   .contributor-level-insights__actions {
     flex-wrap: wrap;
-  }
-
-  .contributor-level-insights__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 900px) and (max-width: 1199px) {
-  .contributor-level-insights__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
