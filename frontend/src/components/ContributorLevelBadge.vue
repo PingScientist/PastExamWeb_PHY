@@ -44,7 +44,8 @@ const validLevel = computed(() => {
 
 const colorTier = computed(() => Math.min(validLevel.value || 1, 10))
 const emblemMark = computed(() => {
-  if (colorTier.value >= 10) return '✦'
+  if (colorTier.value >= 10) return '♛'
+  if (colorTier.value >= 9) return '✦'
   if (colorTier.value >= 7) return '★'
   if (colorTier.value >= 4) return '◆'
   return '•'
@@ -58,10 +59,10 @@ const accessibleLabel = computed(() =>
 
 <style scoped>
 .contributor-level {
-  --level-badge-bg: #8f4f32;
+  --level-badge-bg: #8a4b2f;
   --level-badge-fg: #ffffff;
-  --level-badge-border: #5e2f1d;
-  --level-badge-accent: #f3c6a8;
+  --level-badge-border: #542a19;
+  --level-badge-accent: #f0bd9c;
 
   display: inline-flex;
   min-width: 0;
@@ -142,57 +143,79 @@ const accessibleLabel = computed(() =>
   font-size: 0.72rem;
 }
 
+.contributor-level--tier-1 .contributor-level__badge::after,
+.contributor-level--tier-2 .contributor-level__badge::after,
+.contributor-level--tier-3 .contributor-level__badge::after {
+  opacity: 0.45;
+}
+
+.contributor-level--tier-7 .contributor-level__badge,
+.contributor-level--tier-8 .contributor-level__badge,
+.contributor-level--tier-9 .contributor-level__badge,
+.contributor-level--tier-10 .contributor-level__badge {
+  box-shadow:
+    inset 0 0 0 1px var(--level-badge-border),
+    inset 0 2px 0 color-mix(in srgb, var(--level-badge-accent) 62%, transparent),
+    0 2px 4px color-mix(in srgb, var(--level-badge-border) 58%, transparent);
+}
+
+.contributor-level--tier-9 .contributor-level__ornament,
+.contributor-level--tier-10 .contributor-level__ornament {
+  font-size: 0.76em;
+  text-shadow: 0 0 2px var(--level-badge-border);
+}
+
 .contributor-level--tier-2 {
-  --level-badge-bg: #64748b;
-  --level-badge-border: #475569;
-  --level-badge-accent: #e2e8f0;
+  --level-badge-bg: #5f6b7a;
+  --level-badge-border: #38424f;
+  --level-badge-accent: #e5e7eb;
 }
 
 .contributor-level--tier-3 {
-  --level-badge-bg: #3f6f8f;
-  --level-badge-border: #2d526b;
-  --level-badge-accent: #d5eefc;
+  --level-badge-bg: #0b5f77;
+  --level-badge-border: #073b4a;
+  --level-badge-accent: #bae6fd;
 }
 
 .contributor-level--tier-4 {
-  --level-badge-bg: #0f766e;
-  --level-badge-border: #064e49;
-  --level-badge-accent: #99f6e4;
+  --level-badge-bg: #047857;
+  --level-badge-border: #064e3b;
+  --level-badge-accent: #a7f3d0;
 }
 
 .contributor-level--tier-5 {
-  --level-badge-bg: #946200;
-  --level-badge-border: #704900;
-  --level-badge-accent: #fde68a;
+  --level-badge-bg: #263d9a;
+  --level-badge-border: #172554;
+  --level-badge-accent: #c7d2fe;
 }
 
 .contributor-level--tier-6 {
-  --level-badge-bg: #2f855a;
-  --level-badge-border: #226342;
-  --level-badge-accent: #bbf7d0;
+  --level-badge-bg: #0e7490;
+  --level-badge-border: #164e63;
+  --level-badge-accent: #a5f3fc;
 }
 
 .contributor-level--tier-7 {
-  --level-badge-bg: #1d4ed8;
-  --level-badge-border: #1e3a8a;
+  --level-badge-bg: #0057b8;
+  --level-badge-border: #003b7a;
   --level-badge-accent: #bfdbfe;
 }
 
 .contributor-level--tier-8 {
-  --level-badge-bg: #4338ca;
-  --level-badge-border: #312e81;
-  --level-badge-accent: #c7d2fe;
+  --level-badge-bg: #9f4f63;
+  --level-badge-border: #6f3040;
+  --level-badge-accent: #ffe4e6;
 }
 
 .contributor-level--tier-9 {
-  --level-badge-bg: #6d28d9;
-  --level-badge-border: #4c1d95;
+  --level-badge-bg: #6b21a8;
+  --level-badge-border: #3b0764;
   --level-badge-accent: #e9d5ff;
 }
 
 .contributor-level--tier-10 {
-  --level-badge-bg: #9a6700;
-  --level-badge-border: #5f3d00;
-  --level-badge-accent: #fff4b8;
+  --level-badge-bg: #8a5a00;
+  --level-badge-border: #4f3300;
+  --level-badge-accent: #fff1a8;
 }
 </style>

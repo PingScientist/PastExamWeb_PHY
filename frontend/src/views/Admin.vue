@@ -469,34 +469,56 @@
                     <h3 id="contributor-level-insights-title">投稿等級統計</h3>
                     <p>完整使用者等級分布</p>
                   </div>
-                  <strong>{{ users.length }} 人</strong>
+                  <div class="contributor-level-insights__actions">
+                    <button
+                      type="button"
+                      class="contributor-level-total"
+                      :class="{ 'is-active': filterContributorLevel === null }"
+                      :aria-pressed="filterContributorLevel === null"
+                      @click="setContributorLevelFilter(null)"
+                    >
+                      全部 {{ users.length }} 人
+                    </button>
+                    <span v-if="selectedContributorLevel" class="contributor-level-current">
+                      目前：Lv. {{ selectedContributorLevel.level }}
+                      {{ selectedContributorLevel.name }}
+                    </span>
+                    <button
+                      type="button"
+                      class="contributor-level-toggle"
+                      :aria-expanded="isLevelStatsExpanded"
+                      aria-controls="contributor-level-stats-grid"
+                      :aria-label="isLevelStatsExpanded ? '收合投稿等級統計' : '展開投稿等級統計'"
+                      @click="isLevelStatsExpanded = !isLevelStatsExpanded"
+                    >
+                      <span>{{ isLevelStatsExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="isLevelStatsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
                 </div>
-                <div class="contributor-level-insights__grid">
-                  <button
-                    type="button"
-                    class="contributor-level-stat"
-                    :class="{ 'is-active': filterContributorLevel === null }"
-                    :aria-pressed="filterContributorLevel === null"
-                    @click="setContributorLevelFilter(null)"
-                  >
-                    <span>全部</span>
-                    <strong>{{ users.length }} 人</strong>
-                  </button>
+                <div
+                  v-show="isLevelStatsExpanded"
+                  id="contributor-level-stats-grid"
+                  class="contributor-level-insights__grid"
+                >
                   <button
                     v-for="stat in contributorLevelStats"
                     :key="stat.level"
                     type="button"
                     class="contributor-level-stat"
-                    :class="{ 'is-active': filterContributorLevel === stat.level }"
+                    :class="{
+                      'is-active': filterContributorLevel === stat.level,
+                      'is-empty': stat.count === 0,
+                    }"
                     :aria-pressed="filterContributorLevel === stat.level"
                     @click="setContributorLevelFilter(stat.level)"
                   >
-                    <ContributorLevelBadge
-                      :level="stat.level"
-                      :title="stat.name"
-                      size="regular"
-                      show-title
-                    />
+                    <ContributorLevelBadge :level="stat.level" :title="stat.name" size="compact" />
+                    <span class="contributor-level-stat__name">{{ stat.name }}</span>
                     <strong>{{ stat.count }} 人</strong>
                   </button>
                 </div>
@@ -3217,6 +3239,7 @@ const usersLoading = ref(false)
 const userSearchQuery = ref('')
 const filterUserType = ref(null)
 const filterContributorLevel = ref(null)
+const isLevelStatsExpanded = ref(true)
 const userFirst = ref(0)
 const userRows = ref(10)
 
@@ -4021,6 +4044,10 @@ const contributorLevelStats = computed(() => {
     count: counts.get(level.level) || 0,
   }))
 })
+
+const selectedContributorLevel = computed(() =>
+  SUBMISSION_LEVELS.find((level) => level.level === filterContributorLevel.value)
+)
 
 const setContributorLevelFilter = (level) => {
   filterContributorLevel.value = level
@@ -6450,7 +6477,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.6rem 1rem;
   color: var(--text-color);
 }
 
@@ -6471,18 +6498,73 @@ onBeforeUnmount(() => {
 
 .contributor-level-insights__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
   gap: 0.45rem;
   min-width: 0;
 }
 
-.contributor-level-stat {
+.contributor-level-insights__actions {
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 0.4rem 0.6rem;
+}
+
+.contributor-level-total,
+.contributor-level-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.32rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-color);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.contributor-level-total:hover,
+.contributor-level-total:focus-visible,
+.contributor-level-toggle:hover,
+.contributor-level-toggle:focus-visible {
+  border-color: var(--primary-color);
+}
+
+.contributor-level-total:focus-visible,
+.contributor-level-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.contributor-level-total.is-active {
+  border-color: var(--primary-color);
+  box-shadow: inset 0 0 0 1px var(--primary-color);
+}
+
+.contributor-level-current {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.contributor-level-stat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.6rem;
+  min-height: 2.65rem;
+  padding: 0.38rem 0.55rem;
   border: 1px solid var(--border-color);
   border-radius: 7px;
   background: var(--bg-primary);
@@ -6506,6 +6588,18 @@ onBeforeUnmount(() => {
   border-color: var(--primary-color);
   box-shadow: inset 0 0 0 1px var(--primary-color);
   background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-primary));
+}
+
+.contributor-level-stat.is-empty:not(.is-active) {
+  opacity: 0.72;
+}
+
+.contributor-level-stat__name {
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .contributor-level-stat > strong {
@@ -10122,6 +10216,22 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
   .contributor-level-insights__heading {
     align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .contributor-level-insights__heading p {
+    display: none;
+  }
+
+  .contributor-level-insights__actions {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+
+  .contributor-level-current {
+    order: 3;
+    width: 100%;
+    text-align: right;
   }
 
   .contributor-level-insights__grid {
@@ -10130,6 +10240,26 @@ onBeforeUnmount(() => {
 
   .contributor-level-stat {
     width: 100%;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 899px) {
+  .contributor-level-insights__heading {
+    align-items: flex-start;
+  }
+
+  .contributor-level-insights__actions {
+    flex-wrap: wrap;
+  }
+
+  .contributor-level-insights__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .contributor-level-insights__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

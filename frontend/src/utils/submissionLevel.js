@@ -3,10 +3,10 @@ export const SUBMISSION_LEVELS = [
   { level: 2, name: '初階整理者', minExp: 2 },
   { level: 3, name: '穩定投稿者', minExp: 5 },
   { level: 4, name: '認真貢獻者', minExp: 9 },
-  { level: 5, name: '校園收藏家', minExp: 14 },
+  { level: 5, name: '經典整理師', minExp: 14 },
   { level: 6, name: '題庫建設者', minExp: 20 },
   { level: 7, name: '資源探索者', minExp: 27 },
-  { level: 8, name: '經典整理師', minExp: 35 },
+  { level: 8, name: '校園收藏家', minExp: 35 },
   { level: 9, name: '傳奇貢獻者', minExp: 44 },
   { level: 10, name: '題庫宗師', minExp: 54 },
 ]
