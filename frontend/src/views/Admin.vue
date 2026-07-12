@@ -460,6 +460,206 @@
 
           <TabPanel value="1">
             <div class="p-2 md:p-4">
+              <section class="user-insights" aria-labelledby="user-insights-title">
+                <div class="user-insights__heading">
+                  <div>
+                    <h3 id="user-insights-title">使用者統計圖表</h3>
+                    <p>{{ userInsightsViewLabel }}</p>
+                  </div>
+                  <div class="user-insights__actions">
+                    <div class="user-insights__switch" role="group" aria-label="切換使用者統計圖表">
+                      <button
+                        type="button"
+                        :class="{ 'is-active': userInsightsView === 'login' }"
+                        :aria-pressed="userInsightsView === 'login'"
+                        @click="userInsightsView = 'login'"
+                      >
+                        最近登入日期分布
+                      </button>
+                      <button
+                        type="button"
+                        :class="{ 'is-active': userInsightsView === 'level' }"
+                        :aria-pressed="userInsightsView === 'level'"
+                        @click="userInsightsView = 'level'"
+                      >
+                        投稿等級分布
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="user-insights__toggle"
+                      :aria-expanded="isUserChartsExpanded"
+                      aria-controls="user-insights-content"
+                      :aria-label="
+                        isUserChartsExpanded ? '收合使用者統計圖表' : '展開使用者統計圖表'
+                      "
+                      @click="isUserChartsExpanded = !isUserChartsExpanded"
+                    >
+                      <span>{{ isUserChartsExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="isUserChartsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div v-show="isUserChartsExpanded" id="user-insights-content">
+                  <div v-if="userInsightsView === 'login'" class="user-insights__panel">
+                    <div class="user-insights__panel-header">
+                      <p>依每位使用者目前保存的最近登入時間統計，每位使用者最多計入一次。</p>
+                      <div class="user-insights__range" role="group" aria-label="最近登入統計範圍">
+                        <button
+                          v-for="days in LOGIN_RANGE_OPTIONS"
+                          :key="days"
+                          type="button"
+                          :class="{ 'is-active': loginRangeDays === days }"
+                          :aria-pressed="loginRangeDays === days"
+                          @click="loginRangeDays = days"
+                        >
+                          {{ days }} 日
+                        </button>
+                      </div>
+                    </div>
+                    <div class="user-insights__summary">
+                      <span>範圍內 {{ loginDateSummary.inRange }} 人</span>
+                      <span>從未登入 {{ loginDateSummary.never }} 人</span>
+                      <span>範圍外 {{ loginDateSummary.outOfRange }} 人</span>
+                    </div>
+                    <div
+                      v-if="loginDateDistribution.length"
+                      class="user-login-chart"
+                      role="img"
+                      :aria-label="`最近 ${loginRangeDays} 日的最近登入日期分布`"
+                    >
+                      <div
+                        v-for="bucket in loginDateDistribution"
+                        :key="bucket.key"
+                        class="user-chart-row"
+                        tabindex="0"
+                        :title="`${bucket.label}：${bucket.count} 人`"
+                      >
+                        <span class="user-chart-row__label">{{ bucket.label }}</span>
+                        <div class="user-chart-row__track">
+                          <span
+                            class="user-chart-row__fill user-chart-row__fill--login"
+                            :style="{ width: `${bucket.width}%` }"
+                          ></span>
+                        </div>
+                        <strong>{{ bucket.count }} 人</strong>
+                      </div>
+                    </div>
+                    <div v-else class="user-insights__empty">此範圍內沒有最近登入資料</div>
+                  </div>
+
+                  <div v-else class="user-insights__panel">
+                    <p class="user-insights__description">
+                      依完整使用者集合統計，不受目前搜尋、分頁或等級篩選影響。
+                    </p>
+                    <div class="user-level-chart" aria-label="投稿等級分布">
+                      <div
+                        v-for="stat in contributorLevelDistribution"
+                        :key="`chart-level-${stat.level}`"
+                        class="user-level-chart__row"
+                        :style="{
+                          '--chart-level-color': stat.palette.bg,
+                          '--chart-level-border': stat.palette.border,
+                        }"
+                      >
+                        <ContributorLevelBadge
+                          :level="stat.level"
+                          :title="stat.name"
+                          size="compact"
+                        />
+                        <span class="user-level-chart__name">{{ stat.name }}</span>
+                        <div class="user-level-chart__track">
+                          <span
+                            class="user-level-chart__fill"
+                            :style="{ width: `${stat.percentage}%` }"
+                          ></span>
+                        </div>
+                        <strong>{{ stat.count }} 人</strong>
+                        <span>{{ stat.percentage.toFixed(1) }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="contributor-level-insights"
+                aria-labelledby="contributor-level-insights-title"
+              >
+                <div class="contributor-level-insights__heading">
+                  <div>
+                    <h3 id="contributor-level-insights-title">投稿等級選單與設定</h3>
+                    <p>選擇等級以篩選使用者，或調整等級設定</p>
+                  </div>
+                  <div class="contributor-level-insights__actions">
+                    <Button
+                      v-if="selectedContributorLevels.length"
+                      label="清除選取"
+                      icon="pi pi-filter-slash"
+                      severity="secondary"
+                      size="small"
+                      outlined
+                      @click="clearContributorLevelFilter"
+                    />
+                    <Button
+                      label="等級設定"
+                      icon="pi pi-cog"
+                      severity="secondary"
+                      size="small"
+                      outlined
+                      class="contributor-level-settings-button"
+                      @click="openContributorLevelSettingsDialog"
+                    />
+                    <button
+                      type="button"
+                      class="contributor-level-toggle"
+                      :aria-expanded="isLevelStatsExpanded"
+                      aria-controls="contributor-level-stats-grid"
+                      :aria-label="
+                        isLevelStatsExpanded ? '收合投稿等級選單與設定' : '展開投稿等級選單與設定'
+                      "
+                      @click="isLevelStatsExpanded = !isLevelStatsExpanded"
+                    >
+                      <span>{{ isLevelStatsExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="isLevelStatsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+                <div
+                  v-show="isLevelStatsExpanded"
+                  id="contributor-level-stats-grid"
+                  class="contributor-level-insights__grid"
+                >
+                  <button
+                    v-for="level in SUBMISSION_LEVELS"
+                    :key="level.level"
+                    type="button"
+                    class="contributor-level-stat"
+                    :class="{
+                      'is-active': isContributorLevelSelected(level.level),
+                    }"
+                    :aria-pressed="isContributorLevelSelected(level.level)"
+                    @click="toggleContributorLevel(level.level)"
+                  >
+                    <ContributorLevelBadge
+                      :level="level.level"
+                      :title="level.name"
+                      size="compact"
+                    />
+                    <span class="contributor-level-stat__name">{{ level.name }}</span>
+                  </button>
+                </div>
+              </section>
+
               <div class="admin-toolbar admin-toolbar--users mb-4">
                 <div class="admin-toolbar__filters">
                   <div class="admin-toolbar__search relative w-full md:w-auto">
@@ -750,205 +950,6 @@
                   @page="handleUserPage"
                 />
               </div>
-
-              <section
-                class="contributor-level-insights"
-                aria-labelledby="contributor-level-insights-title"
-              >
-                <div class="contributor-level-insights__heading">
-                  <div>
-                    <h3 id="contributor-level-insights-title">投稿等級統計</h3>
-                    <p>完整使用者等級分布</p>
-                  </div>
-                  <div class="contributor-level-insights__actions">
-                    <button
-                      type="button"
-                      class="contributor-level-total"
-                      :class="{ 'is-active': selectedContributorLevels.length === 0 }"
-                      :aria-pressed="selectedContributorLevels.length === 0"
-                      @click="clearContributorLevelFilter"
-                    >
-                      全部 {{ users.length }} 人
-                    </button>
-                    <span class="contributor-level-current">
-                      {{ contributorLevelSelectionSummary }}
-                    </span>
-                    <Button
-                      label="等級設定"
-                      icon="pi pi-cog"
-                      severity="secondary"
-                      size="small"
-                      outlined
-                      class="contributor-level-settings-button"
-                      @click="openContributorLevelSettingsDialog"
-                    />
-                    <button
-                      type="button"
-                      class="contributor-level-toggle"
-                      :aria-expanded="isLevelStatsExpanded"
-                      aria-controls="contributor-level-stats-grid"
-                      :aria-label="isLevelStatsExpanded ? '收合投稿等級統計' : '展開投稿等級統計'"
-                      @click="isLevelStatsExpanded = !isLevelStatsExpanded"
-                    >
-                      <span>{{ isLevelStatsExpanded ? '收合' : '展開' }}</span>
-                      <i
-                        class="pi"
-                        :class="isLevelStatsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
-                        aria-hidden="true"
-                      ></i>
-                    </button>
-                  </div>
-                </div>
-                <div
-                  v-show="isLevelStatsExpanded"
-                  id="contributor-level-stats-grid"
-                  class="contributor-level-insights__grid"
-                >
-                  <button
-                    v-for="stat in contributorLevelStats"
-                    :key="stat.level"
-                    type="button"
-                    class="contributor-level-stat"
-                    :class="{
-                      'is-active': isContributorLevelSelected(stat.level),
-                      'is-empty': stat.count === 0,
-                    }"
-                    :aria-pressed="isContributorLevelSelected(stat.level)"
-                    @click="toggleContributorLevel(stat.level)"
-                  >
-                    <ContributorLevelBadge :level="stat.level" :title="stat.name" size="compact" />
-                    <span class="contributor-level-stat__name">{{ stat.name }}</span>
-                    <strong>{{ stat.count }} 人</strong>
-                  </button>
-                </div>
-              </section>
-
-              <section class="user-insights" aria-labelledby="user-insights-title">
-                <div class="user-insights__heading">
-                  <div>
-                    <h3 id="user-insights-title">使用者統計圖表</h3>
-                    <p>{{ userInsightsViewLabel }}</p>
-                  </div>
-                  <div class="user-insights__actions">
-                    <div class="user-insights__switch" role="group" aria-label="切換使用者統計圖表">
-                      <button
-                        type="button"
-                        :class="{ 'is-active': userInsightsView === 'login' }"
-                        :aria-pressed="userInsightsView === 'login'"
-                        @click="userInsightsView = 'login'"
-                      >
-                        最近登入日期分布
-                      </button>
-                      <button
-                        type="button"
-                        :class="{ 'is-active': userInsightsView === 'level' }"
-                        :aria-pressed="userInsightsView === 'level'"
-                        @click="userInsightsView = 'level'"
-                      >
-                        投稿等級分布
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      class="user-insights__toggle"
-                      :aria-expanded="isUserChartsExpanded"
-                      aria-controls="user-insights-content"
-                      :aria-label="
-                        isUserChartsExpanded ? '收合使用者統計圖表' : '展開使用者統計圖表'
-                      "
-                      @click="isUserChartsExpanded = !isUserChartsExpanded"
-                    >
-                      <span>{{ isUserChartsExpanded ? '收合' : '展開' }}</span>
-                      <i
-                        class="pi"
-                        :class="isUserChartsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
-                        aria-hidden="true"
-                      ></i>
-                    </button>
-                  </div>
-                </div>
-
-                <div v-show="isUserChartsExpanded" id="user-insights-content">
-                  <div v-if="userInsightsView === 'login'" class="user-insights__panel">
-                    <div class="user-insights__panel-header">
-                      <p>依每位使用者目前保存的最近登入時間統計，每位使用者最多計入一次。</p>
-                      <div class="user-insights__range" role="group" aria-label="最近登入統計範圍">
-                        <button
-                          v-for="days in LOGIN_RANGE_OPTIONS"
-                          :key="days"
-                          type="button"
-                          :class="{ 'is-active': loginRangeDays === days }"
-                          :aria-pressed="loginRangeDays === days"
-                          @click="loginRangeDays = days"
-                        >
-                          {{ days }} 日
-                        </button>
-                      </div>
-                    </div>
-                    <div class="user-insights__summary">
-                      <span>範圍內 {{ loginDateSummary.inRange }} 人</span>
-                      <span>從未登入 {{ loginDateSummary.never }} 人</span>
-                      <span>範圍外 {{ loginDateSummary.outOfRange }} 人</span>
-                    </div>
-                    <div
-                      v-if="loginDateDistribution.length"
-                      class="user-login-chart"
-                      role="img"
-                      :aria-label="`最近 ${loginRangeDays} 日的最近登入日期分布`"
-                    >
-                      <div
-                        v-for="bucket in loginDateDistribution"
-                        :key="bucket.key"
-                        class="user-chart-row"
-                        tabindex="0"
-                        :title="`${bucket.label}：${bucket.count} 人`"
-                      >
-                        <span class="user-chart-row__label">{{ bucket.label }}</span>
-                        <div class="user-chart-row__track">
-                          <span
-                            class="user-chart-row__fill user-chart-row__fill--login"
-                            :style="{ width: `${bucket.width}%` }"
-                          ></span>
-                        </div>
-                        <strong>{{ bucket.count }} 人</strong>
-                      </div>
-                    </div>
-                    <div v-else class="user-insights__empty">此範圍內沒有最近登入資料</div>
-                  </div>
-
-                  <div v-else class="user-insights__panel">
-                    <p class="user-insights__description">
-                      依完整使用者集合統計，不受目前搜尋、分頁或等級篩選影響。
-                    </p>
-                    <div class="user-level-chart" aria-label="投稿等級分布">
-                      <div
-                        v-for="stat in contributorLevelDistribution"
-                        :key="`chart-level-${stat.level}`"
-                        class="user-level-chart__row"
-                        :style="{
-                          '--chart-level-color': stat.palette.bg,
-                          '--chart-level-border': stat.palette.border,
-                        }"
-                      >
-                        <ContributorLevelBadge
-                          :level="stat.level"
-                          :title="stat.name"
-                          size="compact"
-                        />
-                        <span class="user-level-chart__name">{{ stat.name }}</span>
-                        <div class="user-level-chart__track">
-                          <span
-                            class="user-level-chart__fill"
-                            :style="{ width: `${stat.percentage}%` }"
-                          ></span>
-                        </div>
-                        <strong>{{ stat.count }} 人</strong>
-                        <span>{{ stat.percentage.toFixed(1) }}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
             </div>
           </TabPanel>
 
@@ -2985,7 +2986,8 @@
         modal
         :draggable="false"
         header="使用者投稿統計"
-        :style="{ width: 'min(760px, 96vw)' }"
+        :style="{ width: 'min(760px, 96vw)', maxHeight: '90vh' }"
+        :contentStyle="{ overflowY: 'auto' }"
         @hide="closeUserSubmissionStatsDialog"
       >
         <div class="user-submission-dialog">
@@ -4714,14 +4716,6 @@ const handleUserSubmissionRecordPage = (event) => {
 
 watch(userSubmissionRecordSearch, () => {
   userSubmissionRecordFirst.value = 0
-})
-
-const contributorLevelSelectionSummary = computed(() => {
-  if (selectedContributorLevels.value.length === 0) return '全部投稿等級'
-  if (selectedContributorLevels.value.length === 1) {
-    return `已選 Lv.${selectedContributorLevels.value[0]}`
-  }
-  return `已選 ${selectedContributorLevels.value.length} 個等級`
 })
 
 const isContributorLevelSelected = (level) => selectedContributorLevels.value.includes(level)
@@ -7366,7 +7360,6 @@ onBeforeUnmount(() => {
   gap: 0.4rem 0.6rem;
 }
 
-.contributor-level-total,
 .contributor-level-toggle {
   display: inline-flex;
   flex: 0 0 auto;
@@ -7386,35 +7379,19 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.contributor-level-total:hover,
-.contributor-level-total:focus-visible,
 .contributor-level-toggle:hover,
 .contributor-level-toggle:focus-visible {
   border-color: var(--primary-color);
 }
 
-.contributor-level-total:focus-visible,
 .contributor-level-toggle:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
-.contributor-level-total.is-active {
-  border-color: var(--primary-color);
-  box-shadow: inset 0 0 0 1px var(--primary-color);
-}
-
-.contributor-level-current {
-  min-width: 0;
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
 .contributor-level-stat {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
   align-items: center;
   gap: 0.5rem;
@@ -7445,20 +7422,11 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-primary));
 }
 
-.contributor-level-stat.is-empty:not(.is-active) {
-  opacity: 0.72;
-}
-
 .contributor-level-stat__name {
   min-width: 0;
   font-size: 0.8rem;
   font-weight: 650;
   line-height: 1.2;
-  white-space: nowrap;
-}
-
-.contributor-level-stat > strong {
-  flex: 0 0 auto;
   white-space: nowrap;
 }
 
@@ -7672,8 +7640,6 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 0.9rem;
   min-width: 0;
-  max-height: min(68vh, 40rem);
-  overflow-y: auto;
 }
 
 .user-submission-summary,
@@ -7905,9 +7871,6 @@ onBeforeUnmount(() => {
 .user-submission-record-list {
   display: grid;
   gap: 0.5rem;
-  max-height: min(36vh, 20rem);
-  overflow-y: auto;
-  padding-right: 0.2rem;
 }
 
 .user-submission-record {
@@ -11716,12 +11679,6 @@ onBeforeUnmount(() => {
   .contributor-level-insights__actions {
     flex: 1 1 auto;
     flex-wrap: wrap;
-  }
-
-  .contributor-level-current {
-    order: 3;
-    width: 100%;
-    text-align: right;
   }
 
   .contributor-level-insights__grid {
