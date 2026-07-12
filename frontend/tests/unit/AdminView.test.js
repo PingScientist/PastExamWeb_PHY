@@ -328,6 +328,25 @@ describe('AdminView', () => {
     getUsersMock.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.loadUsers()
     expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入使用者失敗' }))
+    expect(wrapper.vm.userStatsLoadError).toContain('使用者統計載入失敗')
+
+    toastAddMock.mockClear()
+    getUsersMock.mockResolvedValueOnce({ data: { users: sampleUsers } })
+    await wrapper.vm.loadUsers()
+    expect(wrapper.vm.userStatsLoadError).toContain('使用者統計載入失敗')
+    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入使用者失敗' }))
+
+    toastAddMock.mockClear()
+    isUnauthorizedErrorMock.mockReturnValueOnce(true)
+    getUsersMock.mockRejectedValueOnce(new Error('unauthorized'))
+    await wrapper.vm.loadUsers()
+    expect(wrapper.vm.userStatsLoadError).toContain('登入階段已過期')
+    expect(toastAddMock).not.toHaveBeenCalled()
+
+    isUnauthorizedErrorMock.mockReturnValue(false)
+    getUsersMock.mockResolvedValueOnce({ data: sampleUsers })
+    await wrapper.vm.loadUsers()
+    expect(wrapper.vm.userStatsLoadError).toBe('')
 
     toastAddMock.mockClear()
     isUnauthorizedErrorMock.mockReturnValueOnce(false)
@@ -369,6 +388,51 @@ describe('AdminView', () => {
 
     await flushPromises()
     expect(notificationGetAllMock).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+  })
+
+  it('builds visible login buckets for every supported range', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    const sameHour = new Date(now.getTime() - 60 * 60_000)
+    wrapper.vm.users = [
+      { id: 1, last_login: sameHour.toISOString() },
+      { id: 2, last_login: new Date(sameHour.getTime() + 5 * 60_000).toISOString() },
+      ...Array.from({ length: 5 }, (_, index) => ({ id: index + 3, last_login: null })),
+    ]
+    wrapper.vm.userInsightsView = 'login-hour'
+
+    for (const range of [24, 48, 72]) {
+      wrapper.vm.setActiveLoginRange(range)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(range)
+      expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 2, never: 5, outOfRange: 0 })
+      const nonZeroBuckets = wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)
+      expect(nonZeroBuckets).toHaveLength(1)
+      expect(nonZeroBuckets[0].count).toBe(2)
+      expect((nonZeroBuckets[0].count / wrapper.vm.loginChartData.yMax) * 100).toBeGreaterThan(0)
+    }
+
+    wrapper.vm.userInsightsView = 'login-date'
+    await wrapper.vm.$nextTick()
+    for (const range of [7, 30, 90]) {
+      wrapper.vm.setActiveLoginRange(range)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(range)
+      expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 2, never: 5, outOfRange: 0 })
+      expect(wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)).toEqual([
+        expect.objectContaining({ count: 2 }),
+      ])
+    }
+
+    wrapper.vm.users = Array.from({ length: 3 }, (_, index) => ({
+      id: index + 1,
+      last_login: null,
+    }))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 0, never: 3, outOfRange: 0 })
 
     wrapper.unmount()
   })

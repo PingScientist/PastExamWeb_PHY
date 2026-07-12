@@ -535,7 +535,26 @@
                 </div>
 
                 <div v-show="isUserChartsExpanded" id="user-insights-content">
-                  <div v-if="userInsightsView !== 'level'" class="user-insights__panel">
+                  <Message
+                    v-if="userStatsLoadError"
+                    severity="error"
+                    :closable="false"
+                    class="user-insights__load-error"
+                  >
+                    <div class="flex flex-wrap align-items-center justify-content-between gap-3">
+                      <span>{{ userStatsLoadError }}</span>
+                      <Button
+                        label="重新載入"
+                        icon="pi pi-refresh"
+                        severity="danger"
+                        outlined
+                        size="small"
+                        :loading="usersLoading"
+                        @click="loadUsers"
+                      />
+                    </div>
+                  </Message>
+                  <div v-else-if="userInsightsView !== 'level'" class="user-insights__panel">
                     <div class="user-insights__panel-header">
                       <p>{{ loginDistributionDescription }}</p>
                       <div class="user-insights__range" role="group" aria-label="最近登入統計範圍">
@@ -557,6 +576,7 @@
                       <span>範圍外 {{ loginDateSummary.outOfRange }} 人</span>
                     </div>
                     <div
+                      v-if="loginDateSummary.inRange > 0"
                       class="user-login-column-chart"
                       role="img"
                       :aria-label="loginChartData.ariaLabel"
@@ -608,6 +628,9 @@
                           </span>
                         </div>
                       </div>
+                    </div>
+                    <div v-else class="user-insights__empty" role="status">
+                      此範圍內沒有最近登入資料
                     </div>
                   </div>
 
@@ -3767,6 +3790,7 @@ const legacyCategoryBadgeColorMap = {
 }
 const users = ref([])
 const usersLoading = ref(false)
+const userStatsLoadError = ref('')
 const userSearchQuery = ref('')
 const filterUserType = ref(null)
 const selectedContributorLevels = ref([])
@@ -5621,9 +5645,13 @@ const loadCourses = async () => {
 
 const loadUsers = async () => {
   usersLoading.value = true
+  userStatsLoadError.value = ''
   try {
     await loadContributorLevelSettings()
     const response = await getUsers()
+    if (!Array.isArray(response.data)) {
+      throw new TypeError('Invalid users response')
+    }
     users.value = response.data.map((user) => {
       const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
       return {
@@ -5634,7 +5662,11 @@ const loadUsers = async () => {
     })
   } catch (error) {
     console.error('載入使用者失敗:', error)
-    if (isUnauthorizedError(error)) {
+    const unauthorized = isUnauthorizedError(error)
+    userStatsLoadError.value = unauthorized
+      ? '登入階段已過期，請重新登入後再載入使用者統計。'
+      : '使用者統計載入失敗，請稍後再試或查看伺服器日誌。'
+    if (unauthorized) {
       return
     }
     toast.add({
@@ -7632,7 +7664,7 @@ onBeforeUnmount(() => {
   padding: 0.85rem;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-secondary) 94%, var(--primary-color) 6%);
+  background: color-mix(in srgb, var(--bg-secondary) 94%, var(--p-primary-color) 6%);
 }
 
 .user-insights__heading,
@@ -7705,8 +7737,8 @@ onBeforeUnmount(() => {
 
 .user-insights__switch button.is-active,
 .user-insights__range button.is-active {
-  background: color-mix(in srgb, var(--primary-color) 15%, var(--bg-primary));
-  color: var(--primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 15%, var(--bg-primary));
+  color: var(--p-primary-color);
 }
 
 .user-insights__toggle {
@@ -7720,7 +7752,7 @@ onBeforeUnmount(() => {
 .user-insights__switch button:focus-visible,
 .user-insights__range button:focus-visible,
 .user-insights__toggle:focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--p-primary-color);
   outline-offset: 2px;
 }
 
@@ -7826,7 +7858,7 @@ onBeforeUnmount(() => {
 
 .user-login-column-chart__item:focus-visible {
   border-radius: 3px;
-  box-shadow: inset 0 0 0 2px var(--primary-color);
+  box-shadow: inset 0 0 0 2px var(--p-primary-color);
 }
 
 .user-login-column-chart__bar {
@@ -7839,12 +7871,8 @@ onBeforeUnmount(() => {
 
 .user-login-column-chart__bar.has-value {
   min-height: 2px;
-  background: linear-gradient(
-    180deg,
-    var(--primary-color),
-    var(--primary-dark, var(--primary-color))
-  );
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 60%, transparent);
+  background: var(--p-primary-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--p-primary-color) 60%, transparent);
 }
 
 .user-login-column-chart__x-axis {
