@@ -410,9 +410,13 @@
             <div v-else class="submission-status-list">
               <section class="submission-level" aria-labelledby="submission-level-title">
                 <div class="submission-level-header">
-                  <strong id="submission-level-title">
-                    Lv. {{ submissionLevel.level }} {{ submissionLevel.name }}
-                  </strong>
+                  <ContributorLevelBadge
+                    id="submission-level-title"
+                    :level="submissionLevel.level"
+                    :title="submissionLevel.name"
+                    size="regular"
+                    show-title
+                  />
                   <span>{{ submissionLevel.currentExp }} EXP</span>
                 </div>
                 <div
@@ -432,11 +436,13 @@
                 <div class="submission-level-meta">
                   <span v-if="submissionLevel.isMaxLevel">已達最高等級</span>
                   <span v-else>
-                    本級 {{ submissionLevel.progressInLevel }} / {{ submissionLevel.progressRange }}
-                    EXP，距離 Lv. {{ submissionLevel.level + 1 }} 還差
-                    {{ submissionLevel.expToNextLevel }} EXP
+                    本級 {{ submissionLevel.progressInLevel }} /
+                    {{ submissionLevel.progressRange }} EXP，距離 Lv.
+                    {{ submissionLevel.level + 1 }} 還差 {{ submissionLevel.expToNextLevel }} EXP
                   </span>
-                  <span>由已通過與已下架投稿累積（{{ submissionLevel.countedSubmissions }} 筆）</span>
+                  <span
+                    >由已通過與已下架投稿累積（{{ submissionLevel.countedSubmissions }} 筆）</span
+                  >
                 </div>
               </section>
               <section class="submission-summary" aria-label="投稿統計">
@@ -745,6 +751,7 @@ import { ref, computed, onMounted, watch, inject, onBeforeUnmount } from 'vue'
 import { courseService, archiveService } from '../api'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import UploadArchiveDialog from '../components/UploadArchiveDialog.vue'
+import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
 import { getCurrentUser, isAuthenticated } from '../utils/auth'
 import { useTheme } from '../utils/useTheme'
 import { trackEvent, EVENTS } from '../utils/analytics'
@@ -3530,11 +3537,6 @@ const mobileMenuItems = computed(() => {
 .submission-level-header {
   align-items: baseline;
   margin-bottom: 0.5rem;
-}
-
-.submission-level-header strong {
-  color: var(--text-color);
-  font-size: 1rem;
 }
 
 .submission-level-header span,

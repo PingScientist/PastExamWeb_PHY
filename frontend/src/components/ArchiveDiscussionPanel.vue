@@ -36,9 +36,12 @@
           <div class="discussion-author flex align-items-center gap-2 min-w-0">
             <Tag v-if="msg.is_pinned" value="置頂" severity="warning" class="discussion-pin-tag" />
             <div class="discussion-author-name text-sm font-semibold">{{ msg.user_name }}</div>
-            <span v-if="shouldShowLevelTitle(msg)" class="discussion-level-title">
-              {{ formatSubmissionLevelTitle(msg.author_experience) }}
-            </span>
+            <ContributorLevelBadge
+              v-if="shouldShowLevelTitle(msg)"
+              :level="getMessageLevel(msg).level"
+              :title="getMessageLevel(msg).name"
+              size="compact"
+            />
           </div>
           <div class="flex align-items-center gap-2">
             <div class="text-xs" style="color: var(--text-secondary)">
@@ -196,7 +199,8 @@ import { formatRelativeTime } from '../utils/time'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { getBooleanPreference, setBooleanPreference } from '../utils/usePreferences'
 import { STORAGE_KEYS } from '../utils/storage'
-import { formatSubmissionLevelTitle } from '../utils/submissionLevel'
+import { resolveSubmissionLevel } from '../utils/submissionLevel'
+import ContributorLevelBadge from './ContributorLevelBadge.vue'
 
 const DESKTOP_DEFAULT_OPEN_KEY = STORAGE_KEYS.local.DISCUSSION_DESKTOP_DEFAULT_OPEN
 
@@ -323,6 +327,10 @@ function formatTime(val) {
 
 function shouldShowLevelTitle(message) {
   return message?.author_show_level_title === true && Number.isFinite(message?.author_experience)
+}
+
+function getMessageLevel(message) {
+  return resolveSubmissionLevel(message?.author_experience)
 }
 
 function scrollToBottom() {
@@ -697,23 +705,9 @@ function handleDesktopDefaultOpenChange() {
   flex-wrap: wrap;
 }
 
-.discussion-author-name,
-.discussion-level-title {
+.discussion-author-name {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.discussion-level-title {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--p-primary-color) 30%, var(--border-color));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--p-primary-color) 10%, var(--bg-secondary));
-  color: var(--text-color);
-  font-size: 0.7rem;
-  font-weight: 600;
-  line-height: 1rem;
 }
 
 .discussion-setting-option {
