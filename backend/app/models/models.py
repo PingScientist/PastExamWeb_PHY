@@ -3,7 +3,7 @@ from enum import Enum as PyEnum
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -73,6 +73,36 @@ class User(SQLModel, table=True):
     )
 
     archives: List["Archive"] = Relationship(back_populates="uploader")
+
+
+class UserPresenceSession(SQLModel, table=True):
+    __tablename__ = "user_presence_sessions"
+    __table_args__ = (
+        Index("ix_user_presence_sessions_user_started", "user_id", "started_at"),
+        Index("ix_user_presence_sessions_identifier", "session_identifier"),
+        Index("ix_user_presence_sessions_last_seen", "last_seen_at"),
+        Index("ix_user_presence_sessions_ended", "ended_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    session_identifier: str = Field(sa_column=Column(String(64), nullable=False))
+    started_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    last_seen_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    ended_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
 
 
 class CourseCategoryConfig(SQLModel, table=True):
@@ -348,6 +378,26 @@ class UserRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class OnlineStatisticsPoint(BaseModel):
+    start: datetime
+    end: datetime
+    at: datetime
+    count: int
+    has_data: bool
+
+
+class OnlineStatisticsRead(BaseModel):
+    range: str
+    bucket_minutes: int
+    timezone: str = "UTC"
+    online_timeout_seconds: int
+    current_online: int
+    peak_online: int
+    average_online: float
+    history_started_at: Optional[datetime] = None
+    points: List[OnlineStatisticsPoint] = Field(default_factory=list)
 
 
 class UserSubmissionStatusCounts(BaseModel):

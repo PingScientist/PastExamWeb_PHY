@@ -498,7 +498,7 @@
                         :aria-pressed="userInsightsView === 'login-hour'"
                         @click="userInsightsView = 'login-hour'"
                       >
-                        最近登入時間分布
+                        最近在線時間分布
                       </button>
                       <button
                         type="button"
@@ -506,7 +506,7 @@
                         :aria-pressed="userInsightsView === 'login-date'"
                         @click="userInsightsView = 'login-date'"
                       >
-                        最近登入日期分布
+                        最近在線日期分布
                       </button>
                       <button
                         type="button"
@@ -539,28 +539,30 @@
 
                 <div v-show="isUserChartsExpanded" id="user-insights-content">
                   <Message
-                    v-if="userStatsLoadError"
+                    v-if="
+                      userStatsLoadError || (userInsightsView !== 'level' && onlineStatisticsError)
+                    "
                     severity="error"
                     :closable="false"
                     class="user-insights__load-error"
                   >
                     <div class="flex flex-wrap align-items-center justify-content-between gap-3">
-                      <span>{{ userStatsLoadError }}</span>
+                      <span>{{ userStatsLoadError || onlineStatisticsError }}</span>
                       <Button
                         label="重新載入"
                         icon="pi pi-refresh"
                         severity="danger"
                         outlined
                         size="small"
-                        :loading="usersLoading"
-                        @click="loadUsers"
+                        :loading="usersLoading || onlineStatisticsLoading"
+                        @click="reloadUserStatistics"
                       />
                     </div>
                   </Message>
                   <div v-else-if="userInsightsView !== 'level'" class="user-insights__panel">
                     <div class="user-insights__panel-header">
                       <p>{{ loginDistributionDescription }}</p>
-                      <div class="user-insights__range" role="group" aria-label="最近登入統計範圍">
+                      <div class="user-insights__range" role="group" aria-label="最近在線統計範圍">
                         <button
                           v-for="option in loginRangeOptions"
                           :key="option"
@@ -574,12 +576,12 @@
                       </div>
                     </div>
                     <div class="user-insights__summary">
-                      <span>範圍內 {{ loginDateSummary.inRange }} 人</span>
-                      <span>從未登入 {{ loginDateSummary.never }} 人</span>
-                      <span>範圍外 {{ loginDateSummary.outOfRange }} 人</span>
+                      <span>目前在線 {{ onlineStatisticsSummary.current }} 人</span>
+                      <span>區間峰值 {{ onlineStatisticsSummary.peak }} 人</span>
+                      <span>區間平均 {{ onlineStatisticsSummary.average }} 人</span>
                     </div>
                     <div
-                      v-if="loginDateSummary.inRange > 0"
+                      v-if="onlineStatistics?.history_started_at"
                       class="user-login-column-chart"
                       role="img"
                       :aria-label="loginChartData.ariaLabel"
@@ -606,8 +608,16 @@
                             :key="bucket.key"
                             class="user-login-column-chart__item"
                             tabindex="0"
-                            :title="`${bucket.fullLabel}：${bucket.count} 人`"
-                            :aria-label="`${bucket.fullLabel}，${bucket.count} 人`"
+                            :title="
+                              bucket.has_data
+                                ? `${bucket.fullLabel}：${bucket.count} 人在線`
+                                : `${bucket.fullLabel}：尚無歷史資料`
+                            "
+                            :aria-label="
+                              bucket.has_data
+                                ? `${bucket.fullLabel}，${bucket.count} 人在線`
+                                : `${bucket.fullLabel}，尚無歷史資料`
+                            "
                           >
                             <span
                               class="user-login-column-chart__bar"
@@ -633,7 +643,7 @@
                       </div>
                     </div>
                     <div v-else class="user-insights__empty" role="status">
-                      此範圍內沒有最近登入資料
+                      在線歷史資料將從此功能啟用後開始累積。
                     </div>
                   </div>
 
@@ -3713,6 +3723,7 @@ import {
   reorderCourses,
   deleteCourse,
   getUsers,
+  getOnlineStatistics,
   getUserSubmissionStats,
   createUser,
   updateUser,
@@ -3820,7 +3831,10 @@ const userInsightsView = ref('login-hour')
 const isUserChartsExpanded = ref(false)
 const loginRangeHours = ref(24)
 const loginRangeDays = ref(30)
-const loginStatsNow = ref(new Date())
+const onlineStatistics = ref(null)
+const onlineStatisticsLoading = ref(false)
+const onlineStatisticsError = ref('')
+let onlineStatisticsRequestId = 0
 let loginStatsRefreshTimer = null
 const showUserSubmissionStatsDialog = ref(false)
 const userSubmissionStatsLoading = ref(false)
@@ -4652,8 +4666,8 @@ const contributorLevelDistribution = computed(() => {
 })
 
 const userInsightsViewLabel = computed(() => {
-  if (userInsightsView.value === 'login-hour') return '最近登入時間分布'
-  if (userInsightsView.value === 'login-date') return '最近登入日期分布'
+  if (userInsightsView.value === 'login-hour') return '最近在線時間分布'
+  if (userInsightsView.value === 'login-date') return '最近在線日期分布'
   return '投稿等級分布'
 })
 
@@ -4672,7 +4686,7 @@ const loginDistributionDescription = computed(() => {
     userInsightsView.value === 'login-hour'
       ? `${loginRangeHours.value} 小時`
       : `${loginRangeDays.value} 日`
-  return `統計最近 ${range} 範圍內，每位使用者最近登入時間所屬的 ${formatBucketDuration(activeLoginBucketConfig.value.bucketMinutes)}區間；每位使用者最多計入一次。`
+  return `統計最近 ${range} 內，各 ${formatBucketDuration(activeLoginBucketConfig.value.bucketMinutes)}取樣時間點的同時在線使用者人數。`
 })
 
 const loginRangeOptions = computed(() =>
@@ -4683,14 +4697,16 @@ const activeLoginRange = computed(() =>
 )
 const loginRangeUnit = computed(() => (userInsightsView.value === 'login-hour' ? '小時' : '日'))
 const setActiveLoginRange = (value) => {
-  loginStatsNow.value = new Date()
   if (userInsightsView.value === 'login-hour') loginRangeHours.value = value
   else loginRangeDays.value = value
+  void loadOnlineStatistics()
+  if (typeof window !== 'undefined') scheduleLoginStatsRefresh()
 }
 
 watch(userInsightsView, (mode) => {
   if (mode === 'login-hour') loginRangeHours.value = 24
   if (mode === 'login-date') loginRangeDays.value = 30
+  if (mode !== 'level') void loadOnlineStatistics()
 })
 
 const formatLocalDateTime = (date) => {
@@ -4709,108 +4725,6 @@ const formatShortLocalDate = (date) =>
     month: '2-digit',
     day: '2-digit',
   }).format(date)
-
-const addLocalMinutes = (date, minutes) => {
-  const result = new Date(date)
-  result.setMinutes(result.getMinutes() + minutes)
-  return result
-}
-
-const alignToNaturalBucket = (date, bucketMinutes) => {
-  const result = new Date(date)
-  const minutesSinceMidnight = result.getHours() * 60 + result.getMinutes()
-  const alignedMinutes = Math.floor(minutesSinceMidnight / bucketMinutes) * bucketMinutes
-  result.setHours(0, alignedMinutes, 0, 0)
-  return result
-}
-
-const buildLoginBuckets = ({ now, config, mode }) => {
-  const currentBucketStart = alignToNaturalBucket(now, config.bucketMinutes)
-  const firstBucketStart = addLocalMinutes(
-    currentBucketStart,
-    -(config.bucketCount - 1) * config.bucketMinutes
-  )
-  const buckets = Array.from({ length: config.bucketCount }, (_, index) => {
-    const startDate = addLocalMinutes(firstBucketStart, index * config.bucketMinutes)
-    const endDate = addLocalMinutes(startDate, config.bucketMinutes)
-    return {
-      key: startDate.toISOString(),
-      start: startDate.toISOString(),
-      end: endDate.toISOString(),
-      startDate,
-      endDate,
-      count: 0,
-      label:
-        mode === 'login-hour'
-          ? `${String(startDate.getHours()).padStart(2, '0')} 時`
-          : formatShortLocalDate(startDate),
-      fullLabel:
-        config.bucketMinutes === 24 * 60
-          ? new Intl.DateTimeFormat('zh-TW', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-            }).format(startDate)
-          : `${formatLocalDateTime(startDate)}–${formatLocalDateTime(endDate)}`,
-    }
-  })
-
-  let never = 0
-  let outOfRange = 0
-  users.value.forEach((user) => {
-    if (!user.last_login) {
-      never += 1
-      return
-    }
-    const loginAt = new Date(user.last_login)
-    if (Number.isNaN(loginAt.getTime()) || loginAt > now) {
-      outOfRange += 1
-      return
-    }
-    const bucket = buckets.find(
-      ({ startDate, endDate }) => loginAt >= startDate && loginAt < endDate
-    )
-    if (!bucket) {
-      outOfRange += 1
-      return
-    }
-    bucket.count += 1
-  })
-
-  return {
-    buckets: buckets.map((bucket) => ({
-      key: bucket.key,
-      start: bucket.start,
-      end: bucket.end,
-      count: bucket.count,
-      label: bucket.label,
-      fullLabel: bucket.fullLabel,
-    })),
-    never,
-    outOfRange,
-  }
-}
-
-const loginDateStats = computed(() => {
-  const now = new Date(loginStatsNow.value)
-  const hourStats = buildLoginBuckets({
-    now,
-    config: LOGIN_HOUR_BUCKET_CONFIG[loginRangeHours.value],
-    mode: 'login-hour',
-  })
-  const dateStats = buildLoginBuckets({
-    now,
-    config: LOGIN_DATE_BUCKET_CONFIG[loginRangeDays.value],
-    mode: 'login-date',
-  })
-  return {
-    hourBuckets: hourStats.buckets,
-    dateBuckets: dateStats.buckets,
-    never: hourStats.never,
-    hourOutOfRange: hourStats.outOfRange,
-    dateOutOfRange: dateStats.outOfRange,
-  }
-})
 
 const shouldShowLoginChartLabel = (bucket, index, total, mode, config) => {
   if (index === 0 || index === total - 1) return true
@@ -4838,20 +4752,23 @@ const buildIntegerAxis = (buckets) => {
 
 const loginChartData = computed(() => {
   const mode = userInsightsView.value
-  const source =
-    mode === 'login-hour' ? loginDateStats.value.hourBuckets : loginDateStats.value.dateBuckets
+  const source = Array.isArray(onlineStatistics.value?.points) ? onlineStatistics.value.points : []
   const config = activeLoginBucketConfig.value
-  const buckets = source.map((bucket, index) => ({
-    ...bucket,
-    label:
-      mode === 'login-hour' &&
-      loginRangeHours.value > 24 &&
-      new Date(bucket.start).getHours() === 0 &&
-      new Date(bucket.start).getMinutes() === 0
-        ? formatShortLocalDate(new Date(bucket.start))
-        : bucket.label,
-    showLabel: shouldShowLoginChartLabel(bucket, index, source.length, mode, config),
-  }))
+  const buckets = source.map((point, index) => {
+    const start = new Date(point.start)
+    const end = new Date(point.end)
+    const crossesMidnight = start.getHours() === 0 && start.getMinutes() === 0
+    return {
+      ...point,
+      key: point.at,
+      label:
+        mode === 'login-date' || (loginRangeHours.value > 24 && crossesMidnight)
+          ? formatShortLocalDate(start)
+          : `${String(start.getHours()).padStart(2, '0')} 時`,
+      fullLabel: `${formatLocalDateTime(new Date(point.at))} 取樣（區間 ${formatLocalDateTime(start)}–${formatLocalDateTime(end)}）`,
+      showLabel: shouldShowLoginChartLabel(point, index, source.length, mode, config),
+    }
+  })
   const axis = buildIntegerAxis(buckets)
   return {
     ...axis,
@@ -4861,18 +4778,15 @@ const loginChartData = computed(() => {
     buckets,
     ariaLabel:
       mode === 'login-hour'
-        ? `最近 ${loginRangeHours.value} 小時的最近登入時間分布`
-        : `最近 ${loginRangeDays.value} 日的最近登入日期分布`,
+        ? `最近 ${loginRangeHours.value} 小時的同時在線人數分布`
+        : `最近 ${loginRangeDays.value} 日的同時在線人數分布`,
   }
 })
 
-const loginDateSummary = computed(() => ({
-  inRange: loginChartData.value.buckets.reduce((sum, bucket) => sum + bucket.count, 0),
-  never: loginDateStats.value.never,
-  outOfRange:
-    userInsightsView.value === 'login-hour'
-      ? loginDateStats.value.hourOutOfRange
-      : loginDateStats.value.dateOutOfRange,
+const onlineStatisticsSummary = computed(() => ({
+  current: onlineStatistics.value?.current_online ?? 0,
+  peak: onlineStatistics.value?.peak_online ?? 0,
+  average: Number(onlineStatistics.value?.average_online ?? 0).toFixed(1),
 }))
 
 const selectedUserContributorLevel = computed(() =>
@@ -5731,7 +5645,6 @@ const loadUsers = async () => {
     if (!Array.isArray(response.data)) {
       throw new TypeError('Invalid users response')
     }
-    loginStatsNow.value = new Date()
     users.value = response.data.map((user) => {
       const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
       return {
@@ -5758,6 +5671,54 @@ const loadUsers = async () => {
   } finally {
     usersLoading.value = false
   }
+}
+
+const activeOnlineRangeKey = () =>
+  userInsightsView.value === 'login-hour' ? `${loginRangeHours.value}h` : `${loginRangeDays.value}d`
+
+const loadOnlineStatistics = async () => {
+  if (userInsightsView.value === 'level') return
+  const requestId = ++onlineStatisticsRequestId
+  onlineStatisticsLoading.value = true
+  onlineStatisticsError.value = ''
+  try {
+    const expectedRange = activeOnlineRangeKey()
+    const expectedConfig = activeLoginBucketConfig.value
+    const { data } = await getOnlineStatistics(expectedRange)
+    if (requestId !== onlineStatisticsRequestId) return
+    if (
+      !data ||
+      data.range !== expectedRange ||
+      data.bucket_minutes !== expectedConfig.bucketMinutes ||
+      !Array.isArray(data.points) ||
+      data.points.length !== expectedConfig.bucketCount ||
+      data.points.some(
+        (point) =>
+          !point?.start ||
+          !point?.end ||
+          !point?.at ||
+          !Number.isInteger(point?.count) ||
+          point.count < 0 ||
+          typeof point.has_data !== 'boolean'
+      )
+    ) {
+      throw new TypeError('Invalid online statistics response')
+    }
+    onlineStatistics.value = data
+  } catch (error) {
+    if (requestId !== onlineStatisticsRequestId) return
+    console.error('載入在線統計失敗:', error)
+    onlineStatistics.value = null
+    onlineStatisticsError.value = isUnauthorizedError(error)
+      ? '登入階段已過期，請重新登入後再載入在線統計。'
+      : '在線統計載入失敗，請稍後再試或查看伺服器日誌。'
+  } finally {
+    if (requestId === onlineStatisticsRequestId) onlineStatisticsLoading.value = false
+  }
+}
+
+const reloadUserStatistics = async () => {
+  await Promise.all([loadUsers(), loadOnlineStatistics()])
 }
 
 const loadNotifications = async () => {
@@ -7404,7 +7365,7 @@ const loadTabData = async (value) => {
   }
 
   if (tab === '1') {
-    await loadUsers()
+    await reloadUserStatistics()
     return
   }
 
@@ -7449,18 +7410,22 @@ watch(
   { immediate: true }
 )
 
-const refreshLoginStatsNow = () => {
-  loginStatsNow.value = new Date()
+const refreshOnlineStatistics = () => {
+  if (currentTab.value === '1' && userInsightsView.value !== 'level') {
+    void loadOnlineStatistics()
+  }
 }
 
 const scheduleLoginStatsRefresh = () => {
   if (loginStatsRefreshTimer !== null) window.clearTimeout(loginStatsRefreshTimer)
   const now = new Date()
+  const bucketMinutes = activeLoginBucketConfig.value.bucketMinutes
   const nextHour = new Date(now)
-  nextHour.setMinutes(60, 0, 50)
+  const nextBucketMinute = (Math.floor(now.getMinutes() / bucketMinutes) + 1) * bucketMinutes
+  nextHour.setMinutes(nextBucketMinute, 0, 50)
   loginStatsRefreshTimer = window.setTimeout(
     () => {
-      refreshLoginStatsNow()
+      refreshOnlineStatistics()
       scheduleLoginStatsRefresh()
     },
     Math.max(1000, nextHour.getTime() - now.getTime())
@@ -7469,13 +7434,13 @@ const scheduleLoginStatsRefresh = () => {
 
 onMounted(() => {
   if (typeof window === 'undefined') return
-  window.addEventListener('focus', refreshLoginStatsNow)
+  window.addEventListener('focus', refreshOnlineStatistics)
   scheduleLoginStatsRefresh()
 })
 
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
-    window.removeEventListener('focus', refreshLoginStatsNow)
+    window.removeEventListener('focus', refreshOnlineStatistics)
     if (loginStatsRefreshTimer !== null) window.clearTimeout(loginStatsRefreshTimer)
   }
   userSubmissionStatsController?.abort()
@@ -7770,22 +7735,22 @@ onBeforeUnmount(() => {
 }
 
 .contributor-level-stat :deep(.contributor-level--compact .contributor-level__badge) {
-  min-width: 2.9rem;
-  padding: 0.12rem 0.34rem;
-  font-size: 0.61rem;
+  min-width: calc(2.9rem * var(--app-font-scale));
+  padding: calc(0.12rem * var(--app-font-scale)) calc(0.34rem * var(--app-font-scale));
+  font-size: var(--app-font-size-xs);
 }
 
 .user-table-contributor-level {
   color: var(--text-color);
-  font-size: 0.86rem;
+  font-size: var(--app-font-size-sm);
   white-space: nowrap;
 }
 
 :deep(.user-management-table .p-datatable-thead > tr > th:first-child),
 :deep(.user-management-table .p-datatable-tbody > tr > td:first-child) {
-  width: 7.5rem;
-  min-width: 7.5rem;
-  max-width: 7.5rem;
+  width: clamp(7.5rem, calc(7.5rem * var(--app-font-scale)), 10.5rem);
+  min-width: clamp(7.5rem, calc(7.5rem * var(--app-font-scale)), 10.5rem);
+  max-width: clamp(7.5rem, calc(7.5rem * var(--app-font-scale)), 10.5rem);
   white-space: nowrap;
 }
 
@@ -11894,6 +11859,68 @@ onBeforeUnmount(() => {
 .user-management-table :deep(.p-button-label),
 .admin-mobile-list--users :deep(.p-button-label) {
   font-size: inherit !important;
+}
+
+.admin-insights-card,
+.admin-insights-card :deep(.p-component) {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-insights-card h3,
+.admin-insights-card .user-insights__switch button,
+.admin-insights-card .user-insights__range button,
+.admin-insights-card .section-collapse-toggle,
+.admin-insights-card .contributor-level-toggle,
+.admin-insights-card .contributor-level-stat strong,
+.admin-insights-card .user-level-chart__name {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.admin-insights-card p,
+.admin-insights-card .user-insights__summary,
+.admin-insights-card .user-insights__empty,
+.admin-insights-card .contributor-level-stat span,
+.admin-insights-card .contributor-level-stats__summary,
+.admin-insights-card .user-level-chart__row > span,
+.admin-insights-card .user-login-column-chart__y-axis,
+.admin-insights-card .user-login-column-chart__x-axis span {
+  font-size: var(--app-font-size-xs) !important;
+  line-height: 1.35;
+}
+
+.admin-insights-card :deep(.p-button) {
+  min-height: max(2.25rem, calc(2rem * var(--app-font-scale)));
+  font-size: var(--app-font-size-sm) !important;
+}
+
+.admin-insights-card .user-insights__switch button,
+.admin-insights-card .user-insights__range button,
+.admin-insights-card .section-collapse-toggle,
+.admin-insights-card .contributor-level-toggle,
+.admin-insights-card .contributor-level-stat {
+  min-height: max(2.25rem, calc(2rem * var(--app-font-scale)));
+}
+
+.admin-toolbar--users :deep(.p-inputtext),
+.admin-toolbar--users :deep(.p-select) {
+  min-height: max(2.35rem, calc(2.35rem * var(--app-font-scale)));
+}
+
+.admin-toolbar--users :deep(.p-button),
+.user-management-table :deep(.p-button),
+.admin-mobile-list--users :deep(.p-button) {
+  min-height: max(2.25rem, calc(2rem * var(--app-font-scale)));
+}
+
+.admin-insights-card :deep(.p-button-label),
+.admin-insights-card :deep(.p-button-icon) {
+  font-size: inherit !important;
+}
+
+.admin-insights-card :deep(.p-tag),
+.admin-insights-card .contributor-level-badge {
+  font-size: var(--app-badge-font-size) !important;
 }
 
 .trash-center,

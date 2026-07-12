@@ -194,6 +194,11 @@ describe('API service wrappers', () => {
     adminService.getUsers()
     expect(getMock).toHaveBeenCalledWith('/users/admin/users')
 
+    adminService.getOnlineStatistics('24h')
+    expect(getMock).toHaveBeenCalledWith('/users/admin/online-statistics', {
+      params: { range: '24h' },
+    })
+
     adminService.createUser({ name: 'Alice' })
     expect(postMock).toHaveBeenCalledWith('/users/admin/users', { name: 'Alice' })
 

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -20,6 +20,14 @@ from app.models.models import (
     UserSubmissionRecordRead,
     UserSubmissionStatusCounts,
     UserUpdate,
+    UserPresenceSession,
+    OnlineStatisticsPoint,
+    OnlineStatisticsRead,
+)
+from app.api.services.presence import (
+    ONLINE_TIMEOUT_SECONDS,
+    distinct_online_user_ids,
+    load_presence_sessions,
 )
 from app.utils.auth import get_current_user, get_password_hash
 
@@ -27,7 +35,14 @@ router = APIRouter()
 
 NICKNAME_MAX_LENGTH = 15
 USER_PASSWORD_MIN_LENGTH = 8
-ONLINE_STATUS_MINUTES = 5
+ONLINE_RANGE_CONFIG = {
+    "24h": (10, 144),
+    "48h": (20, 144),
+    "72h": (30, 144),
+    "7d": (4 * 60, 42),
+    "30d": (12 * 60, 60),
+    "90d": (24 * 60, 90),
+}
 
 
 def _normalize_timestamp(dt: datetime | None) -> datetime | None:
@@ -38,36 +53,16 @@ def _normalize_timestamp(dt: datetime | None) -> datetime | None:
     return dt
 
 
-def _is_activity_recent(activity_at: datetime | None, now_utc: datetime) -> bool:
-    if not activity_at:
-        return False
-    cutoff = now_utc - timedelta(minutes=ONLINE_STATUS_MINUTES)
-    return activity_at >= cutoff
-
-
-def _get_user_online_status(user: User):
-    now_utc = datetime.now(timezone.utc)
-    last_seen = _normalize_timestamp(getattr(user, "last_seen_at", None))
-    last_login = _normalize_timestamp(user.last_login)
-    last_logout = _normalize_timestamp(user.last_logout)
-
-    if not last_login and not last_seen:
+def _get_user_online_status(user: User, is_online: bool = False):
+    if not user.last_login and not user.last_seen_at:
         return False, "從未登入"
-
-    reference_time = last_seen or last_login
-
-    if not reference_time:
-        return False, "離線"
-
-    if last_logout and reference_time and last_logout >= reference_time:
-        return False, "離線"
-
-    is_online = _is_activity_recent(reference_time, now_utc)
     return is_online, "在線" if is_online else "離線"
 
 
-def _to_user_read(user: User, contributor_experience: int = 0) -> UserRead:
-    is_online, status_label = _get_user_online_status(user)
+def _to_user_read(
+    user: User, contributor_experience: int = 0, is_online: bool = False
+) -> UserRead:
+    is_online, status_label = _get_user_online_status(user, is_online)
     return UserRead(
         id=user.id,
         email=user.email,
@@ -112,7 +107,113 @@ async def get_users(
     experience_by_user = {
         requester_id: int(experience) for requester_id, experience in experience_result.all()
     }
-    return [_to_user_read(user, experience_by_user.get(user.id, 0)) for user in users]
+    now_utc = datetime.now(timezone.utc)
+    active_sessions = await load_presence_sessions(
+        db,
+        range_start=now_utc,
+        range_end=now_utc,
+    )
+    online_user_ids = distinct_online_user_ids(active_sessions, now_utc)
+    return [
+        _to_user_read(
+            user,
+            experience_by_user.get(user.id, 0),
+            user.id in online_user_ids,
+        )
+        for user in users
+    ]
+
+
+def _align_utc_bucket(value: datetime, bucket_minutes: int) -> datetime:
+    value_utc = _normalize_timestamp(value).astimezone(timezone.utc)
+    minutes = value_utc.hour * 60 + value_utc.minute
+    aligned = (minutes // bucket_minutes) * bucket_minutes
+    return value_utc.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(
+        minutes=aligned
+    )
+
+
+def build_online_statistics(
+    *,
+    range_key: str,
+    sessions: list[UserPresenceSession],
+    now: datetime,
+    history_started_at: datetime | None,
+) -> OnlineStatisticsRead:
+    bucket_minutes, bucket_count = ONLINE_RANGE_CONFIG[range_key]
+    now_utc = _normalize_timestamp(now).astimezone(timezone.utc)
+    current_start = _align_utc_bucket(now_utc, bucket_minutes)
+    first_start = current_start - timedelta(minutes=(bucket_count - 1) * bucket_minutes)
+    points = []
+    normalized_history_start = (
+        _normalize_timestamp(history_started_at).astimezone(timezone.utc)
+        if history_started_at
+        else None
+    )
+    for index in range(bucket_count):
+        start = first_start + timedelta(minutes=index * bucket_minutes)
+        end = start + timedelta(minutes=bucket_minutes)
+        sample_at = now_utc if index == bucket_count - 1 else end
+        points.append(
+            OnlineStatisticsPoint(
+                start=start,
+                end=end,
+                at=sample_at,
+                count=len(distinct_online_user_ids(sessions, sample_at)),
+                has_data=bool(
+                    normalized_history_start and sample_at >= normalized_history_start
+                ),
+            )
+        )
+    available_counts = [point.count for point in points if point.has_data]
+    return OnlineStatisticsRead(
+        range=range_key,
+        bucket_minutes=bucket_minutes,
+        timezone="UTC",
+        online_timeout_seconds=ONLINE_TIMEOUT_SECONDS,
+        current_online=points[-1].count if points and points[-1].has_data else 0,
+        peak_online=max(available_counts, default=0),
+        average_online=(
+            round(sum(available_counts) / len(available_counts), 2)
+            if available_counts
+            else 0
+        ),
+        history_started_at=history_started_at,
+        points=points,
+    )
+
+
+@router.get("/admin/online-statistics", response_model=OnlineStatisticsRead)
+async def get_online_statistics(
+    range_key: str = Query(default="24h", alias="range"),
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+        )
+    if range_key not in ONLINE_RANGE_CONFIG:
+        raise HTTPException(
+            status_code=422, detail="Unsupported online statistics range"
+        )
+
+    now_utc = datetime.now(timezone.utc)
+    bucket_minutes, bucket_count = ONLINE_RANGE_CONFIG[range_key]
+    current_start = _align_utc_bucket(now_utc, bucket_minutes)
+    range_start = current_start - timedelta(minutes=(bucket_count - 1) * bucket_minutes)
+    sessions = await load_presence_sessions(
+        db,
+        range_start=range_start,
+        range_end=now_utc,
+    )
+    history_result = await db.execute(select(func.min(UserPresenceSession.started_at)))
+    return build_online_statistics(
+        range_key=range_key,
+        sessions=sessions,
+        now=now_utc,
+        history_started_at=history_result.scalar_one_or_none(),
+    )
 
 
 @router.get(

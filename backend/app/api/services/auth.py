@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -8,6 +9,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
 from app.db.session import get_session
 from app.models.models import User
+from app.api.services.presence import (
+    HEARTBEAT_INTERVAL_SECONDS,
+    end_presence_session,
+    touch_presence_session,
+)
 from app.utils.auth import authenticate_user, blacklist_token, get_current_user
 from app.utils.jwt import jwt
 
@@ -42,20 +48,21 @@ async def login(
     now_utc = datetime.now(timezone.utc)
     user.last_login = now_utc
     user.last_seen_at = now_utc
-    await db.commit()
-    await db.refresh(user)
 
     payload = {
         "uid": user.id,
         "email": user.email,
         "name": user.name,
         "is_admin": user.is_admin,
+        "jti": uuid.uuid4().hex,
         "exp": int(
             datetime.now(timezone.utc).timestamp()
             + settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         ),
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    await touch_presence_session(db, user_id=user.id, token=token, now=now_utc)
+    await db.commit()
 
     return {"access_token": token, "token_type": "bearer"}
 
@@ -75,7 +82,16 @@ async def logout(
     )
     user = result.scalar_one_or_none()
     if user:
-        user.last_logout = datetime.now(timezone.utc)
+        now_utc = datetime.now(timezone.utc)
+        user.last_logout = now_utc
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            await end_presence_session(
+                db,
+                user_id=user.id,
+                token=auth_header.split(" ", 1)[1],
+                now=now_utc,
+            )
         await db.commit()
 
     # Blacklist the token
@@ -88,6 +104,7 @@ async def logout(
 
 @router.post("/heartbeat")
 async def heartbeat(
+    request: Request,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
@@ -108,7 +125,7 @@ async def heartbeat(
     normalized_last_seen = _ensure_timezone_aware(user.last_seen_at)
     if normalized_last_seen is not None:
         delta_seconds = (now_utc - normalized_last_seen).total_seconds()
-        should_update = delta_seconds >= 60
+        should_update = delta_seconds >= HEARTBEAT_INTERVAL_SECONDS
         if should_update:
             user.last_seen_at = now_utc
         else:
@@ -117,8 +134,18 @@ async def heartbeat(
         user.last_seen_at = now_utc
         should_update = True
 
-    if should_update:
-        await db.commit()
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token"
+        )
+    await touch_presence_session(
+        db,
+        user_id=user.id,
+        token=auth_header.split(" ", 1)[1],
+        now=now_utc,
+    )
+    await db.commit()
 
     return {
         "message": "ok",
@@ -129,6 +156,7 @@ async def heartbeat(
 
 @router.post("/record-login")
 async def record_login(
+    request: Request,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
@@ -145,6 +173,17 @@ async def record_login(
     now_utc = datetime.now(timezone.utc)
     user.last_login = now_utc
     user.last_seen_at = now_utc
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token"
+        )
+    await touch_presence_session(
+        db,
+        user_id=user.id,
+        token=auth_header.split(" ", 1)[1],
+        now=now_utc,
+    )
     await db.commit()
 
     return {"last_login": now_utc}

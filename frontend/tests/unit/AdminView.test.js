@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import AdminView from '@/views/Admin.vue'
+import { applyFontSizePreference } from '@/utils/fontSizePreference'
 
 const sampleCourses = [
   { id: 1, name: 'Algorithms', category: 'junior' },
@@ -13,6 +14,42 @@ const sampleUsers = [
 ]
 
 const now = new Date()
+const onlineRangeConfig = {
+  '24h': [10, 144],
+  '48h': [20, 144],
+  '72h': [30, 144],
+  '7d': [240, 42],
+  '30d': [720, 60],
+  '90d': [1440, 90],
+}
+const makeOnlineStatistics = (range = '24h', counts = {}) => {
+  const [bucketMinutes, bucketCount] = onlineRangeConfig[range]
+  const end = new Date(now)
+  end.setSeconds(0, 0)
+  const points = Array.from({ length: bucketCount }, (_, index) => {
+    const start = new Date(end.getTime() - (bucketCount - index) * bucketMinutes * 60_000)
+    const bucketEnd = new Date(start.getTime() + bucketMinutes * 60_000)
+    return {
+      start: start.toISOString(),
+      end: bucketEnd.toISOString(),
+      at: index === bucketCount - 1 ? end.toISOString() : bucketEnd.toISOString(),
+      count: counts[index] ?? 0,
+      has_data: true,
+    }
+  })
+  const values = points.map(({ count }) => count)
+  return {
+    range,
+    bucket_minutes: bucketMinutes,
+    timezone: 'UTC',
+    online_timeout_seconds: 300,
+    current_online: values.at(-1) ?? 0,
+    peak_online: Math.max(0, ...values),
+    average_online: values.reduce((sum, value) => sum + value, 0) / values.length,
+    history_started_at: points[0].start,
+    points,
+  }
+}
 const sampleNotifications = [
   {
     id: 1,
@@ -44,6 +81,7 @@ const listAdminCategoriesMock = vi.hoisted(() => vi.fn())
 const getAllCoursesMock = vi.hoisted(() => vi.fn())
 
 const getUsersMock = vi.hoisted(() => vi.fn())
+const getOnlineStatisticsMock = vi.hoisted(() => vi.fn())
 const createUserMock = vi.hoisted(() => vi.fn())
 const updateUserMock = vi.hoisted(() => vi.fn())
 const deleteUserMock = vi.hoisted(() => vi.fn())
@@ -101,6 +139,7 @@ vi.mock('@/api', () => ({
   updateCourse: updateCourseMock,
   deleteCourse: deleteCourseMock,
   getUsers: getUsersMock,
+  getOnlineStatistics: getOnlineStatisticsMock,
   createUser: createUserMock,
   updateUser: updateUserMock,
   deleteUser: deleteUserMock,
@@ -138,6 +177,10 @@ describe('AdminView', () => {
     deleteCourseMock.mockResolvedValue()
 
     getUsersMock.mockResolvedValue({ data: sampleUsers })
+    getOnlineStatisticsMock.mockImplementation((range) => {
+      const bucketCount = onlineRangeConfig[range][1]
+      return Promise.resolve({ data: makeOnlineStatistics(range, { [bucketCount - 1]: 2 }) })
+    })
     createUserMock.mockResolvedValue()
     updateUserMock.mockResolvedValue()
     deleteUserMock.mockResolvedValue()
@@ -392,18 +435,9 @@ describe('AdminView', () => {
     wrapper.unmount()
   })
 
-  it('builds visible login buckets for every supported range', async () => {
+  it('maps online statistics for every supported range', async () => {
     const wrapper = createWrapper()
     await flushPromises()
-
-    const currentTime = new Date(2026, 6, 13, 10, 9)
-    vi.setSystemTime(currentTime)
-    wrapper.vm.loginStatsNow = new Date(currentTime)
-    wrapper.vm.users = [
-      { id: 1, last_login: new Date(2026, 6, 13, 10, 1).toISOString() },
-      { id: 2, last_login: new Date(2026, 6, 13, 10, 5).toISOString() },
-      ...Array.from({ length: 5 }, (_, index) => ({ id: index + 3, last_login: null })),
-    ]
     wrapper.vm.userInsightsView = 'login-hour'
 
     const hourRanges = [
@@ -413,20 +447,18 @@ describe('AdminView', () => {
     ]
     for (const [range, bucketCount, bucketMinutes] of hourRanges) {
       wrapper.vm.setActiveLoginRange(range)
-      await wrapper.vm.$nextTick()
+      await flushPromises()
       expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
-      expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 2, never: 5, outOfRange: 0 })
       const nonZeroBuckets = wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)
       expect(nonZeroBuckets).toHaveLength(1)
       expect(nonZeroBuckets[0].count).toBe(2)
-      expect(wrapper.vm.loginChartData.counts.reduce((sum, count) => sum + count, 0)).toBe(2)
-      expect((nonZeroBuckets[0].count / wrapper.vm.loginChartData.yMax) * 100).toBeGreaterThan(0)
+      expect(wrapper.vm.onlineStatisticsSummary).toMatchObject({ current: 2, peak: 2 })
       expect(wrapper.vm.loginChartData.buckets[0].showLabel).toBe(true)
       expect(wrapper.vm.loginChartData.buckets.at(-1).showLabel).toBe(true)
-      expect(nonZeroBuckets[0].fullLabel).toMatch(/2026.*10:00.*2026/)
+      expect(nonZeroBuckets[0].fullLabel).toContain('取樣')
     }
 
     wrapper.vm.userInsightsView = 'login-date'
@@ -438,162 +470,62 @@ describe('AdminView', () => {
     ]
     for (const [range, bucketCount, bucketMinutes] of dateRanges) {
       wrapper.vm.setActiveLoginRange(range)
-      await wrapper.vm.$nextTick()
+      await flushPromises()
       expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
-      expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 2, never: 5, outOfRange: 0 })
       expect(wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)).toEqual([
         expect.objectContaining({ count: 2 }),
       ])
     }
 
-    wrapper.vm.users = Array.from({ length: 3 }, (_, index) => ({
-      id: index + 1,
-      last_login: null,
-    }))
-    await wrapper.vm.$nextTick()
-    expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 0, never: 3, outOfRange: 0 })
+    wrapper.unmount()
+  })
+
+  it('keeps online API errors separate from empty history', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+    const empty = makeOnlineStatistics('24h')
+    empty.history_started_at = null
+    getOnlineStatisticsMock.mockResolvedValueOnce({ data: empty })
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatisticsError).toBe('')
+    expect(wrapper.vm.onlineStatistics.history_started_at).toBeNull()
+
+    getOnlineStatisticsMock.mockRejectedValueOnce(new Error('network'))
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatistics).toBeNull()
+    expect(wrapper.vm.onlineStatisticsError).toContain('在線統計載入失敗')
 
     wrapper.unmount()
   })
 
-  it('keeps the current natural time bucket as the final bucket across midnight', async () => {
+  it('rejects malformed online statistics contracts', async () => {
     const wrapper = createWrapper()
     await flushPromises()
+    getOnlineStatisticsMock.mockResolvedValueOnce({ data: { range: '24h', points: [] } })
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatistics).toBeNull()
+    expect(wrapper.vm.onlineStatisticsError).toContain('在線統計載入失敗')
 
-    const boundaryCases = [
-      new Date(2026, 6, 12, 23, 59),
-      new Date(2026, 6, 13, 0, 0),
-      new Date(2026, 6, 13, 0, 30),
-      new Date(2026, 6, 13, 0, 59),
-      new Date(2026, 6, 13, 1, 0),
-    ]
+    wrapper.unmount()
+  })
 
-    for (const currentTime of boundaryCases) {
-      vi.setSystemTime(currentTime)
-      wrapper.vm.loginStatsNow = new Date(currentTime)
-      wrapper.vm.loginRangeHours = 24
-      wrapper.vm.users = []
-      await wrapper.vm.$nextTick()
+  it('keeps online chart data stable while applying 50, 100 and 150 percent font scales', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+    const counts = [...wrapper.vm.loginChartData.counts]
 
-      const buckets = wrapper.vm.loginChartData.buckets
-      const finalBucket = buckets.at(-1)
-      const expectedStart = new Date(currentTime)
-      expectedStart.setMinutes(Math.floor(currentTime.getMinutes() / 10) * 10, 0, 0)
-      const expectedEnd = new Date(expectedStart.getTime() + 10 * 60_000)
-
-      expect(buckets).toHaveLength(144)
-      expect(new Set(buckets.map(({ key }) => key)).size).toBe(144)
-      expect(finalBucket.start).toBe(expectedStart.toISOString())
-      expect(finalBucket.end).toBe(expectedEnd.toISOString())
-      expect(finalBucket.label).toBe(`${String(currentTime.getHours()).padStart(2, '0')} 時`)
-      expect(finalBucket.fullLabel).toContain(String(expectedStart.getFullYear()))
-      expect(finalBucket.fullLabel).toContain(String(expectedEnd.getFullYear()))
+    for (const [percent, scale] of [
+      [50, '0.45'],
+      [100, '0.9'],
+      [150, '1.35'],
+    ]) {
+      applyFontSizePreference(percent)
+      expect(document.documentElement.style.getPropertyValue('--app-font-scale')).toBe(scale)
+      expect(wrapper.vm.loginChartData.counts).toEqual(counts)
     }
-
-    const afterMidnight = new Date(2026, 6, 13, 0, 9)
-    vi.setSystemTime(afterMidnight)
-    wrapper.vm.loginStatsNow = new Date(afterMidnight)
-    wrapper.vm.users = [
-      { id: 1, last_login: new Date(2026, 6, 13, 0, 0).toISOString() },
-      { id: 2, last_login: new Date(2026, 6, 13, 0, 9).toISOString() },
-    ]
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.vm.loginChartData.buckets.at(-1)).toMatchObject({ label: '00 時', count: 2 })
-    expect(wrapper.vm.loginChartData.buckets.at(-1).fullLabel).toMatch(/2026.*00:00.*2026.*00:10/)
-    expect(wrapper.vm.loginDateSummary.inRange).toBe(2)
-
-    for (const range of [48, 72]) {
-      wrapper.vm.loginRangeHours = range
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.loginChartData.buckets).toHaveLength(144)
-      expect(wrapper.vm.loginChartData.buckets.at(-1)).toMatchObject({
-        label: '07/13',
-        count: 2,
-      })
-    }
-
-    wrapper.unmount()
-  })
-
-  it('assigns boundary logins once across adaptive time buckets', async () => {
-    const wrapper = createWrapper()
-    await flushPromises()
-
-    const currentTime = new Date(2026, 6, 13, 10, 10)
-    vi.setSystemTime(currentTime)
-    wrapper.vm.loginStatsNow = new Date(currentTime)
-    wrapper.vm.userInsightsView = 'login-hour'
-    wrapper.vm.loginRangeHours = 24
-    wrapper.vm.users = [
-      { id: 1, last_login: new Date(2026, 6, 13, 9, 59).toISOString() },
-      { id: 2, last_login: new Date(2026, 6, 13, 10, 0).toISOString() },
-      { id: 3, last_login: new Date(2026, 6, 13, 10, 9).toISOString() },
-      { id: 4, last_login: new Date(2026, 6, 13, 10, 10).toISOString() },
-    ]
-    await wrapper.vm.$nextTick()
-
-    const nonZeroBuckets = wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)
-    expect(nonZeroBuckets.map(({ start, count }) => [new Date(start).getMinutes(), count])).toEqual(
-      [
-        [50, 1],
-        [0, 2],
-        [10, 1],
-      ]
-    )
-    expect(wrapper.vm.loginDateSummary.inRange).toBe(4)
-    expect(wrapper.vm.loginChartData.counts.reduce((sum, count) => sum + count, 0)).toBe(4)
-
-    wrapper.vm.userInsightsView = 'login-date'
-    await wrapper.vm.$nextTick()
-    wrapper.vm.loginRangeDays = 7
-    wrapper.vm.loginStatsNow = new Date(2026, 6, 13, 8, 0)
-    wrapper.vm.users = [
-      { id: 1, last_login: new Date(2026, 6, 13, 3, 59).toISOString() },
-      { id: 2, last_login: new Date(2026, 6, 13, 4, 0).toISOString() },
-      { id: 3, last_login: new Date(2026, 6, 13, 7, 59).toISOString() },
-      { id: 4, last_login: new Date(2026, 6, 13, 8, 0).toISOString() },
-      { id: 5, last_login: new Date(2026, 6, 12, 23, 59).toISOString() },
-      { id: 6, last_login: new Date(2026, 6, 13, 0, 0).toISOString() },
-    ]
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.vm.loginChartData.buckets).toHaveLength(42)
-    expect(wrapper.vm.loginChartData.counts.reduce((sum, count) => sum + count, 0)).toBe(6)
-    expect(wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ count: 1 }),
-        expect.objectContaining({ count: 2 }),
-      ])
-    )
-
-    wrapper.unmount()
-  })
-
-  it('keeps fixed date bucket counts across month and year boundaries', async () => {
-    const wrapper = createWrapper()
-    await flushPromises()
-
-    const currentTime = new Date(2027, 0, 1, 1, 0)
-    vi.setSystemTime(currentTime)
-    wrapper.vm.loginStatsNow = new Date(currentTime)
-    wrapper.vm.userInsightsView = 'login-date'
-    await wrapper.vm.$nextTick()
-    wrapper.vm.loginRangeDays = 90
-    wrapper.vm.users = [{ id: 1, last_login: new Date(2027, 0, 1, 0, 0).toISOString() }]
-    await wrapper.vm.$nextTick()
-
-    const buckets = wrapper.vm.loginChartData.buckets
-    expect(buckets).toHaveLength(90)
-    expect(new Set(buckets.map(({ key }) => key)).size).toBe(90)
-    expect(new Date(buckets[0].start).getTime()).toBeLessThan(
-      new Date(buckets.at(-1).start).getTime()
-    )
-    expect(buckets.at(-1)).toMatchObject({ count: 1, showLabel: true })
-    expect(buckets.at(-1).fullLabel).toContain('2027')
 
     wrapper.unmount()
   })

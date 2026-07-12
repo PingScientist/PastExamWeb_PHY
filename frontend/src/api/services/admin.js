@@ -26,6 +26,10 @@ export const getUsers = () => {
   return api.get('/users/admin/users')
 }
 
+export const getOnlineStatistics = (range) => {
+  return api.get('/users/admin/online-statistics', { params: { range } })
+}
+
 export const getUserSubmissionStats = (userId, { includeRecords = false, signal } = {}) => {
   return api.get(`/users/admin/users/${userId}/submission-stats`, {
     signal,
