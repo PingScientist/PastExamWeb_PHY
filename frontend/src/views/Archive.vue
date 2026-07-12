@@ -408,6 +408,34 @@
               class="w-full flex justify-content-center my-4"
             />
             <div v-else class="submission-status-list">
+              <section class="submission-level" aria-labelledby="submission-level-title">
+                <div class="submission-level-header">
+                  <strong id="submission-level-title">
+                    Lv. {{ submissionLevel.level }} {{ submissionLevel.name }}
+                  </strong>
+                  <span>{{ submissionLevel.currentExp }} EXP</span>
+                </div>
+                <div
+                  class="submission-level-bar"
+                  role="progressbar"
+                  :aria-label="submissionLevelAriaLabel"
+                  :aria-valuemin="0"
+                  :aria-valuemax="submissionLevel.progressRange"
+                  :aria-valuenow="submissionLevel.progressInLevel"
+                  :title="submissionLevelAriaLabel"
+                >
+                  <span :style="{ width: `${submissionLevel.progressPercent}%` }"></span>
+                </div>
+                <div class="submission-level-meta">
+                  <span v-if="submissionLevel.isMaxLevel">已達最高等級</span>
+                  <span v-else>
+                    本級 {{ submissionLevel.progressInLevel }} / {{ submissionLevel.progressRange }}
+                    EXP，距離 Lv. {{ submissionLevel.level + 1 }} 還差
+                    {{ submissionLevel.expToNextLevel }} EXP
+                  </span>
+                  <span>由已通過與已下架投稿累積（{{ submissionLevel.countedSubmissions }} 筆）</span>
+                </div>
+              </section>
               <section class="submission-summary" aria-label="投稿統計">
                 <div class="submission-summary-header">
                   <strong>共 {{ submissionSummary.total }} 筆投稿</strong>
@@ -447,7 +475,7 @@
                 </div>
               </section>
               <section>
-                <h3>考古題投稿</h3>
+                <h3>考古題投稿紀錄</h3>
                 <div v-if="archiveSubmissions.length === 0" class="submission-empty">
                   目前沒有考古題投稿
                 </div>
@@ -812,6 +840,60 @@ const showUploadDialog = ref(false)
 const showSubmissionStatusDialog = ref(false)
 const submissionStatusLoading = ref(false)
 const archiveSubmissions = ref([])
+const submissionLevels = [
+  { level: 1, name: '新手投稿者', minExp: 0 },
+  { level: 2, name: '初階整理者', minExp: 2 },
+  { level: 3, name: '穩定投稿者', minExp: 5 },
+  { level: 4, name: '認真貢獻者', minExp: 9 },
+  { level: 5, name: '校園收藏家', minExp: 14 },
+  { level: 6, name: '題庫建設者', minExp: 20 },
+  { level: 7, name: '資源探索者', minExp: 27 },
+  { level: 8, name: '經典整理師', minExp: 35 },
+  { level: 9, name: '傳奇貢獻者', minExp: 44 },
+  { level: 10, name: '題庫宗師', minExp: 54 },
+]
+const submissionLevel = computed(() => {
+  const countedSubmissions = archiveSubmissions.value.filter((submission) =>
+    ['approved', 'takedown'].includes(getNormalizedSubmissionStatus(submission?.status))
+  ).length
+  const currentExp = countedSubmissions
+  const currentLevel = submissionLevels.reduce(
+    (matchedLevel, level) => (currentExp >= level.minExp ? level : matchedLevel),
+    submissionLevels[0]
+  )
+  const nextLevel = submissionLevels[currentLevel.level]
+  if (!nextLevel) {
+    return {
+      ...currentLevel,
+      currentExp,
+      countedSubmissions,
+      isMaxLevel: true,
+      progressInLevel: 1,
+      progressRange: 1,
+      progressPercent: 100,
+      expToNextLevel: 0,
+    }
+  }
+  const progressRange = nextLevel.minExp - currentLevel.minExp
+  const progressInLevel = Math.max(0, currentExp - currentLevel.minExp)
+  return {
+    ...currentLevel,
+    currentExp,
+    countedSubmissions,
+    isMaxLevel: false,
+    progressInLevel,
+    progressRange,
+    progressPercent: Math.min(100, (progressInLevel / progressRange) * 100),
+    expToNextLevel: Math.max(0, nextLevel.minExp - currentExp),
+  }
+})
+const submissionLevelAriaLabel = computed(() => {
+  const level = submissionLevel.value
+  if (level.isMaxLevel) {
+    return `投稿等級 Lv. ${level.level} ${level.name}，目前 ${level.currentExp} EXP，已達最高等級`
+  }
+  return `投稿等級 Lv. ${level.level} ${level.name}，本級進度 ${level.progressInLevel} / ${level.progressRange} EXP，距離下一級還差 ${level.expToNextLevel} EXP`
+})
 const submissionStatusConfig = [
   { key: 'pending', color: '#d29922' },
   { key: 'approved', color: '#2da44e' },
@@ -3463,6 +3545,59 @@ const mobileMenuItems = computed(() => {
   flex-shrink: 0;
 }
 
+.submission-level {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, var(--primary-color) 12%);
+  overflow: hidden;
+}
+
+.submission-level-header,
+.submission-level-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.submission-level-header {
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.submission-level-header strong {
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.submission-level-header span,
+.submission-level-meta {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.submission-level-bar {
+  width: 100%;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 75%, transparent);
+}
+
+.submission-level-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary-color);
+}
+
+.submission-level-meta {
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+  line-height: 1.35;
+}
+
 .submission-summary {
   margin-bottom: 1.25rem;
   padding: 1rem;
@@ -3702,6 +3837,13 @@ const mobileMenuItems = computed(() => {
 }
 
 @media (max-width: 767px) {
+  .submission-level-header,
+  .submission-level-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
   .submission-summary-header {
     align-items: flex-start;
     flex-direction: column;
