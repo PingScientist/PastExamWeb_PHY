@@ -125,3 +125,26 @@ async def heartbeat(
         "last_seen_at": user.last_seen_at,
         "is_online": True,
     }
+
+
+@router.post("/record-login")
+async def record_login(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Record a successful login completed by the external auth callback."""
+    result = await db.execute(
+        select(User).where(User.id == current_user.user_id, User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    now_utc = datetime.now(timezone.utc)
+    user.last_login = now_utc
+    user.last_seen_at = now_utc
+    await db.commit()
+
+    return {"last_login": now_utc}
