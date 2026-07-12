@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -109,6 +110,37 @@ class CourseCategoryConfig(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
     restored_by_id: Optional[int] = Field(default=None)
+
+
+class SystemSetting(SQLModel, table=True):
+    __tablename__ = "system_settings"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    key: str = Field(
+        sa_column=Column(String(128), nullable=False, unique=True, index=True)
+    )
+    value: Any = Field(sa_column=Column(JSONB, nullable=False))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    updated_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )
 
 
 class Course(SQLModel, table=True):

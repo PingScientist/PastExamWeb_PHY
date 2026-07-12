@@ -3,6 +3,7 @@
     v-if="validLevel"
     class="contributor-level"
     :class="[`contributor-level--${size}`, `contributor-level--tier-${colorTier}`]"
+    :style="paletteStyle"
     :aria-label="accessibleLabel"
     :title="title || undefined"
   >
@@ -16,6 +17,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { getContributorLevelPalette } from '../utils/submissionLevel'
 
 const props = defineProps({
   level: {
@@ -43,6 +45,15 @@ const validLevel = computed(() => {
 })
 
 const colorTier = computed(() => Math.min(validLevel.value || 1, 10))
+const paletteStyle = computed(() => {
+  const palette = getContributorLevelPalette(validLevel.value)
+  return {
+    '--level-badge-bg': palette.bg,
+    '--level-badge-fg': palette.fg,
+    '--level-badge-border': palette.border,
+    '--level-badge-accent': palette.accent,
+  }
+})
 const emblemMark = computed(() => {
   if (colorTier.value >= 10) return '♛'
   if (colorTier.value >= 9) return '✦'
@@ -59,11 +70,6 @@ const accessibleLabel = computed(() =>
 
 <style scoped>
 .contributor-level {
-  --level-badge-bg: #8a4b2f;
-  --level-badge-fg: #ffffff;
-  --level-badge-border: #542a19;
-  --level-badge-accent: #f0bd9c;
-
   display: inline-flex;
   min-width: 0;
   align-items: center;
@@ -160,59 +166,5 @@ const accessibleLabel = computed(() =>
 .contributor-level--tier-10 .contributor-level__ornament {
   font-size: 0.76em;
   text-shadow: 0 0 2px var(--level-badge-border);
-}
-
-.contributor-level--tier-2 {
-  --level-badge-bg: #5f6b7a;
-  --level-badge-border: #38424f;
-  --level-badge-accent: #e5e7eb;
-}
-
-.contributor-level--tier-3 {
-  --level-badge-bg: #0b5f77;
-  --level-badge-border: #073b4a;
-  --level-badge-accent: #bae6fd;
-}
-
-.contributor-level--tier-4 {
-  --level-badge-bg: #047857;
-  --level-badge-border: #064e3b;
-  --level-badge-accent: #a7f3d0;
-}
-
-.contributor-level--tier-5 {
-  --level-badge-bg: #263d9a;
-  --level-badge-border: #172554;
-  --level-badge-accent: #c7d2fe;
-}
-
-.contributor-level--tier-6 {
-  --level-badge-bg: #0e7490;
-  --level-badge-border: #164e63;
-  --level-badge-accent: #a5f3fc;
-}
-
-.contributor-level--tier-7 {
-  --level-badge-bg: #0057b8;
-  --level-badge-border: #003b7a;
-  --level-badge-accent: #bfdbfe;
-}
-
-.contributor-level--tier-8 {
-  --level-badge-bg: #9f4f63;
-  --level-badge-border: #6f3040;
-  --level-badge-accent: #ffe4e6;
-}
-
-.contributor-level--tier-9 {
-  --level-badge-bg: #6b21a8;
-  --level-badge-border: #3b0764;
-  --level-badge-accent: #e9d5ff;
-}
-
-.contributor-level--tier-10 {
-  --level-badge-bg: #8a5a00;
-  --level-badge-border: #4f3300;
-  --level-badge-accent: #fff1a8;
 }
 </style>

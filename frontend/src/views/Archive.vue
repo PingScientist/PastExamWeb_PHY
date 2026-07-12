@@ -427,6 +427,7 @@
                   :aria-valuemax="100"
                   :aria-valuenow="submissionLevel.progressPercent"
                   :title="submissionLevelAriaLabel"
+                  :style="submissionLevelProgressStyle"
                 >
                   <span
                     class="submission-level-progress-fill"
@@ -757,7 +758,11 @@ import { useTheme } from '../utils/useTheme'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { isUnauthorizedError } from '../utils/http'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
-import { resolveSubmissionLevel } from '../utils/submissionLevel'
+import {
+  getContributorLevelPalette,
+  loadContributorLevelSettings,
+  resolveSubmissionLevel,
+} from '../utils/submissionLevel'
 import {
   STORAGE_KEYS,
   getLocalJson,
@@ -770,6 +775,7 @@ const toast = inject('toast')
 const confirm = inject('confirm')
 
 const { isDarkTheme } = useTheme()
+loadContributorLevelSettings()
 const sidebarVisible = inject('sidebarVisible')
 
 // Check if we're on mobile
@@ -866,6 +872,13 @@ const submissionLevelAriaLabel = computed(() => {
     return `投稿等級 Lv. ${level.level} ${level.name}，目前 ${level.currentExp} EXP，已達最高等級`
   }
   return `投稿等級 Lv. ${level.level} ${level.name}，經驗進度 ${level.progressPercent}%，本級 ${level.progressInLevel} / ${level.progressRange} EXP，距離下一級還差 ${level.expToNextLevel} EXP`
+})
+const submissionLevelProgressStyle = computed(() => {
+  const palette = getContributorLevelPalette(submissionLevel.value.level)
+  return {
+    '--level-progress-bg': palette.bg,
+    '--level-progress-border': palette.border,
+  }
 })
 const submissionStatusConfig = [
   { key: 'pending', color: '#d29922' },
@@ -3548,8 +3561,11 @@ const mobileMenuItems = computed(() => {
 .submission-level-progress-track {
   position: relative;
   width: 100%;
-  height: 0.5rem;
+  height: 0.75rem;
+  box-sizing: border-box;
   overflow: hidden;
+  padding: 2px;
+  border: 1px solid var(--level-progress-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--border-color) 82%, var(--bg-primary) 18%);
 }
@@ -3558,7 +3574,8 @@ const mobileMenuItems = computed(() => {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--p-primary-color, #2563eb);
+  background: var(--level-progress-bg);
+  box-shadow: inset 0 0 0 1px var(--level-progress-border);
 }
 
 .submission-level-meta {

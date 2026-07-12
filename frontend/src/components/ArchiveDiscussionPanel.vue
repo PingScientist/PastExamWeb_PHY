@@ -200,10 +200,11 @@ import { formatRelativeTime } from '../utils/time'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { getBooleanPreference, setBooleanPreference } from '../utils/usePreferences'
 import { STORAGE_KEYS } from '../utils/storage'
-import { resolveSubmissionLevel } from '../utils/submissionLevel'
+import { loadContributorLevelSettings, resolveSubmissionLevel } from '../utils/submissionLevel'
 import ContributorLevelBadge from './ContributorLevelBadge.vue'
 
 const DESKTOP_DEFAULT_OPEN_KEY = STORAGE_KEYS.local.DISCUSSION_DESKTOP_DEFAULT_OPEN
+loadContributorLevelSettings()
 
 const props = defineProps({
   courseId: {

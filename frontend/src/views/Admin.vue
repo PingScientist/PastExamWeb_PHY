@@ -482,6 +482,15 @@
                     <span class="contributor-level-current">
                       {{ contributorLevelSelectionSummary }}
                     </span>
+                    <Button
+                      label="等級設定"
+                      icon="pi pi-cog"
+                      severity="secondary"
+                      size="small"
+                      outlined
+                      class="contributor-level-settings-button"
+                      @click="openContributorLevelSettingsDialog"
+                    />
                     <button
                       type="button"
                       class="contributor-level-toggle"
@@ -542,19 +551,6 @@
                     optionLabel="name"
                     optionValue="value"
                     placeholder="篩選類型"
-                    showClear
-                    class="admin-toolbar__select w-full md:w-14rem"
-                  />
-                  <MultiSelect
-                    inputId="admin-user-level-filter"
-                    name="admin-user-level-filter"
-                    v-model="selectedContributorLevels"
-                    :options="contributorLevelFilterOptions"
-                    optionLabel="name"
-                    optionValue="value"
-                    placeholder="篩選投稿等級"
-                    :maxSelectedLabels="1"
-                    selectedItemsLabel="已選 {0} 個等級"
                     showClear
                     class="admin-toolbar__select w-full md:w-14rem"
                   />
@@ -2724,6 +2720,80 @@
       </Dialog>
 
       <Dialog
+        v-model:visible="showContributorLevelSettingsDialog"
+        modal
+        :draggable="false"
+        :closable="!contributorLevelSettingsSaving"
+        :closeOnEscape="!contributorLevelSettingsSaving"
+        header="投稿等級設定"
+        :style="{ width: 'min(860px, 96vw)' }"
+        :contentStyle="{ padding: 0, overflow: 'hidden' }"
+        @hide="closeContributorLevelSettingsDialog"
+      >
+        <div class="contributor-level-settings-dialog">
+          <p class="contributor-level-settings-help">
+            EXP 欄位代表「達到本級所需累積 EXP」。Lv.10 為最高等級，仍保留其累積門檻。
+          </p>
+          <Message v-if="contributorLevelSettingsError" severity="error" :closable="false">
+            {{ contributorLevelSettingsError }}
+          </Message>
+          <div class="contributor-level-settings-list">
+            <article
+              v-for="level in contributorLevelSettingsDraft"
+              :key="level.level"
+              class="contributor-level-settings-row"
+            >
+              <strong class="contributor-level-settings-number">Lv.{{ level.level }}</strong>
+              <ContributorLevelBadge :level="level.level" :title="level.name" size="compact" />
+              <label class="contributor-level-settings-field">
+                <span>等級名稱</span>
+                <InputText v-model="level.name" maxlength="30" class="w-full" />
+              </label>
+              <label class="contributor-level-settings-field">
+                <span>達到本級所需累積 EXP</span>
+                <InputNumber
+                  v-model="level.minExp"
+                  :min="0"
+                  :useGrouping="false"
+                  :minFractionDigits="0"
+                  :maxFractionDigits="0"
+                  :disabled="level.level === 1"
+                  class="w-full"
+                />
+              </label>
+              <span v-if="level.level === 10" class="contributor-level-settings-max">
+                最高等級
+              </span>
+            </article>
+          </div>
+        </div>
+        <template #footer>
+          <div class="contributor-level-settings-footer">
+            <Button
+              label="還原目前已保存設定"
+              severity="secondary"
+              text
+              :disabled="contributorLevelSettingsSaving"
+              @click="resetContributorLevelSettingsDraft"
+            />
+            <span class="contributor-level-settings-footer-spacer"></span>
+            <Button
+              label="取消"
+              severity="secondary"
+              :disabled="contributorLevelSettingsSaving"
+              @click="closeContributorLevelSettingsDialog"
+            />
+            <Button
+              label="保存全部設定"
+              severity="success"
+              :loading="contributorLevelSettingsSaving"
+              @click="confirmContributorLevelSettingsSave"
+            />
+          </div>
+        </template>
+      </Dialog>
+
+      <Dialog
         :visible="showUserDialog"
         @update:visible="showUserDialog = $event"
         :modal="true"
@@ -3163,7 +3233,6 @@ defineOptions({
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import MultiSelect from 'primevue/multiselect'
 import { getCurrentUser } from '../utils/auth'
 import { isUnauthorizedError } from '../utils/http'
 import { formatRelativeTime } from '../utils/time'
@@ -3187,7 +3256,14 @@ import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
-import { SUBMISSION_LEVELS, resolveSubmissionLevel } from '../utils/submissionLevel'
+import {
+  SUBMISSION_LEVELS,
+  getContributorLevelSettingsSnapshot,
+  loadContributorLevelSettings,
+  resolveSubmissionLevel,
+  saveContributorLevelSettings,
+  validateContributorLevelSettings,
+} from '../utils/submissionLevel'
 
 const confirm = useConfirm()
 const toast = useToast()
@@ -3248,6 +3324,10 @@ const userSearchQuery = ref('')
 const filterUserType = ref(null)
 const selectedContributorLevels = ref([])
 const isLevelStatsExpanded = ref(true)
+const showContributorLevelSettingsDialog = ref(false)
+const contributorLevelSettingsDraft = ref([])
+const contributorLevelSettingsError = ref('')
+const contributorLevelSettingsSaving = ref(false)
 const userFirst = ref(0)
 const userRows = ref(10)
 
@@ -4034,11 +4114,6 @@ const userTypeFilterOptions = [
   { name: '一般使用者', value: false },
 ]
 
-const contributorLevelFilterOptions = SUBMISSION_LEVELS.map((level) => ({
-  name: `Lv. ${level.level} ${level.name}`,
-  value: level.level,
-}))
-
 const contributorLevelStats = computed(() => {
   const counts = new Map(SUBMISSION_LEVELS.map((level) => [level.level, 0]))
   users.value.forEach((user) => {
@@ -4070,6 +4145,80 @@ const toggleContributorLevel = (level) => {
 const clearContributorLevelFilter = () => {
   selectedContributorLevels.value = []
   userFirst.value = 0
+}
+
+const resetContributorLevelSettingsDraft = () => {
+  contributorLevelSettingsDraft.value = getContributorLevelSettingsSnapshot()
+  contributorLevelSettingsError.value = ''
+}
+
+const recalculateUserContributorLevels = () => {
+  users.value = users.value.map((user) => {
+    const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
+    return {
+      ...user,
+      contributorLevel,
+      contributor_level: contributorLevel.level,
+    }
+  })
+}
+
+const openContributorLevelSettingsDialog = async () => {
+  contributorLevelSettingsError.value = ''
+  await loadContributorLevelSettings({ force: true })
+  recalculateUserContributorLevels()
+  resetContributorLevelSettingsDraft()
+  showContributorLevelSettingsDialog.value = true
+}
+
+const closeContributorLevelSettingsDialog = () => {
+  if (contributorLevelSettingsSaving.value) return
+  showContributorLevelSettingsDialog.value = false
+  contributorLevelSettingsError.value = ''
+}
+
+const persistContributorLevelSettings = async (settings) => {
+  contributorLevelSettingsSaving.value = true
+  contributorLevelSettingsError.value = ''
+  try {
+    await saveContributorLevelSettings(settings)
+    recalculateUserContributorLevels()
+    userFirst.value = 0
+    resetContributorLevelSettingsDraft()
+    showContributorLevelSettingsDialog.value = false
+    toast.add({
+      severity: 'success',
+      summary: '設定已保存',
+      detail: '投稿等級名稱與累積 EXP 門檻已更新。',
+      life: 3000,
+    })
+  } catch (error) {
+    contributorLevelSettingsError.value =
+      error?.response?.data?.detail || error?.message || '投稿等級設定保存失敗'
+  } finally {
+    contributorLevelSettingsSaving.value = false
+  }
+}
+
+const confirmContributorLevelSettingsSave = () => {
+  let normalized
+  try {
+    normalized = validateContributorLevelSettings(contributorLevelSettingsDraft.value)
+    contributorLevelSettingsDraft.value = normalized.map((level) => ({ ...level }))
+    contributorLevelSettingsError.value = ''
+  } catch (error) {
+    contributorLevelSettingsError.value = error?.message || '投稿等級設定格式錯誤'
+    return
+  }
+
+  confirm.require({
+    header: '確認更新投稿等級設定',
+    message: '修改等級名稱或 EXP 門檻後，使用者目前顯示的投稿等級可能立即重新計算。',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: '取消',
+    acceptLabel: '確認保存',
+    accept: () => persistContributorLevelSettings(normalized),
+  })
 }
 
 const getCategoryName = (category) => {
@@ -4675,6 +4824,7 @@ const loadCourses = async () => {
 const loadUsers = async () => {
   usersLoading.value = true
   try {
+    await loadContributorLevelSettings()
     const response = await getUsers()
     users.value = response.data.map((user) => {
       const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
@@ -6641,6 +6791,74 @@ onBeforeUnmount(() => {
 .contributor-level-stat > strong {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.contributor-level-settings-dialog {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.contributor-level-settings-help {
+  margin: 0;
+  padding: 0.8rem 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.contributor-level-settings-list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: min(62vh, 34rem);
+  overflow-y: auto;
+  padding: 0 1rem 1rem;
+}
+
+.contributor-level-settings-row {
+  display: grid;
+  grid-template-columns: 3.2rem 4rem minmax(10rem, 1fr) minmax(11rem, 0.8fr) auto;
+  min-width: 0;
+  align-items: end;
+  gap: 0.55rem;
+  padding: 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.contributor-level-settings-number {
+  align-self: center;
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+.contributor-level-settings-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.contributor-level-settings-max {
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.contributor-level-settings-footer {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contributor-level-settings-footer-spacer {
+  flex: 1 1 auto;
 }
 
 .admin-toolbar--section {
@@ -10060,8 +10278,6 @@ onBeforeUnmount(() => {
 .admin-toolbar--users :deep(.p-inputtext::placeholder),
 .admin-toolbar--users :deep(.p-select),
 .admin-toolbar--users :deep(.p-select-label),
-.admin-toolbar--users :deep(.p-multiselect),
-.admin-toolbar--users :deep(.p-multiselect-label),
 .user-management-table :deep(.p-datatable-thead > tr > th),
 .user-management-table :deep(.p-datatable-tbody > tr > td),
 .user-management-table :deep(.p-paginator),
@@ -10073,17 +10289,6 @@ onBeforeUnmount(() => {
 .user-online-badge {
   font-size: var(--app-font-size-sm) !important;
   line-height: 1.35;
-}
-
-.admin-toolbar--users :deep(.p-multiselect) {
-  max-width: 100%;
-  min-width: 0;
-}
-
-.admin-toolbar--users :deep(.p-multiselect-label) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .user-management-table .mobile-primary-text,
@@ -10289,6 +10494,27 @@ onBeforeUnmount(() => {
 
   .contributor-level-stat {
     width: 100%;
+  }
+
+  .contributor-level-settings-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .contributor-level-settings-field {
+    grid-column: 1 / -1;
+  }
+
+  .contributor-level-settings-max {
+    grid-column: 1 / -1;
+  }
+
+  .contributor-level-settings-footer-spacer {
+    display: none;
+  }
+
+  .contributor-level-settings-footer :deep(.p-button) {
+    flex: 1 1 100%;
   }
 }
 
