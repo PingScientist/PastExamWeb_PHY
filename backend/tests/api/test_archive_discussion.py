@@ -10,9 +10,11 @@ from app.main import app
 from app.models.models import (
     Archive,
     ArchiveDiscussionMessage,
+    ArchiveSubmission,
     ArchiveType,
     Course,
     CourseCategory,
+    SubmissionStatus,
     UserRoles,
 )
 from app.utils.auth import get_current_user
@@ -23,6 +25,89 @@ def _override_user(user_id: int, *, is_admin: bool = False):
         return UserRoles(user_id=user_id, is_admin=is_admin)
 
     return _get_current_user
+
+
+@pytest.mark.asyncio
+async def test_discussion_messages_include_batched_current_author_experience(
+    client, session_maker, make_user
+):
+    visible_author = await make_user(nickname="Visible", show_level_title=True)
+    hidden_author = await make_user(nickname="Hidden", show_level_title=False)
+
+    async with session_maker() as session:
+        course = Course(name="Level Course", category=CourseCategory.FRESHMAN)
+        session.add(course)
+        await session.commit()
+        await session.refresh(course)
+        archive = Archive(
+            name="Level Exam",
+            academic_year=2024,
+            archive_type=ArchiveType.FINAL,
+            professor="Prof",
+            has_answers=False,
+            object_name="level.pdf",
+            uploader_id=visible_author.id,
+            course_id=course.id,
+        )
+        session.add(archive)
+        await session.commit()
+        await session.refresh(archive)
+
+        for index, status_value in enumerate(
+            [SubmissionStatus.APPROVED, SubmissionStatus.TAKEDOWN, SubmissionStatus.DELETED]
+        ):
+            session.add(
+                ArchiveSubmission(
+                    subject=f"Subject {index}",
+                    category="freshman",
+                    name=f"Exam {index}",
+                    academic_year=2024,
+                    archive_type=ArchiveType.FINAL,
+                    professor="Prof",
+                    object_name=f"submission-{index}.pdf",
+                    requester_id=visible_author.id,
+                    status=status_value,
+                )
+            )
+        session.add_all(
+            [
+                ArchiveDiscussionMessage(
+                    archive_id=archive.id, user_id=visible_author.id, content="Visible"
+                ),
+                ArchiveDiscussionMessage(
+                    archive_id=archive.id, user_id=hidden_author.id, content="Hidden"
+                ),
+            ]
+        )
+        await session.commit()
+
+    app.dependency_overrides[get_current_user] = _override_user(visible_author.id)
+    try:
+        response = await client.get(
+            f"/courses/{course.id}/archives/{archive.id}/discussion/messages"
+        )
+        assert response.status_code == 200
+        messages = {message["content"]: message for message in response.json()}
+        assert messages["Visible"]["author_show_level_title"] is True
+        assert messages["Visible"]["author_experience"] == 2
+        assert messages["Hidden"]["author_show_level_title"] is False
+        assert messages["Hidden"]["author_experience"] == 0
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(ArchiveDiscussionMessage).where(
+                    ArchiveDiscussionMessage.archive_id == archive.id
+                )
+            )
+            await session.execute(
+                delete(ArchiveSubmission).where(
+                    ArchiveSubmission.requester_id == visible_author.id
+                )
+            )
+            await session.execute(delete(Archive).where(Archive.id == archive.id))
+            await session.execute(delete(Course).where(Course.id == course.id))
+            await session.commit()
 
 
 @pytest.mark.asyncio
@@ -130,6 +215,8 @@ async def test_discussion_ws_accepts_padded_message_within_limit(
     assert msg["type"] == "message"
     assert msg["message"]["content"] == content
     assert msg["message"]["user_name"] == "Nick2"
+    assert msg["message"]["author_show_level_title"] is True
+    assert msg["message"]["author_experience"] == 0
 
     async with session_maker() as session:
         await session.execute(

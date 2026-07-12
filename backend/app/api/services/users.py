@@ -228,6 +228,8 @@ async def update_my_nickname(
         )
 
     user.nickname = nickname
+    if payload.show_level_title is not None:
+        user.show_level_title = payload.show_level_title
     await db.commit()
     await db.refresh(user)
     return user

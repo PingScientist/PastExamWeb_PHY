@@ -54,6 +54,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     name: str = Field(unique=True, index=True)
     nickname: Optional[str] = Field(default=None, index=True)
+    show_level_title: bool = Field(default=True)
     is_admin: bool = Field(default=False)
     password_hash: Optional[str] = Field(default=None)
     is_local: bool = Field(default=False)
@@ -302,6 +303,7 @@ class UserRead(BaseModel):
     email: str
     name: str
     nickname: Optional[str] = None
+    show_level_title: bool = True
     is_admin: bool
     is_local: bool
     last_login: Optional[datetime]
@@ -335,6 +337,7 @@ class UserUpdate(BaseModel):
 
 class UserNicknameUpdate(BaseModel):
     nickname: str
+    show_level_title: Optional[bool] = None
 
 
 class UserRoles(BaseModel):
@@ -422,6 +425,8 @@ class ArchiveDiscussionMessageRead(BaseModel):
     archive_id: int
     user_id: int
     user_name: str
+    author_show_level_title: bool = False
+    author_experience: Optional[int] = None
     content: str
     is_pinned: bool = False
     created_at: datetime

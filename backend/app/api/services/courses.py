@@ -776,10 +776,34 @@ async def _fetch_archive_discussion_messages(
     before_id: int | None = None,
 ) -> List[ArchiveDiscussionMessageRead]:
     safe_limit = max(1, min(int(limit or 50), 100))
+    experience_by_author = (
+        select(
+            ArchiveSubmission.requester_id.label("author_id"),
+            func.count(ArchiveSubmission.id).label("experience"),
+        )
+        .where(
+            ArchiveSubmission.status.in_(
+                [SubmissionStatus.APPROVED, SubmissionStatus.TAKEDOWN]
+            )
+        )
+        .group_by(ArchiveSubmission.requester_id)
+        .subquery()
+    )
 
     stmt = (
-        select(ArchiveDiscussionMessage, User.nickname, User.name)
+        select(
+            ArchiveDiscussionMessage,
+            User.nickname,
+            User.name,
+            User.show_level_title,
+            User.deleted_at,
+            func.coalesce(experience_by_author.c.experience, 0),
+        )
         .join(User, User.id == ArchiveDiscussionMessage.user_id)
+        .outerjoin(
+            experience_by_author,
+            experience_by_author.c.author_id == ArchiveDiscussionMessage.user_id,
+        )
         .where(
             ArchiveDiscussionMessage.archive_id == archive_id,
             ArchiveDiscussionMessage.deleted_at.is_(None),
@@ -803,11 +827,13 @@ async def _fetch_archive_discussion_messages(
             user_name=_discussion_public_display_name(
                 user_id=msg.user_id, nickname=nickname, name=user_name
             ),
+            author_show_level_title=bool(show_level_title and deleted_at is None),
+            author_experience=int(experience) if deleted_at is None else None,
             content=msg.content,
             is_pinned=msg.is_pinned,
             created_at=msg.created_at,
         )
-        for (msg, nickname, user_name) in rows
+        for (msg, nickname, user_name, show_level_title, deleted_at, experience) in rows
     ]
 
 
@@ -921,17 +947,37 @@ async def archive_discussion_ws(
             await db.commit()
             await db.refresh(message)
 
-            # Fetch latest nickname each time (user object may be stale while WS is open).
+            # Fetch current public author metadata once for this new message.
+            experience = (
+                select(func.count(ArchiveSubmission.id))
+                .where(
+                    ArchiveSubmission.requester_id == user.id,
+                    ArchiveSubmission.status.in_(
+                        [SubmissionStatus.APPROVED, SubmissionStatus.TAKEDOWN]
+                    ),
+                )
+                .scalar_subquery()
+            )
             user_row = (
                 await db.execute(
-                    select(User.nickname, User.name).where(User.id == user.id)
+                    select(
+                        User.nickname,
+                        User.name,
+                        User.show_level_title,
+                        User.deleted_at,
+                        func.coalesce(experience, 0),
+                    ).where(User.id == user.id)
                 )
             ).one_or_none()
             latest_display_name = None
+            author_show_level_title = False
+            author_experience = None
             if user_row:
                 latest_display_name = _discussion_public_display_name(
                     user_id=user.id, nickname=user_row[0], name=user_row[1]
                 )
+                author_show_level_title = bool(user_row[2] and user_row[3] is None)
+                author_experience = int(user_row[4]) if user_row[3] is None else None
 
             payload = jsonable_encoder(
                 {
@@ -944,6 +990,8 @@ async def archive_discussion_ws(
                         or _discussion_public_display_name(
                             user_id=user.id, nickname=user.nickname, name=user.name
                         ),
+                        author_show_level_title=author_show_level_title,
+                        author_experience=author_experience,
                         content=message.content,
                         is_pinned=message.is_pinned,
                         created_at=message.created_at,
