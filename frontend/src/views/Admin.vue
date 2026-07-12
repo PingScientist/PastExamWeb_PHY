@@ -622,11 +622,11 @@
                   class="admin-mobile-card admin-user-card admin-tablet-card"
                 >
                   <header class="admin-tablet-card-header">
-                    <div class="admin-tablet-title-group">
+                    <div class="admin-tablet-title-group user-card-title-group">
                       <strong class="admin-card-title admin-tablet-card-title">{{
                         user.name
                       }}</strong>
-                      <div class="admin-tablet-tag-group">
+                      <div class="admin-tablet-tag-group user-role-tag-group">
                         <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
                           {{ user.is_admin ? '管理員' : '一般使用者' }}
                         </Tag>
@@ -871,11 +871,11 @@
                   class="admin-mobile-card admin-announcement-card admin-tablet-card"
                 >
                   <header class="admin-tablet-card-header">
-                    <div class="admin-tablet-title-group">
+                    <div class="admin-tablet-title-group announcement-card-title-group">
                       <strong class="admin-card-title admin-tablet-card-title">{{
                         notification.title
                       }}</strong>
-                      <div class="admin-tablet-tag-group">
+                      <div class="admin-tablet-tag-group announcement-type-tag-group">
                         <Tag :severity="getNotificationSeverity(notification.severity)">
                           {{ getNotificationSeverityLabel(notification.severity) }}
                         </Tag>
@@ -9036,6 +9036,34 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 641px) and (max-width: 760px) {
+  .admin-mobile-list--users .user-card-title-group,
+  .admin-mobile-list--notifications .announcement-card-title-group {
+    display: flex;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--users .user-card-title-group .admin-tablet-card-title,
+  .admin-mobile-list--notifications .announcement-card-title-group .admin-tablet-card-title {
+    flex: 0 1 auto;
+    width: fit-content;
+    min-width: 0;
+  }
+
+  .admin-mobile-list--users .user-role-tag-group,
+  .admin-mobile-list--notifications .announcement-type-tag-group {
+    flex: 0 0 auto;
+  }
+
+  .admin-mobile-list--users .user-role-tag-group :deep(.p-tag),
+  .admin-mobile-list--notifications .announcement-type-tag-group :deep(.p-tag) {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
   .admin-toolbar:not(.admin-toolbar--trash):not(.admin-toolbar--trash-shell):not(
       .admin-toolbar--section
     ) {
