@@ -312,6 +312,7 @@ class UserRead(BaseModel):
     last_logout_at: Optional[datetime] = None
     is_online: bool = False
     online_status_label: Optional[str] = None
+    contributor_experience: int = 0
 
     class Config:
         from_attributes = True

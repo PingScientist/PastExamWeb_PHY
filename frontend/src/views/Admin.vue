@@ -460,6 +460,47 @@
 
           <TabPanel value="1">
             <div class="p-2 md:p-4">
+              <section
+                class="contributor-level-insights"
+                aria-labelledby="contributor-level-insights-title"
+              >
+                <div class="contributor-level-insights__heading">
+                  <div>
+                    <h3 id="contributor-level-insights-title">投稿等級統計</h3>
+                    <p>完整使用者等級分布</p>
+                  </div>
+                  <strong>{{ users.length }} 人</strong>
+                </div>
+                <div class="contributor-level-insights__grid">
+                  <button
+                    type="button"
+                    class="contributor-level-stat"
+                    :class="{ 'is-active': filterContributorLevel === null }"
+                    :aria-pressed="filterContributorLevel === null"
+                    @click="setContributorLevelFilter(null)"
+                  >
+                    <span>全部</span>
+                    <strong>{{ users.length }} 人</strong>
+                  </button>
+                  <button
+                    v-for="stat in contributorLevelStats"
+                    :key="stat.level"
+                    type="button"
+                    class="contributor-level-stat"
+                    :class="{ 'is-active': filterContributorLevel === stat.level }"
+                    :aria-pressed="filterContributorLevel === stat.level"
+                    @click="setContributorLevelFilter(stat.level)"
+                  >
+                    <ContributorLevelBadge
+                      :level="stat.level"
+                      :title="stat.name"
+                      size="regular"
+                      show-title
+                    />
+                    <strong>{{ stat.count }} 人</strong>
+                  </button>
+                </div>
+              </section>
               <div class="admin-toolbar admin-toolbar--users mb-4">
                 <div class="admin-toolbar__filters">
                   <div class="admin-toolbar__search relative w-full md:w-auto">
@@ -481,6 +522,16 @@
                     optionValue="value"
                     placeholder="篩選類型"
                     showClear
+                    class="admin-toolbar__select w-full md:w-14rem"
+                  />
+                  <Select
+                    inputId="admin-user-level-filter"
+                    name="admin-user-level-filter"
+                    v-model="filterContributorLevel"
+                    :options="contributorLevelFilterOptions"
+                    optionLabel="name"
+                    optionValue="value"
+                    placeholder="篩選投稿等級"
                     class="admin-toolbar__select w-full md:w-14rem"
                   />
                 </div>
@@ -510,7 +561,7 @@
                 :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                 paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
-                tableStyle="min-width: 50rem"
+                tableStyle="min-width: 62rem"
                 scrollable
                 scrollHeight="65vh"
                 responsiveLayout="stack"
@@ -530,6 +581,12 @@
                         <span class="admin-card-email">{{ data.email }}</span>
                       </div>
                       <div class="admin-card-meta">
+                        <ContributorLevelBadge
+                          :level="data.contributorLevel.level"
+                          :title="data.contributorLevel.name"
+                          size="compact"
+                          show-title
+                        />
                         <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
                           {{ data.is_admin ? '是' : '否' }}
                         </Tag>
@@ -553,6 +610,16 @@
                     <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
                       {{ data.is_admin ? '是' : '否' }}
                     </Tag>
+                  </template>
+                </Column>
+                <Column header="投稿等級" style="width: 19%; min-width: 10rem">
+                  <template #body="{ data }">
+                    <ContributorLevelBadge
+                      :level="data.contributorLevel.level"
+                      :title="data.contributorLevel.name"
+                      size="compact"
+                      show-title
+                    />
                   </template>
                 </Column>
                 <Column field="is_local" header="帳號類型" sortable style="width: 15%">
@@ -631,6 +698,12 @@
                           {{ user.is_admin ? '管理員' : '一般使用者' }}
                         </Tag>
                       </div>
+                      <ContributorLevelBadge
+                        :level="user.contributorLevel.level"
+                        :title="user.contributorLevel.name"
+                        size="compact"
+                        show-title
+                      />
                     </div>
                     <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
                       <i class="pi pi-circle-fill"></i>
@@ -3083,6 +3156,8 @@ import { trackEvent, EVENTS } from '../utils/analytics'
 import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
+import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
+import { SUBMISSION_LEVELS, resolveSubmissionLevel } from '../utils/submissionLevel'
 
 const confirm = useConfirm()
 const toast = useToast()
@@ -3141,6 +3216,7 @@ const users = ref([])
 const usersLoading = ref(false)
 const userSearchQuery = ref('')
 const filterUserType = ref(null)
+const filterContributorLevel = ref(null)
 const userFirst = ref(0)
 const userRows = ref(10)
 
@@ -3927,6 +4003,30 @@ const userTypeFilterOptions = [
   { name: '一般使用者', value: false },
 ]
 
+const contributorLevelFilterOptions = [
+  { name: '全部投稿等級', value: null },
+  ...SUBMISSION_LEVELS.map((level) => ({
+    name: `Lv. ${level.level} ${level.name}`,
+    value: level.level,
+  })),
+]
+
+const contributorLevelStats = computed(() => {
+  const counts = new Map(SUBMISSION_LEVELS.map((level) => [level.level, 0]))
+  users.value.forEach((user) => {
+    counts.set(user.contributorLevel.level, (counts.get(user.contributorLevel.level) || 0) + 1)
+  })
+  return SUBMISSION_LEVELS.map((level) => ({
+    ...level,
+    count: counts.get(level.level) || 0,
+  }))
+})
+
+const setContributorLevelFilter = (level) => {
+  filterContributorLevel.value = level
+  userFirst.value = 0
+}
+
 const getCategoryName = (category) => {
   return categoryInfoMap.value[category]?.name || category
 }
@@ -4350,6 +4450,12 @@ const filteredUsers = computed(() => {
     filtered = filtered.filter((user) => user.is_admin === filterUserType.value)
   }
 
+  if (filterContributorLevel.value !== null) {
+    filtered = filtered.filter(
+      (user) => user.contributorLevel.level === filterContributorLevel.value
+    )
+  }
+
   return filtered
 })
 
@@ -4445,7 +4551,7 @@ const clampPaginatorFirst = (firstRef, rowsRef, totalRecords) => {
 watch([searchQuery, filterCategory], () => {
   courseFirst.value = 0
 })
-watch([userSearchQuery, filterUserType], () => {
+watch([userSearchQuery, filterUserType, filterContributorLevel], () => {
   userFirst.value = 0
 })
 watch([notificationSearchQuery, notificationSeverityFilter], () => {
@@ -4511,7 +4617,10 @@ const loadUsers = async () => {
   usersLoading.value = true
   try {
     const response = await getUsers()
-    users.value = response.data
+    users.value = response.data.map((user) => ({
+      ...user,
+      contributorLevel: resolveSubmissionLevel(user.contributor_experience),
+    }))
   } catch (error) {
     console.error('載入使用者失敗:', error)
     if (isUnauthorizedError(error)) {
@@ -6325,6 +6434,83 @@ onBeforeUnmount(() => {
   gap: 0.75rem;
   width: 100%;
   min-width: 0;
+}
+
+.contributor-level-insights {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 90%, var(--primary-color) 10%);
+}
+
+.contributor-level-insights__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--text-color);
+}
+
+.contributor-level-insights__heading h3,
+.contributor-level-insights__heading p {
+  margin: 0;
+}
+
+.contributor-level-insights__heading h3 {
+  font-size: 1rem;
+}
+
+.contributor-level-insights__heading p {
+  margin-top: 0.12rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.contributor-level-insights__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.contributor-level-stat {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-primary);
+  color: var(--text-color);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.contributor-level-stat:hover,
+.contributor-level-stat:focus-visible {
+  border-color: var(--primary-color);
+}
+
+.contributor-level-stat:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.contributor-level-stat.is-active {
+  border-color: var(--primary-color);
+  box-shadow: inset 0 0 0 1px var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-primary));
+}
+
+.contributor-level-stat > strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .admin-toolbar--section {
@@ -9930,6 +10116,20 @@ onBeforeUnmount(() => {
     white-space: normal;
     word-break: normal;
     overflow-wrap: break-word;
+  }
+}
+
+@media (max-width: 640px) {
+  .contributor-level-insights__heading {
+    align-items: flex-start;
+  }
+
+  .contributor-level-insights__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contributor-level-stat {
+    width: 100%;
   }
 }
 

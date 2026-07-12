@@ -2,11 +2,14 @@ from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_session
 from app.models.models import (
+    ArchiveSubmission,
+    SubmissionStatus,
     User,
     UserCreate,
     UserPasswordResetRequest,
@@ -60,7 +63,7 @@ def _get_user_online_status(user: User):
     return is_online, "在線" if is_online else "離線"
 
 
-def _to_user_read(user: User) -> UserRead:
+def _to_user_read(user: User, contributor_experience: int = 0) -> UserRead:
     is_online, status_label = _get_user_online_status(user)
     return UserRead(
         id=user.id,
@@ -75,6 +78,7 @@ def _to_user_read(user: User) -> UserRead:
         last_logout_at=user.last_logout,
         is_online=is_online,
         online_status_label=status_label,
+        contributor_experience=contributor_experience,
     )
 
 
@@ -93,7 +97,20 @@ async def get_users(
 
     result = await db.execute(select(User).where(User.deleted_at.is_(None)))
     users = result.scalars().all()
-    return [_to_user_read(user) for user in users]
+    experience_result = await db.execute(
+        select(ArchiveSubmission.requester_id, func.count(ArchiveSubmission.id))
+        .where(
+            ArchiveSubmission.status.in_(
+                [SubmissionStatus.APPROVED, SubmissionStatus.TAKEDOWN]
+            )
+        )
+        .group_by(ArchiveSubmission.requester_id)
+    )
+    experience_by_user = {
+        requester_id: int(experience) for requester_id, experience in experience_result.all()
+    }
+    return [_to_user_read(user, experience_by_user.get(user.id, 0)) for user in users]
+
 
 @router.post("/admin/users/{user_id}/reset-password")
 async def reset_user_password(

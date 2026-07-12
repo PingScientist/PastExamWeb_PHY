@@ -41,6 +41,7 @@
               :level="getMessageLevel(msg).level"
               :title="getMessageLevel(msg).name"
               size="compact"
+              show-title
             />
           </div>
           <div class="flex align-items-center gap-2">
