@@ -460,6 +460,297 @@
 
           <TabPanel value="1">
             <div class="p-2 md:p-4">
+              <div class="admin-toolbar admin-toolbar--users mb-4">
+                <div class="admin-toolbar__filters">
+                  <div class="admin-toolbar__search relative w-full md:w-auto">
+                    <i class="pi pi-search search-icon"></i>
+                    <InputText
+                      id="admin-user-search"
+                      name="admin-user-search"
+                      v-model="userSearchQuery"
+                      placeholder="搜尋使用者"
+                      class="w-full pl-6"
+                    />
+                  </div>
+                  <Select
+                    inputId="admin-user-type-filter"
+                    name="admin-user-type-filter"
+                    v-model="filterUserType"
+                    :options="userTypeFilterOptions"
+                    optionLabel="name"
+                    optionValue="value"
+                    placeholder="篩選類型"
+                    showClear
+                    class="admin-toolbar__select w-full md:w-14rem"
+                  />
+                </div>
+                <div class="admin-toolbar__actions">
+                  <Button
+                    label="新增使用者"
+                    icon="pi pi-plus"
+                    severity="success"
+                    @click="openCreateUserDialog"
+                    class="admin-toolbar__button w-full md:w-auto"
+                  />
+                </div>
+              </div>
+
+              <ProgressSpinner
+                v-if="usersLoading"
+                class="w-full flex justify-content-center mt-4"
+                strokeWidth="4"
+              />
+              <DataTable
+                v-else
+                :value="sortedUsers"
+                class="admin-data-table admin-desktop-data-table user-management-table"
+                paginator
+                :first="userFirst"
+                :rows="userRows"
+                :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                tableStyle="min-width: 62rem"
+                scrollable
+                scrollHeight="65vh"
+                responsiveLayout="stack"
+                breakpoint="1023px"
+                :multiSortMeta="userSortMeta"
+                sortMode="multiple"
+                removableSort
+                @page="handleUserPage"
+                @sort="handleUserSort"
+              >
+                <Column
+                  field="contributor_level"
+                  header="投稿等級"
+                  sortable
+                  style="width: 19%; min-width: 10rem"
+                >
+                  <template #body="{ data }">
+                    <ContributorLevelBadge
+                      :level="data.contributorLevel.level"
+                      :title="data.contributorLevel.name"
+                      size="compact"
+                      show-title
+                    />
+                  </template>
+                </Column>
+                <Column header="使用者名稱" sortable style="width: 15%">
+                  <template #body="{ data }">
+                    <span class="mobile-primary-text admin-desktop-cell">{{ data.name }}</span>
+                    <div class="admin-mobile-card admin-user-mobile-card">
+                      <div class="admin-card-primary">
+                        <strong class="admin-card-title">{{ data.name }}</strong>
+                        <span class="admin-card-email">{{ data.email }}</span>
+                      </div>
+                      <div class="admin-card-meta">
+                        <ContributorLevelBadge
+                          :level="data.contributorLevel.level"
+                          :title="data.contributorLevel.name"
+                          size="compact"
+                          show-title
+                        />
+                        <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
+                          {{ data.is_admin ? '是' : '否' }}
+                        </Tag>
+                        <Tag :severity="data.is_local ? 'info' : 'warning'" class="text-sm">
+                          {{ data.is_local ? '本地帳號' : '外部帳號' }}
+                        </Tag>
+                        <span class="admin-card-meta-text">
+                          {{ data.last_login ? formatDateTime(data.last_login) : '從未登入' }}
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </Column>
+                <Column header="電子郵件" sortable style="width: 20%">
+                  <template #body="{ data }">
+                    <span class="mobile-long-text admin-desktop-cell">{{ data.email }}</span>
+                  </template>
+                </Column>
+                <Column field="is_admin" header="管理員權限" sortable style="width: 15%">
+                  <template #body="{ data }">
+                    <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
+                      {{ data.is_admin ? '是' : '否' }}
+                    </Tag>
+                  </template>
+                </Column>
+                <Column field="is_local" header="帳號類型" sortable style="width: 15%">
+                  <template #body="{ data }">
+                    <Tag :severity="data.is_local ? 'info' : 'warning'" class="text-sm">
+                      {{ data.is_local ? '本地帳號' : '外部帳號' }}
+                    </Tag>
+                  </template>
+                </Column>
+                <Column field="last_login" header="最近登入" sortable style="width: 15%">
+                  <template #body="{ data }">
+                    <span v-if="data.last_login" class="text-sm">
+                      {{ formatDateTime(data.last_login) }}
+                    </span>
+                    <span v-else class="text-sm text-500"> 從未登入 </span>
+                  </template>
+                </Column>
+                <Column field="is_online" header="上線狀態" sortable style="width: 16%">
+                  <template #body="{ data }">
+                    <span class="user-online-badge" :class="getOnlineStatusDotClass(data)">
+                      <i class="pi pi-circle-fill"></i>
+                      <span>{{ getOnlineStatusLabel(data) }}</span>
+                    </span>
+                  </template>
+                </Column>
+                <Column header="操作" style="width: 28%; min-width: 21rem">
+                  <template #body="{ data }">
+                    <div class="user-management-table-actions">
+                      <Button
+                        icon="pi pi-eye"
+                        severity="secondary"
+                        size="small"
+                        @click="openUserSubmissionStats(data)"
+                        label="查看"
+                        aria-label="查看使用者投稿統計"
+                        title="查看使用者投稿統計"
+                      />
+                      <Button
+                        icon="pi pi-pencil"
+                        severity="warning"
+                        size="small"
+                        @click="openEditUserDialog(data)"
+                        label="編輯"
+                        aria-label="編輯使用者"
+                        title="編輯使用者"
+                      />
+                      <Button
+                        icon="pi pi-key"
+                        severity="info"
+                        size="small"
+                        @click="openResetPasswordDialog(data)"
+                        label="重設密碼"
+                        aria-label="重設使用者密碼"
+                        :title="data.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
+                        :disabled="!data.is_local"
+                      />
+                      <Button
+                        class="admin-danger-solid-button"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        size="small"
+                        @click="confirmDeleteUser(data)"
+                        label="刪除"
+                        aria-label="刪除使用者"
+                        title="刪除使用者"
+                        :disabled="data.id === currentUserId"
+                      />
+                    </div>
+                  </template>
+                </Column>
+              </DataTable>
+              <div v-if="!usersLoading" class="admin-mobile-list admin-mobile-list--users">
+                <article
+                  v-for="user in paginatedUsers"
+                  :key="user.id"
+                  class="admin-mobile-card admin-user-card admin-tablet-card"
+                >
+                  <header class="admin-tablet-card-header">
+                    <div class="admin-tablet-title-group user-card-title-group">
+                      <strong class="admin-card-title admin-tablet-card-title">{{
+                        user.name
+                      }}</strong>
+                      <div class="admin-tablet-tag-group user-role-tag-group">
+                        <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
+                          {{ user.is_admin ? '管理員' : '一般使用者' }}
+                        </Tag>
+                      </div>
+                      <ContributorLevelBadge
+                        :level="user.contributorLevel.level"
+                        :title="user.contributorLevel.name"
+                        size="compact"
+                        show-title
+                      />
+                    </div>
+                    <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
+                      <i class="pi pi-circle-fill"></i>
+                      <span>{{ getOnlineStatusLabel(user) }}</span>
+                    </span>
+                  </header>
+                  <section class="admin-tablet-metadata">
+                    <div class="admin-tablet-metadata-item admin-tablet-metadata-item--wide">
+                      <span class="admin-tablet-metadata-label">Email</span>
+                      <span class="admin-card-email admin-tablet-metadata-value">{{
+                        user.email
+                      }}</span>
+                    </div>
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">帳號類型</span>
+                      <span class="admin-tablet-metadata-value">{{
+                        user.is_local ? '本地帳號' : '外部帳號'
+                      }}</span>
+                    </div>
+                    <div class="admin-tablet-metadata-item">
+                      <span class="admin-tablet-metadata-label">最後登入</span>
+                      <span class="admin-tablet-metadata-value">
+                        {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
+                      </span>
+                    </div>
+                  </section>
+                  <section
+                    class="admin-card-actions admin-mobile-card-actions user-management-card-actions admin-tablet-actions"
+                  >
+                    <Button
+                      icon="pi pi-eye"
+                      severity="secondary"
+                      size="small"
+                      @click="openUserSubmissionStats(user)"
+                      label="查看"
+                      aria-label="查看使用者投稿統計"
+                      title="查看使用者投稿統計"
+                    />
+                    <Button
+                      icon="pi pi-pencil"
+                      severity="warning"
+                      size="small"
+                      @click="openEditUserDialog(user)"
+                      label="編輯"
+                      aria-label="編輯使用者"
+                      title="編輯使用者"
+                    />
+                    <Button
+                      icon="pi pi-key"
+                      severity="info"
+                      size="small"
+                      @click="openResetPasswordDialog(user)"
+                      label="重設密碼"
+                      aria-label="重設使用者密碼"
+                      :title="user.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
+                      :disabled="!user.is_local"
+                    />
+                    <Button
+                      class="admin-danger-solid-button"
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      @click="confirmDeleteUser(user)"
+                      label="刪除"
+                      aria-label="刪除使用者"
+                      title="刪除使用者"
+                      :disabled="user.id === currentUserId"
+                    />
+                  </section>
+                </article>
+                <Paginator
+                  :first="userFirst"
+                  :rows="userRows"
+                  :totalRecords="sortedUsers.length"
+                  :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
+                  :pageLinkSize="1"
+                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                  aria-label="使用者管理分頁"
+                  class="admin-mobile-paginator"
+                  @page="handleUserPage"
+                />
+              </div>
+
               <section
                 class="contributor-level-insights"
                 aria-labelledby="contributor-level-insights-title"
@@ -658,297 +949,6 @@
                   </div>
                 </div>
               </section>
-
-              <div class="admin-toolbar admin-toolbar--users mb-4">
-                <div class="admin-toolbar__filters">
-                  <div class="admin-toolbar__search relative w-full md:w-auto">
-                    <i class="pi pi-search search-icon"></i>
-                    <InputText
-                      id="admin-user-search"
-                      name="admin-user-search"
-                      v-model="userSearchQuery"
-                      placeholder="搜尋使用者"
-                      class="w-full pl-6"
-                    />
-                  </div>
-                  <Select
-                    inputId="admin-user-type-filter"
-                    name="admin-user-type-filter"
-                    v-model="filterUserType"
-                    :options="userTypeFilterOptions"
-                    optionLabel="name"
-                    optionValue="value"
-                    placeholder="篩選類型"
-                    showClear
-                    class="admin-toolbar__select w-full md:w-14rem"
-                  />
-                </div>
-                <div class="admin-toolbar__actions">
-                  <Button
-                    label="新增使用者"
-                    icon="pi pi-plus"
-                    severity="success"
-                    @click="openCreateUserDialog"
-                    class="admin-toolbar__button w-full md:w-auto"
-                  />
-                </div>
-              </div>
-
-              <ProgressSpinner
-                v-if="usersLoading"
-                class="w-full flex justify-content-center mt-4"
-                strokeWidth="4"
-              />
-              <DataTable
-                v-else
-                :value="sortedUsers"
-                class="admin-data-table admin-desktop-data-table user-management-table"
-                paginator
-                :first="userFirst"
-                :rows="userRows"
-                :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
-                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
-                tableStyle="min-width: 62rem"
-                scrollable
-                scrollHeight="65vh"
-                responsiveLayout="stack"
-                breakpoint="1023px"
-                :multiSortMeta="userSortMeta"
-                sortMode="multiple"
-                removableSort
-                @page="handleUserPage"
-                @sort="handleUserSort"
-              >
-                <Column header="使用者名稱" sortable style="width: 15%">
-                  <template #body="{ data }">
-                    <span class="mobile-primary-text admin-desktop-cell">{{ data.name }}</span>
-                    <div class="admin-mobile-card admin-user-mobile-card">
-                      <div class="admin-card-primary">
-                        <strong class="admin-card-title">{{ data.name }}</strong>
-                        <span class="admin-card-email">{{ data.email }}</span>
-                      </div>
-                      <div class="admin-card-meta">
-                        <ContributorLevelBadge
-                          :level="data.contributorLevel.level"
-                          :title="data.contributorLevel.name"
-                          size="compact"
-                          show-title
-                        />
-                        <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
-                          {{ data.is_admin ? '是' : '否' }}
-                        </Tag>
-                        <Tag :severity="data.is_local ? 'info' : 'warning'" class="text-sm">
-                          {{ data.is_local ? '本地帳號' : '外部帳號' }}
-                        </Tag>
-                        <span class="admin-card-meta-text">
-                          {{ data.last_login ? formatDateTime(data.last_login) : '從未登入' }}
-                        </span>
-                      </div>
-                    </div>
-                  </template>
-                </Column>
-                <Column header="電子郵件" sortable style="width: 20%">
-                  <template #body="{ data }">
-                    <span class="mobile-long-text admin-desktop-cell">{{ data.email }}</span>
-                  </template>
-                </Column>
-                <Column field="is_admin" header="管理員權限" sortable style="width: 15%">
-                  <template #body="{ data }">
-                    <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
-                      {{ data.is_admin ? '是' : '否' }}
-                    </Tag>
-                  </template>
-                </Column>
-                <Column
-                  field="contributor_level"
-                  header="投稿等級"
-                  sortable
-                  style="width: 19%; min-width: 10rem"
-                >
-                  <template #body="{ data }">
-                    <ContributorLevelBadge
-                      :level="data.contributorLevel.level"
-                      :title="data.contributorLevel.name"
-                      size="compact"
-                      show-title
-                    />
-                  </template>
-                </Column>
-                <Column field="is_local" header="帳號類型" sortable style="width: 15%">
-                  <template #body="{ data }">
-                    <Tag :severity="data.is_local ? 'info' : 'warning'" class="text-sm">
-                      {{ data.is_local ? '本地帳號' : '外部帳號' }}
-                    </Tag>
-                  </template>
-                </Column>
-                <Column field="last_login" header="最近登入" sortable style="width: 15%">
-                  <template #body="{ data }">
-                    <span v-if="data.last_login" class="text-sm">
-                      {{ formatDateTime(data.last_login) }}
-                    </span>
-                    <span v-else class="text-sm text-500"> 從未登入 </span>
-                  </template>
-                </Column>
-                <Column field="is_online" header="上線狀態" sortable style="width: 16%">
-                  <template #body="{ data }">
-                    <span class="user-online-badge" :class="getOnlineStatusDotClass(data)">
-                      <i class="pi pi-circle-fill"></i>
-                      <span>{{ getOnlineStatusLabel(data) }}</span>
-                    </span>
-                  </template>
-                </Column>
-                <Column header="操作" style="width: 28%; min-width: 21rem">
-                  <template #body="{ data }">
-                    <div class="user-management-table-actions">
-                      <Button
-                        icon="pi pi-eye"
-                        severity="secondary"
-                        size="small"
-                        @click="openUserSubmissionStats(data)"
-                        label="查看"
-                        aria-label="查看使用者投稿統計"
-                        title="查看使用者投稿統計"
-                      />
-                      <Button
-                        icon="pi pi-pencil"
-                        severity="warning"
-                        size="small"
-                        @click="openEditUserDialog(data)"
-                        label="編輯"
-                        aria-label="編輯使用者"
-                        title="編輯使用者"
-                      />
-                      <Button
-                        icon="pi pi-key"
-                        severity="info"
-                        size="small"
-                        @click="openResetPasswordDialog(data)"
-                        label="重設密碼"
-                        aria-label="重設使用者密碼"
-                        :title="data.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
-                        :disabled="!data.is_local"
-                      />
-                      <Button
-                        class="admin-danger-solid-button"
-                        icon="pi pi-trash"
-                        severity="danger"
-                        size="small"
-                        @click="confirmDeleteUser(data)"
-                        label="刪除"
-                        aria-label="刪除使用者"
-                        title="刪除使用者"
-                        :disabled="data.id === currentUserId"
-                      />
-                    </div>
-                  </template>
-                </Column>
-              </DataTable>
-              <div v-if="!usersLoading" class="admin-mobile-list admin-mobile-list--users">
-                <article
-                  v-for="user in paginatedUsers"
-                  :key="user.id"
-                  class="admin-mobile-card admin-user-card admin-tablet-card"
-                >
-                  <header class="admin-tablet-card-header">
-                    <div class="admin-tablet-title-group user-card-title-group">
-                      <strong class="admin-card-title admin-tablet-card-title">{{
-                        user.name
-                      }}</strong>
-                      <div class="admin-tablet-tag-group user-role-tag-group">
-                        <Tag :severity="user.is_admin ? 'success' : 'secondary'" class="text-sm">
-                          {{ user.is_admin ? '管理員' : '一般使用者' }}
-                        </Tag>
-                      </div>
-                      <ContributorLevelBadge
-                        :level="user.contributorLevel.level"
-                        :title="user.contributorLevel.name"
-                        size="compact"
-                        show-title
-                      />
-                    </div>
-                    <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
-                      <i class="pi pi-circle-fill"></i>
-                      <span>{{ getOnlineStatusLabel(user) }}</span>
-                    </span>
-                  </header>
-                  <section class="admin-tablet-metadata">
-                    <div class="admin-tablet-metadata-item admin-tablet-metadata-item--wide">
-                      <span class="admin-tablet-metadata-label">Email</span>
-                      <span class="admin-card-email admin-tablet-metadata-value">{{
-                        user.email
-                      }}</span>
-                    </div>
-                    <div class="admin-tablet-metadata-item">
-                      <span class="admin-tablet-metadata-label">帳號類型</span>
-                      <span class="admin-tablet-metadata-value">{{
-                        user.is_local ? '本地帳號' : '外部帳號'
-                      }}</span>
-                    </div>
-                    <div class="admin-tablet-metadata-item">
-                      <span class="admin-tablet-metadata-label">最後登入</span>
-                      <span class="admin-tablet-metadata-value">
-                        {{ user.last_login ? formatDateTime(user.last_login) : '從未登入' }}
-                      </span>
-                    </div>
-                  </section>
-                  <section
-                    class="admin-card-actions admin-mobile-card-actions user-management-card-actions admin-tablet-actions"
-                  >
-                    <Button
-                      icon="pi pi-eye"
-                      severity="secondary"
-                      size="small"
-                      @click="openUserSubmissionStats(user)"
-                      label="查看"
-                      aria-label="查看使用者投稿統計"
-                      title="查看使用者投稿統計"
-                    />
-                    <Button
-                      icon="pi pi-pencil"
-                      severity="warning"
-                      size="small"
-                      @click="openEditUserDialog(user)"
-                      label="編輯"
-                      aria-label="編輯使用者"
-                      title="編輯使用者"
-                    />
-                    <Button
-                      icon="pi pi-key"
-                      severity="info"
-                      size="small"
-                      @click="openResetPasswordDialog(user)"
-                      label="重設密碼"
-                      aria-label="重設使用者密碼"
-                      :title="user.is_local ? '重設密碼' : NON_LOCAL_PASSWORD_RESET_HINT"
-                      :disabled="!user.is_local"
-                    />
-                    <Button
-                      class="admin-danger-solid-button"
-                      icon="pi pi-trash"
-                      severity="danger"
-                      size="small"
-                      @click="confirmDeleteUser(user)"
-                      label="刪除"
-                      aria-label="刪除使用者"
-                      title="刪除使用者"
-                      :disabled="user.id === currentUserId"
-                    />
-                  </section>
-                </article>
-                <Paginator
-                  :first="userFirst"
-                  :rows="userRows"
-                  :totalRecords="sortedUsers.length"
-                  :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
-                  :pageLinkSize="1"
-                  template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-                  currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
-                  aria-label="使用者管理分頁"
-                  class="admin-mobile-paginator"
-                  @page="handleUserPage"
-                />
-              </div>
             </div>
           </TabPanel>
 
@@ -2445,23 +2445,28 @@
         @hide="clearArchiveRequesterStats"
       >
         <div class="request-summary mb-4">
-          <Tag
-            :class="[
-              'soft-badge',
-              'review-card-chip',
-              getArchiveSubmissionKindClass(selectedArchiveRequest),
-            ]"
-            :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)"
+          <div class="request-summary__header">
+            <Tag
+              :class="[
+                'soft-badge',
+                'review-card-chip',
+                getArchiveSubmissionKindClass(selectedArchiveRequest),
+              ]"
+              :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)"
+            >
+              {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
+            </Tag>
+            <small class="request-summary__id text-500">
+              投稿編號：{{ formatSubmissionLabel(selectedArchiveRequest) }}
+            </small>
+          </div>
+          <p
+            v-if="selectedArchiveRequest?.requested_course_name"
+            class="request-summary__description"
           >
-            {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
-          </Tag>
-          <small class="text-500"
-            >投稿編號：{{ formatSubmissionLabel(selectedArchiveRequest) }}</small
-          >
-          <span v-if="selectedArchiveRequest?.requested_course_name">
             這筆投稿通過後會建立或使用新課程「{{ selectedArchiveRequest.requested_course_name }}」。
-          </span>
-          <span v-else>這筆投稿會掛到既有課程。</span>
+          </p>
+          <p v-else class="request-summary__description">這筆投稿會掛到既有課程。</p>
         </div>
         <Message
           v-if="archiveRequestReadonlyMessage"
@@ -3084,8 +3089,24 @@
               aria-labelledby="user-submission-records-title"
             >
               <div class="user-submission-records__heading">
-                <h4 id="user-submission-records-title">此帳號投稿紀錄</h4>
-                <span>共 {{ userSubmissionStats.records_total }} 筆</span>
+                <div>
+                  <h4 id="user-submission-records-title">此帳號投稿紀錄</h4>
+                  <span v-if="normalizedUserSubmissionRecordSearch">
+                    符合 {{ filteredUserSubmissionRecords.length }} 筆／共
+                    {{ userSubmissionStats.records_total }} 筆
+                  </span>
+                  <span v-else>共 {{ userSubmissionStats.records_total }} 筆</span>
+                </div>
+                <div class="user-submission-records__search relative">
+                  <i class="pi pi-search search-icon" aria-hidden="true"></i>
+                  <InputText
+                    id="user-submission-record-search"
+                    v-model="userSubmissionRecordSearch"
+                    placeholder="搜尋投稿紀錄……"
+                    aria-label="搜尋此帳號投稿紀錄"
+                    class="w-full pl-6"
+                  />
+                </div>
               </div>
               <div v-if="paginatedUserSubmissionRecords.length" class="user-submission-record-list">
                 <article
@@ -3131,12 +3152,18 @@
                   </div>
                 </article>
               </div>
-              <div v-else class="user-insights__empty">此帳號目前沒有投稿紀錄</div>
+              <div v-else class="user-insights__empty">
+                {{
+                  normalizedUserSubmissionRecordSearch
+                    ? '找不到符合搜尋條件的投稿紀錄。'
+                    : '此帳號目前沒有投稿紀錄'
+                }}
+              </div>
               <Paginator
-                v-if="sortedUserSubmissionRecords.length > userSubmissionRecordRows"
+                v-if="filteredUserSubmissionRecords.length > userSubmissionRecordRows"
                 :first="userSubmissionRecordFirst"
                 :rows="userSubmissionRecordRows"
-                :totalRecords="sortedUserSubmissionRecords.length"
+                :totalRecords="filteredUserSubmissionRecords.length"
                 :rowsPerPageOptions="[10, 20, 50]"
                 template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
@@ -3699,6 +3726,7 @@ const showUserSubmissionStatsDialog = ref(false)
 const userSubmissionStatsLoading = ref(false)
 const userSubmissionStatsError = ref('')
 const userSubmissionStats = ref(null)
+const userSubmissionRecordSearch = ref('')
 const userSubmissionRecordFirst = ref(0)
 const userSubmissionRecordRows = ref(10)
 let userSubmissionStatsController = null
@@ -4634,9 +4662,38 @@ const archiveRequesterDistributionLabel = computed(() =>
     .join('，')
 )
 
-const sortedUserSubmissionRecords = computed(() => {
+const normalizedUserSubmissionRecordSearch = computed(() =>
+  normalizeReviewSearchText(userSubmissionRecordSearch.value.trim())
+)
+
+const getUserSubmissionRecordSearchHaystack = (record) => {
+  const statusLabel = getUserSubmissionStatusLabel(record.status)
+  const submissionKind = getArchiveSubmissionKind(record)
+  const fields = [
+    record.course_name,
+    record.exam_name,
+    record.professor,
+    record.academic_year,
+    formatAcademicTerm(record.academic_year),
+    record.id,
+    record.id ? `#${record.id}` : '',
+    record.id ? `投稿編號 ${record.id}` : '',
+    record.id ? `投稿編號 #${record.id}` : '',
+    record.status,
+    statusLabel,
+    submissionKind,
+    record.review_comment,
+  ]
+  return fields.map(normalizeReviewSearchText).filter(Boolean).join(' ')
+}
+
+const filteredUserSubmissionRecords = computed(() => {
   const records = userSubmissionStats.value?.submission_records || []
-  return [...records].sort((left, right) => {
+  const query = normalizedUserSubmissionRecordSearch.value
+  const filtered = query
+    ? records.filter((record) => getUserSubmissionRecordSearchHaystack(record).includes(query))
+    : records
+  return [...filtered].sort((left, right) => {
     const timeDifference =
       new Date(right.submitted_at || 0).getTime() - new Date(left.submitted_at || 0).getTime()
     return timeDifference || Number(right.id || 0) - Number(left.id || 0)
@@ -4644,7 +4701,7 @@ const sortedUserSubmissionRecords = computed(() => {
 })
 
 const paginatedUserSubmissionRecords = computed(() =>
-  sortedUserSubmissionRecords.value.slice(
+  filteredUserSubmissionRecords.value.slice(
     userSubmissionRecordFirst.value,
     userSubmissionRecordFirst.value + userSubmissionRecordRows.value
   )
@@ -4654,6 +4711,10 @@ const handleUserSubmissionRecordPage = (event) => {
   userSubmissionRecordFirst.value = event.first
   userSubmissionRecordRows.value = event.rows
 }
+
+watch(userSubmissionRecordSearch, () => {
+  userSubmissionRecordFirst.value = 0
+})
 
 const contributorLevelSelectionSummary = computed(() => {
   if (selectedContributorLevels.value.length === 0) return '全部投稿等級'
@@ -4684,6 +4745,7 @@ const closeUserSubmissionStatsDialog = () => {
   userSubmissionStatsLoading.value = false
   userSubmissionStats.value = null
   userSubmissionStatsError.value = ''
+  userSubmissionRecordSearch.value = ''
   userSubmissionRecordFirst.value = 0
 }
 
@@ -4693,6 +4755,7 @@ const openUserSubmissionStats = async (user) => {
   userSubmissionStatsController = controller
   userSubmissionStats.value = null
   userSubmissionStatsError.value = ''
+  userSubmissionRecordSearch.value = ''
   userSubmissionStatsLoading.value = true
   userSubmissionRecordFirst.value = 0
   showUserSubmissionStatsDialog.value = true
@@ -7257,6 +7320,7 @@ onBeforeUnmount(() => {
 .contributor-level-insights {
   display: grid;
   gap: 0.7rem;
+  margin-top: 1rem;
   margin-bottom: 1rem;
   padding: 0.85rem;
   border: 1px solid var(--border-color);
@@ -7733,6 +7797,38 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.request-summary {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.request-summary__header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+}
+
+.request-summary__header :deep(.p-tag),
+.request-summary__id {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.request-summary__id {
+  margin-left: auto;
+}
+
+.request-summary__description {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
 .archive-requester-stats {
   display: grid;
   gap: 0.7rem;
@@ -7783,7 +7879,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.user-submission-records__heading > div:first-child {
+  display: grid;
+  gap: 0.15rem;
 }
 
 .user-submission-records__heading h4 {
@@ -7793,6 +7895,11 @@ onBeforeUnmount(() => {
 .user-submission-records__heading span {
   color: var(--text-secondary);
   font-size: 0.75rem;
+}
+
+.user-submission-records__search {
+  width: min(100%, 19rem);
+  margin-left: auto;
 }
 
 .user-submission-record-list {
