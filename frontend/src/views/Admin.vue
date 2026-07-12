@@ -12,6 +12,20 @@
         <TabPanels>
           <TabPanel value="0">
             <div class="p-2 md:p-4">
+              <Message v-if="courseLoadError" severity="error" :closable="false" class="mb-4">
+                <div class="flex flex-wrap align-items-center justify-content-between gap-3">
+                  <span>{{ courseLoadError }}</span>
+                  <Button
+                    label="重新載入"
+                    icon="pi pi-refresh"
+                    severity="danger"
+                    outlined
+                    size="small"
+                    :loading="coursesLoading"
+                    @click="loadCourses"
+                  />
+                </div>
+              </Message>
               <section class="admin-section mb-5">
                 <div class="admin-toolbar admin-toolbar--course admin-toolbar--section mb-3">
                   <div>
@@ -30,6 +44,7 @@
                   </div>
                 </div>
                 <DataTable
+                  v-if="!courseLoadError"
                   :value="courseCategories"
                   class="admin-data-table admin-desktop-data-table category-management-table"
                   tableStyle="min-width: 44rem"
@@ -133,7 +148,10 @@
                     </template>
                   </Column>
                 </DataTable>
-                <div class="admin-mobile-list admin-mobile-list--categories">
+                <div
+                  v-if="!courseLoadError"
+                  class="admin-mobile-list admin-mobile-list--categories"
+                >
                   <article
                     v-for="category in courseCategories"
                     :key="category.id"
@@ -279,7 +297,7 @@
                 strokeWidth="4"
               />
               <DataTable
-                v-else
+                v-else-if="!courseLoadError"
                 :value="filteredCourses"
                 class="admin-data-table admin-desktop-data-table course-management-table"
                 paginator
@@ -365,7 +383,10 @@
                   </template>
                 </Column>
               </DataTable>
-              <div v-if="!coursesLoading" class="admin-mobile-list admin-mobile-list--courses">
+              <div
+                v-if="!coursesLoading && !courseLoadError"
+                class="admin-mobile-list admin-mobile-list--courses"
+              >
                 <article
                   v-for="course in paginatedCourses"
                   :key="course.id"
@@ -3695,6 +3716,7 @@ const toast = useToast()
 
 const courses = ref([])
 const coursesLoading = ref(false)
+const courseLoadError = ref('')
 const searchQuery = ref('')
 const filterCategory = ref(null)
 const courseOrderLoading = ref(false)
@@ -5562,21 +5584,28 @@ const loadCategories = async () => {
 
 const loadCourses = async () => {
   coursesLoading.value = true
+  courseLoadError.value = ''
   try {
     const [categoryResponse, courseResponse] = await Promise.all([
       courseService.listAdminCategories(),
       courseService.getAllCourses(),
     ])
-    courseCategories.value = Array.isArray(categoryResponse.data) ? categoryResponse.data : []
-    const response = courseResponse
-    const courseList = Array.isArray(response.data) ? response.data : []
+    if (!Array.isArray(categoryResponse.data) || !Array.isArray(courseResponse.data)) {
+      throw new TypeError('Invalid course management response')
+    }
+    courseCategories.value = categoryResponse.data
+    const courseList = courseResponse.data
     courses.value = courseList.map((course) => ({
       ...course,
       name: formatCourseDisplayName(course?.name),
     }))
   } catch (error) {
     console.error('載入課程失敗:', error)
-    if (isUnauthorizedError(error)) {
+    const unauthorized = isUnauthorizedError(error)
+    courseLoadError.value = unauthorized
+      ? '登入階段已過期，請重新登入後再載入課程資料。'
+      : '課程資料載入失敗，請稍後再試或查看伺服器日誌。'
+    if (unauthorized) {
       return
     }
     toast.add({

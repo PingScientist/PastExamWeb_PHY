@@ -40,6 +40,8 @@ const getCoursesMock = vi.hoisted(() => vi.fn())
 const createCourseMock = vi.hoisted(() => vi.fn())
 const updateCourseMock = vi.hoisted(() => vi.fn())
 const deleteCourseMock = vi.hoisted(() => vi.fn())
+const listAdminCategoriesMock = vi.hoisted(() => vi.fn())
+const getAllCoursesMock = vi.hoisted(() => vi.fn())
 
 const getUsersMock = vi.hoisted(() => vi.fn())
 const createUserMock = vi.hoisted(() => vi.fn())
@@ -108,6 +110,11 @@ vi.mock('@/api', () => ({
     update: notificationUpdateMock,
     remove: notificationRemoveMock,
   },
+  courseService: {
+    listAdminCategories: listAdminCategoriesMock,
+    getAllCourses: getAllCoursesMock,
+  },
+  archiveService: {},
 }))
 
 function createWrapper() {
@@ -122,6 +129,10 @@ describe('AdminView', () => {
     vi.useFakeTimers()
     vi.setSystemTime(now)
     getCoursesMock.mockResolvedValue({ data: sampleCourses })
+    listAdminCategoriesMock.mockResolvedValue({
+      data: [{ id: 1, key: 'freshman', name: '基礎必修', label: '基礎', is_active: true }],
+    })
+    getAllCoursesMock.mockResolvedValue({ data: sampleCourses })
     createCourseMock.mockResolvedValue()
     updateCourseMock.mockResolvedValue()
     deleteCourseMock.mockResolvedValue()
@@ -164,7 +175,8 @@ describe('AdminView', () => {
 
     await flushPromises()
 
-    expect(getCoursesMock).toHaveBeenCalled()
+    expect(listAdminCategoriesMock).toHaveBeenCalled()
+    expect(getAllCoursesMock).toHaveBeenCalled()
     expect(getUsersMock).not.toHaveBeenCalled()
     expect(wrapper.vm.filteredCourses.length).toBe(2)
 
@@ -300,9 +312,16 @@ describe('AdminView', () => {
 
     toastAddMock.mockClear()
     isUnauthorizedErrorMock.mockReturnValueOnce(true)
-    getCoursesMock.mockRejectedValueOnce(new Error('unauthorized'))
+    getAllCoursesMock.mockRejectedValueOnce(new Error('unauthorized'))
     await wrapper.vm.loadCourses()
     expect(toastAddMock).not.toHaveBeenCalled()
+    expect(wrapper.vm.courseLoadError).toContain('登入階段已過期')
+
+    isUnauthorizedErrorMock.mockReturnValue(false)
+    getAllCoursesMock.mockResolvedValueOnce({ data: { courses: sampleCourses } })
+    await wrapper.vm.loadCourses()
+    expect(wrapper.vm.courseLoadError).toContain('課程資料載入失敗')
+    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入課程失敗' }))
 
     toastAddMock.mockClear()
     isUnauthorizedErrorMock.mockReturnValueOnce(false)
