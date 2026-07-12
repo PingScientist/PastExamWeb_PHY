@@ -2442,6 +2442,7 @@
         modal
         :draggable="false"
         :style="{ width: '760px', maxWidth: '96vw' }"
+        @hide="clearArchiveRequesterStats"
       >
         <div class="request-summary mb-4">
           <Tag
@@ -2721,36 +2722,71 @@
           </div>
         </div>
 
-        <div class="mt-4 review-history">
-          <h4 class="mb-2">此帳號投稿紀錄</h4>
-          <div class="review-requester mb-2">
-            <span class="text-sm text-500">投稿帳號</span>
-            <strong>{{ getRequesterDisplay(selectedArchiveRequest) }}</strong>
-          </div>
-          <div
-            v-if="getRequesterHistory(selectedArchiveRequest?.requester_id).length === 0"
-            class="text-sm text-500"
-          >
-            尚無其他投稿紀錄
-          </div>
-          <div
-            v-for="item in getRequesterHistory(selectedArchiveRequest?.requester_id)"
-            :key="`${item.kind}-${item.id}`"
-            class="review-history-row"
-          >
-            <span class="review-history-title">
-              {{ item.title }}
-              <small>投稿編號：{{ formatSubmissionLabel(item) }}</small>
-              <small>投稿：{{ item.requester }}</small>
-            </span>
-            <Tag
-              :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(item.status)]"
-              :severity="getSubmissionSeverity(item.status)"
+        <section class="archive-requester-stats mt-4" aria-label="投稿者統計">
+          <h4>投稿者統計</h4>
+          <div v-if="archiveRequesterStatsLoading" class="text-sm text-500">載入中...</div>
+          <Message v-else-if="archiveRequesterStatsError" severity="error" :closable="false">
+            {{ archiveRequesterStatsError }}
+          </Message>
+          <template v-else-if="archiveRequesterStats">
+            <div class="archive-requester-stats__identity">
+              <div>
+                <span>投稿者</span>
+                <strong>{{ getRequesterDisplay(selectedArchiveRequest) }}</strong>
+              </div>
+              <ContributorLevelBadge
+                :level="archiveRequesterContributorLevel.level"
+                :title="archiveRequesterContributorLevel.name"
+                size="compact"
+                show-title
+              />
+              <strong>全部投稿 {{ archiveRequesterStats.total_count }} 筆</strong>
+            </div>
+            <div class="user-submission-status-cards">
+              <div
+                v-for="status in archiveRequesterSubmissionStatuses"
+                :key="`requester-summary-${status.key}`"
+                class="user-submission-status-card"
+              >
+                <span
+                  class="user-submission-status-dot"
+                  :style="{ background: status.color }"
+                ></span>
+                <span>{{ status.label }}</span>
+                <strong>{{ status.count }}</strong>
+              </div>
+            </div>
+            <div
+              v-if="archiveRequesterStats.total_count > 0"
+              class="user-submission-distribution__bar"
+              role="img"
+              :aria-label="archiveRequesterDistributionLabel"
             >
-              {{ getSubmissionLabel(item.status) }}
-            </Tag>
-          </div>
-        </div>
+              <span
+                v-for="status in archiveRequesterSubmissionStatuses"
+                :key="`requester-bar-${status.key}`"
+                :style="{ width: `${status.percentage}%`, background: status.color }"
+                :title="`${status.label} ${status.count} 筆（${status.percentage.toFixed(1)}%）`"
+              ></span>
+            </div>
+            <div v-else class="user-insights__empty">此投稿者目前沒有投稿</div>
+            <div class="user-submission-distribution__legend">
+              <div
+                v-for="status in archiveRequesterSubmissionStatuses"
+                :key="`requester-legend-${status.key}`"
+                class="user-submission-legend-row"
+              >
+                <span
+                  class="user-submission-status-dot"
+                  :style="{ background: status.color }"
+                ></span>
+                <span>{{ status.label }}</span>
+                <strong>{{ status.count }} 筆</strong>
+                <span>{{ status.percentage.toFixed(1) }}%</span>
+              </div>
+            </div>
+          </template>
+        </section>
 
         <div class="flex justify-end gap-2 mt-4 review-dialog-actions">
           <Button
@@ -3041,6 +3077,73 @@
                   <span>{{ status.percentage.toFixed(1) }}%</span>
                 </div>
               </div>
+            </section>
+
+            <section
+              class="user-submission-records"
+              aria-labelledby="user-submission-records-title"
+            >
+              <div class="user-submission-records__heading">
+                <h4 id="user-submission-records-title">此帳號投稿紀錄</h4>
+                <span>共 {{ userSubmissionStats.records_total }} 筆</span>
+              </div>
+              <div v-if="paginatedUserSubmissionRecords.length" class="user-submission-record-list">
+                <article
+                  v-for="record in paginatedUserSubmissionRecords"
+                  :key="`user-submission-record-${record.id}`"
+                  class="user-submission-record"
+                >
+                  <header class="user-submission-record__header">
+                    <div>
+                      <Tag
+                        :class="[
+                          'soft-badge',
+                          'review-status-chip',
+                          getSubmissionStatusClass(record.status),
+                        ]"
+                        :severity="getSubmissionSeverity(record.status)"
+                      >
+                        {{ getUserSubmissionStatusLabel(record.status) }}
+                      </Tag>
+                      <span class="user-submission-record__kind">
+                        {{ getArchiveSubmissionKind(record) }}
+                      </span>
+                    </div>
+                    <strong>投稿編號：#{{ record.id }}</strong>
+                  </header>
+                  <div class="user-submission-record__title">
+                    <strong>{{ record.course_name || '—' }}</strong>
+                    <span>{{ record.exam_name || '—' }}</span>
+                  </div>
+                  <div class="user-submission-record__meta">
+                    <span>學期：{{ formatAcademicTerm(record.academic_year) || '—' }}</span>
+                    <span>授課教師：{{ record.professor || '—' }}</span>
+                    <span>投稿時間：{{ formatDateTime(record.submitted_at) }}</span>
+                    <span>
+                      審核時間：{{
+                        record.reviewed_at ? formatDateTime(record.reviewed_at) : '尚未審核'
+                      }}
+                    </span>
+                  </div>
+                  <div class="user-submission-record__comment">
+                    <strong>審核留言</strong>
+                    <span>{{ record.review_comment?.trim() || '尚無審核留言' }}</span>
+                  </div>
+                </article>
+              </div>
+              <div v-else class="user-insights__empty">此帳號目前沒有投稿紀錄</div>
+              <Paginator
+                v-if="sortedUserSubmissionRecords.length > userSubmissionRecordRows"
+                :first="userSubmissionRecordFirst"
+                :rows="userSubmissionRecordRows"
+                :totalRecords="sortedUserSubmissionRecords.length"
+                :rowsPerPageOptions="[10, 20, 50]"
+                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                aria-label="此帳號投稿紀錄分頁"
+                class="user-submission-records__paginator"
+                @page="handleUserSubmissionRecordPage"
+              />
             </section>
           </template>
         </div>
@@ -3596,7 +3699,13 @@ const showUserSubmissionStatsDialog = ref(false)
 const userSubmissionStatsLoading = ref(false)
 const userSubmissionStatsError = ref('')
 const userSubmissionStats = ref(null)
+const userSubmissionRecordFirst = ref(0)
+const userSubmissionRecordRows = ref(10)
 let userSubmissionStatsController = null
+const archiveRequesterStats = ref(null)
+const archiveRequesterStatsLoading = ref(false)
+const archiveRequesterStatsError = ref('')
+let archiveRequesterStatsController = null
 
 const USER_SUBMISSION_STATUS_CONFIG = [
   { key: 'pending', label: '待審核', color: '#b7791f' },
@@ -3605,6 +3714,11 @@ const USER_SUBMISSION_STATUS_CONFIG = [
   { key: 'takedown', label: '已下架', color: '#64748b' },
   { key: 'deleted', label: '已刪除', color: '#8c2f46' },
 ]
+
+const getUserSubmissionStatusLabel = (status) => {
+  const normalized = String(status || '').toLowerCase()
+  return USER_SUBMISSION_STATUS_CONFIG.find((item) => item.key === normalized)?.label || '未知狀態'
+}
 
 const userSortMeta = ref([
   { field: 'is_admin', order: -1 },
@@ -4483,9 +4597,9 @@ const selectedUserLevelProgressStyle = computed(() => {
   }
 })
 
-const selectedUserSubmissionStatuses = computed(() => {
-  const counts = userSubmissionStats.value?.status_counts || {}
-  const total = userSubmissionStats.value?.total_count || 0
+const buildUserSubmissionStatuses = (stats) => {
+  const counts = stats?.status_counts || {}
+  const total = stats?.total_count || 0
   return USER_SUBMISSION_STATUS_CONFIG.map((status) => {
     const count = Number(counts[status.key]) || 0
     return {
@@ -4494,13 +4608,52 @@ const selectedUserSubmissionStatuses = computed(() => {
       percentage: total > 0 ? (count / total) * 100 : 0,
     }
   })
-})
+}
+
+const selectedUserSubmissionStatuses = computed(() =>
+  buildUserSubmissionStatuses(userSubmissionStats.value)
+)
+
+const archiveRequesterSubmissionStatuses = computed(() =>
+  buildUserSubmissionStatuses(archiveRequesterStats.value)
+)
+
+const archiveRequesterContributorLevel = computed(() =>
+  resolveSubmissionLevel(archiveRequesterStats.value?.contributor_experience || 0)
+)
 
 const selectedUserSubmissionDistributionLabel = computed(() =>
   selectedUserSubmissionStatuses.value
     .map((status) => `${status.label} ${status.count} 筆`)
     .join('，')
 )
+
+const archiveRequesterDistributionLabel = computed(() =>
+  archiveRequesterSubmissionStatuses.value
+    .map((status) => `${status.label} ${status.count} 筆`)
+    .join('，')
+)
+
+const sortedUserSubmissionRecords = computed(() => {
+  const records = userSubmissionStats.value?.submission_records || []
+  return [...records].sort((left, right) => {
+    const timeDifference =
+      new Date(right.submitted_at || 0).getTime() - new Date(left.submitted_at || 0).getTime()
+    return timeDifference || Number(right.id || 0) - Number(left.id || 0)
+  })
+})
+
+const paginatedUserSubmissionRecords = computed(() =>
+  sortedUserSubmissionRecords.value.slice(
+    userSubmissionRecordFirst.value,
+    userSubmissionRecordFirst.value + userSubmissionRecordRows.value
+  )
+)
+
+const handleUserSubmissionRecordPage = (event) => {
+  userSubmissionRecordFirst.value = event.first
+  userSubmissionRecordRows.value = event.rows
+}
 
 const contributorLevelSelectionSummary = computed(() => {
   if (selectedContributorLevels.value.length === 0) return '全部投稿等級'
@@ -4529,6 +4682,9 @@ const closeUserSubmissionStatsDialog = () => {
   userSubmissionStatsController = null
   showUserSubmissionStatsDialog.value = false
   userSubmissionStatsLoading.value = false
+  userSubmissionStats.value = null
+  userSubmissionStatsError.value = ''
+  userSubmissionRecordFirst.value = 0
 }
 
 const openUserSubmissionStats = async (user) => {
@@ -4538,10 +4694,14 @@ const openUserSubmissionStats = async (user) => {
   userSubmissionStats.value = null
   userSubmissionStatsError.value = ''
   userSubmissionStatsLoading.value = true
+  userSubmissionRecordFirst.value = 0
   showUserSubmissionStatsDialog.value = true
 
   try {
-    const { data } = await getUserSubmissionStats(user.id, { signal: controller.signal })
+    const { data } = await getUserSubmissionStats(user.id, {
+      includeRecords: true,
+      signal: controller.signal,
+    })
     if (userSubmissionStatsController === controller) {
       userSubmissionStats.value = data
     }
@@ -5904,7 +6064,7 @@ const openArchiveRequestDialog = async (request) => {
     requested_category_icon: request.requested_category_icon || 'pi pi-fw pi-book',
   }
   showArchiveRequestDialog.value = true
-  await loadArchiveComparison(request)
+  await Promise.all([loadArchiveComparison(request), loadArchiveRequesterStats(request)])
 }
 
 const saveArchiveRequestEdit = async () => {
@@ -6039,6 +6199,46 @@ const loadArchiveComparison = async (request) => {
   }
 }
 
+const clearArchiveRequesterStats = () => {
+  archiveRequesterStatsController?.abort()
+  archiveRequesterStatsController = null
+  archiveRequesterStats.value = null
+  archiveRequesterStatsLoading.value = false
+  archiveRequesterStatsError.value = ''
+}
+
+const loadArchiveRequesterStats = async (request) => {
+  clearArchiveRequesterStats()
+  if (!request?.requester_id) {
+    archiveRequesterStatsError.value = '找不到投稿者資料'
+    return
+  }
+
+  const controller = new AbortController()
+  archiveRequesterStatsController = controller
+  archiveRequesterStatsLoading.value = true
+  try {
+    const { data } = await getUserSubmissionStats(request.requester_id, {
+      includeRecords: false,
+      signal: controller.signal,
+    })
+    if (archiveRequesterStatsController === controller) {
+      archiveRequesterStats.value = data
+    }
+  } catch (error) {
+    if (error?.code === 'ERR_CANCELED') return
+    if (archiveRequesterStatsController === controller) {
+      archiveRequesterStatsError.value =
+        error?.response?.status === 404 ? '找不到投稿者資料' : '投稿者統計載入失敗'
+    }
+  } finally {
+    if (archiveRequesterStatsController === controller) {
+      archiveRequesterStatsLoading.value = false
+      archiveRequesterStatsController = null
+    }
+  }
+}
+
 const getComparisonBasisText = (item) => {
   const course = item?.requested_course_name || item?.subject || '—'
   const exam = item?.name || '—'
@@ -6087,20 +6287,6 @@ const takedownComparisonItem = async (item) => {
       life: 3000,
     })
   }
-}
-
-const getRequesterHistory = (requesterId) => {
-  if (!requesterId) return []
-  const archiveHistory = archiveRequests.value
-    .filter((item) => item.requester_id === requesterId)
-    .map((item) => ({
-      kind: 'archive',
-      id: item.id,
-      title: `考古題：${item.subject} / ${item.name}`,
-      requester: getRequesterDisplay(item),
-      status: item.status,
-    }))
-  return archiveHistory
 }
 
 const getRequesterDisplay = (request) => {
@@ -6932,6 +7118,7 @@ watch(
 
 onBeforeUnmount(() => {
   userSubmissionStatsController?.abort()
+  archiveRequesterStatsController?.abort()
   closeArchiveRequestPreview()
   closeComparePreview()
 })
@@ -7546,6 +7733,163 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.archive-requester-stats {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+}
+
+.archive-requester-stats h4 {
+  margin: 0;
+}
+
+.archive-requester-stats__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+}
+
+.archive-requester-stats__identity > div {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.archive-requester-stats__identity span {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.archive-requester-stats__identity > strong {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.user-submission-records {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  padding-top: 0.2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.user-submission-records__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.user-submission-records__heading h4 {
+  margin: 0;
+}
+
+.user-submission-records__heading span {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.user-submission-record-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: min(36vh, 20rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.user-submission-record {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.user-submission-record__header,
+.user-submission-record__header > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+}
+
+.user-submission-record__header {
+  justify-content: space-between;
+}
+
+.user-submission-record__header > strong,
+.user-submission-record__kind {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.user-submission-record__title {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.55rem;
+}
+
+.user-submission-record__title strong,
+.user-submission-record__title span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-submission-record__title span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.user-submission-record__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.user-submission-record__meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-submission-record__comment {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.user-submission-record__comment strong {
+  flex: 0 0 auto;
+  color: var(--text-color);
+}
+
+.user-submission-record__comment span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-submission-records__paginator {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .contributor-level-settings-dialog {
   display: grid;
   gap: 0.75rem;
@@ -7695,43 +8039,6 @@ onBeforeUnmount(() => {
 
 .review-empty-state {
   padding: 1rem;
-  color: var(--text-secondary);
-}
-
-.review-history {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.875rem;
-  background: color-mix(in srgb, var(--bg-secondary) 75%, transparent);
-}
-
-.review-history-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-top: 1px solid var(--border-color);
-}
-
-.review-history-row:first-of-type {
-  border-top: 0;
-}
-
-.review-requester {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.review-history-title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.review-history-title small {
   color: var(--text-secondary);
 }
 
@@ -11221,6 +11528,23 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
+  .archive-requester-stats__identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .archive-requester-stats__identity > strong {
+    margin-left: 0;
+  }
+
+  .user-submission-record__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .user-submission-record__comment {
+    flex-direction: column;
+  }
+
   .user-insights__heading,
   .user-insights__panel-header,
   .user-submission-summary__identity,

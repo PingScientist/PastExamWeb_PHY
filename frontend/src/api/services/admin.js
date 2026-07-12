@@ -26,8 +26,11 @@ export const getUsers = () => {
   return api.get('/users/admin/users')
 }
 
-export const getUserSubmissionStats = (userId, config = {}) => {
-  return api.get(`/users/admin/users/${userId}/submission-stats`, config)
+export const getUserSubmissionStats = (userId, { includeRecords = false, signal } = {}) => {
+  return api.get(`/users/admin/users/${userId}/submission-stats`, {
+    signal,
+    params: { include_records: includeRecords },
+  })
 }
 
 export const createUser = (userData) => {

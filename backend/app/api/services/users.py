@@ -17,6 +17,7 @@ from app.models.models import (
     UserRead,
     UserRoles,
     UserSubmissionStatsRead,
+    UserSubmissionRecordRead,
     UserSubmissionStatusCounts,
     UserUpdate,
 )
@@ -120,6 +121,7 @@ async def get_users(
 )
 async def get_user_submission_stats(
     user_id: int,
+    include_records: bool = False,
     current_user: UserRoles = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
@@ -154,12 +156,40 @@ async def get_user_submission_stats(
     contributor_experience = counts[SubmissionStatus.APPROVED.value] + counts[
         SubmissionStatus.TAKEDOWN.value
     ]
+    submission_records = []
+    if include_records:
+        records_result = await db.execute(
+            select(ArchiveSubmission)
+            .where(ArchiveSubmission.requester_id == user_id)
+            .order_by(ArchiveSubmission.created_at.desc(), ArchiveSubmission.id.desc())
+        )
+        submission_records = [
+            UserSubmissionRecordRead(
+                id=submission.id,
+                status=submission.status,
+                archive_type=submission.archive_type,
+                course_name=submission.requested_course_name or submission.subject,
+                exam_name=submission.name,
+                academic_year=submission.academic_year,
+                professor=submission.professor,
+                has_answers=submission.has_answers,
+                requested_course_name=submission.requested_course_name,
+                requested_category_key=submission.requested_category_key,
+                is_admin_upload=submission.is_admin_upload,
+                submitted_at=submission.created_at,
+                reviewed_at=submission.reviewed_at,
+                review_comment=submission.review_note,
+            )
+            for submission in records_result.scalars().all()
+        ]
     return UserSubmissionStatsRead(
         user_id=user.id,
         name=user.name,
         contributor_experience=contributor_experience,
         total_count=sum(counts.values()),
         status_counts=UserSubmissionStatusCounts(**counts),
+        records_total=len(submission_records) if include_records else sum(counts.values()),
+        submission_records=submission_records,
     )
 
 

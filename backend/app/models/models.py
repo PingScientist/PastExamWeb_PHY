@@ -358,12 +358,31 @@ class UserSubmissionStatusCounts(BaseModel):
     deleted: int = 0
 
 
+class UserSubmissionRecordRead(BaseModel):
+    id: int
+    status: SubmissionStatus
+    archive_type: ArchiveType
+    course_name: str
+    exam_name: str
+    academic_year: int
+    professor: str
+    has_answers: bool = False
+    requested_course_name: Optional[str] = None
+    requested_category_key: Optional[str] = None
+    is_admin_upload: bool = False
+    submitted_at: datetime
+    reviewed_at: Optional[datetime] = None
+    review_comment: Optional[str] = None
+
+
 class UserSubmissionStatsRead(BaseModel):
     user_id: int
     name: str
     contributor_experience: int = 0
     total_count: int = 0
     status_counts: UserSubmissionStatusCounts
+    records_total: int = 0
+    submission_records: List[UserSubmissionRecordRead] = Field(default_factory=list)
 
 
 class UserCreate(BaseModel):
