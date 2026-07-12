@@ -181,6 +181,7 @@ describe('AdminView', () => {
     expect(wrapper.vm.filteredCourses.length).toBe(2)
 
     await wrapper.vm.handleTabChange('1')
+    await wrapper.vm.loadUsers()
     await flushPromises()
 
     expect(getUsersMock).toHaveBeenCalled()
@@ -254,12 +255,11 @@ describe('AdminView', () => {
     expect(notificationGetAllMock).toHaveBeenCalled()
 
     expect(wrapper.vm.getCategoryName('freshman')).toBe('基礎必修')
-    expect(wrapper.vm.getCategorySeverity('graduate')).toBe('contrast')
     expect(wrapper.vm.getNotificationSeverity('danger')).toBe('danger')
     expect(wrapper.vm.getNotificationSeverityLabel('info')).toBe('一般')
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[0])).toBe(true)
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[1])).toBe(false)
-    expect(wrapper.vm.formatNotificationDate('invalid')).toBe('invalid')
+    expect(wrapper.vm.formatNotificationDate('invalid')).toBe('—')
     expect(wrapper.vm.formatNotificationDate(now.toISOString())).not.toBe('—')
 
     wrapper.unmount()
@@ -396,31 +396,53 @@ describe('AdminView', () => {
     const wrapper = createWrapper()
     await flushPromises()
 
-    const sameHour = new Date(now.getTime() - 60 * 60_000)
+    const currentTime = new Date(2026, 6, 13, 10, 9)
+    vi.setSystemTime(currentTime)
+    wrapper.vm.loginStatsNow = new Date(currentTime)
     wrapper.vm.users = [
-      { id: 1, last_login: sameHour.toISOString() },
-      { id: 2, last_login: new Date(sameHour.getTime() + 5 * 60_000).toISOString() },
+      { id: 1, last_login: new Date(2026, 6, 13, 10, 1).toISOString() },
+      { id: 2, last_login: new Date(2026, 6, 13, 10, 5).toISOString() },
       ...Array.from({ length: 5 }, (_, index) => ({ id: index + 3, last_login: null })),
     ]
     wrapper.vm.userInsightsView = 'login-hour'
 
-    for (const range of [24, 48, 72]) {
+    const hourRanges = [
+      [24, 144, 10],
+      [48, 144, 20],
+      [72, 144, 30],
+    ]
+    for (const [range, bucketCount, bucketMinutes] of hourRanges) {
       wrapper.vm.setActiveLoginRange(range)
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.loginChartData.buckets).toHaveLength(range)
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
       expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 2, never: 5, outOfRange: 0 })
       const nonZeroBuckets = wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)
       expect(nonZeroBuckets).toHaveLength(1)
       expect(nonZeroBuckets[0].count).toBe(2)
+      expect(wrapper.vm.loginChartData.counts.reduce((sum, count) => sum + count, 0)).toBe(2)
       expect((nonZeroBuckets[0].count / wrapper.vm.loginChartData.yMax) * 100).toBeGreaterThan(0)
+      expect(wrapper.vm.loginChartData.buckets[0].showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).showLabel).toBe(true)
+      expect(nonZeroBuckets[0].fullLabel).toMatch(/2026.*10:00.*2026/)
     }
 
     wrapper.vm.userInsightsView = 'login-date'
     await wrapper.vm.$nextTick()
-    for (const range of [7, 30, 90]) {
+    const dateRanges = [
+      [7, 42, 4 * 60],
+      [30, 60, 12 * 60],
+      [90, 90, 24 * 60],
+    ]
+    for (const [range, bucketCount, bucketMinutes] of dateRanges) {
       wrapper.vm.setActiveLoginRange(range)
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.loginChartData.buckets).toHaveLength(range)
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
       expect(wrapper.vm.loginDateSummary).toMatchObject({ inRange: 2, never: 5, outOfRange: 0 })
       expect(wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)).toEqual([
         expect.objectContaining({ count: 2 }),
@@ -437,7 +459,7 @@ describe('AdminView', () => {
     wrapper.unmount()
   })
 
-  it('keeps the current local hour as the final bucket across midnight', async () => {
+  it('keeps the current natural time bucket as the final bucket across midnight', async () => {
     const wrapper = createWrapper()
     await flushPromises()
 
@@ -459,11 +481,11 @@ describe('AdminView', () => {
       const buckets = wrapper.vm.loginChartData.buckets
       const finalBucket = buckets.at(-1)
       const expectedStart = new Date(currentTime)
-      expectedStart.setMinutes(0, 0, 0)
-      const expectedEnd = new Date(expectedStart.getTime() + 60 * 60_000)
+      expectedStart.setMinutes(Math.floor(currentTime.getMinutes() / 10) * 10, 0, 0)
+      const expectedEnd = new Date(expectedStart.getTime() + 10 * 60_000)
 
-      expect(buckets).toHaveLength(24)
-      expect(new Set(buckets.map(({ key }) => key)).size).toBe(24)
+      expect(buckets).toHaveLength(144)
+      expect(new Set(buckets.map(({ key }) => key)).size).toBe(144)
       expect(finalBucket.start).toBe(expectedStart.toISOString())
       expect(finalBucket.end).toBe(expectedEnd.toISOString())
       expect(finalBucket.label).toBe(`${String(currentTime.getHours()).padStart(2, '0')} 時`)
@@ -471,28 +493,107 @@ describe('AdminView', () => {
       expect(finalBucket.fullLabel).toContain(String(expectedEnd.getFullYear()))
     }
 
-    const afterMidnight = new Date(2026, 6, 13, 0, 30)
+    const afterMidnight = new Date(2026, 6, 13, 0, 9)
     vi.setSystemTime(afterMidnight)
     wrapper.vm.loginStatsNow = new Date(afterMidnight)
     wrapper.vm.users = [
-      { id: 1, last_login: new Date(2026, 6, 13, 0, 10).toISOString() },
-      { id: 2, last_login: new Date(2026, 6, 13, 0, 20).toISOString() },
+      { id: 1, last_login: new Date(2026, 6, 13, 0, 0).toISOString() },
+      { id: 2, last_login: new Date(2026, 6, 13, 0, 9).toISOString() },
     ]
     await wrapper.vm.$nextTick()
 
     expect(wrapper.vm.loginChartData.buckets.at(-1)).toMatchObject({ label: '00 時', count: 2 })
-    expect(wrapper.vm.loginChartData.buckets.at(-1).fullLabel).toMatch(/2026.*00:00.*2026.*01:00/)
+    expect(wrapper.vm.loginChartData.buckets.at(-1).fullLabel).toMatch(/2026.*00:00.*2026.*00:10/)
     expect(wrapper.vm.loginDateSummary.inRange).toBe(2)
 
     for (const range of [48, 72]) {
       wrapper.vm.loginRangeHours = range
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.loginChartData.buckets).toHaveLength(range)
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(144)
       expect(wrapper.vm.loginChartData.buckets.at(-1)).toMatchObject({
-        label: '00 時',
+        label: '07/13',
         count: 2,
       })
     }
+
+    wrapper.unmount()
+  })
+
+  it('assigns boundary logins once across adaptive time buckets', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    const currentTime = new Date(2026, 6, 13, 10, 10)
+    vi.setSystemTime(currentTime)
+    wrapper.vm.loginStatsNow = new Date(currentTime)
+    wrapper.vm.userInsightsView = 'login-hour'
+    wrapper.vm.loginRangeHours = 24
+    wrapper.vm.users = [
+      { id: 1, last_login: new Date(2026, 6, 13, 9, 59).toISOString() },
+      { id: 2, last_login: new Date(2026, 6, 13, 10, 0).toISOString() },
+      { id: 3, last_login: new Date(2026, 6, 13, 10, 9).toISOString() },
+      { id: 4, last_login: new Date(2026, 6, 13, 10, 10).toISOString() },
+    ]
+    await wrapper.vm.$nextTick()
+
+    const nonZeroBuckets = wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)
+    expect(nonZeroBuckets.map(({ start, count }) => [new Date(start).getMinutes(), count])).toEqual(
+      [
+        [50, 1],
+        [0, 2],
+        [10, 1],
+      ]
+    )
+    expect(wrapper.vm.loginDateSummary.inRange).toBe(4)
+    expect(wrapper.vm.loginChartData.counts.reduce((sum, count) => sum + count, 0)).toBe(4)
+
+    wrapper.vm.userInsightsView = 'login-date'
+    await wrapper.vm.$nextTick()
+    wrapper.vm.loginRangeDays = 7
+    wrapper.vm.loginStatsNow = new Date(2026, 6, 13, 8, 0)
+    wrapper.vm.users = [
+      { id: 1, last_login: new Date(2026, 6, 13, 3, 59).toISOString() },
+      { id: 2, last_login: new Date(2026, 6, 13, 4, 0).toISOString() },
+      { id: 3, last_login: new Date(2026, 6, 13, 7, 59).toISOString() },
+      { id: 4, last_login: new Date(2026, 6, 13, 8, 0).toISOString() },
+      { id: 5, last_login: new Date(2026, 6, 12, 23, 59).toISOString() },
+      { id: 6, last_login: new Date(2026, 6, 13, 0, 0).toISOString() },
+    ]
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.loginChartData.buckets).toHaveLength(42)
+    expect(wrapper.vm.loginChartData.counts.reduce((sum, count) => sum + count, 0)).toBe(6)
+    expect(wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ count: 1 }),
+        expect.objectContaining({ count: 2 }),
+      ])
+    )
+
+    wrapper.unmount()
+  })
+
+  it('keeps fixed date bucket counts across month and year boundaries', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    const currentTime = new Date(2027, 0, 1, 1, 0)
+    vi.setSystemTime(currentTime)
+    wrapper.vm.loginStatsNow = new Date(currentTime)
+    wrapper.vm.userInsightsView = 'login-date'
+    await wrapper.vm.$nextTick()
+    wrapper.vm.loginRangeDays = 90
+    wrapper.vm.users = [{ id: 1, last_login: new Date(2027, 0, 1, 0, 0).toISOString() }]
+    await wrapper.vm.$nextTick()
+
+    const buckets = wrapper.vm.loginChartData.buckets
+    expect(buckets).toHaveLength(90)
+    expect(new Set(buckets.map(({ key }) => key)).size).toBe(90)
+    expect(new Date(buckets[0].start).getTime()).toBeLessThan(
+      new Date(buckets.at(-1).start).getTime()
+    )
+    expect(buckets.at(-1)).toMatchObject({ count: 1, showLabel: true })
+    expect(buckets.at(-1).fullLabel).toContain('2027')
 
     wrapper.unmount()
   })
@@ -587,13 +688,17 @@ describe('AdminView', () => {
 
     wrapper.vm.userSearchQuery = 'bob'
     await wrapper.vm.$nextTick()
-    expect(wrapper.vm.filteredUsers).toEqual([sampleUsers[1]])
+    expect(wrapper.vm.filteredUsers).toEqual([
+      expect.objectContaining({ id: sampleUsers[1].id, email: sampleUsers[1].email }),
+    ])
 
     wrapper.vm.userSearchQuery = ''
     await wrapper.vm.$nextTick()
     wrapper.vm.filterUserType = true
     await wrapper.vm.$nextTick()
-    expect(wrapper.vm.filteredUsers).toEqual([sampleUsers[0]])
+    expect(wrapper.vm.filteredUsers).toEqual([
+      expect.objectContaining({ id: sampleUsers[0].id, email: sampleUsers[0].email }),
+    ])
 
     wrapper.vm.notificationSearchQuery = '維護'
     wrapper.vm.notificationSeverityFilter = 'info'

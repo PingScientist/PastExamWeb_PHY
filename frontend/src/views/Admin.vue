@@ -481,7 +481,10 @@
 
           <TabPanel value="1">
             <div class="p-2 md:p-4">
-              <section class="user-insights" aria-labelledby="user-insights-title">
+              <section
+                class="user-insights admin-insights-card"
+                aria-labelledby="user-insights-title"
+              >
                 <div class="user-insights__heading">
                   <div>
                     <h3 id="user-insights-title">使用者統計圖表</h3>
@@ -669,7 +672,7 @@
               </section>
 
               <section
-                class="contributor-level-insights"
+                class="contributor-level-insights admin-insights-card"
                 aria-labelledby="contributor-level-insights-title"
               >
                 <div class="contributor-level-insights__heading">
@@ -3803,6 +3806,16 @@ const userFirst = ref(0)
 const userRows = ref(10)
 const LOGIN_HOUR_RANGE_OPTIONS = [24, 48, 72]
 const LOGIN_DATE_RANGE_OPTIONS = [7, 30, 90]
+const LOGIN_HOUR_BUCKET_CONFIG = {
+  24: { bucketMinutes: 10, bucketCount: 144, labelEvery: 12 },
+  48: { bucketMinutes: 20, bucketCount: 144, labelEvery: 18 },
+  72: { bucketMinutes: 30, bucketCount: 144, labelEvery: 18 },
+}
+const LOGIN_DATE_BUCKET_CONFIG = {
+  7: { bucketMinutes: 4 * 60, bucketCount: 42, labelEvery: 6 },
+  30: { bucketMinutes: 12 * 60, bucketCount: 60, labelEvery: 10 },
+  90: { bucketMinutes: 24 * 60, bucketCount: 90, labelEvery: 15 },
+}
 const userInsightsView = ref('login-hour')
 const isUserChartsExpanded = ref(false)
 const loginRangeHours = ref(24)
@@ -4644,11 +4657,23 @@ const userInsightsViewLabel = computed(() => {
   return '投稿等級分布'
 })
 
-const loginDistributionDescription = computed(() =>
+const activeLoginBucketConfig = computed(() =>
   userInsightsView.value === 'login-hour'
-    ? `統計最近 ${loginRangeHours.value} 小時範圍內，每位使用者最近登入時間所屬的小時。`
-    : '依每位使用者目前保存的最近登入日期統計，每位使用者最多計入一次。'
+    ? LOGIN_HOUR_BUCKET_CONFIG[loginRangeHours.value]
+    : LOGIN_DATE_BUCKET_CONFIG[loginRangeDays.value]
 )
+const formatBucketDuration = (minutes) => {
+  if (minutes < 60) return `${minutes} 分鐘`
+  if (minutes < 24 * 60) return `${minutes / 60} 小時`
+  return '1 日'
+}
+const loginDistributionDescription = computed(() => {
+  const range =
+    userInsightsView.value === 'login-hour'
+      ? `${loginRangeHours.value} 小時`
+      : `${loginRangeDays.value} 日`
+  return `統計最近 ${range} 範圍內，每位使用者最近登入時間所屬的 ${formatBucketDuration(activeLoginBucketConfig.value.bucketMinutes)}區間；每位使用者最多計入一次。`
+})
 
 const loginRangeOptions = computed(() =>
   userInsightsView.value === 'login-hour' ? LOGIN_HOUR_RANGE_OPTIONS : LOGIN_DATE_RANGE_OPTIONS
@@ -4668,13 +4693,6 @@ watch(userInsightsView, (mode) => {
   if (mode === 'login-date') loginRangeDays.value = 30
 })
 
-const getLocalDateKey = (date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 const formatLocalDateTime = (date) => {
   const dateLabel = new Intl.DateTimeFormat('zh-TW', {
     year: 'numeric',
@@ -4686,87 +4704,126 @@ const formatLocalDateTime = (date) => {
   return `${dateLabel} ${hour}:${minute}`
 }
 
-const loginDateStats = computed(() => {
-  const now = new Date(loginStatsNow.value)
-  const dateStart = new Date(now)
-  dateStart.setHours(0, 0, 0, 0)
-  dateStart.setDate(dateStart.getDate() - loginRangeDays.value + 1)
+const formatShortLocalDate = (date) =>
+  new Intl.DateTimeFormat('zh-TW', {
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
 
-  const currentHourStart = new Date(now)
-  currentHourStart.setMinutes(0, 0, 0)
-  const hourEnd = new Date(currentHourStart.getTime() + 60 * 60 * 1000)
-  const hourStart = new Date(hourEnd.getTime() - loginRangeHours.value * 60 * 60 * 1000)
+const addLocalMinutes = (date, minutes) => {
+  const result = new Date(date)
+  result.setMinutes(result.getMinutes() + minutes)
+  return result
+}
 
-  const dateCounts = new Map()
-  const hourCounts = Array.from({ length: loginRangeHours.value }, () => 0)
+const alignToNaturalBucket = (date, bucketMinutes) => {
+  const result = new Date(date)
+  const minutesSinceMidnight = result.getHours() * 60 + result.getMinutes()
+  const alignedMinutes = Math.floor(minutesSinceMidnight / bucketMinutes) * bucketMinutes
+  result.setHours(0, alignedMinutes, 0, 0)
+  return result
+}
+
+const buildLoginBuckets = ({ now, config, mode }) => {
+  const currentBucketStart = alignToNaturalBucket(now, config.bucketMinutes)
+  const firstBucketStart = addLocalMinutes(
+    currentBucketStart,
+    -(config.bucketCount - 1) * config.bucketMinutes
+  )
+  const buckets = Array.from({ length: config.bucketCount }, (_, index) => {
+    const startDate = addLocalMinutes(firstBucketStart, index * config.bucketMinutes)
+    const endDate = addLocalMinutes(startDate, config.bucketMinutes)
+    return {
+      key: startDate.toISOString(),
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      startDate,
+      endDate,
+      count: 0,
+      label:
+        mode === 'login-hour'
+          ? `${String(startDate.getHours()).padStart(2, '0')} 時`
+          : formatShortLocalDate(startDate),
+      fullLabel:
+        config.bucketMinutes === 24 * 60
+          ? new Intl.DateTimeFormat('zh-TW', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            }).format(startDate)
+          : `${formatLocalDateTime(startDate)}–${formatLocalDateTime(endDate)}`,
+    }
+  })
+
   let never = 0
-  let dateOutOfRange = 0
-  let hourOutOfRange = 0
+  let outOfRange = 0
   users.value.forEach((user) => {
     if (!user.last_login) {
       never += 1
       return
     }
-    const date = new Date(user.last_login)
-    if (Number.isNaN(date.getTime())) {
-      dateOutOfRange += 1
-      hourOutOfRange += 1
+    const loginAt = new Date(user.last_login)
+    if (Number.isNaN(loginAt.getTime()) || loginAt > now) {
+      outOfRange += 1
       return
     }
-    if (date >= dateStart && date <= now) {
-      const key = getLocalDateKey(date)
-      dateCounts.set(key, (dateCounts.get(key) || 0) + 1)
-    } else dateOutOfRange += 1
-
-    if (date >= hourStart && date <= now) {
-      const hourIndex = Math.floor((date.getTime() - hourStart.getTime()) / (60 * 60 * 1000))
-      hourCounts[hourIndex] += 1
-    } else hourOutOfRange += 1
-  })
-
-  const dateBuckets = Array.from({ length: loginRangeDays.value }, (_, index) => {
-    const date = new Date(dateStart)
-    date.setDate(dateStart.getDate() + index)
-    const key = getLocalDateKey(date)
-    return {
-      key,
-      start: date.toISOString(),
-      end: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).toISOString(),
-      count: dateCounts.get(key) || 0,
-      label: new Intl.DateTimeFormat('zh-TW', {
-        month: '2-digit',
-        day: '2-digit',
-      }).format(date),
-      fullLabel: new Intl.DateTimeFormat('zh-TW', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(date),
+    const bucket = buckets.find(
+      ({ startDate, endDate }) => loginAt >= startDate && loginAt < endDate
+    )
+    if (!bucket) {
+      outOfRange += 1
+      return
     }
+    bucket.count += 1
   })
-  const hourBuckets = hourCounts.map((count, index) => {
-    const start = new Date(hourStart.getTime() + index * 60 * 60 * 1000)
-    const end = new Date(start.getTime() + 60 * 60 * 1000)
-    return {
-      key: start.toISOString(),
-      start: start.toISOString(),
-      end: end.toISOString(),
-      count,
-      label: `${String(start.getHours()).padStart(2, '0')} 時`,
-      fullLabel: `${formatLocalDateTime(start)}–${formatLocalDateTime(end)}`,
-    }
+
+  return {
+    buckets: buckets.map((bucket) => ({
+      key: bucket.key,
+      start: bucket.start,
+      end: bucket.end,
+      count: bucket.count,
+      label: bucket.label,
+      fullLabel: bucket.fullLabel,
+    })),
+    never,
+    outOfRange,
+  }
+}
+
+const loginDateStats = computed(() => {
+  const now = new Date(loginStatsNow.value)
+  const hourStats = buildLoginBuckets({
+    now,
+    config: LOGIN_HOUR_BUCKET_CONFIG[loginRangeHours.value],
+    mode: 'login-hour',
   })
-  return { dateBuckets, hourBuckets, never, dateOutOfRange, hourOutOfRange }
+  const dateStats = buildLoginBuckets({
+    now,
+    config: LOGIN_DATE_BUCKET_CONFIG[loginRangeDays.value],
+    mode: 'login-date',
+  })
+  return {
+    hourBuckets: hourStats.buckets,
+    dateBuckets: dateStats.buckets,
+    never: hourStats.never,
+    hourOutOfRange: hourStats.outOfRange,
+    dateOutOfRange: dateStats.outOfRange,
+  }
 })
 
-const shouldShowLoginChartLabel = (index, total, mode) => {
-  if (mode === 'login-hour') {
-    const interval = total <= 24 ? 3 : total <= 48 ? 6 : 9
-    return index % interval === 0 || index === total - 1
+const shouldShowLoginChartLabel = (bucket, index, total, mode, config) => {
+  if (index === 0 || index === total - 1) return true
+  const bucketStart = new Date(bucket.start)
+  if (
+    mode === 'login-hour' &&
+    loginRangeHours.value > 24 &&
+    bucketStart.getHours() === 0 &&
+    bucketStart.getMinutes() === 0
+  ) {
+    return true
   }
-  if (total <= 7) return true
-  const interval = total <= 30 ? 5 : 15
-  return index % interval === 0 || index === total - 1
+  return index % config.labelEvery === 0
 }
 
 const buildIntegerAxis = (buckets) => {
@@ -4783,13 +4840,24 @@ const loginChartData = computed(() => {
   const mode = userInsightsView.value
   const source =
     mode === 'login-hour' ? loginDateStats.value.hourBuckets : loginDateStats.value.dateBuckets
+  const config = activeLoginBucketConfig.value
   const buckets = source.map((bucket, index) => ({
     ...bucket,
-    showLabel: shouldShowLoginChartLabel(index, source.length, mode),
+    label:
+      mode === 'login-hour' &&
+      loginRangeHours.value > 24 &&
+      new Date(bucket.start).getHours() === 0 &&
+      new Date(bucket.start).getMinutes() === 0
+        ? formatShortLocalDate(new Date(bucket.start))
+        : bucket.label,
+    showLabel: shouldShowLoginChartLabel(bucket, index, source.length, mode, config),
   }))
   const axis = buildIntegerAxis(buckets)
   return {
     ...axis,
+    bucketMinutes: config.bucketMinutes,
+    labels: buckets.map(({ label }) => label),
+    counts: buckets.map(({ count }) => count),
     buckets,
     ariaLabel:
       mode === 'login-hour'
@@ -7547,15 +7615,19 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
-.contributor-level-insights {
+.admin-insights-card {
   display: grid;
   gap: 0.7rem;
-  margin-top: 1rem;
   margin-bottom: 1rem;
   padding: 0.85rem;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-secondary) 90%, var(--primary-color) 10%);
+  background: var(--bg-primary);
+  color: var(--text-color);
+}
+
+.contributor-level-insights {
+  margin-top: 1rem;
 }
 
 .contributor-level-insights__heading {
@@ -7594,6 +7666,18 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: flex-end;
   gap: 0.4rem 0.6rem;
+}
+
+:deep(.contributor-level-settings-button.p-button) {
+  min-height: 2.25rem;
+  padding: 0.28rem 0.52rem;
+  gap: 0.28rem;
+  font-size: var(--app-font-size-xs) !important;
+}
+
+:deep(.contributor-level-settings-button .p-button-icon),
+:deep(.contributor-level-settings-button .p-button-label) {
+  font-size: inherit !important;
 }
 
 .contributor-level-toggle {
@@ -7709,16 +7793,6 @@ onBeforeUnmount(() => {
   .user-management-table .p-datatable-thead > tr > th:first-child .p-datatable-column-header-content
 ) {
   gap: 0.3rem;
-}
-
-.user-insights {
-  display: grid;
-  gap: 0.7rem;
-  margin-bottom: 1rem;
-  padding: 0.85rem;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: var(--bg-primary);
 }
 
 .user-insights__heading,
@@ -7948,6 +8022,14 @@ onBeforeUnmount(() => {
   font-size: clamp(0.55rem, 1.2vw, 0.68rem);
   line-height: 1;
   white-space: nowrap;
+}
+
+.user-login-column-chart__x-axis span:first-child {
+  text-align: left;
+}
+
+.user-login-column-chart__x-axis span:last-child {
+  text-align: right;
 }
 
 .user-level-chart__track {
