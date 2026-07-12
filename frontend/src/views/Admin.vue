@@ -807,7 +807,7 @@
                   field="contributor_level"
                   header="投稿等級"
                   sortable
-                  style="width: 19%; min-width: 10rem"
+                  style="width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem"
                 >
                   <template #body="{ data }">
                     <span class="user-table-contributor-level">
@@ -3697,7 +3697,7 @@ defineOptions({
   name: 'AdminView',
 })
 
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { getCurrentUser } from '../utils/auth'
@@ -3807,6 +3807,8 @@ const userInsightsView = ref('login-hour')
 const isUserChartsExpanded = ref(false)
 const loginRangeHours = ref(24)
 const loginRangeDays = ref(30)
+const loginStatsNow = ref(new Date())
+let loginStatsRefreshTimer = null
 const showUserSubmissionStatsDialog = ref(false)
 const userSubmissionStatsLoading = ref(false)
 const userSubmissionStatsError = ref('')
@@ -4656,6 +4658,7 @@ const activeLoginRange = computed(() =>
 )
 const loginRangeUnit = computed(() => (userInsightsView.value === 'login-hour' ? '小時' : '日'))
 const setActiveLoginRange = (value) => {
+  loginStatsNow.value = new Date()
   if (userInsightsView.value === 'login-hour') loginRangeHours.value = value
   else loginRangeDays.value = value
 }
@@ -4672,14 +4675,26 @@ const getLocalDateKey = (date) => {
   return `${year}-${month}-${day}`
 }
 
+const formatLocalDateTime = (date) => {
+  const dateLabel = new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${dateLabel} ${hour}:${minute}`
+}
+
 const loginDateStats = computed(() => {
-  const dateStart = new Date()
+  const now = new Date(loginStatsNow.value)
+  const dateStart = new Date(now)
   dateStart.setHours(0, 0, 0, 0)
   dateStart.setDate(dateStart.getDate() - loginRangeDays.value + 1)
-  const dateEnd = new Date()
-  dateEnd.setHours(24, 0, 0, 0)
 
-  const hourEnd = new Date()
+  const currentHourStart = new Date(now)
+  currentHourStart.setMinutes(0, 0, 0)
+  const hourEnd = new Date(currentHourStart.getTime() + 60 * 60 * 1000)
   const hourStart = new Date(hourEnd.getTime() - loginRangeHours.value * 60 * 60 * 1000)
 
   const dateCounts = new Map()
@@ -4698,12 +4713,12 @@ const loginDateStats = computed(() => {
       hourOutOfRange += 1
       return
     }
-    if (date >= dateStart && date < dateEnd) {
+    if (date >= dateStart && date <= now) {
       const key = getLocalDateKey(date)
       dateCounts.set(key, (dateCounts.get(key) || 0) + 1)
     } else dateOutOfRange += 1
 
-    if (date >= hourStart && date < hourEnd) {
+    if (date >= hourStart && date <= now) {
       const hourIndex = Math.floor((date.getTime() - hourStart.getTime()) / (60 * 60 * 1000))
       hourCounts[hourIndex] += 1
     } else hourOutOfRange += 1
@@ -4715,6 +4730,8 @@ const loginDateStats = computed(() => {
     const key = getLocalDateKey(date)
     return {
       key,
+      start: date.toISOString(),
+      end: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).toISOString(),
       count: dateCounts.get(key) || 0,
       label: new Intl.DateTimeFormat('zh-TW', {
         month: '2-digit',
@@ -4732,17 +4749,11 @@ const loginDateStats = computed(() => {
     const end = new Date(start.getTime() + 60 * 60 * 1000)
     return {
       key: start.toISOString(),
+      start: start.toISOString(),
+      end: end.toISOString(),
       count,
       label: `${String(start.getHours()).padStart(2, '0')} 時`,
-      fullLabel: `${new Intl.DateTimeFormat('zh-TW', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(start)} ${String(start.getHours()).padStart(2, '0')}:${String(
-        start.getMinutes()
-      ).padStart(2, '0')}–${String(end.getHours()).padStart(2, '0')}:${String(
-        end.getMinutes()
-      ).padStart(2, '0')}`,
+      fullLabel: `${formatLocalDateTime(start)}–${formatLocalDateTime(end)}`,
     }
   })
   return { dateBuckets, hourBuckets, never, dateOutOfRange, hourOutOfRange }
@@ -5652,6 +5663,7 @@ const loadUsers = async () => {
     if (!Array.isArray(response.data)) {
       throw new TypeError('Invalid users response')
     }
+    loginStatsNow.value = new Date()
     users.value = response.data.map((user) => {
       const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
       return {
@@ -7369,7 +7381,35 @@ watch(
   { immediate: true }
 )
 
+const refreshLoginStatsNow = () => {
+  loginStatsNow.value = new Date()
+}
+
+const scheduleLoginStatsRefresh = () => {
+  if (loginStatsRefreshTimer !== null) window.clearTimeout(loginStatsRefreshTimer)
+  const now = new Date()
+  const nextHour = new Date(now)
+  nextHour.setMinutes(60, 0, 50)
+  loginStatsRefreshTimer = window.setTimeout(
+    () => {
+      refreshLoginStatsNow()
+      scheduleLoginStatsRefresh()
+    },
+    Math.max(1000, nextHour.getTime() - now.getTime())
+  )
+}
+
+onMounted(() => {
+  if (typeof window === 'undefined') return
+  window.addEventListener('focus', refreshLoginStatsNow)
+  scheduleLoginStatsRefresh()
+})
+
 onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', refreshLoginStatsNow)
+    if (loginStatsRefreshTimer !== null) window.clearTimeout(loginStatsRefreshTimer)
+  }
   userSubmissionStatsController?.abort()
   archiveRequesterStatsController?.abort()
   closeArchiveRequestPreview()
@@ -7657,6 +7697,20 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+:deep(.user-management-table .p-datatable-thead > tr > th:first-child),
+:deep(.user-management-table .p-datatable-tbody > tr > td:first-child) {
+  width: 7.5rem;
+  min-width: 7.5rem;
+  max-width: 7.5rem;
+  white-space: nowrap;
+}
+
+:deep(
+  .user-management-table .p-datatable-thead > tr > th:first-child .p-datatable-column-header-content
+) {
+  gap: 0.3rem;
+}
+
 .user-insights {
   display: grid;
   gap: 0.7rem;
@@ -7664,7 +7718,7 @@ onBeforeUnmount(() => {
   padding: 0.85rem;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-secondary) 94%, var(--p-primary-color) 6%);
+  background: var(--bg-primary);
 }
 
 .user-insights__heading,
@@ -7843,8 +7897,8 @@ onBeforeUnmount(() => {
 .user-login-column-chart__bars {
   z-index: 1;
   align-items: end;
-  gap: clamp(1px, 0.35vw, 5px);
-  padding: 0 clamp(1px, 0.25vw, 4px);
+  gap: 1px;
+  padding: 0 1px;
 }
 
 .user-login-column-chart__item {
@@ -7863,7 +7917,7 @@ onBeforeUnmount(() => {
 
 .user-login-column-chart__bar {
   display: block;
-  width: min(100%, 1.15rem);
+  width: 100%;
   min-height: 0;
   border-radius: 4px 4px 1px 1px;
   background: transparent;

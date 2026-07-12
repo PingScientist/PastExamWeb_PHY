@@ -437,6 +437,66 @@ describe('AdminView', () => {
     wrapper.unmount()
   })
 
+  it('keeps the current local hour as the final bucket across midnight', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    const boundaryCases = [
+      new Date(2026, 6, 12, 23, 59),
+      new Date(2026, 6, 13, 0, 0),
+      new Date(2026, 6, 13, 0, 30),
+      new Date(2026, 6, 13, 0, 59),
+      new Date(2026, 6, 13, 1, 0),
+    ]
+
+    for (const currentTime of boundaryCases) {
+      vi.setSystemTime(currentTime)
+      wrapper.vm.loginStatsNow = new Date(currentTime)
+      wrapper.vm.loginRangeHours = 24
+      wrapper.vm.users = []
+      await wrapper.vm.$nextTick()
+
+      const buckets = wrapper.vm.loginChartData.buckets
+      const finalBucket = buckets.at(-1)
+      const expectedStart = new Date(currentTime)
+      expectedStart.setMinutes(0, 0, 0)
+      const expectedEnd = new Date(expectedStart.getTime() + 60 * 60_000)
+
+      expect(buckets).toHaveLength(24)
+      expect(new Set(buckets.map(({ key }) => key)).size).toBe(24)
+      expect(finalBucket.start).toBe(expectedStart.toISOString())
+      expect(finalBucket.end).toBe(expectedEnd.toISOString())
+      expect(finalBucket.label).toBe(`${String(currentTime.getHours()).padStart(2, '0')} 時`)
+      expect(finalBucket.fullLabel).toContain(String(expectedStart.getFullYear()))
+      expect(finalBucket.fullLabel).toContain(String(expectedEnd.getFullYear()))
+    }
+
+    const afterMidnight = new Date(2026, 6, 13, 0, 30)
+    vi.setSystemTime(afterMidnight)
+    wrapper.vm.loginStatsNow = new Date(afterMidnight)
+    wrapper.vm.users = [
+      { id: 1, last_login: new Date(2026, 6, 13, 0, 10).toISOString() },
+      { id: 2, last_login: new Date(2026, 6, 13, 0, 20).toISOString() },
+    ]
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.loginChartData.buckets.at(-1)).toMatchObject({ label: '00 時', count: 2 })
+    expect(wrapper.vm.loginChartData.buckets.at(-1).fullLabel).toMatch(/2026.*00:00.*2026.*01:00/)
+    expect(wrapper.vm.loginDateSummary.inRange).toBe(2)
+
+    for (const range of [48, 72]) {
+      wrapper.vm.loginRangeHours = range
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(range)
+      expect(wrapper.vm.loginChartData.buckets.at(-1)).toMatchObject({
+        label: '00 時',
+        count: 2,
+      })
+    }
+
+    wrapper.unmount()
+  })
+
   it('handles create and delete error branches with unauthorized checks', async () => {
     const wrapper = createWrapper()
 
