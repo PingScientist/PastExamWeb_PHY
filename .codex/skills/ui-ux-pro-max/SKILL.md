@@ -323,6 +323,16 @@ If the user prefers not to install Python, skip the CLI searches and rely on the
 
 ## How to Use This Skill
 
+### PastExamWeb_PHY integration
+
+When this Skill is used from PastExamWeb_PHY:
+
+- Read the repository `AGENTS.md` and `.codex/skills/pastexam-web/references/frontend.md` first. Those project rules override generic aesthetic recommendations here.
+- Treat the existing Vue 3, PrimeVue, CSS variables, light/dark themes, spacing, typography, component, dialog, toast, loading, empty, and error patterns as the design system. Do not replace them with a generated palette or unrelated visual style.
+- Use `--stack vue` for framework guidance. Translate generic control advice into existing PrimeVue components and project wrappers before creating custom primitives.
+- For a localized UI fix, query only the relevant domain or use the checklist; do not generate a new design system. Use `--design-system` only for a new surface or an explicitly requested visual redesign.
+- Validate responsive behavior and dark-mode contrast against the project's existing breakpoints and theme tokens. Keep reduced-motion, keyboard, focus, and semantic requirements intact.
+
 Use this skill when the user requests any of the following:
 
 | Scenario | Trigger Examples | Start From |
@@ -347,12 +357,12 @@ Extract key information from user request:
 - **Style keywords**: playful, vibrant, minimal, dark mode, content-first, immersive, etc.
 - **Stack**: Match the project's framework. The engine ships guidance for many stacks (see [Available Stacks](#available-stacks) below) — pass the matching `--stack` (e.g. `nextjs`, `react`, `shadcn`, `vue`, `svelte`, `astro`, `swiftui`, `flutter`, `react-native`).
 
-### Step 2: Generate Design System (REQUIRED)
+### Step 2: Generate a Design System for New Surfaces
 
-**Always start with `--design-system`** to get comprehensive recommendations with reasoning:
+For a new surface or explicit redesign, use `--design-system` to get comprehensive recommendations with reasoning. For an established screen or localized fix, preserve the current system and skip to the relevant domain or stack search.
 
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
 ```
 
 This command:
@@ -363,7 +373,7 @@ This command:
 
 **Example:**
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "beauty spa wellness service" --design-system -p "Serenity Spa"
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "beauty spa wellness service" --design-system -p "Serenity Spa"
 ```
 
 ### Step 2b: Persist Design System (Master + Overrides Pattern)
@@ -371,7 +381,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "beauty spa wellness service" --d
 To save the design system for **hierarchical retrieval across sessions**, add `--persist`:
 
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persist -p "Project Name"
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persist -p "Project Name"
 ```
 
 This creates:
@@ -380,7 +390,7 @@ This creates:
 
 **With page-specific override:**
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persist -p "Project Name" --page "dashboard"
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persist -p "Project Name" --page "dashboard"
 ```
 
 This also creates:
@@ -405,7 +415,7 @@ Now, generate the code...
 Three optional 1-10 sliders that tune `--design-system` output without changing your query. Add any combination of them to the same command:
 
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --variance <1-10> --motion <1-10> --density <1-10>
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --variance <1-10> --motion <1-10> --density <1-10>
 ```
 
 | Dial | Low (1-3) | Mid (4-7) | High (8-10) |
@@ -420,7 +430,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --varia
 
 **Example:**
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "internal analytics dashboard" --design-system --variance 8 --motion 7 --density 8 -p "Ops Console"
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "internal analytics dashboard" --design-system --variance 8 --motion 7 --density 8 -p "Ops Console"
 ```
 
 ### Step 3: Supplement with Detailed Searches (as needed)
@@ -428,7 +438,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "internal analytics dashboard" --
 After getting the design system, use domain searches to get additional details:
 
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <domain> [-n <max_results>]
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "<keyword>" --domain <domain> [-n <max_results>]
 ```
 
 **When to use detailed searches:**
@@ -454,7 +464,7 @@ Get implementation-specific best practices for the stack you're building in.
 Pass the `--stack` that matches the project's framework:
 
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "<keyword>" --stack <your-stack>
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "<keyword>" --stack <your-stack>
 # e.g. --stack nextjs | react | shadcn | vue | svelte | astro | swiftui | flutter | react-native
 ```
 
@@ -514,10 +524,10 @@ Run `ls <skill>/data/stacks/` to see the live set. Shipped stacks:
 - Style keywords: modern, minimal, content-first, dark mode
 - Stack: Next.js (a homepage is a web surface; use a web `--stack`)
 
-### Step 2: Generate Design System (REQUIRED)
+### Step 2: Generate a Design System for This New Page
 
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "AI search tool modern minimal" --design-system -p "AI Search"
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "AI search tool modern minimal" --design-system -p "AI Search"
 ```
 
 **Output:** Complete design system with pattern, style, colors, typography, effects, and anti-patterns.
@@ -526,16 +536,16 @@ python3 skills/ui-ux-pro-max/scripts/search.py "AI search tool modern minimal" -
 
 ```bash
 # Get style options for a modern tool product
-python3 skills/ui-ux-pro-max/scripts/search.py "minimalism dark mode" --domain style
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "minimalism dark mode" --domain style
 
 # Get UX best practices for search interaction and loading
-python3 skills/ui-ux-pro-max/scripts/search.py "search loading animation" --domain ux
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "search loading animation" --domain ux
 ```
 
 ### Step 4: Stack Guidelines
 
 ```bash
-python3 skills/ui-ux-pro-max/scripts/search.py "list performance navigation" --stack nextjs
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "list performance navigation" --stack nextjs
 ```
 
 **Then:** Synthesize design system + detailed searches and implement the design.
@@ -548,10 +558,10 @@ The `--design-system` flag supports two output formats:
 
 ```bash
 # ASCII box (default) - best for terminal display
-python3 skills/ui-ux-pro-max/scripts/search.py "fintech crypto" --design-system
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "fintech crypto" --design-system
 
 # Markdown - best for documentation
-python3 skills/ui-ux-pro-max/scripts/search.py "fintech crypto" --design-system -f markdown
+python3 .codex/skills/ui-ux-pro-max/scripts/search.py "fintech crypto" --design-system -f markdown
 ```
 
 ---
