@@ -538,6 +538,77 @@ body {
   font-size: initial !important;
 }
 
+/* Submission dialogs are teleported to body, so their complete typography scope
+ * must live with the global PrimeVue overlay styles and use the root preference. */
+.submission-typography-dialog {
+  font-size: var(--app-font-size-base);
+}
+
+.submission-typography-dialog .p-dialog-title {
+  min-width: 0;
+  font-size: var(--app-font-size-lg);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.submission-typography-dialog .p-dialog-content,
+.submission-typography-dialog .p-dialog-footer,
+.submission-typography-dialog label,
+.submission-typography-dialog small,
+.submission-typography-dialog .p-message,
+.submission-typography-dialog .p-paginator {
+  font-size: inherit;
+}
+
+.submission-typography-dialog .p-dialog-close-button {
+  flex: 0 0 auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.submission-typography-overlay,
+.submission-typography-overlay .p-select-option,
+.submission-typography-overlay .p-select-empty-message {
+  font-size: var(--app-font-size-base);
+}
+
+.user-submission-stats-dialog {
+  max-width: 96vw;
+  overflow: hidden;
+}
+
+.user-submission-stats-dialog .user-submission-stats-dialog__content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 1rem;
+}
+
+.user-submission-stats-dialog .user-submission-stats-dialog__footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--p-dialog-background, var(--bg-primary));
+}
+
+.user-submission-stats-dialog .user-submission-stats-dialog__close {
+  min-width: 5rem;
+}
+
+@media (max-width: 575px) {
+  .user-submission-stats-dialog .user-submission-stats-dialog__footer {
+    padding: 0.875rem 1rem;
+  }
+
+  .user-submission-stats-dialog .user-submission-stats-dialog__close {
+    width: 100%;
+  }
+}
+
 .p-dialog .pdf-frame,
 .p-dialog .compare-preview-pane iframe {
   width: 100%;

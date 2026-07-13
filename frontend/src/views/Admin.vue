@@ -2534,6 +2534,7 @@
       <Dialog
         v-model:visible="showArchiveRequestDialog"
         header="考古題投稿詳情"
+        class="submission-typography-dialog"
         modal
         :draggable="false"
         :style="{ width: '760px', maxWidth: '96vw' }"
@@ -2643,6 +2644,7 @@
               :options="categoryOptions"
               optionLabel="name"
               optionValue="value"
+              overlayClass="submission-typography-overlay"
               :disabled="!canEditSelectedArchiveRequest"
             />
           </div>
@@ -2683,6 +2685,7 @@
               :options="archiveTypeOptions"
               optionLabel="name"
               optionValue="value"
+              overlayClass="submission-typography-overlay"
               :disabled="!canEditSelectedArchiveRequest"
             />
           </div>
@@ -3080,8 +3083,12 @@
         modal
         :draggable="false"
         header="使用者投稿統計"
+        class="submission-typography-dialog user-submission-stats-dialog"
         :style="{ width: 'min(760px, 96vw)', maxHeight: '90vh' }"
-        :contentStyle="{ overflowY: 'auto' }"
+        :pt="{
+          content: { class: 'user-submission-stats-dialog__content' },
+          footer: { class: 'user-submission-stats-dialog__footer' },
+        }"
         @hide="closeUserSubmissionStatsDialog"
       >
         <div class="user-submission-dialog">
@@ -3271,7 +3278,12 @@
           </template>
         </div>
         <template #footer>
-          <Button label="關閉" severity="secondary" @click="closeUserSubmissionStatsDialog" />
+          <Button
+            class="user-submission-stats-dialog__close"
+            label="關閉"
+            severity="secondary"
+            @click="closeUserSubmissionStatsDialog"
+          />
         </template>
       </Dialog>
 
@@ -8135,7 +8147,7 @@ onBeforeUnmount(() => {
 .user-submission-summary__exp span,
 .user-submission-total span {
   color: var(--text-secondary);
-  font-size: 0.76rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .user-submission-level-progress {
@@ -8173,13 +8185,13 @@ onBeforeUnmount(() => {
   border-radius: 7px;
   background: var(--bg-primary);
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .user-submission-status-card strong {
   grid-column: 1 / -1;
   color: var(--text-color);
-  font-size: 1rem;
+  font-size: var(--app-font-size-base);
 }
 
 .user-submission-status-dot {
@@ -8216,7 +8228,7 @@ onBeforeUnmount(() => {
   gap: 0.4rem;
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .user-submission-legend-row strong,
@@ -8288,7 +8300,7 @@ onBeforeUnmount(() => {
 
 .archive-requester-stats__identity span {
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .archive-requester-stats__identity > strong {
@@ -8323,7 +8335,7 @@ onBeforeUnmount(() => {
 
 .user-submission-records__heading span {
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .user-submission-records__search {
@@ -8361,7 +8373,7 @@ onBeforeUnmount(() => {
 .user-submission-record__header > strong,
 .user-submission-record__kind {
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: var(--app-font-size-xs);
   white-space: nowrap;
 }
 
@@ -8381,7 +8393,7 @@ onBeforeUnmount(() => {
 
 .user-submission-record__title span {
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--app-font-size-sm);
 }
 
 .user-submission-record__meta {
@@ -8389,7 +8401,7 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.25rem 0.75rem;
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .user-submission-record__meta span {
@@ -8405,7 +8417,7 @@ onBeforeUnmount(() => {
   padding-top: 0.45rem;
   border-top: 1px solid var(--border-color);
   color: var(--text-secondary);
-  font-size: 0.74rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .user-submission-record__comment strong {

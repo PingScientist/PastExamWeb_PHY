@@ -399,6 +399,7 @@
           <Dialog
             v-model:visible="showSubmissionStatusDialog"
             header="我的投稿狀態"
+            class="submission-typography-dialog"
             modal
             :draggable="false"
             :style="{ width: '760px', maxWidth: '94vw' }"
@@ -3555,7 +3556,7 @@ const mobileMenuItems = computed(() => {
 .submission-level-header span,
 .submission-level-meta {
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--app-font-size-sm);
 }
 
 .submission-level-progress-track {
@@ -3602,13 +3603,13 @@ const mobileMenuItems = computed(() => {
 }
 
 .submission-summary-header strong {
-  font-size: 1rem;
+  font-size: var(--app-font-size-base);
 }
 
 .submission-summary-header > span,
 .submission-summary-empty {
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--app-font-size-sm);
 }
 
 .submission-summary-bar {
@@ -3638,7 +3639,7 @@ const mobileMenuItems = computed(() => {
   gap: 0.38rem;
   min-width: 0;
   white-space: nowrap;
-  font-size: 0.9rem;
+  font-size: var(--app-font-size-sm);
 }
 
 .submission-summary-dot {
@@ -3654,7 +3655,7 @@ const mobileMenuItems = computed(() => {
 
 .submission-status-list h3 {
   margin: 0 0 0.75rem;
-  font-size: 1.1rem;
+  font-size: var(--app-font-size-lg);
 }
 
 .submission-empty {
@@ -3701,7 +3702,7 @@ const mobileMenuItems = computed(() => {
 }
 
 .submission-status-title strong {
-  font-size: 1rem;
+  font-size: var(--app-font-size-base);
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
@@ -3714,7 +3715,7 @@ const mobileMenuItems = computed(() => {
 .my-submission-id {
   align-self: start;
   color: var(--text-secondary);
-  font-size: 0.86rem;
+  font-size: var(--app-font-size-sm);
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -3732,7 +3733,7 @@ const mobileMenuItems = computed(() => {
   flex-wrap: wrap;
   gap: 0.4rem 1.25rem;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--app-font-size-sm);
   line-height: 1.4;
 }
 
@@ -3799,7 +3800,7 @@ const mobileMenuItems = computed(() => {
   padding-top: 0.65rem;
   border-top: 1px solid var(--border-color);
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--app-font-size-sm);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
