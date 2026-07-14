@@ -25,7 +25,7 @@ const onlineRangeConfig = {
 const makeOnlineStatistics = (range = '24h', counts = {}) => {
   const [bucketMinutes, bucketCount] = onlineRangeConfig[range]
   const end = new Date(now)
-  end.setSeconds(0, 0)
+  end.setMinutes(0, 0, 0)
   const points = Array.from({ length: bucketCount }, (_, index) => {
     const start = new Date(end.getTime() - (bucketCount - index) * bucketMinutes * 60_000)
     const bucketEnd = new Date(start.getTime() + bucketMinutes * 60_000)
@@ -465,6 +465,11 @@ describe('AdminView', () => {
       expect(wrapper.vm.loginChartData.buckets.at(-1).showLabel).toBe(true)
       expect(wrapper.vm.loginChartData.buckets[0].labelLines).toBeInstanceOf(Array)
       expect(wrapper.vm.loginChartData.buckets.at(-1).labelLines).toBeInstanceOf(Array)
+      const midnightBucket = wrapper.vm.loginChartData.buckets.find(
+        ({ isMultiline }) => isMultiline
+      )
+      expect(midnightBucket?.labelLines[0]).toBe('00 時')
+      expect(midnightBucket?.labelLines[1]).toMatch(/^\d{2}\/\d{2}$/)
       expect(nonZeroBuckets[0].fullLabel).toContain('取樣')
     }
 

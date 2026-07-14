@@ -97,6 +97,8 @@ describe('UserOnlineDurationChart', () => {
     const controlRow = wrapper.find('.chart-summary-control-row')
     expect(controlRow.findAll(':scope > div')[0].classes()).toContain('chart-summary-group')
     expect(controlRow.findAll(':scope > div')[1].classes()).toContain('chart-control-stack')
+    const midnightLabel = wrapper.find('.user-duration-chart__x-axis > span')
+    expect(midnightLabel.findAll('span').map((line) => line.text())).toEqual(['00 時', '07/15'])
     expect(wrapper.find('canvas').exists()).toBe(false)
     expect(componentSource).not.toContain('收合')
   })
@@ -192,6 +194,12 @@ describe('UserOnlineDurationChart', () => {
       expect(wrapper.text()).toContain('區間總時長2 小時 35 分鐘')
       expect(wrapper.text()).toContain('每日平均')
       expect(wrapper.text()).toContain('單日峰值2 小時 35 分鐘')
+      expect(
+        wrapper
+          .findAll('.user-duration-chart__x-axis > span')
+          .filter((label) => label.text())
+          .every((label) => label.findAll('span').length === 1)
+      ).toBe(true)
     }
   )
 

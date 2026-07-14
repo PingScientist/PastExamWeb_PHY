@@ -7615,6 +7615,10 @@ onBeforeUnmount(() => {
   color: var(--text-color);
 }
 
+.user-insights.admin-insights-card {
+  row-gap: 0.5rem;
+}
+
 .contributor-level-insights {
   margin-top: 1rem;
 }

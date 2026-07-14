@@ -36,7 +36,7 @@ export function buildTemporalTicks(points, { mode, labelEvery, minGap = mode ===
       mode === 'date'
         ? [formatProductDate(point.start)]
         : isMidnight
-          ? [formatProductDate(point.start), `${parts.hour} 時`]
+          ? [`${parts.hour} 時`, formatProductDate(point.start)]
           : [`${parts.hour} 時`]
     return {
       labelLines,

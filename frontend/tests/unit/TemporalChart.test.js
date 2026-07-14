@@ -36,8 +36,8 @@ describe('temporal chart helpers', () => {
       expect(ticks.at(-1).showLabel).toBe(true)
       const midnight = ticks.find((tick) => tick.isMultiline)
       expect(midnight.labelLines).toHaveLength(2)
-      expect(midnight.labelLines[0]).toMatch(/^\d{2}\/\d{2}$/)
-      expect(midnight.labelLines[1]).toBe('00 時')
+      expect(midnight.labelLines[0]).toBe('00 時')
+      expect(midnight.labelLines[1]).toMatch(/^\d{2}\/\d{2}$/)
       expect(midnight.labelLines.join('')).not.toMatch(/23 時\d{2}/)
     }
   )
@@ -58,6 +58,7 @@ describe('temporal chart helpers', () => {
     expect(ticks[0]).toMatchObject({ showLabel: true, labelLines: ['04/17'] })
     expect(ticks.at(-1).showLabel).toBe(true)
     expect(ticks.at(-1).labelLines[0]).toMatch(/^\d{2}\/\d{2}$/)
+    expect(ticks.every(({ labelLines }) => labelLines.length === 1)).toBe(true)
     expect(ticks.filter(({ showLabel }) => showLabel).length).toBeLessThanOrEqual(
       Math.ceil((days - 1) / every) + 1
     )
