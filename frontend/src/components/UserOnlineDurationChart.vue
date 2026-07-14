@@ -25,30 +25,42 @@
       </div>
     </div>
 
-    <div class="user-duration-controls">
-      <Select
-        v-if="mode === 'hourly'"
-        v-model="selectedDate"
-        :options="recentDateOptions"
-        optionLabel="label"
-        optionValue="value"
-        aria-label="選擇最近七日日期"
-        class="user-duration-date-select"
-        @change="loadDuration"
-      />
-      <div v-else class="user-duration-range" role="group" aria-label="每日在線時長範圍">
-        <button
-          v-for="option in DAILY_OPTIONS"
-          :key="option"
-          type="button"
-          :class="{ 'is-active': days === option }"
-          :aria-pressed="days === option"
-          @click="setDays(option)"
-        >
-          {{ option }} 日
-        </button>
+    <div class="chart-summary-control-row">
+      <div
+        v-if="durationSummary && !loading"
+        class="chart-summary-group"
+        :aria-label="mode === 'hourly' ? '當日在線時長摘要' : '每日在線時長摘要'"
+      >
+        <span v-for="item in durationSummary" :key="item.label" class="chart-summary-item">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </span>
       </div>
-      <span class="user-duration-timezone">統計時區：{{ PRODUCT_TIME_ZONE }}</span>
+      <div class="chart-control-stack user-duration-control-stack">
+        <Select
+          v-if="mode === 'hourly'"
+          v-model="selectedDate"
+          :options="recentDateOptions"
+          optionLabel="label"
+          optionValue="value"
+          aria-label="選擇最近七日日期"
+          class="user-duration-date-select"
+          @change="loadDuration"
+        />
+        <div v-else class="user-duration-range" role="group" aria-label="每日在線時長範圍">
+          <button
+            v-for="option in DAILY_OPTIONS"
+            :key="option"
+            type="button"
+            :class="{ 'is-active': days === option }"
+            :aria-pressed="days === option"
+            @click="setDays(option)"
+          >
+            {{ option }} 日
+          </button>
+        </div>
+        <span class="chart-timezone-label"> 統計時區：{{ PRODUCT_TIME_ZONE_LABEL }} </span>
+      </div>
     </div>
 
     <div v-if="loading" class="user-duration-state" role="status">
@@ -108,8 +120,14 @@
           :style="{ '--duration-chart-columns': chartData.buckets.length }"
           aria-hidden="true"
         >
-          <span v-for="bucket in chartData.buckets" :key="`duration-label-${bucket.start}`">
-            {{ bucket.showLabel ? bucket.label : '' }}
+          <span
+            v-for="bucket in chartData.buckets"
+            :key="`duration-label-${bucket.start}`"
+            :class="{ 'is-multiline': bucket.isMultiline }"
+          >
+            <template v-if="bucket.showLabel">
+              <span v-for="line in bucket.labelLines" :key="line">{{ line }}</span>
+            </template>
           </span>
         </div>
       </div>
@@ -120,7 +138,16 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getUserOnlineDuration } from '../api'
-import { PRODUCT_TIME_ZONE, addCalendarDays, getProductDateString } from '../utils/productTimezone'
+import {
+  PRODUCT_TIME_ZONE,
+  PRODUCT_TIME_ZONE_LABEL,
+  addCalendarDays,
+  formatProductDate,
+  getProductDateString,
+  getProductTimeParts,
+} from '../utils/productTimezone'
+import { buildTemporalTicks } from '../utils/temporalChart'
+import { buildOnlineDurationSummary, formatDuration } from '../utils/onlineDurationSummary'
 
 const props = defineProps({
   userId: { type: Number, default: null },
@@ -154,30 +181,9 @@ const recentDateOptions = computed(() => {
 
 const description = computed(() =>
   mode.value === 'hourly'
-    ? `顯示 ${recentDateOptions.value.find(({ value }) => value === selectedDate.value)?.label || selectedDate.value} 每小時的在線使用時長。`
-    : `顯示最近 ${days.value} 個日曆日的每日在線使用時長。`
+    ? `統計 ${recentDateOptions.value.find(({ value }) => value === selectedDate.value)?.label || selectedDate.value} 每小時的在線使用時長。`
+    : `統計最近 ${days.value} 個日曆日的每日在線使用時長。`
 )
-
-const formatDuration = (value) => {
-  const totalSeconds = Math.max(0, Math.round(Number(value) || 0))
-  if (totalSeconds === 0) return '0 秒'
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  const parts = []
-  if (hours) parts.push(`${hours} 小時`)
-  if (minutes) parts.push(`${minutes} 分鐘`)
-  if (!hours && !minutes && seconds) parts.push(`${seconds} 秒`)
-  return parts.join(' ')
-}
-
-const formatProductDate = (value, includeYear = false) =>
-  new Intl.DateTimeFormat('zh-TW', {
-    timeZone: PRODUCT_TIME_ZONE,
-    ...(includeYear ? { year: 'numeric' } : {}),
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(value))
 
 const chartData = computed(() => {
   const points = Array.isArray(durationData.value?.points) ? durationData.value.points : []
@@ -186,37 +192,56 @@ const chartData = computed(() => {
   const yMax = mode.value === 'hourly' ? 60 : Math.min(24, Math.max(1, Math.ceil(maxValue)))
   const yTicks = Array.from({ length: 5 }, (_, index) => Math.round(yMax * (1 - index / 4)))
   const labelEvery = mode.value === 'hourly' ? 3 : days.value === 7 ? 1 : days.value === 30 ? 5 : 15
+  const ticks = buildTemporalTicks(points, {
+    mode: mode.value === 'hourly' ? 'hour' : 'date',
+    labelEvery,
+    minGap: mode.value === 'hourly' ? 2 : 1,
+  })
   const buckets = points.map((point, index) => {
     const start = new Date(point.start)
-    const hour = new Intl.DateTimeFormat('en-GB', {
-      timeZone: PRODUCT_TIME_ZONE,
-      hour: '2-digit',
-      hourCycle: 'h23',
-    }).format(start)
-    const endHour = new Intl.DateTimeFormat('en-GB', {
-      timeZone: PRODUCT_TIME_ZONE,
-      hour: '2-digit',
-      hourCycle: 'h23',
-    }).format(new Date(point.end))
+    const { hour } = getProductTimeParts(start)
+    const { hour: endHour } = getProductTimeParts(point.end)
     return {
       ...point,
+      ...ticks[index],
       chartValue: point.duration_seconds / divisor,
-      label: mode.value === 'hourly' ? `${hour} 時` : formatProductDate(start),
       fullLabel:
         mode.value === 'hourly'
-          ? `${formatProductDate(start, true)} ${hour}:00–${endHour}:00`
-          : formatProductDate(start, true),
-      showLabel: index === 0 || index === points.length - 1 || index % labelEvery === 0,
+          ? `${formatProductDate(start, { includeYear: true })} ${hour}:00–${endHour}:00`
+          : formatProductDate(start, { includeYear: true }),
     }
   })
   return { buckets, yMax, yTicks }
 })
 
 const hasAvailableHistory = computed(() => chartData.value.buckets.some(({ has_data }) => has_data))
+const durationSummary = computed(() => {
+  if (!durationData.value?.history_started_at || !hasAvailableHistory.value || error.value)
+    return null
+  const points = chartData.value.buckets
+  const { totalSeconds, averageSeconds, peakSeconds } = buildOnlineDurationSummary({
+    points,
+    mode: mode.value,
+    days: days.value,
+    isToday: selectedDate.value === todayDate.value,
+  })
+  if (mode.value === 'daily') {
+    return [
+      { label: '區間總時長', value: formatDuration(totalSeconds) },
+      { label: '每日平均', value: formatDuration(averageSeconds) },
+      { label: '單日峰值', value: formatDuration(peakSeconds) },
+    ]
+  }
+  return [
+    { label: '當日總時長', value: formatDuration(totalSeconds) },
+    { label: '每小時平均', value: formatDuration(averageSeconds) },
+    { label: '單小時峰值', value: formatDuration(peakSeconds) },
+  ]
+})
 const chartAriaLabel = computed(() =>
   mode.value === 'hourly'
-    ? `${selectedDate.value} 的二十四小時在線時長分布`
-    : `最近 ${days.value} 日的每日在線時長分布`
+    ? `統計 ${selectedDate.value} 的二十四小時在線時長分布`
+    : `統計最近 ${days.value} 個日曆日的每日在線時長分布`
 )
 const formatAxisTick = (seconds) => (mode.value === 'hourly' ? `${seconds} 分` : `${seconds} 時`)
 
@@ -314,7 +339,6 @@ onBeforeUnmount(() => requestController?.abort())
 }
 
 .user-duration-heading,
-.user-duration-controls,
 .user-duration-switch,
 .user-duration-range,
 .user-duration-error {
@@ -336,8 +360,7 @@ onBeforeUnmount(() => requestController?.abort())
   font-size: var(--app-font-size-base);
 }
 
-.user-duration-heading p,
-.user-duration-timezone {
+.user-duration-heading p {
   margin-top: 0.15rem;
   color: var(--text-secondary);
   font-size: var(--app-font-size-xs);
@@ -381,14 +404,12 @@ onBeforeUnmount(() => requestController?.abort())
   outline-offset: 2px;
 }
 
-.user-duration-controls {
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-}
-
 .user-duration-date-select {
   width: min(100%, 14rem);
+}
+
+.user-duration-control-stack {
+  min-width: min(100%, 14rem);
 }
 
 .user-duration-state {
@@ -417,6 +438,7 @@ onBeforeUnmount(() => requestController?.abort())
 }
 
 .user-duration-chart {
+  --temporal-edge-padding: clamp(1rem, calc(1.35rem * var(--app-font-scale)), 2rem);
   display: grid;
   grid-template-columns: 3.5rem minmax(0, 1fr);
   gap: 0.5rem;
@@ -430,7 +452,7 @@ onBeforeUnmount(() => requestController?.abort())
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: calc(100% - 2rem);
+  height: calc(100% - 2.55rem);
   color: var(--text-secondary);
   text-align: right;
 }
@@ -446,7 +468,7 @@ onBeforeUnmount(() => requestController?.abort())
 .user-duration-chart__grid,
 .user-duration-chart__bars {
   position: absolute;
-  inset: 0 0 2rem;
+  inset: 0 0 2.55rem;
 }
 
 .user-duration-chart__grid span {
@@ -463,10 +485,11 @@ onBeforeUnmount(() => requestController?.abort())
 }
 
 .user-duration-chart__bars {
+  box-sizing: border-box;
   z-index: 1;
   align-items: end;
   gap: clamp(1px, 0.25vw, 3px);
-  padding-inline: 2px;
+  padding-inline: var(--temporal-edge-padding);
 }
 
 .user-duration-chart__item {
@@ -545,27 +568,24 @@ onBeforeUnmount(() => requestController?.abort())
   right: 0;
   bottom: 0;
   left: 0;
-  height: 1.9rem;
+  box-sizing: border-box;
+  height: 2.5rem;
   align-items: start;
   gap: 1px;
-  padding-top: 0.35rem;
+  padding: 0.35rem var(--temporal-edge-padding) 0;
   color: var(--text-secondary);
   text-align: center;
 }
 
-.user-duration-chart__x-axis span {
+.user-duration-chart__x-axis > span {
   min-width: 0;
   font-size: var(--app-font-size-xs);
   line-height: 1.1;
   white-space: nowrap;
 }
 
-.user-duration-chart__x-axis span:first-child {
-  text-align: left;
-}
-
-.user-duration-chart__x-axis span:last-child {
-  text-align: right;
+.user-duration-chart__x-axis > span > span {
+  display: block;
 }
 
 @media (max-width: 640px) {
@@ -577,6 +597,11 @@ onBeforeUnmount(() => requestController?.abort())
   .user-duration-switch {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-duration-date-select,
+  .user-duration-control-stack {
+    width: 100%;
   }
 
   .user-duration-chart {

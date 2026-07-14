@@ -89,6 +89,14 @@ describe('UserOnlineDurationChart', () => {
     expect(wrapper.findAll('.user-duration-chart__item')).toHaveLength(24)
     expect(wrapper.find('[aria-label="選擇最近七日日期"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('在線時長：19 分鐘')
+    expect(wrapper.text()).toContain('統計 2026/07/15 每小時的在線使用時長。')
+    expect(wrapper.text()).toContain('統計時區：UTC+8')
+    expect(wrapper.text()).toContain('當日總時長19 分鐘')
+    expect(wrapper.text()).toContain('每小時平均')
+    expect(wrapper.text()).toContain('單小時峰值19 分鐘')
+    const controlRow = wrapper.find('.chart-summary-control-row')
+    expect(controlRow.findAll(':scope > div')[0].classes()).toContain('chart-summary-group')
+    expect(controlRow.findAll(':scope > div')[1].classes()).toContain('chart-control-stack')
     expect(wrapper.find('canvas').exists()).toBe(false)
     expect(componentSource).not.toContain('收合')
   })
@@ -180,6 +188,10 @@ describe('UserOnlineDurationChart', () => {
       expect(wrapper.findAll('.user-duration-chart__bar')[3].attributes('style')).not.toContain(
         'height: 0%'
       )
+      expect(wrapper.text()).toContain(`統計最近 ${days} 個日曆日的每日在線使用時長。`)
+      expect(wrapper.text()).toContain('區間總時長2 小時 35 分鐘')
+      expect(wrapper.text()).toContain('每日平均')
+      expect(wrapper.text()).toContain('單日峰值2 小時 35 分鐘')
     }
   )
 
@@ -201,6 +213,7 @@ describe('UserOnlineDurationChart', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('在線時長載入失敗')
     expect(wrapper.findAll('.user-duration-chart__item')).toHaveLength(0)
+    expect(wrapper.find('.chart-summary-group').exists()).toBe(false)
 
     getUserOnlineDurationMock.mockResolvedValueOnce({
       data: makeResponse({ durationSeconds: Number.NaN }),
@@ -230,5 +243,6 @@ describe('UserOnlineDurationChart', () => {
     expect(componentSource).toMatch(/user-duration-switch button[\s\S]*var\(--app-font-size-xs\)/)
     expect(componentSource).not.toMatch(/font-size:\s*(11|12)px/)
     expect(componentSource).not.toContain('overflow-x: auto')
+    expect(componentSource).toContain('var(--app-font-scale)')
   })
 })

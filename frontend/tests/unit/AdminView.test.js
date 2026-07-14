@@ -445,40 +445,47 @@ describe('AdminView', () => {
     wrapper.vm.userInsightsView = 'login-hour'
 
     const hourRanges = [
-      [24, 144, 10],
-      [48, 144, 20],
-      [72, 144, 30],
+      [24, 144, 10, '統計最近 24 小時內，每 10 分鐘取樣一次的同時在線使用者人數。'],
+      [48, 144, 20, '統計最近 48 小時內，每 20 分鐘取樣一次的同時在線使用者人數。'],
+      [72, 144, 30, '統計最近 72 小時內，每 30 分鐘取樣一次的同時在線使用者人數。'],
     ]
-    for (const [range, bucketCount, bucketMinutes] of hourRanges) {
+    for (const [range, bucketCount, bucketMinutes, description] of hourRanges) {
       wrapper.vm.setActiveLoginRange(range)
       await flushPromises()
       expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
+      expect(wrapper.vm.loginDistributionDescription).toBe(description)
       const nonZeroBuckets = wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)
       expect(nonZeroBuckets).toHaveLength(1)
       expect(nonZeroBuckets[0].count).toBe(2)
       expect(wrapper.vm.onlineStatisticsSummary).toMatchObject({ current: 2, peak: 2 })
       expect(wrapper.vm.loginChartData.buckets[0].showLabel).toBe(true)
       expect(wrapper.vm.loginChartData.buckets.at(-1).showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets[0].labelLines).toBeInstanceOf(Array)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).labelLines).toBeInstanceOf(Array)
       expect(nonZeroBuckets[0].fullLabel).toContain('取樣')
     }
 
     wrapper.vm.userInsightsView = 'login-date'
     await wrapper.vm.$nextTick()
     const dateRanges = [
-      [7, 42, 4 * 60],
-      [30, 60, 12 * 60],
-      [90, 90, 24 * 60],
+      [7, 42, 4 * 60, '統計最近 7 日內，每 4 小時取樣一次的同時在線使用者人數。'],
+      [30, 60, 12 * 60, '統計最近 30 日內，每 12 小時取樣一次的同時在線使用者人數。'],
+      [90, 90, 24 * 60, '統計最近 90 日內，每日取樣一次的同時在線使用者人數。'],
     ]
-    for (const [range, bucketCount, bucketMinutes] of dateRanges) {
+    for (const [range, bucketCount, bucketMinutes, description] of dateRanges) {
       wrapper.vm.setActiveLoginRange(range)
       await flushPromises()
       expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
       expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
+      expect(wrapper.vm.loginDistributionDescription).toBe(description)
+      expect(wrapper.vm.loginChartData.buckets[0].showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).labelLines[0]).toMatch(/^\d{2}\/\d{2}$/)
       expect(wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)).toEqual([
         expect.objectContaining({ count: 2 }),
       ])
@@ -497,9 +504,15 @@ describe('AdminView', () => {
     expect(wrapper.vm.onlineStatisticsError).toBe('')
     expect(wrapper.vm.onlineStatistics.history_started_at).toBeNull()
 
+    const zeroData = makeOnlineStatistics('24h')
+    getOnlineStatisticsMock.mockResolvedValueOnce({ data: zeroData })
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatisticsSummary).toEqual({ current: 0, peak: 0, average: '0.0' })
+
     getOnlineStatisticsMock.mockRejectedValueOnce(new Error('network'))
     await wrapper.vm.loadOnlineStatistics()
     expect(wrapper.vm.onlineStatistics).toBeNull()
+    expect(wrapper.vm.onlineStatisticsSummary).toBeNull()
     expect(wrapper.vm.onlineStatisticsError).toContain('在線統計載入失敗')
 
     wrapper.unmount()

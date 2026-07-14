@@ -560,25 +560,47 @@
                     </div>
                   </Message>
                   <div v-else-if="userInsightsView !== 'level'" class="user-insights__panel">
-                    <div class="user-insights__panel-header">
-                      <p>{{ loginDistributionDescription }}</p>
-                      <div class="user-insights__range" role="group" aria-label="最近在線統計範圍">
-                        <button
-                          v-for="option in loginRangeOptions"
-                          :key="option"
-                          type="button"
-                          :class="{ 'is-active': activeLoginRange === option }"
-                          :aria-pressed="activeLoginRange === option"
-                          @click="setActiveLoginRange(option)"
-                        >
-                          {{ option }} {{ loginRangeUnit }}
-                        </button>
+                    <p class="user-insights__description">{{ loginDistributionDescription }}</p>
+                    <div class="chart-summary-control-row">
+                      <div
+                        v-if="onlineStatisticsSummary"
+                        class="chart-summary-group"
+                        aria-label="同時在線人數摘要"
+                      >
+                        <span class="chart-summary-item">
+                          <span>目前在線</span>
+                          <strong>{{ onlineStatisticsSummary.current }} 人</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間峰值</span>
+                          <strong>{{ onlineStatisticsSummary.peak }} 人</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間平均</span>
+                          <strong>{{ onlineStatisticsSummary.average }} 人</strong>
+                        </span>
                       </div>
-                    </div>
-                    <div class="user-insights__summary">
-                      <span>目前在線 {{ onlineStatisticsSummary.current }} 人</span>
-                      <span>區間峰值 {{ onlineStatisticsSummary.peak }} 人</span>
-                      <span>區間平均 {{ onlineStatisticsSummary.average }} 人</span>
+                      <div class="chart-control-stack">
+                        <div
+                          class="user-insights__range"
+                          role="group"
+                          aria-label="最近在線統計範圍"
+                        >
+                          <button
+                            v-for="option in loginRangeOptions"
+                            :key="option"
+                            type="button"
+                            :class="{ 'is-active': activeLoginRange === option }"
+                            :aria-pressed="activeLoginRange === option"
+                            @click="setActiveLoginRange(option)"
+                          >
+                            {{ option }} {{ loginRangeUnit }}
+                          </button>
+                        </div>
+                        <span class="chart-timezone-label">
+                          統計時區：{{ PRODUCT_TIME_ZONE_LABEL }}
+                        </span>
+                      </div>
                     </div>
                     <div
                       v-if="onlineStatistics?.history_started_at"
@@ -638,8 +660,11 @@
                           <span
                             v-for="bucket in loginChartData.buckets"
                             :key="`label-${bucket.key}`"
+                            :class="{ 'is-multiline': bucket.isMultiline }"
                           >
-                            {{ bucket.showLabel ? bucket.label : '' }}
+                            <template v-if="bucket.showLabel">
+                              <span v-for="line in bucket.labelLines" :key="line">{{ line }}</span>
+                            </template>
                           </span>
                         </div>
                       </div>
@@ -3734,6 +3759,8 @@ import { useToast } from 'primevue/usetoast'
 import { getCurrentUser } from '../utils/auth'
 import { isUnauthorizedError } from '../utils/http'
 import { formatRelativeTime } from '../utils/time'
+import { PRODUCT_TIME_ZONE_LABEL, formatProductDateTime } from '../utils/productTimezone'
+import { buildTemporalTicks } from '../utils/temporalChart'
 import {
   getCourses,
   createCourse,
@@ -4696,17 +4723,19 @@ const activeLoginBucketConfig = computed(() =>
     ? LOGIN_HOUR_BUCKET_CONFIG[loginRangeHours.value]
     : LOGIN_DATE_BUCKET_CONFIG[loginRangeDays.value]
 )
-const formatBucketDuration = (minutes) => {
-  if (minutes < 60) return `${minutes} 分鐘`
-  if (minutes < 24 * 60) return `${minutes / 60} 小時`
-  return '1 日'
-}
 const loginDistributionDescription = computed(() => {
   const range =
     userInsightsView.value === 'login-hour'
       ? `${loginRangeHours.value} 小時`
       : `${loginRangeDays.value} 日`
-  return `統計最近 ${range} 內，各 ${formatBucketDuration(activeLoginBucketConfig.value.bucketMinutes)}取樣時間點的同時在線使用者人數。`
+  const bucketMinutes = activeLoginBucketConfig.value.bucketMinutes
+  const sampling =
+    bucketMinutes === 24 * 60
+      ? '每日取樣一次'
+      : bucketMinutes < 60
+        ? `每 ${bucketMinutes} 分鐘取樣一次`
+        : `每 ${bucketMinutes / 60} 小時取樣一次`
+  return `統計最近 ${range}內，${sampling}的同時在線使用者人數。`
 })
 
 const loginRangeOptions = computed(() =>
@@ -4729,37 +4758,6 @@ watch(userInsightsView, (mode) => {
   if (mode !== 'level') void loadOnlineStatistics()
 })
 
-const formatLocalDateTime = (date) => {
-  const dateLabel = new Intl.DateTimeFormat('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  return `${dateLabel} ${hour}:${minute}`
-}
-
-const formatShortLocalDate = (date) =>
-  new Intl.DateTimeFormat('zh-TW', {
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-
-const shouldShowLoginChartLabel = (bucket, index, total, mode, config) => {
-  if (index === 0 || index === total - 1) return true
-  const bucketStart = new Date(bucket.start)
-  if (
-    mode === 'login-hour' &&
-    loginRangeHours.value > 24 &&
-    bucketStart.getHours() === 0 &&
-    bucketStart.getMinutes() === 0
-  ) {
-    return true
-  }
-  return index % config.labelEvery === 0
-}
-
 const buildIntegerAxis = (buckets) => {
   const maxCount = Math.max(0, ...buckets.map(({ count }) => count))
   const step = Math.max(1, Math.ceil(maxCount / 4))
@@ -4774,26 +4772,26 @@ const loginChartData = computed(() => {
   const mode = userInsightsView.value
   const source = Array.isArray(onlineStatistics.value?.points) ? onlineStatistics.value.points : []
   const config = activeLoginBucketConfig.value
+  const ticks = buildTemporalTicks(source, {
+    mode: mode === 'login-hour' ? 'hour' : 'date',
+    labelEvery: config.labelEvery,
+    minGap: mode === 'login-hour' ? Math.max(6, Math.floor(config.labelEvery / 2)) : 1,
+  })
   const buckets = source.map((point, index) => {
     const start = new Date(point.start)
     const end = new Date(point.end)
-    const crossesMidnight = start.getHours() === 0 && start.getMinutes() === 0
     return {
       ...point,
+      ...ticks[index],
       key: point.at,
-      label:
-        mode === 'login-date' || (loginRangeHours.value > 24 && crossesMidnight)
-          ? formatShortLocalDate(start)
-          : `${String(start.getHours()).padStart(2, '0')} 時`,
-      fullLabel: `${formatLocalDateTime(new Date(point.at))} 取樣（區間 ${formatLocalDateTime(start)}–${formatLocalDateTime(end)}）`,
-      showLabel: shouldShowLoginChartLabel(point, index, source.length, mode, config),
+      fullLabel: `${formatProductDateTime(new Date(point.at))} 取樣（區間 ${formatProductDateTime(start)}–${formatProductDateTime(end)}）`,
     }
   })
   const axis = buildIntegerAxis(buckets)
   return {
     ...axis,
     bucketMinutes: config.bucketMinutes,
-    labels: buckets.map(({ label }) => label),
+    labels: buckets.map(({ labelLines }) => labelLines),
     counts: buckets.map(({ count }) => count),
     buckets,
     ariaLabel:
@@ -4803,11 +4801,15 @@ const loginChartData = computed(() => {
   }
 })
 
-const onlineStatisticsSummary = computed(() => ({
-  current: onlineStatistics.value?.current_online ?? 0,
-  peak: onlineStatistics.value?.peak_online ?? 0,
-  average: Number(onlineStatistics.value?.average_online ?? 0).toFixed(1),
-}))
+const onlineStatisticsSummary = computed(() =>
+  onlineStatistics.value
+    ? {
+        current: onlineStatistics.value.current_online,
+        peak: onlineStatistics.value.peak_online,
+        average: Number(onlineStatistics.value.average_online).toFixed(1),
+      }
+    : null
+)
 
 const selectedUserContributorLevel = computed(() =>
   resolveSubmissionLevel(userSubmissionStats.value?.contributor_experience || 0)
@@ -7784,8 +7786,6 @@ onBeforeUnmount(() => {
 
 .user-insights__heading,
 .user-insights__actions,
-.user-insights__panel-header,
-.user-insights__summary,
 .user-insights__switch,
 .user-insights__range {
   display: flex;
@@ -7809,15 +7809,13 @@ onBeforeUnmount(() => {
 }
 
 .user-insights__heading p,
-.user-insights__description,
-.user-insights__panel-header p {
+.user-insights__description {
   color: var(--text-secondary);
   font-size: 0.78rem;
   line-height: 1.4;
 }
 
 .user-insights__actions,
-.user-insights__summary,
 .user-insights__range,
 .user-insights__switch {
   flex-wrap: wrap;
@@ -7878,22 +7876,6 @@ onBeforeUnmount(() => {
   padding-top: 0.2rem;
 }
 
-.user-insights__panel-header {
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-}
-
-.user-insights__summary {
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-}
-
-.user-insights__summary span {
-  padding: 0.22rem 0.45rem;
-  border-radius: 5px;
-  background: var(--bg-primary);
-}
-
 .user-level-chart {
   display: grid;
   gap: 0.42rem;
@@ -7904,6 +7886,7 @@ onBeforeUnmount(() => {
 }
 
 .user-login-column-chart {
+  --temporal-edge-padding: clamp(1rem, calc(1.35rem * var(--app-font-scale)), 2rem);
   display: grid;
   grid-template-columns: 2rem minmax(0, 1fr);
   gap: 0.45rem;
@@ -7911,14 +7894,14 @@ onBeforeUnmount(() => {
   height: clamp(13rem, 28vw, 18rem);
   padding-top: 0.35rem;
   color: var(--text-color);
-  font-size: 0.7rem;
+  font-size: var(--app-font-size-xs);
 }
 
 .user-login-column-chart__y-axis {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: calc(100% - 1.75rem);
+  height: calc(100% - 2.55rem);
   color: var(--text-secondary);
   text-align: right;
 }
@@ -7935,7 +7918,7 @@ onBeforeUnmount(() => {
 .user-login-column-chart__grid,
 .user-login-column-chart__bars {
   position: absolute;
-  inset: 0 0 1.75rem;
+  inset: 0 0 2.55rem;
 }
 
 .user-login-column-chart__grid {
@@ -7956,10 +7939,11 @@ onBeforeUnmount(() => {
 }
 
 .user-login-column-chart__bars {
+  box-sizing: border-box;
   z-index: 1;
   align-items: end;
   gap: 1px;
-  padding: 0 1px;
+  padding: 0 var(--temporal-edge-padding);
 }
 
 .user-login-column-chart__item {
@@ -8043,28 +8027,25 @@ onBeforeUnmount(() => {
   right: 0;
   bottom: 0;
   left: 0;
-  height: 1.65rem;
+  box-sizing: border-box;
+  height: 2.5rem;
   align-items: start;
   gap: 1px;
-  padding-top: 0.35rem;
+  padding: 0.35rem var(--temporal-edge-padding) 0;
   color: var(--text-secondary);
   text-align: center;
 }
 
-.user-login-column-chart__x-axis span {
+.user-login-column-chart__x-axis > span {
   min-width: 0;
   overflow: visible;
-  font-size: clamp(0.55rem, 1.2vw, 0.68rem);
-  line-height: 1;
+  font-size: var(--app-font-size-xs);
+  line-height: 1.1;
   white-space: nowrap;
 }
 
-.user-login-column-chart__x-axis span:first-child {
-  text-align: left;
-}
-
-.user-login-column-chart__x-axis span:last-child {
-  text-align: right;
+.user-login-column-chart__x-axis > span > span {
+  display: block;
 }
 
 .user-level-chart__track {
@@ -11948,13 +11929,12 @@ onBeforeUnmount(() => {
 }
 
 .admin-insights-card p,
-.admin-insights-card .user-insights__summary,
 .admin-insights-card .user-insights__empty,
 .admin-insights-card .contributor-level-stat span,
 .admin-insights-card .contributor-level-stats__summary,
 .admin-insights-card .user-level-chart__row > span,
 .admin-insights-card .user-login-column-chart__y-axis,
-.admin-insights-card .user-login-column-chart__x-axis span {
+.admin-insights-card .user-login-column-chart__x-axis > span {
   font-size: var(--app-font-size-xs) !important;
   line-height: 1.35;
 }
@@ -12161,7 +12141,6 @@ onBeforeUnmount(() => {
   }
 
   .user-insights__heading,
-  .user-insights__panel-header,
   .user-submission-summary__identity,
   .user-submission-summary__exp {
     align-items: flex-start;
@@ -12257,8 +12236,7 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 641px) and (max-width: 899px) {
-  .user-insights__heading,
-  .user-insights__panel-header {
+  .user-insights__heading {
     align-items: flex-start;
     flex-wrap: wrap;
   }
