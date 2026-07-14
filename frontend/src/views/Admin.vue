@@ -488,7 +488,13 @@
                 <div class="user-insights__heading">
                   <div>
                     <h3 id="user-insights-title">使用者統計圖表</h3>
-                    <p>{{ userInsightsViewLabel }}</p>
+                    <p>
+                      {{
+                        userInsightsView === 'level'
+                          ? userInsightsViewLabel
+                          : loginDistributionDescription
+                      }}
+                    </p>
                   </div>
                   <div class="user-insights__actions">
                     <div class="user-insights__switch" role="group" aria-label="切換使用者統計圖表">
@@ -560,7 +566,6 @@
                     </div>
                   </Message>
                   <div v-else-if="userInsightsView !== 'level'" class="user-insights__panel">
-                    <p class="user-insights__description">{{ loginDistributionDescription }}</p>
                     <div class="chart-summary-control-row">
                       <div
                         v-if="onlineStatisticsSummary"
@@ -7946,7 +7951,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   z-index: 1;
   align-items: end;
-  gap: 1px;
+  gap: clamp(1px, 0.25vw, 3px);
   padding: 0 var(--temporal-edge-padding);
 }
 
