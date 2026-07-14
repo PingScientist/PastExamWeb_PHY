@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     OAUTH_REDIRECT_URI: str = ""
     OAUTH_USERINFO_URL: str = ""
     FRONTEND_URL: str
+    PRODUCT_TIMEZONE: str = "Asia/Taipei"
 
     MINIO_ENDPOINT: str
     MINIO_ROOT_USER: str

@@ -17,20 +17,26 @@ const componentSource = readFileSync(
   'utf8'
 )
 
-const makeResponse = ({ mode = 'hourly', days = 7, history = true } = {}) => {
+const makeResponse = ({
+  mode = 'hourly',
+  days = 7,
+  history = true,
+  durationSeconds = mode === 'hourly' ? 1140 : 9300,
+  valueIndex = mode === 'hourly' ? 4 : 3,
+} = {}) => {
   const count = mode === 'hourly' ? 24 : days
   const bucketMs = mode === 'hourly' ? 3_600_000 : 86_400_000
-  const rangeStart = Date.UTC(2026, 6, 15) - (mode === 'daily' ? (days - 1) * bucketMs : 0)
+  const rangeStart = Date.UTC(2026, 6, 14, 16) - (mode === 'daily' ? (days - 1) * bucketMs : 0)
   const points = Array.from({ length: count }, (_, index) => ({
     start: new Date(rangeStart + index * bucketMs).toISOString(),
     end: new Date(rangeStart + (index + 1) * bucketMs).toISOString(),
-    duration_seconds: index === 13 ? (mode === 'hourly' ? 1920 : 9300) : 0,
-    has_data: history,
+    duration_seconds: index === valueIndex ? durationSeconds : 0,
+    has_data: history && index <= valueIndex,
   }))
   return {
     user_id: 7,
     mode,
-    timezone: 'UTC',
+    timezone: 'Asia/Taipei',
     online_timeout_seconds: 300,
     range_start: points[0].start,
     range_end: points.at(-1).end,
@@ -82,9 +88,72 @@ describe('UserOnlineDurationChart', () => {
     expect(wrapper.text()).toContain('每日在線時長紀錄')
     expect(wrapper.findAll('.user-duration-chart__item')).toHaveLength(24)
     expect(wrapper.find('[aria-label="選擇最近七日日期"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('在線時長：32 分鐘')
+    expect(wrapper.text()).toContain('在線時長：19 分鐘')
     expect(wrapper.find('canvas').exists()).toBe(false)
     expect(componentSource).not.toContain('收合')
+  })
+
+  it('maps seconds to numeric chart units and renders a visible proportional bar', async () => {
+    const wrapper = mountChart()
+    await flushPromises()
+
+    const bars = wrapper.findAll('.user-duration-chart__bar')
+    expect(bars).toHaveLength(24)
+    expect(bars[4].classes()).toContain('has-value')
+    expect(bars[4].attributes('style')).toContain('height: 31.666')
+    expect(bars[5].classes()).not.toContain('has-value')
+    expect(bars[5].attributes('style')).toContain('height: 0%')
+    expect(componentSource).toContain('chartValue: point.duration_seconds / divisor')
+    expect(componentSource).toContain('background: var(--p-primary-color)')
+    expect(componentSource).not.toContain('background: var(--primary-color)')
+    expect(componentSource).not.toContain('minBarLength')
+  })
+
+  it('preserves sub-minute precision and future zero-value tooltips', async () => {
+    getUserOnlineDurationMock.mockResolvedValueOnce({
+      data: makeResponse({ durationSeconds: 30 }),
+    })
+    const wrapper = mountChart()
+    await flushPromises()
+
+    expect(wrapper.findAll('.user-duration-chart__bar')[4].attributes('style')).toContain(
+      'height: 0.833'
+    )
+    expect(wrapper.text()).toContain('在線時長：30 秒')
+    expect(wrapper.findAll('.user-duration-chart__item')[18].attributes('aria-label')).toContain(
+      '在線時長 0 秒'
+    )
+  })
+
+  it('uses the product calendar date when UTC is still on the previous day', async () => {
+    vi.setSystemTime(new Date('2026-07-14T16:05:00Z'))
+    const wrapper = mountChart()
+    await flushPromises()
+
+    expect(getUserOnlineDurationMock).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ mode: 'hourly', date: '2026-07-15' })
+    )
+    expect(wrapper.findAll('.user-duration-chart__item')[0].attributes('aria-label')).toContain(
+      '2026/07/15 00:00–01:00'
+    )
+  })
+
+  it('resets mode and product date when the dialog is reopened', async () => {
+    const wrapper = mountChart()
+    await flushPromises()
+    await wrapper.findAll('.user-duration-switch button')[1].trigger('click')
+    await flushPromises()
+
+    await wrapper.setProps({ active: false })
+    vi.setSystemTime(new Date('2026-07-15T16:05:00Z'))
+    await wrapper.setProps({ active: true })
+    await flushPromises()
+
+    expect(getUserOnlineDurationMock).toHaveBeenLastCalledWith(
+      7,
+      expect.objectContaining({ mode: 'hourly', date: '2026-07-16', days: 7 })
+    )
   })
 
   it.each([7, 30, 90])(
@@ -107,6 +176,10 @@ describe('UserOnlineDurationChart', () => {
         expect.objectContaining({ mode: 'daily', days })
       )
       expect(wrapper.findAll('.user-duration-chart__item')).toHaveLength(days)
+      expect(wrapper.findAll('.user-duration-chart__bar')[3].classes()).toContain('has-value')
+      expect(wrapper.findAll('.user-duration-chart__bar')[3].attributes('style')).not.toContain(
+        'height: 0%'
+      )
     }
   )
 
@@ -128,6 +201,13 @@ describe('UserOnlineDurationChart', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('在線時長載入失敗')
     expect(wrapper.findAll('.user-duration-chart__item')).toHaveLength(0)
+
+    getUserOnlineDurationMock.mockResolvedValueOnce({
+      data: makeResponse({ durationSeconds: Number.NaN }),
+    })
+    await wrapper.findAll('.user-duration-switch button')[0].trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('在線時長載入失敗')
   })
 
   it('uses the authoritative font tokens at 50, 100 and 150 percent without a chart instance', async () => {
@@ -142,6 +222,7 @@ describe('UserOnlineDurationChart', () => {
       applyFontSizePreference(percent)
       expect(document.documentElement.style.getPropertyValue('--app-font-scale')).toBe(scale)
       expect(wrapper.findAll('.user-duration-chart')).toHaveLength(1)
+      expect(wrapper.findAll('.user-duration-chart__bar')[4].classes()).toContain('has-value')
     }
 
     expect(componentSource).toMatch(/user-duration-chart__y-axis[\s\S]*var\(--app-font-size-xs\)/)

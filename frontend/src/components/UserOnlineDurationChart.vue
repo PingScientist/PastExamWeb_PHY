@@ -48,7 +48,7 @@
           {{ option }} 日
         </button>
       </div>
-      <span class="user-duration-timezone">統計時區：UTC</span>
+      <span class="user-duration-timezone">統計時區：{{ PRODUCT_TIME_ZONE }}</span>
     </div>
 
     <div v-if="loading" class="user-duration-state" role="status">
@@ -95,7 +95,7 @@
             <span
               class="user-duration-chart__bar"
               :class="{ 'has-value': bucket.duration_seconds > 0 }"
-              :style="{ height: `${(bucket.duration_seconds / chartData.yMax) * 100}%` }"
+              :style="{ height: `${(bucket.chartValue / chartData.yMax) * 100}%` }"
             ></span>
             <span class="user-duration-chart__tooltip" role="tooltip">
               <strong>{{ bucket.fullLabel }}</strong>
@@ -120,6 +120,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getUserOnlineDuration } from '../api'
+import { PRODUCT_TIME_ZONE, addCalendarDays, getProductDateString } from '../utils/productTimezone'
 
 const props = defineProps({
   userId: { type: Number, default: null },
@@ -129,18 +130,16 @@ const props = defineProps({
 const DAILY_OPTIONS = [7, 30, 90]
 const mode = ref('hourly')
 const days = ref(7)
-const selectedDate = ref(new Date().toISOString().slice(0, 10))
+const todayDate = ref(getProductDateString())
+const selectedDate = ref(todayDate.value)
 const durationData = ref(null)
 const loading = ref(false)
 const error = ref('')
 let requestController = null
 
 const recentDateOptions = computed(() => {
-  const today = new Date()
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
-    date.setUTCDate(date.getUTCDate() - index)
-    const value = date.toISOString().slice(0, 10)
+    const value = addCalendarDays(todayDate.value, -index)
     return {
       value,
       label: new Intl.DateTimeFormat('zh-TW', {
@@ -148,7 +147,7 @@ const recentDateOptions = computed(() => {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
-      }).format(date),
+      }).format(new Date(`${value}T00:00:00Z`)),
     }
   })
 })
@@ -172,9 +171,9 @@ const formatDuration = (value) => {
   return parts.join(' ')
 }
 
-const formatUtcDate = (value, includeYear = false) =>
+const formatProductDate = (value, includeYear = false) =>
   new Intl.DateTimeFormat('zh-TW', {
-    timeZone: 'UTC',
+    timeZone: PRODUCT_TIME_ZONE,
     ...(includeYear ? { year: 'numeric' } : {}),
     month: '2-digit',
     day: '2-digit',
@@ -182,24 +181,31 @@ const formatUtcDate = (value, includeYear = false) =>
 
 const chartData = computed(() => {
   const points = Array.isArray(durationData.value?.points) ? durationData.value.points : []
-  const maxDuration = Math.max(0, ...points.map(({ duration_seconds }) => duration_seconds))
-  const yMax =
-    mode.value === 'hourly'
-      ? 3600
-      : Math.min(86400, Math.max(3600, Math.ceil(maxDuration / 3600) * 3600))
+  const divisor = mode.value === 'hourly' ? 60 : 3600
+  const maxValue = Math.max(0, ...points.map(({ duration_seconds }) => duration_seconds / divisor))
+  const yMax = mode.value === 'hourly' ? 60 : Math.min(24, Math.max(1, Math.ceil(maxValue)))
   const yTicks = Array.from({ length: 5 }, (_, index) => Math.round(yMax * (1 - index / 4)))
   const labelEvery = mode.value === 'hourly' ? 3 : days.value === 7 ? 1 : days.value === 30 ? 5 : 15
   const buckets = points.map((point, index) => {
     const start = new Date(point.start)
-    const hour = String(start.getUTCHours()).padStart(2, '0')
-    const endHour = String(start.getUTCHours() + 1).padStart(2, '0')
+    const hour = new Intl.DateTimeFormat('en-GB', {
+      timeZone: PRODUCT_TIME_ZONE,
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(start)
+    const endHour = new Intl.DateTimeFormat('en-GB', {
+      timeZone: PRODUCT_TIME_ZONE,
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date(point.end))
     return {
       ...point,
-      label: mode.value === 'hourly' ? `${hour} 時` : formatUtcDate(start),
+      chartValue: point.duration_seconds / divisor,
+      label: mode.value === 'hourly' ? `${hour} 時` : formatProductDate(start),
       fullLabel:
         mode.value === 'hourly'
-          ? `${formatUtcDate(start, true)} ${hour}:00–${endHour}:00`
-          : formatUtcDate(start, true),
+          ? `${formatProductDate(start, true)} ${hour}:00–${endHour}:00`
+          : formatProductDate(start, true),
       showLabel: index === 0 || index === points.length - 1 || index % labelEvery === 0,
     }
   })
@@ -212,15 +218,14 @@ const chartAriaLabel = computed(() =>
     ? `${selectedDate.value} 的二十四小時在線時長分布`
     : `最近 ${days.value} 日的每日在線時長分布`
 )
-const formatAxisTick = (seconds) =>
-  mode.value === 'hourly' ? `${Math.round(seconds / 60)} 分` : `${Math.round(seconds / 3600)} 時`
+const formatAxisTick = (seconds) => (mode.value === 'hourly' ? `${seconds} 分` : `${seconds} 時`)
 
 const validateResponse = (data) => {
   const expectedCount = mode.value === 'hourly' ? 24 : days.value
   return (
     data?.user_id === props.userId &&
     data?.mode === mode.value &&
-    data?.timezone === 'UTC' &&
+    data?.timezone === PRODUCT_TIME_ZONE &&
     Number.isInteger(data?.online_timeout_seconds) &&
     Array.isArray(data?.points) &&
     data.points.length === expectedCount &&
@@ -277,8 +282,17 @@ const setDays = (value) => {
 
 watch(
   () => [props.userId, props.active],
-  ([userId, active]) => {
-    if (userId && active) void loadDuration()
+  ([userId, active], previous = []) => {
+    const wasActive = previous[1]
+    if (userId && active) {
+      if (!wasActive) {
+        mode.value = 'hourly'
+        days.value = 7
+        todayDate.value = getProductDateString()
+        selectedDate.value = todayDate.value
+      }
+      void loadDuration()
+    }
     if (!active) requestController?.abort()
   },
   { immediate: true }
@@ -356,14 +370,14 @@ onBeforeUnmount(() => requestController?.abort())
 
 .user-duration-switch button.is-active,
 .user-duration-range button.is-active {
-  border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
-  background: color-mix(in srgb, var(--primary-color) 12%, var(--bg-primary));
+  border-color: color-mix(in srgb, var(--p-primary-color) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--p-primary-color) 12%, var(--bg-primary));
   color: var(--text-color);
 }
 
 .user-duration-switch button:focus-visible,
 .user-duration-range button:focus-visible {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--p-primary-color);
   outline-offset: 2px;
 }
 
@@ -473,8 +487,8 @@ onBeforeUnmount(() => requestController?.abort())
 }
 
 .user-duration-chart__bar.has-value {
-  background: var(--primary-color);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 60%, transparent);
+  background: var(--p-primary-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--p-primary-color) 60%, transparent);
 }
 
 .user-duration-chart__tooltip {
@@ -523,7 +537,7 @@ onBeforeUnmount(() => requestController?.abort())
 }
 
 .user-duration-chart__item:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--primary-color);
+  box-shadow: inset 0 0 0 2px var(--p-primary-color);
 }
 
 .user-duration-chart__x-axis {

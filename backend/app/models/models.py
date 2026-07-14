@@ -410,7 +410,7 @@ class UserOnlineDurationPoint(BaseModel):
 class UserOnlineDurationRead(BaseModel):
     user_id: int
     mode: str
-    timezone: str = "UTC"
+    timezone: str
     online_timeout_seconds: int
     range_start: datetime
     range_end: datetime

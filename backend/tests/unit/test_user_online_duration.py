@@ -8,7 +8,12 @@ from app.api.services.presence import (
     allocate_interval_durations,
     merge_presence_intervals,
 )
-from app.api.services.users import build_user_online_duration, get_user_online_duration
+from app.api.services.users import (
+    _product_date,
+    _product_midnight_utc,
+    build_user_online_duration,
+    get_user_online_duration,
+)
 from app.models.models import User, UserPresenceSession, UserRoles
 
 NOW = datetime(2026, 7, 15, 15, 30, tzinfo=timezone.utc)
@@ -144,6 +149,63 @@ def test_hourly_contract_has_24_points_and_expected_split():
     assert all(point.duration_seconds == 0 for point in result.points[16:])
 
 
+def test_product_date_and_midnight_use_taipei_calendar_boundaries():
+    utc_previous_day = datetime(2026, 7, 14, 16, 5, tzinfo=timezone.utc)
+
+    assert _product_date(utc_previous_day) == date(2026, 7, 15)
+    assert _product_midnight_utc(date(2026, 7, 15)) == datetime(
+        2026, 7, 14, 16, tzinfo=timezone.utc
+    )
+
+
+def test_incomplete_product_day_keeps_24_points_partial_hour_and_future_zeroes():
+    range_start = _product_midnight_utc(date(2026, 7, 15))
+    now = range_start + timedelta(hours=4, minutes=20)
+    result = build_user_online_duration(
+        user_id=7,
+        mode="hourly",
+        sessions=[
+            session(
+                range_start + timedelta(hours=4),
+                now + timedelta(hours=1),
+                open_session=True,
+            )
+        ],
+        range_start=range_start,
+        bucket_count=24,
+        bucket_size=timedelta(hours=1),
+        now=now,
+        history_started_at=range_start,
+    )
+
+    assert result.timezone == "Asia/Taipei"
+    assert len(result.points) == 24
+    assert result.points[0].start == datetime(2026, 7, 14, 16, tzinfo=timezone.utc)
+    assert result.points[-1].end == datetime(2026, 7, 15, 16, tzinfo=timezone.utc)
+    assert result.points[4].duration_seconds == 1200
+    assert all(point.duration_seconds == 0 for point in result.points[5:])
+    assert all(point.has_data is False for point in result.points[5:])
+
+
+def test_five_minutes_after_product_midnight_still_returns_24_points():
+    range_start = _product_midnight_utc(date(2026, 7, 15))
+    now = range_start + timedelta(minutes=5)
+    result = build_user_online_duration(
+        user_id=7,
+        mode="hourly",
+        sessions=[session(range_start, now + timedelta(hours=1), open_session=True)],
+        range_start=range_start,
+        bucket_count=24,
+        bucket_size=timedelta(hours=1),
+        now=now,
+        history_started_at=range_start,
+    )
+
+    assert len(result.points) == 24
+    assert result.points[0].duration_seconds == 300
+    assert all(point.duration_seconds == 0 for point in result.points[1:])
+
+
 class _ScalarCollection:
     def __init__(self, values):
         self.values = values
@@ -222,9 +284,10 @@ async def test_endpoint_permissions_not_found_and_validation():
         )
     assert bad_days.value.status_code == 422
 
+    product_today = _product_date(datetime.now(timezone.utc))
     for invalid_date in (
-        date.today() + timedelta(days=1),
-        date.today() - timedelta(days=7),
+        product_today + timedelta(days=1),
+        product_today - timedelta(days=7),
     ):
         with pytest.raises(HTTPException) as bad_date:
             await get_user_online_duration(
@@ -251,7 +314,7 @@ async def test_endpoint_returns_aggregates_only_and_bounds_query_to_user():
 
     assert result.user_id == 7
     assert result.mode == "daily"
-    assert result.timezone == "UTC"
+    assert result.timezone == "Asia/Taipei"
     assert len(result.points) == 7
     assert isinstance(result.points[0].duration_seconds, int)
     assert "session_identifier" not in str(payload)

@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
@@ -34,6 +35,7 @@ from app.api.services.presence import (
     merge_presence_intervals,
 )
 from app.utils.auth import get_current_user, get_password_hash
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -48,6 +50,7 @@ ONLINE_RANGE_CONFIG = {
     "90d": (24 * 60, 90),
 }
 USER_ONLINE_DURATION_DAYS = {7, 30, 90}
+PRODUCT_TIMEZONE = ZoneInfo(settings.PRODUCT_TIMEZONE)
 
 
 def _normalize_timestamp(dt: datetime | None) -> datetime | None:
@@ -231,6 +234,7 @@ def build_user_online_duration(
     bucket_size: timedelta,
     now: datetime,
     history_started_at: datetime | None,
+    display_timezone: str = settings.PRODUCT_TIMEZONE,
 ) -> UserOnlineDurationRead:
     normalized_start = _normalize_timestamp(range_start).astimezone(timezone.utc)
     normalized_now = _normalize_timestamp(now).astimezone(timezone.utc)
@@ -257,7 +261,7 @@ def build_user_online_duration(
     return UserOnlineDurationRead(
         user_id=user_id,
         mode=mode,
-        timezone="UTC",
+        timezone=display_timezone,
         online_timeout_seconds=ONLINE_TIMEOUT_SECONDS,
         range_start=normalized_start,
         range_end=range_end,
@@ -275,6 +279,16 @@ def build_user_online_duration(
             )
             for (start, end), duration in zip(buckets, durations, strict=True)
         ],
+    )
+
+
+def _product_date(value: datetime) -> date:
+    return _normalize_timestamp(value).astimezone(PRODUCT_TIMEZONE).date()
+
+
+def _product_midnight_utc(value: date) -> datetime:
+    return datetime.combine(value, time.min, tzinfo=PRODUCT_TIMEZONE).astimezone(
+        timezone.utc
     )
 
 
@@ -304,14 +318,14 @@ async def get_user_online_duration(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     now_utc = datetime.now(timezone.utc)
-    today = now_utc.date()
+    today = _product_date(now_utc)
     if mode == "hourly":
         target_date = selected_date or today
         if target_date > today or target_date < today - timedelta(days=6):
             raise HTTPException(
                 status_code=422, detail="Hourly date must be within the last 7 days"
             )
-        range_start = datetime.combine(target_date, time.min, tzinfo=timezone.utc)
+        range_start = _product_midnight_utc(target_date)
         bucket_count = 24
         bucket_size = timedelta(hours=1)
     else:
@@ -319,9 +333,7 @@ async def get_user_online_duration(
             raise HTTPException(
                 status_code=422, detail="Daily days must be 7, 30, or 90"
             )
-        range_start = datetime.combine(
-            today - timedelta(days=days - 1), time.min, tzinfo=timezone.utc
-        )
+        range_start = _product_midnight_utc(today - timedelta(days=days - 1))
         bucket_count = days
         bucket_size = timedelta(days=1)
 
