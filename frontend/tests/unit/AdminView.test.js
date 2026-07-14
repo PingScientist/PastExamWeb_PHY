@@ -82,6 +82,8 @@ const getAllCoursesMock = vi.hoisted(() => vi.fn())
 
 const getUsersMock = vi.hoisted(() => vi.fn())
 const getOnlineStatisticsMock = vi.hoisted(() => vi.fn())
+const getUserSubmissionStatsMock = vi.hoisted(() => vi.fn())
+const getUserOnlineDurationMock = vi.hoisted(() => vi.fn())
 const createUserMock = vi.hoisted(() => vi.fn())
 const updateUserMock = vi.hoisted(() => vi.fn())
 const deleteUserMock = vi.hoisted(() => vi.fn())
@@ -140,6 +142,8 @@ vi.mock('@/api', () => ({
   deleteCourse: deleteCourseMock,
   getUsers: getUsersMock,
   getOnlineStatistics: getOnlineStatisticsMock,
+  getUserSubmissionStats: getUserSubmissionStatsMock,
+  getUserOnlineDuration: getUserOnlineDurationMock,
   createUser: createUserMock,
   updateUser: updateUserMock,
   deleteUser: deleteUserMock,

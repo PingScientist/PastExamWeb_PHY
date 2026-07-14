@@ -900,10 +900,10 @@
                         icon="pi pi-eye"
                         severity="secondary"
                         size="small"
-                        @click="openUserSubmissionStats(data)"
+                        @click="openUserDataStats(data)"
                         label="查看"
-                        aria-label="查看使用者投稿統計"
-                        title="查看使用者投稿統計"
+                        aria-label="查看使用者資料統計"
+                        title="查看使用者資料統計"
                       />
                       <Button
                         icon="pi pi-pencil"
@@ -994,10 +994,10 @@
                       icon="pi pi-eye"
                       severity="secondary"
                       size="small"
-                      @click="openUserSubmissionStats(user)"
+                      @click="openUserDataStats(user)"
                       label="查看"
-                      aria-label="查看使用者投稿統計"
-                      title="查看使用者投稿統計"
+                      aria-label="查看使用者資料統計"
+                      title="查看使用者資料統計"
                     />
                     <Button
                       icon="pi pi-pencil"
@@ -3079,19 +3079,23 @@
       </Dialog>
 
       <Dialog
-        v-model:visible="showUserSubmissionStatsDialog"
+        v-model:visible="showUserDataStatsDialog"
         modal
         :draggable="false"
-        header="使用者投稿統計"
-        class="submission-typography-dialog user-submission-stats-dialog"
+        header="使用者資料統計"
+        class="submission-typography-dialog user-data-stats-dialog"
         :style="{ width: 'min(760px, 96vw)', maxHeight: '90vh' }"
         :pt="{
-          content: { class: 'user-submission-stats-dialog__content' },
-          footer: { class: 'user-submission-stats-dialog__footer' },
+          content: { class: 'user-data-stats-dialog__content' },
+          footer: { class: 'user-data-stats-dialog__footer' },
         }"
-        @hide="closeUserSubmissionStatsDialog"
+        @hide="closeUserDataStatsDialog"
       >
         <div class="user-submission-dialog">
+          <UserOnlineDurationChart
+            :userId="selectedUserDataStatsId"
+            :active="showUserDataStatsDialog"
+          />
           <ProgressSpinner
             v-if="userSubmissionStatsLoading"
             class="w-full flex justify-content-center"
@@ -3279,10 +3283,10 @@
         </div>
         <template #footer>
           <Button
-            class="user-submission-stats-dialog__close"
+            class="user-data-stats-dialog__close"
             label="關閉"
             severity="secondary"
-            @click="closeUserSubmissionStatsDialog"
+            @click="closeUserDataStatsDialog"
           />
         </template>
       </Dialog>
@@ -3752,6 +3756,7 @@ import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
+import UserOnlineDurationChart from '../components/UserOnlineDurationChart.vue'
 import {
   SUBMISSION_LEVELS,
   getContributorLevelPalette,
@@ -3850,7 +3855,8 @@ const onlineStatisticsLoading = ref(false)
 const onlineStatisticsError = ref('')
 let onlineStatisticsRequestId = 0
 let loginStatsRefreshTimer = null
-const showUserSubmissionStatsDialog = ref(false)
+const showUserDataStatsDialog = ref(false)
+const selectedUserDataStatsId = ref(null)
 const userSubmissionStatsLoading = ref(false)
 const userSubmissionStatsError = ref('')
 const userSubmissionStats = ref(null)
@@ -4920,10 +4926,11 @@ const clearContributorLevelFilter = () => {
   userFirst.value = 0
 }
 
-const closeUserSubmissionStatsDialog = () => {
+const closeUserDataStatsDialog = () => {
   userSubmissionStatsController?.abort()
   userSubmissionStatsController = null
-  showUserSubmissionStatsDialog.value = false
+  showUserDataStatsDialog.value = false
+  selectedUserDataStatsId.value = null
   userSubmissionStatsLoading.value = false
   userSubmissionStats.value = null
   userSubmissionStatsError.value = ''
@@ -4931,7 +4938,7 @@ const closeUserSubmissionStatsDialog = () => {
   userSubmissionRecordFirst.value = 0
 }
 
-const openUserSubmissionStats = async (user) => {
+const openUserDataStats = async (user) => {
   userSubmissionStatsController?.abort()
   const controller = new AbortController()
   userSubmissionStatsController = controller
@@ -4940,7 +4947,8 @@ const openUserSubmissionStats = async (user) => {
   userSubmissionRecordSearch.value = ''
   userSubmissionStatsLoading.value = true
   userSubmissionRecordFirst.value = 0
-  showUserSubmissionStatsDialog.value = true
+  selectedUserDataStatsId.value = user.id
+  showUserDataStatsDialog.value = true
 
   try {
     const { data } = await getUserSubmissionStats(user.id, {

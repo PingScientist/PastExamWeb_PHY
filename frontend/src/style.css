@@ -572,19 +572,19 @@ body {
   font-size: var(--app-font-size-base);
 }
 
-.user-submission-stats-dialog {
+.user-data-stats-dialog {
   max-width: 96vw;
   overflow: hidden;
 }
 
-.user-submission-stats-dialog .user-submission-stats-dialog__content {
+.user-data-stats-dialog .user-data-stats-dialog__content {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-bottom: 1rem;
 }
 
-.user-submission-stats-dialog .user-submission-stats-dialog__footer {
+.user-data-stats-dialog .user-data-stats-dialog__footer {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -595,16 +595,16 @@ body {
   background: var(--p-dialog-background, var(--bg-primary));
 }
 
-.user-submission-stats-dialog .user-submission-stats-dialog__close {
+.user-data-stats-dialog .user-data-stats-dialog__close {
   min-width: 5rem;
 }
 
 @media (max-width: 575px) {
-  .user-submission-stats-dialog .user-submission-stats-dialog__footer {
+  .user-data-stats-dialog .user-data-stats-dialog__footer {
     padding: 0.875rem 1rem;
   }
 
-  .user-submission-stats-dialog .user-submission-stats-dialog__close {
+  .user-data-stats-dialog .user-data-stats-dialog__close {
     width: 100%;
   }
 }

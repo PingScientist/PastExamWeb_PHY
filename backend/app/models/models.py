@@ -400,6 +400,24 @@ class OnlineStatisticsRead(BaseModel):
     points: List[OnlineStatisticsPoint] = Field(default_factory=list)
 
 
+class UserOnlineDurationPoint(BaseModel):
+    start: datetime
+    end: datetime
+    duration_seconds: int
+    has_data: bool = False
+
+
+class UserOnlineDurationRead(BaseModel):
+    user_id: int
+    mode: str
+    timezone: str = "UTC"
+    online_timeout_seconds: int
+    range_start: datetime
+    range_end: datetime
+    history_started_at: Optional[datetime] = None
+    points: List[UserOnlineDurationPoint] = Field(default_factory=list)
+
+
 class UserSubmissionStatusCounts(BaseModel):
     pending: int = 0
     approved: int = 0

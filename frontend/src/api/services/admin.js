@@ -37,6 +37,16 @@ export const getUserSubmissionStats = (userId, { includeRecords = false, signal 
   })
 }
 
+export const getUserOnlineDuration = (userId, { mode = 'hourly', date, days = 7, signal } = {}) => {
+  return api.get(`/users/admin/users/${userId}/online-duration`, {
+    signal,
+    params: {
+      mode,
+      ...(mode === 'hourly' ? { date } : { days }),
+    },
+  })
+}
+
 export const createUser = (userData) => {
   return api.post('/users/admin/users', userData)
 }

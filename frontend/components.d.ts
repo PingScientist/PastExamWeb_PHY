@@ -63,5 +63,6 @@ declare module 'vue' {
     ToggleSwitch: typeof import('primevue/toggleswitch')['default']
     Toolbar: typeof import('primevue/toolbar')['default']
     UploadArchiveDialog: typeof import('./src/components/UploadArchiveDialog.vue')['default']
+    UserOnlineDurationChart: typeof import('./src/components/UserOnlineDurationChart.vue')['default']
   }
 }

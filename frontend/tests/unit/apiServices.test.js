@@ -199,6 +199,23 @@ describe('API service wrappers', () => {
       params: { range: '24h' },
     })
 
+    const signal = new AbortController().signal
+    adminService.getUserOnlineDuration(2, {
+      mode: 'hourly',
+      date: '2026-07-15',
+      signal,
+    })
+    expect(getMock).toHaveBeenCalledWith('/users/admin/users/2/online-duration', {
+      signal,
+      params: { mode: 'hourly', date: '2026-07-15' },
+    })
+
+    adminService.getUserOnlineDuration(2, { mode: 'daily', days: 90 })
+    expect(getMock).toHaveBeenCalledWith('/users/admin/users/2/online-duration', {
+      signal: undefined,
+      params: { mode: 'daily', days: 90 },
+    })
+
     adminService.createUser({ name: 'Alice' })
     expect(postMock).toHaveBeenCalledWith('/users/admin/users', { name: 'Alice' })
 

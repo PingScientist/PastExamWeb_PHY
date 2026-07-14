@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,13 +21,17 @@ from app.models.models import (
     UserSubmissionStatusCounts,
     UserUpdate,
     UserPresenceSession,
+    UserOnlineDurationPoint,
+    UserOnlineDurationRead,
     OnlineStatisticsPoint,
     OnlineStatisticsRead,
 )
 from app.api.services.presence import (
     ONLINE_TIMEOUT_SECONDS,
+    allocate_interval_durations,
     distinct_online_user_ids,
     load_presence_sessions,
+    merge_presence_intervals,
 )
 from app.utils.auth import get_current_user, get_password_hash
 
@@ -43,6 +47,7 @@ ONLINE_RANGE_CONFIG = {
     "30d": (12 * 60, 60),
     "90d": (24 * 60, 90),
 }
+USER_ONLINE_DURATION_DAYS = {7, 30, 90}
 
 
 def _normalize_timestamp(dt: datetime | None) -> datetime | None:
@@ -211,6 +216,134 @@ async def get_online_statistics(
     return build_online_statistics(
         range_key=range_key,
         sessions=sessions,
+        now=now_utc,
+        history_started_at=history_result.scalar_one_or_none(),
+    )
+
+
+def build_user_online_duration(
+    *,
+    user_id: int,
+    mode: str,
+    sessions: list[UserPresenceSession],
+    range_start: datetime,
+    bucket_count: int,
+    bucket_size: timedelta,
+    now: datetime,
+    history_started_at: datetime | None,
+) -> UserOnlineDurationRead:
+    normalized_start = _normalize_timestamp(range_start).astimezone(timezone.utc)
+    normalized_now = _normalize_timestamp(now).astimezone(timezone.utc)
+    buckets = [
+        (
+            normalized_start + index * bucket_size,
+            normalized_start + (index + 1) * bucket_size,
+        )
+        for index in range(bucket_count)
+    ]
+    range_end = buckets[-1][1]
+    intervals = merge_presence_intervals(
+        sessions,
+        range_start=normalized_start,
+        range_end=range_end,
+        now=normalized_now,
+    )
+    durations = allocate_interval_durations(intervals, buckets)
+    normalized_history_start = (
+        _normalize_timestamp(history_started_at).astimezone(timezone.utc)
+        if history_started_at
+        else None
+    )
+    return UserOnlineDurationRead(
+        user_id=user_id,
+        mode=mode,
+        timezone="UTC",
+        online_timeout_seconds=ONLINE_TIMEOUT_SECONDS,
+        range_start=normalized_start,
+        range_end=range_end,
+        history_started_at=normalized_history_start,
+        points=[
+            UserOnlineDurationPoint(
+                start=start,
+                end=end,
+                duration_seconds=duration,
+                has_data=bool(
+                    normalized_history_start
+                    and start < normalized_now
+                    and end > normalized_history_start
+                ),
+            )
+            for (start, end), duration in zip(buckets, durations, strict=True)
+        ],
+    )
+
+
+@router.get(
+    "/admin/users/{user_id}/online-duration",
+    response_model=UserOnlineDurationRead,
+)
+async def get_user_online_duration(
+    user_id: int,
+    mode: str = Query(default="hourly"),
+    selected_date: date | None = Query(default=None, alias="date"),
+    days: int = Query(default=7),
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+        )
+    if mode not in {"hourly", "daily"}:
+        raise HTTPException(status_code=422, detail="Unsupported online duration mode")
+
+    user = await db.scalar(
+        select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    )
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.date()
+    if mode == "hourly":
+        target_date = selected_date or today
+        if target_date > today or target_date < today - timedelta(days=6):
+            raise HTTPException(
+                status_code=422, detail="Hourly date must be within the last 7 days"
+            )
+        range_start = datetime.combine(target_date, time.min, tzinfo=timezone.utc)
+        bucket_count = 24
+        bucket_size = timedelta(hours=1)
+    else:
+        if days not in USER_ONLINE_DURATION_DAYS:
+            raise HTTPException(
+                status_code=422, detail="Daily days must be 7, 30, or 90"
+            )
+        range_start = datetime.combine(
+            today - timedelta(days=days - 1), time.min, tzinfo=timezone.utc
+        )
+        bucket_count = days
+        bucket_size = timedelta(days=1)
+
+    range_end = range_start + bucket_count * bucket_size
+    sessions = await load_presence_sessions(
+        db,
+        range_start=range_start,
+        range_end=min(range_end, now_utc),
+        user_id=user_id,
+    )
+    history_result = await db.execute(
+        select(func.min(UserPresenceSession.started_at)).where(
+            UserPresenceSession.user_id == user_id
+        )
+    )
+    return build_user_online_duration(
+        user_id=user_id,
+        mode=mode,
+        sessions=sessions,
+        range_start=range_start,
+        bucket_count=bucket_count,
+        bucket_size=bucket_size,
         now=now_utc,
         history_started_at=history_result.scalar_one_or_none(),
     )
