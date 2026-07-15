@@ -12771,7 +12771,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 437px) {
+@media (max-width: 438px) {
   .admin-insights-card .user-insights__switch.user-insights__switch--two,
   .admin-insights-card .user-insights__switch.user-insights__switch--three {
     display: grid;

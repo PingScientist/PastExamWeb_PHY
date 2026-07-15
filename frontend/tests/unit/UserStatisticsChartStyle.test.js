@@ -92,17 +92,17 @@ describe('user statistics chart layout styles', () => {
     }
   )
 
-  it.each([320, 344, 375, 399, 420, 437])(
+  it.each([320, 344, 375, 399, 420, 437, 438])(
     'uses complete segmented grids at the %spx narrow width',
     (width) => {
-      expect(width).toBeLessThanOrEqual(437)
+      expect(width).toBeLessThanOrEqual(438)
       expect(adminSource).toContain('class="user-insights__switch user-insights__switch--three"')
       expect(adminSource).toContain('class="user-insights__switch user-insights__switch--two"')
       expect(adminSource).toContain(
         'class="user-insights__switch-option user-insights__switch-option--wide"'
       )
       expect(adminSource).toMatch(
-        /@media \(max-width: 437px\)[\s\S]*?\.user-insights__switch\.user-insights__switch--two,[\s\S]*?\.user-insights__switch\.user-insights__switch--three\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
+        /@media \(max-width: 438px\)[\s\S]*?\.user-insights__switch\.user-insights__switch--two,[\s\S]*?\.user-insights__switch\.user-insights__switch--three\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
       )
       expect(adminSource).toMatch(
         /\.user-insights__switch--three\s*> \.user-insights__switch-option--wide\s*\{[^}]*grid-area: wide;[^}]*justify-self: stretch;/
@@ -116,9 +116,9 @@ describe('user statistics chart layout styles', () => {
     }
   )
 
-  it.each([438, 456])('keeps the existing flex layout at %spx', (width) => {
-    expect(width).toBeGreaterThan(437)
-    expect(adminSource).not.toContain('@media (max-width: 438px)')
+  it.each([439, 456])('keeps the existing flex layout at %spx', (width) => {
+    expect(width).toBeGreaterThan(438)
+    expect(adminSource).not.toContain('@media (max-width: 439px)')
     expect(adminSource).not.toContain('@media (max-width: 456px)')
   })
 
