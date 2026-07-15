@@ -608,7 +608,6 @@
                       </div>
                     </div>
                     <div
-                      ref="userStatisticsChartElement"
                       v-if="onlineStatistics?.history_started_at"
                       class="user-login-column-chart"
                       role="img"
@@ -659,6 +658,7 @@
                           </div>
                         </div>
                         <div
+                          ref="userStatisticsChartElement"
                           class="user-login-column-chart__x-axis"
                           :style="{ '--login-chart-columns': loginChartData.buckets.length }"
                           aria-hidden="true"
@@ -978,6 +978,7 @@
                 >
                   <header class="admin-tablet-card-header">
                     <div class="admin-tablet-title-group user-card-title-group">
+                      <span class="mobile-user-level-tag">Lv{{ user.contributorLevel.level }}</span>
                       <strong class="admin-card-title admin-tablet-card-title">{{
                         user.name
                       }}</strong>
@@ -987,6 +988,7 @@
                         </Tag>
                       </div>
                       <ContributorLevelBadge
+                        class="user-card-contributor-badge"
                         :level="user.contributorLevel.level"
                         :title="user.contributorLevel.name"
                         size="compact"
@@ -1431,7 +1433,6 @@
                       </div>
                     </div>
                     <div
-                      ref="reviewSubmissionChartElement"
                       class="user-login-column-chart"
                       role="img"
                       :aria-label="reviewSubmissionChartData.ariaLabel"
@@ -1480,6 +1481,7 @@
                           </div>
                         </div>
                         <div
+                          ref="reviewSubmissionChartElement"
                           class="user-login-column-chart__x-axis"
                           :style="{
                             '--login-chart-columns': reviewSubmissionChartData.buckets.length,
@@ -3957,7 +3959,7 @@ import {
   PRODUCT_TIME_ZONE_LABEL,
   formatProductDateTime,
 } from '../utils/productTimezone'
-import { buildTemporalTicks, resolveTemporalLabelEvery } from '../utils/temporalChart'
+import { buildTemporalTicks, resolveTemporalTickLayout } from '../utils/temporalChart'
 import {
   getCourses,
   createCourse,
@@ -5016,7 +5018,7 @@ const reviewSubmissionChartData = computed(() => {
     : []
   const config = activeReviewSubmissionBucketConfig.value
   const mode = reviewSubmissionView.value === 'time' ? 'hour' : 'date'
-  const labelEvery = resolveTemporalLabelEvery({
+  const tickLayout = resolveTemporalTickLayout({
     baseLabelEvery: config.labelEvery,
     chartWidth: reviewSubmissionChartWidth.value,
     pointCount: source.length,
@@ -5025,8 +5027,7 @@ const reviewSubmissionChartData = computed(() => {
   })
   const ticks = buildTemporalTicks(source, {
     mode,
-    labelEvery,
-    minGap: mode === 'hour' ? Math.max(6, Math.floor(labelEvery / 2)) : 1,
+    ...tickLayout,
   })
   const buckets = source.map((point, index) => ({
     ...point,
@@ -5063,7 +5064,7 @@ const loginChartData = computed(() => {
   const source = Array.isArray(onlineStatistics.value?.points) ? onlineStatistics.value.points : []
   const config = activeLoginBucketConfig.value
   const tickMode = mode === 'login-hour' ? 'hour' : 'date'
-  const labelEvery = resolveTemporalLabelEvery({
+  const tickLayout = resolveTemporalTickLayout({
     baseLabelEvery: config.labelEvery,
     chartWidth: userStatisticsChartWidth.value,
     pointCount: source.length,
@@ -5072,8 +5073,7 @@ const loginChartData = computed(() => {
   })
   const ticks = buildTemporalTicks(source, {
     mode: tickMode,
-    labelEvery,
-    minGap: tickMode === 'hour' ? Math.max(6, Math.floor(labelEvery / 2)) : 1,
+    ...tickLayout,
   })
   const buckets = source.map((point, index) => {
     const start = new Date(point.start)
@@ -8184,6 +8184,10 @@ onBeforeUnmount(() => {
   color: var(--text-color);
   font-size: var(--app-font-size-sm);
   white-space: nowrap;
+}
+
+.mobile-user-level-tag {
+  display: none;
 }
 
 :deep(.user-management-table .p-datatable-thead > tr > th:first-child),
@@ -12563,17 +12567,26 @@ onBeforeUnmount(() => {
     flex-direction: column;
   }
 
-  .user-insights__actions,
-  .user-insights__switch {
+  .user-insights__actions {
     width: 100%;
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+
+  .user-insights__switch {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline-start: auto;
+    justify-content: flex-end;
   }
 
   .user-insights__switch button {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
+    white-space: nowrap;
   }
 
   .user-insights__toggle {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 
   .admin-insights-card .chart-summary-control-row {
@@ -12630,9 +12643,62 @@ onBeforeUnmount(() => {
   }
 
   .user-login-column-chart {
+    --temporal-edge-padding: clamp(1.5rem, calc(1.75rem * var(--app-font-scale)), 2.5rem);
     grid-template-columns: 1.6rem minmax(0, 1fr);
     height: 13rem;
     gap: 0.3rem;
+  }
+
+  .user-login-column-chart__grid,
+  .user-login-column-chart__bars {
+    inset-block-end: 3rem;
+  }
+
+  .user-login-column-chart__x-axis {
+    height: 3rem;
+  }
+
+  .admin-mobile-list--users .user-card-title-group {
+    display: grid;
+    grid-template-areas:
+      'level name'
+      'role role';
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+  }
+
+  .admin-mobile-list--users .mobile-user-level-tag {
+    display: inline-flex;
+    grid-area: level;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 0.18rem 0.38rem;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: var(--app-badge-font-size);
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-list--users .user-card-title-group .admin-tablet-card-title {
+    grid-area: name;
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-mobile-list--users .user-role-tag-group {
+    grid-area: role;
+  }
+
+  .admin-mobile-list--users .user-card-contributor-badge {
+    display: none;
   }
 
   .user-level-chart__row {

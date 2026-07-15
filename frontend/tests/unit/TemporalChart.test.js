@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { buildOnlineDurationSummary, formatDuration } from '@/utils/onlineDurationSummary'
-import { buildTemporalTicks, resolveTemporalLabelEvery } from '@/utils/temporalChart'
+import {
+  buildTemporalTicks,
+  resolveTemporalLabelEvery,
+  resolveTemporalTickLayout,
+} from '@/utils/temporalChart'
 import { buildDurationAxis, formatDurationAxisTick } from '@/utils/durationAxis'
 
 const makePoints = ({ start, count, bucketMinutes, durations = {} }) =>
@@ -58,6 +62,97 @@ describe('temporal chart helpers', () => {
       expect(narrowTicks.at(-1).showLabel).toBe(true)
     }
   )
+
+  it.each([
+    [344, 264],
+    [399, 319],
+    [456, 376],
+    [495, 415],
+    [555, 475],
+  ])(
+    'uses the effective x-axis width at a %spx viewport to keep labels separated',
+    (_viewportWidth, chartWidth) => {
+      const points = makePoints({
+        start: '2026-07-12T18:00:00Z',
+        count: 144,
+        bucketMinutes: 20,
+      })
+      const layout = resolveTemporalTickLayout({
+        baseLabelEvery: 18,
+        chartWidth,
+        pointCount: points.length,
+        mode: 'hour',
+        fontScale: 1.35,
+      })
+      const ticks = buildTemporalTicks(points, { mode: 'hour', ...layout })
+      const visibleIndexes = ticks.flatMap((tick, index) => (tick.showLabel ? [index] : []))
+      const pointSpacing = chartWidth / (points.length - 1)
+
+      expect(ticks).toHaveLength(points.length)
+      expect(visibleIndexes[0]).toBe(0)
+      expect(visibleIndexes.at(-1)).toBe(points.length - 1)
+      expect(
+        visibleIndexes.slice(1).every((index, position) => {
+          const previousIndex = visibleIndexes[position]
+          return (index - previousIndex) * pointSpacing >= 64 * 1.35
+        })
+      ).toBe(true)
+
+      for (const [mode, count, baseLabelEvery, bucketMinutes] of [
+        ['date', 42, 6, 4 * 60],
+        ['date', 60, 10, 12 * 60],
+        ['date', 90, 15, 24 * 60],
+      ]) {
+        const datePoints = makePoints({
+          start: '2026-04-16T16:00:00Z',
+          count,
+          bucketMinutes,
+        })
+        const dateLayout = resolveTemporalTickLayout({
+          baseLabelEvery,
+          chartWidth,
+          pointCount: datePoints.length,
+          mode,
+          fontScale: 1.35,
+        })
+        const dateTicks = buildTemporalTicks(datePoints, { mode, ...dateLayout })
+        const dateVisibleIndexes = dateTicks.flatMap((tick, index) =>
+          tick.showLabel ? [index] : []
+        )
+
+        expect(dateTicks).toHaveLength(count)
+        expect(dateVisibleIndexes[0]).toBe(0)
+        expect(dateVisibleIndexes.at(-1)).toBe(count - 1)
+        expect(dateTicks[0].labelLines[0]).toMatch(/^\d{2}\/\d{2}$/)
+        expect(dateTicks.at(-1).labelLines[0]).toMatch(/^\d{2}\/\d{2}$/)
+      }
+    }
+  )
+
+  it('does not force a midnight label next to a preserved edge label', () => {
+    const points = makePoints({
+      start: '2026-07-14T15:40:00Z',
+      count: 144,
+      bucketMinutes: 10,
+    })
+    const layout = resolveTemporalTickLayout({
+      baseLabelEvery: 12,
+      chartWidth: 300,
+      pointCount: points.length,
+      mode: 'hour',
+      fontScale: 1.35,
+    })
+    const ticks = buildTemporalTicks(points, { mode: 'hour', ...layout })
+    const visibleIndexes = ticks.flatMap((tick, index) => (tick.showLabel ? [index] : []))
+
+    expect(visibleIndexes[0]).toBe(0)
+    expect(visibleIndexes.at(-1)).toBe(143)
+    expect(
+      visibleIndexes.slice(1).every((index, position) => {
+        return index - visibleIndexes[position] >= layout.minGap
+      })
+    ).toBe(true)
+  })
 
   it.each([
     [24, 10, 12],

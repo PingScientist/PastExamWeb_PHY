@@ -65,4 +65,31 @@ describe('user statistics chart layout styles', () => {
       /\.admin-insights-card \.chart-control-stack \.user-insights__range\s*\{[^}]*width: max-content;[^}]*justify-self: end;/s
     )
   })
+
+  it('right-aligns only the mobile statistics controls and observes the effective x-axis', () => {
+    expect(adminSource).toMatch(
+      /@media \(max-width: 640px\)[\s\S]*?\.user-insights__actions\s*\{[^}]*justify-content: flex-end;/
+    )
+    expect(adminSource).toMatch(
+      /@media \(max-width: 640px\)[\s\S]*?\.user-insights__switch\s*\{[^}]*margin-inline-start: auto;[^}]*justify-content: flex-end;/
+    )
+    expect(adminSource).toContain(
+      'ref="userStatisticsChartElement"\n                          class="user-login-column-chart__x-axis"'
+    )
+    expect(adminSource).toContain(
+      'ref="reviewSubmissionChartElement"\n                          class="user-login-column-chart__x-axis"'
+    )
+  })
+
+  it('uses a simple mobile-only level tag without changing the desktop level cell', () => {
+    expect(adminSource).toContain('Lv{{ user.contributorLevel.level }}')
+    expect(adminSource).toContain('class="user-card-contributor-badge"')
+    expect(adminSource).toMatch(
+      /\.mobile-user-level-tag\s*\{[^}]*display: none;[\s\S]*?@media \(max-width: 640px\)[\s\S]*?\.admin-mobile-list--users \.mobile-user-level-tag\s*\{[^}]*display: inline-flex;/
+    )
+    expect(adminSource).toMatch(
+      /@media \(max-width: 640px\)[\s\S]*?\.admin-mobile-list--users \.user-card-contributor-badge\s*\{[^}]*display: none;/
+    )
+    expect(adminSource).toContain('Lv. {{ data.contributorLevel.level }}')
+  })
 })

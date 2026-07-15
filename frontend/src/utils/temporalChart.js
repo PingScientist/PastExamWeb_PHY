@@ -1,6 +1,6 @@
 import { formatProductDate, getProductTimeParts } from './productTimezone'
 
-export function resolveTemporalLabelEvery({
+export function resolveTemporalTickLayout({
   baseLabelEvery,
   chartWidth,
   pointCount,
@@ -10,33 +10,52 @@ export function resolveTemporalLabelEvery({
   const base = Math.max(1, Math.floor(Number(baseLabelEvery) || 1))
   const width = Number(chartWidth)
   const count = Math.max(0, Math.floor(Number(pointCount) || 0))
-  if (!Number.isFinite(width) || width <= 0 || count <= 2) return base
+  if (!Number.isFinite(width) || width <= 0 || count <= 2) {
+    return {
+      labelEvery: base,
+      minGap: mode === 'hour' ? Math.max(6, Math.floor(base / 2)) : 1,
+    }
+  }
 
-  const scale = Math.min(1.5, Math.max(0.5, Number(fontScale) || 1))
-  const minimumLabelWidth = (mode === 'hour' ? 44 : 48) * scale
+  const scale = Math.min(1.5, Math.max(0.75, Number(fontScale) || 1))
+  const minimumLabelWidth = (mode === 'hour' ? 64 : 58) * scale
   const visibleLabelCapacity = Math.max(2, Math.floor(width / minimumLabelWidth))
   const responsiveEvery = Math.ceil((count - 1) / Math.max(1, visibleLabelCapacity - 1))
+  const pointSpacing = width / Math.max(1, count - 1)
+  const labelEvery = Math.max(base, responsiveEvery)
 
-  return Math.max(base, responsiveEvery)
+  return {
+    labelEvery,
+    minGap:
+      responsiveEvery > base
+        ? Math.max(1, Math.ceil(minimumLabelWidth / pointSpacing))
+        : mode === 'hour'
+          ? Math.max(6, Math.floor(base / 2))
+          : 1,
+  }
+}
+
+export function resolveTemporalLabelEvery(options) {
+  return resolveTemporalTickLayout(options).labelEvery
 }
 
 function selectVisibleTicks(points, { labelEvery, includeMidnights, minGap }) {
   if (points.length === 0) return new Set()
   const lastIndex = points.length - 1
-  const priorityIndexes = new Set([0, lastIndex])
+  const visibleIndexes = new Set([0, lastIndex])
+  const canAdd = (index) =>
+    [...visibleIndexes].every((visibleIndex) => Math.abs(visibleIndex - index) >= minGap)
+
   if (includeMidnights) {
     points.forEach((point, index) => {
       const { hour, minute } = getProductTimeParts(point.start)
-      if (hour === '00' && minute === '00') priorityIndexes.add(index)
+      if (hour === '00' && minute === '00' && canAdd(index)) visibleIndexes.add(index)
     })
   }
 
-  const visibleIndexes = new Set(priorityIndexes)
   points.forEach((_point, index) => {
     if (index % labelEvery !== 0 || visibleIndexes.has(index)) return
-    if ([...priorityIndexes].every((priorityIndex) => Math.abs(priorityIndex - index) >= minGap)) {
-      visibleIndexes.add(index)
-    }
+    if (canAdd(index)) visibleIndexes.add(index)
   })
   return visibleIndexes
 }
