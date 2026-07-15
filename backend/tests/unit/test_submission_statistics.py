@@ -2,6 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import Session
 
 from app.api.services.archives import get_archive_submission_statistics
 from app.api.services.submission_statistics import (
@@ -9,7 +11,9 @@ from app.api.services.submission_statistics import (
     align_product_bucket,
     build_submission_statistics,
     get_submission_statistics_window,
+    record_submission_event,
 )
+from app.models.models import ArchiveSubmission, ArchiveSubmissionEvent, ArchiveType, SubmissionStatus
 
 
 NOW = datetime(2026, 7, 15, 4, 23, tzinfo=timezone.utc)
@@ -112,6 +116,12 @@ class _FakeSession:
         self.statements.append(statement)
         return _RowsResult(self.rows)
 
+    def add(self, value):
+        self.added = value
+
+    async def flush(self):
+        return None
+
 
 class _User:
     def __init__(self, is_admin):
@@ -160,6 +170,105 @@ async def test_submission_statistics_admin_response_is_aggregated_and_bounded():
     assert result.summary.model_dump() == {"total": 0, "peak": 0, "average": 0.0}
     assert len(session.statements) == 1
     statement = str(session.statements[0])
-    assert "archive_submissions.created_at >=" in statement
-    assert "archive_submissions.created_at <" in statement
+    assert "archive_submission_events.submitted_at >=" in statement
+    assert "archive_submission_events.submitted_at <" in statement
+    assert "archive_submissions" not in statement
     assert "GROUP BY" in statement
+
+
+@pytest.mark.asyncio
+async def test_record_submission_event_keeps_only_stable_statistics_fields():
+    submitted_at = datetime(2026, 7, 15, 3, 20, tzinfo=timezone.utc)
+    submission = ArchiveSubmission(
+        id=41,
+        subject="course",
+        category="category",
+        name="exam",
+        academic_year=114,
+        archive_type=ArchiveType.MIDTERM,
+        professor="professor",
+        object_name="private/object.pdf",
+        requester_id=8,
+        created_at=submitted_at,
+    )
+    session = _FakeSession()
+
+    await record_submission_event(session, submission)
+
+    assert isinstance(session.added, ArchiveSubmissionEvent)
+    assert session.added.submission_id == 41
+    assert session.added.submitted_at == submitted_at
+    assert set(session.added.model_dump(exclude={"id"})) == {"submission_id", "submitted_at"}
+
+
+def _make_submission(*, submission_id: int, created_at: datetime) -> ArchiveSubmission:
+    return ArchiveSubmission(
+        id=submission_id,
+        subject=f"course-{submission_id}",
+        category="category",
+        name=f"exam-{submission_id}",
+        academic_year=114,
+        archive_type=ArchiveType.FINAL,
+        professor="professor",
+        object_name=f"private/{submission_id}.pdf",
+        requester_id=8,
+        created_at=created_at,
+    )
+
+
+@pytest.mark.parametrize("range_key", ["24h", "48h", "72h", "7d", "30d", "90d"])
+def test_submission_event_survives_delete_restore_and_permanent_delete(range_key):
+    engine = create_engine("sqlite://")
+    ArchiveSubmission.__table__.create(engine)
+    ArchiveSubmissionEvent.__table__.create(engine)
+    submitted_at = datetime(2026, 7, 15, 3, 20, tzinfo=timezone.utc)
+
+    with Session(engine) as session:
+        submission = _make_submission(submission_id=101, created_at=submitted_at)
+        session.add(submission)
+        session.add(ArchiveSubmissionEvent(submission_id=101, submitted_at=submitted_at))
+        session.commit()
+
+        def event_count() -> int:
+            return int(session.scalar(select(func.count(ArchiveSubmissionEvent.id))) or 0)
+
+        assert event_count() == 1
+
+        submission.status = SubmissionStatus.DELETED
+        submission.deleted_at = submitted_at + timedelta(minutes=1)
+        session.commit()
+        assert event_count() == 1
+
+        submission.status = SubmissionStatus.PENDING
+        submission.deleted_at = None
+        submission.restored_at = submitted_at + timedelta(minutes=2)
+        session.commit()
+        assert event_count() == 1
+
+        submission.status = SubmissionStatus.DELETED
+        submission.deleted_at = submitted_at + timedelta(minutes=3)
+        session.commit()
+        session.delete(submission)
+        session.commit()
+        assert event_count() == 1
+
+        second_time = submitted_at + timedelta(minutes=4)
+        session.add(_make_submission(submission_id=102, created_at=second_time))
+        session.add(ArchiveSubmissionEvent(submission_id=102, submitted_at=second_time))
+        session.commit()
+        assert event_count() == 2
+
+        _, bucket_minutes, _, _, _ = get_submission_statistics_window(range_key, NOW)
+        counts = {}
+        for occurred_at in (submitted_at, second_time):
+            bucket_start = align_product_bucket(occurred_at, bucket_minutes)
+            counts[bucket_start] = counts.get(bucket_start, 0) + 1
+        result = build_submission_statistics(
+            range_key=range_key,
+            counts_by_bucket_start=counts,
+            now=NOW,
+        )
+        assert result.summary.total == 2
+        assert sum(point.count for point in result.points) == 2
+
+    engine.dispose()

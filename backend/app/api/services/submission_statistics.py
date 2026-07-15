@@ -3,6 +3,8 @@ from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.models.models import (
+    ArchiveSubmission,
+    ArchiveSubmissionEvent,
     SubmissionStatisticsPoint,
     SubmissionStatisticsRead,
     SubmissionStatisticsSummary,
@@ -18,6 +20,21 @@ SUBMISSION_RANGE_CONFIG = {
     "90d": ("date", 24 * 60, 90),
 }
 PRODUCT_TIMEZONE = ZoneInfo(settings.PRODUCT_TIMEZONE)
+
+
+async def record_submission_event(db, submission: ArchiveSubmission) -> None:
+    """Persist the one immutable statistics event created with a submission."""
+    if submission.id is None:
+        await db.flush()
+    if submission.id is None:
+        raise ValueError("Submission must have an id before recording its event")
+
+    db.add(
+        ArchiveSubmissionEvent(
+            submission_id=submission.id,
+            submitted_at=submission.created_at,
+        )
+    )
 
 
 def normalize_utc(value: datetime) -> datetime:

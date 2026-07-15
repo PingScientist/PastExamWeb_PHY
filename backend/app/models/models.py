@@ -302,6 +302,21 @@ class ArchiveSubmission(SQLModel, table=True):
     )
 
 
+class ArchiveSubmissionEvent(SQLModel, table=True):
+    """Minimal immutable ledger entry for a submission creation event."""
+
+    __tablename__ = "archive_submission_events"
+    __table_args__ = (
+        Index("ix_archive_submission_events_submitted_at", "submitted_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    submission_id: int = Field(unique=True, index=True)
+    submitted_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+
+
 class ArchiveDiscussionMessage(SQLModel, table=True):
     __tablename__ = "archive_discussion_messages"
     id: Optional[int] = Field(default=None, primary_key=True)

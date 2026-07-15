@@ -19,6 +19,7 @@ from app.models.models import (
     Archive,
     ArchiveSubmissionComparisonRead,
     ArchiveSubmission,
+    ArchiveSubmissionEvent,
     ArchiveSubmissionRead,
     SubmissionStatisticsRead,
     ArchiveSubmissionUpdate,
@@ -45,6 +46,7 @@ from app.api.services.submission_statistics import (
     SUBMISSION_RANGE_CONFIG,
     build_submission_statistics,
     get_submission_statistics_window,
+    record_submission_event,
 )
 
 router = APIRouter()
@@ -407,6 +409,8 @@ async def upload_archive(
                 requester_id=current_user.user_id,
             )
             db.add(submission)
+            await db.flush()
+            await record_submission_event(db, submission)
             await db.commit()
             await db.refresh(submission)
 
@@ -463,6 +467,8 @@ async def upload_archive(
             reviewed_at=datetime.now(timezone.utc),
         )
         db.add(submission)
+        await db.flush()
+        await record_submission_event(db, submission)
         await db.commit()
         await db.refresh(submission)
 
@@ -687,17 +693,17 @@ async def get_archive_submission_statistics(
     bucket_seconds = bucket_minutes * 60
     bucket_epoch = cast(
         func.floor(
-            (func.extract("epoch", ArchiveSubmission.created_at) - range_start.timestamp())
+            (func.extract("epoch", ArchiveSubmissionEvent.submitted_at) - range_start.timestamp())
             / bucket_seconds
         ),
         BigInteger,
     )
     result = await db.execute(
-        select(bucket_epoch.label("bucket_index"), func.count(ArchiveSubmission.id))
+        select(bucket_epoch.label("bucket_index"), func.count(ArchiveSubmissionEvent.id))
         .where(
-            ArchiveSubmission.created_at >= range_start,
-            ArchiveSubmission.created_at < range_end,
-            ArchiveSubmission.created_at <= now_utc,
+            ArchiveSubmissionEvent.submitted_at >= range_start,
+            ArchiveSubmissionEvent.submitted_at < range_end,
+            ArchiveSubmissionEvent.submitted_at <= now_utc,
         )
         .group_by(bucket_epoch)
     )
