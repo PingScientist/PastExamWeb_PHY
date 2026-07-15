@@ -504,6 +504,7 @@
                     >
                       <button
                         type="button"
+                        class="user-insights__switch-option user-insights__switch-option--primary"
                         :class="{ 'is-active': userInsightsView === 'login-hour' }"
                         :aria-pressed="userInsightsView === 'login-hour'"
                         @click="userInsightsView = 'login-hour'"
@@ -512,6 +513,7 @@
                       </button>
                       <button
                         type="button"
+                        class="user-insights__switch-option user-insights__switch-option--secondary"
                         :class="{ 'is-active': userInsightsView === 'login-date' }"
                         :aria-pressed="userInsightsView === 'login-date'"
                         @click="userInsightsView = 'login-date'"
@@ -520,6 +522,7 @@
                       </button>
                       <button
                         type="button"
+                        class="user-insights__switch-option user-insights__switch-option--wide"
                         :class="{ 'is-active': userInsightsView === 'level' }"
                         :aria-pressed="userInsightsView === 'level'"
                         @click="userInsightsView = 'level'"
@@ -1330,6 +1333,7 @@
                     >
                       <button
                         type="button"
+                        class="user-insights__switch-option"
                         :class="{ 'is-active': reviewSubmissionView === 'time' }"
                         :aria-pressed="reviewSubmissionView === 'time'"
                         @click="reviewSubmissionView = 'time'"
@@ -1338,6 +1342,7 @@
                       </button>
                       <button
                         type="button"
+                        class="user-insights__switch-option"
                         :class="{ 'is-active': reviewSubmissionView === 'date' }"
                         :aria-pressed="reviewSubmissionView === 'date'"
                         @click="reviewSubmissionView = 'date'"
@@ -12767,23 +12772,41 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 437px) {
-  .user-insights__switch--two,
-  .user-insights__switch--three {
+  .admin-insights-card .user-insights__switch.user-insights__switch--two,
+  .admin-insights-card .user-insights__switch.user-insights__switch--three {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
     max-width: 100%;
   }
 
-  .user-insights__switch--two > button,
-  .user-insights__switch--three > button {
+  .admin-insights-card .user-insights__switch > .user-insights__switch-option {
+    display: block;
+    flex: none;
+    box-sizing: border-box;
     width: 100%;
     min-width: 0;
+    max-width: none;
     white-space: normal;
   }
 
-  .user-insights__switch--three > button:last-child {
-    grid-column: 1 / -1;
+  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--primary {
+    grid-area: primary;
+  }
+
+  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--secondary {
+    grid-area: secondary;
+  }
+
+  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--wide {
+    grid-area: wide;
+    justify-self: stretch;
+  }
+
+  .admin-insights-card .user-insights__switch.user-insights__switch--three {
+    grid-template-areas:
+      'primary secondary'
+      'wide wide';
   }
 }
 

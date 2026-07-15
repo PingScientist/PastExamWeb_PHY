@@ -98,11 +98,20 @@ describe('user statistics chart layout styles', () => {
       expect(width).toBeLessThanOrEqual(437)
       expect(adminSource).toContain('class="user-insights__switch user-insights__switch--three"')
       expect(adminSource).toContain('class="user-insights__switch user-insights__switch--two"')
-      expect(adminSource).toMatch(
-        /@media \(max-width: 437px\)[\s\S]*?\.user-insights__switch--two,[\s\S]*?\.user-insights__switch--three\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
+      expect(adminSource).toContain(
+        'class="user-insights__switch-option user-insights__switch-option--wide"'
       )
       expect(adminSource).toMatch(
-        /\.user-insights__switch--three > button:last-child\s*\{[^}]*grid-column: 1 \/ -1;/
+        /@media \(max-width: 437px\)[\s\S]*?\.user-insights__switch\.user-insights__switch--two,[\s\S]*?\.user-insights__switch\.user-insights__switch--three\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
+      )
+      expect(adminSource).toMatch(
+        /\.user-insights__switch--three\s*> \.user-insights__switch-option--wide\s*\{[^}]*grid-area: wide;[^}]*justify-self: stretch;/
+      )
+      expect(adminSource).toMatch(
+        /\.user-insights__switch\.user-insights__switch--three\s*\{[^}]*grid-template-areas:\s*'primary secondary'\s*'wide wide';/
+      )
+      expect(adminSource).toMatch(
+        /\.user-insights__switch > \.user-insights__switch-option\s*\{[^}]*display: block;[^}]*flex: none;[^}]*width: 100%;[^}]*min-width: 0;[^}]*max-width: none;/
       )
     }
   )
