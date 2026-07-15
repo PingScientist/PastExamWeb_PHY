@@ -92,6 +92,27 @@ describe('user statistics chart layout styles', () => {
     }
   )
 
+  it.each([320, 344, 375, 399, 420, 437])(
+    'uses complete segmented grids at the %spx narrow width',
+    (width) => {
+      expect(width).toBeLessThanOrEqual(437)
+      expect(adminSource).toContain('class="user-insights__switch user-insights__switch--three"')
+      expect(adminSource).toContain('class="user-insights__switch user-insights__switch--two"')
+      expect(adminSource).toMatch(
+        /@media \(max-width: 437px\)[\s\S]*?\.user-insights__switch--two,[\s\S]*?\.user-insights__switch--three\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
+      )
+      expect(adminSource).toMatch(
+        /\.user-insights__switch--three > button:last-child\s*\{[^}]*grid-column: 1 \/ -1;/
+      )
+    }
+  )
+
+  it.each([438, 456])('keeps the existing flex layout at %spx', (width) => {
+    expect(width).toBeGreaterThan(437)
+    expect(adminSource).not.toContain('@media (max-width: 438px)')
+    expect(adminSource).not.toContain('@media (max-width: 456px)')
+  })
+
   it('observes the effective x-axis without changing the responsive tick owner', () => {
     expect(adminSource).toContain(
       'ref="userStatisticsChartElement"\n                          class="user-login-column-chart__x-axis"'

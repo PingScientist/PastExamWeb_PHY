@@ -497,7 +497,11 @@
                     </p>
                   </div>
                   <div class="user-insights__actions">
-                    <div class="user-insights__switch" role="group" aria-label="切換使用者統計圖表">
+                    <div
+                      class="user-insights__switch user-insights__switch--three"
+                      role="group"
+                      aria-label="切換使用者統計圖表"
+                    >
                       <button
                         type="button"
                         :class="{ 'is-active': userInsightsView === 'login-hour' }"
@@ -1319,7 +1323,11 @@
                     <p>{{ reviewSubmissionDescription }}</p>
                   </div>
                   <div class="user-insights__actions">
-                    <div class="user-insights__switch" role="group" aria-label="切換投稿統計圖表">
+                    <div
+                      class="user-insights__switch user-insights__switch--two"
+                      role="group"
+                      aria-label="切換投稿統計圖表"
+                    >
                       <button
                         type="button"
                         :class="{ 'is-active': reviewSubmissionView === 'time' }"
@@ -12755,6 +12763,27 @@ onBeforeUnmount(() => {
 
   .contributor-level-settings-footer :deep(.p-button) {
     flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 437px) {
+  .user-insights__switch--two,
+  .user-insights__switch--three {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .user-insights__switch--two > button,
+  .user-insights__switch--three > button {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .user-insights__switch--three > button:last-child {
+    grid-column: 1 / -1;
   }
 }
 
