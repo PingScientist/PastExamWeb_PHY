@@ -66,13 +66,33 @@ describe('user statistics chart layout styles', () => {
     )
   })
 
-  it('right-aligns only the mobile statistics controls and observes the effective x-axis', () => {
+  it('keeps the <=640px chart controls compact and right-aligned as one group', () => {
     expect(adminSource).toMatch(
-      /@media \(max-width: 640px\)[\s\S]*?\.user-insights__actions\s*\{[^}]*justify-content: flex-end;/
+      /@media \(max-width: 640px\)[\s\S]*?\.user-insights__actions\s*\{[^}]*align-items: center;[^}]*justify-content: flex-end;/
     )
     expect(adminSource).toMatch(
-      /@media \(max-width: 640px\)[\s\S]*?\.user-insights__switch\s*\{[^}]*margin-inline-start: auto;[^}]*justify-content: flex-end;/
+      /@media \(max-width: 640px\)[\s\S]*?\.user-insights__switch\s*\{[^}]*margin-inline-start: 0;[^}]*justify-content: flex-end;/
     )
+    expect(adminSource).toMatch(
+      /@media \(max-width: 640px\)[\s\S]*?\.user-insights__toggle\s*\{[^}]*margin-inline-start: 0;/
+    )
+  })
+
+  it.each([641, 700, 768, 820, 871])(
+    'covers the %spx intermediate width with shared right-aligned actions',
+    (width) => {
+      expect(width).toBeGreaterThanOrEqual(641)
+      expect(width).toBeLessThanOrEqual(871)
+      expect(adminSource).toMatch(
+        /@media \(min-width: 641px\) and \(max-width: 871px\)[\s\S]*?\.user-insights__actions\s*\{[^}]*margin-inline-start: auto;[^}]*justify-content: flex-end;/
+      )
+      expect(adminSource).toMatch(
+        /@media \(min-width: 641px\) and \(max-width: 871px\)[\s\S]*?\.user-insights__switch\s*\{[^}]*justify-content: flex-end;/
+      )
+    }
+  )
+
+  it('observes the effective x-axis without changing the responsive tick owner', () => {
     expect(adminSource).toContain(
       'ref="userStatisticsChartElement"\n                          class="user-login-column-chart__x-axis"'
     )
@@ -81,15 +101,19 @@ describe('user statistics chart layout styles', () => {
     )
   })
 
-  it('uses a simple mobile-only level tag without changing the desktop level cell', () => {
+  it('uses one simple level tag throughout the card layout without changing the desktop cell', () => {
+    const cardStart = adminSource.indexOf(
+      '<div v-if="!usersLoading" class="admin-mobile-list admin-mobile-list--users">'
+    )
+    const cardEnd = adminSource.indexOf('<Paginator', cardStart)
+    const cardMarkup = adminSource.slice(cardStart, cardEnd)
+
     expect(adminSource).toContain('Lv{{ user.contributorLevel.level }}')
-    expect(adminSource).toContain('class="user-card-contributor-badge"')
     expect(adminSource).toMatch(
-      /\.mobile-user-level-tag\s*\{[^}]*display: none;[\s\S]*?@media \(max-width: 640px\)[\s\S]*?\.admin-mobile-list--users \.mobile-user-level-tag\s*\{[^}]*display: inline-flex;/
+      /\.admin-mobile-list--users \.mobile-user-level-tag\s*\{[^}]*display: inline-flex;[^}]*flex: 0 0 auto;/
     )
-    expect(adminSource).toMatch(
-      /@media \(max-width: 640px\)[\s\S]*?\.admin-mobile-list--users \.user-card-contributor-badge\s*\{[^}]*display: none;/
-    )
+    expect(cardMarkup).not.toContain('<ContributorLevelBadge')
+    expect(cardMarkup).not.toContain('show-title')
     expect(adminSource).toContain('Lv. {{ data.contributorLevel.level }}')
   })
 })

@@ -987,13 +987,6 @@
                           {{ user.is_admin ? '管理員' : '一般使用者' }}
                         </Tag>
                       </div>
-                      <ContributorLevelBadge
-                        class="user-card-contributor-badge"
-                        :level="user.contributorLevel.level"
-                        :title="user.contributorLevel.name"
-                        size="compact"
-                        show-title
-                      />
                     </div>
                     <span class="user-online-badge" :class="getOnlineStatusDotClass(user)">
                       <i class="pi pi-circle-fill"></i>
@@ -8186,8 +8179,21 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.mobile-user-level-tag {
-  display: none;
+.admin-mobile-list--users .mobile-user-level-tag {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.18rem 0.38rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: var(--app-badge-font-size);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 :deep(.user-management-table .p-datatable-thead > tr > th:first-child),
@@ -12569,14 +12575,14 @@ onBeforeUnmount(() => {
 
   .user-insights__actions {
     width: 100%;
-    align-items: flex-start;
+    align-items: center;
     justify-content: flex-end;
   }
 
   .user-insights__switch {
     width: fit-content;
     max-width: 100%;
-    margin-inline-start: auto;
+    margin-inline-start: 0;
     justify-content: flex-end;
   }
 
@@ -12586,7 +12592,7 @@ onBeforeUnmount(() => {
   }
 
   .user-insights__toggle {
-    margin-inline-start: auto;
+    margin-inline-start: 0;
   }
 
   .admin-insights-card .chart-summary-control-row {
@@ -12669,21 +12675,7 @@ onBeforeUnmount(() => {
   }
 
   .admin-mobile-list--users .mobile-user-level-tag {
-    display: inline-flex;
     grid-area: level;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    min-width: 0;
-    padding: 0.18rem 0.38rem;
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-size: var(--app-badge-font-size);
-    font-weight: 700;
-    line-height: 1.2;
-    white-space: nowrap;
   }
 
   .admin-mobile-list--users .user-card-title-group .admin-tablet-card-title {
@@ -12695,10 +12687,6 @@ onBeforeUnmount(() => {
 
   .admin-mobile-list--users .user-role-tag-group {
     grid-area: role;
-  }
-
-  .admin-mobile-list--users .user-card-contributor-badge {
-    display: none;
   }
 
   .user-level-chart__row {
@@ -12786,6 +12774,25 @@ onBeforeUnmount(() => {
 
   .contributor-level-insights__actions {
     flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 871px) {
+  .user-insights__actions {
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+    margin-inline-start: auto;
+    justify-content: flex-end;
+  }
+
+  .user-insights__switch {
+    max-width: 100%;
+    justify-content: flex-end;
+  }
+
+  .user-insights__toggle {
+    margin-inline-start: 0;
   }
 }
 
