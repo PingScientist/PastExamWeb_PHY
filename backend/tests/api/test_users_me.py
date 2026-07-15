@@ -23,6 +23,7 @@ async def test_get_me_sets_nickname_when_missing(client, session_maker, make_use
         body = response.json()
         assert body["id"] == user.id
         assert body["nickname"] == user.name
+        assert body["show_level_title"] is True
 
         async with session_maker() as session:
             stored = await session.get(User, user.id)
@@ -54,12 +55,30 @@ async def test_update_my_nickname_trims_and_updates(client, make_user):
 
     try:
         response = await client.patch(
-            "/users/me/nickname", json={"nickname": "  New Nick  "}
+            "/users/me/nickname",
+            json={"nickname": "  New Nick  ", "show_level_title": False},
         )
         assert response.status_code == 200
         body = response.json()
         assert body["id"] == user.id
         assert body["nickname"] == "New Nick"
+        assert body["show_level_title"] is False
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_update_my_discussion_settings_can_reenable_level_title(client, make_user):
+    user = await make_user(show_level_title=False)
+    app.dependency_overrides[get_current_user] = _override_user(user.id)
+
+    try:
+        response = await client.patch(
+            "/users/me/nickname",
+            json={"nickname": user.name, "show_level_title": True},
+        )
+        assert response.status_code == 200
+        assert response.json()["show_level_title"] is True
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 

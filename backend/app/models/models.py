@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -54,6 +55,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     name: str = Field(unique=True, index=True)
     nickname: Optional[str] = Field(default=None, index=True)
+    show_level_title: bool = Field(default=True)
     is_admin: bool = Field(default=False)
     password_hash: Optional[str] = Field(default=None)
     is_local: bool = Field(default=False)
@@ -71,6 +73,36 @@ class User(SQLModel, table=True):
     )
 
     archives: List["Archive"] = Relationship(back_populates="uploader")
+
+
+class UserPresenceSession(SQLModel, table=True):
+    __tablename__ = "user_presence_sessions"
+    __table_args__ = (
+        Index("ix_user_presence_sessions_user_started", "user_id", "started_at"),
+        Index("ix_user_presence_sessions_identifier", "session_identifier"),
+        Index("ix_user_presence_sessions_last_seen", "last_seen_at"),
+        Index("ix_user_presence_sessions_ended", "ended_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    session_identifier: str = Field(sa_column=Column(String(64), nullable=False))
+    started_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    last_seen_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    ended_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
 
 
 class CourseCategoryConfig(SQLModel, table=True):
@@ -108,6 +140,37 @@ class CourseCategoryConfig(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
     restored_by_id: Optional[int] = Field(default=None)
+
+
+class SystemSetting(SQLModel, table=True):
+    __tablename__ = "system_settings"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    key: str = Field(
+        sa_column=Column(String(128), nullable=False, unique=True, index=True)
+    )
+    value: Any = Field(sa_column=Column(JSONB, nullable=False))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    updated_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )
 
 
 class Course(SQLModel, table=True):
@@ -239,6 +302,21 @@ class ArchiveSubmission(SQLModel, table=True):
     )
 
 
+class ArchiveSubmissionEvent(SQLModel, table=True):
+    """Minimal immutable ledger entry for a submission creation event."""
+
+    __tablename__ = "archive_submission_events"
+    __table_args__ = (
+        Index("ix_archive_submission_events_submitted_at", "submitted_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    submission_id: int = Field(unique=True, index=True)
+    submitted_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+
+
 class ArchiveDiscussionMessage(SQLModel, table=True):
     __tablename__ = "archive_discussion_messages"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -302,6 +380,7 @@ class UserRead(BaseModel):
     email: str
     name: str
     nickname: Optional[str] = None
+    show_level_title: bool = True
     is_admin: bool
     is_local: bool
     last_login: Optional[datetime]
@@ -310,9 +389,106 @@ class UserRead(BaseModel):
     last_logout_at: Optional[datetime] = None
     is_online: bool = False
     online_status_label: Optional[str] = None
+    contributor_experience: int = 0
 
     class Config:
         from_attributes = True
+
+
+class OnlineStatisticsPoint(BaseModel):
+    start: datetime
+    end: datetime
+    at: datetime
+    count: int
+    has_data: bool
+
+
+class OnlineStatisticsRead(BaseModel):
+    range: str
+    bucket_minutes: int
+    timezone: str = "UTC"
+    online_timeout_seconds: int
+    current_online: int
+    peak_online: int
+    average_online: float
+    history_started_at: Optional[datetime] = None
+    points: List[OnlineStatisticsPoint] = Field(default_factory=list)
+
+
+class SubmissionStatisticsSummary(BaseModel):
+    total: int
+    peak: int
+    average: float
+
+
+class SubmissionStatisticsPoint(BaseModel):
+    start: datetime
+    end: datetime
+    count: int
+
+
+class SubmissionStatisticsRead(BaseModel):
+    mode: str
+    range: str
+    timezone: str
+    bucket_minutes: int
+    range_start: datetime
+    range_end: datetime
+    summary: SubmissionStatisticsSummary
+    points: List[SubmissionStatisticsPoint] = Field(default_factory=list)
+
+
+class UserOnlineDurationPoint(BaseModel):
+    start: datetime
+    end: datetime
+    duration_seconds: int
+    has_data: bool = False
+
+
+class UserOnlineDurationRead(BaseModel):
+    user_id: int
+    mode: str
+    timezone: str
+    online_timeout_seconds: int
+    range_start: datetime
+    range_end: datetime
+    history_started_at: Optional[datetime] = None
+    points: List[UserOnlineDurationPoint] = Field(default_factory=list)
+
+
+class UserSubmissionStatusCounts(BaseModel):
+    pending: int = 0
+    approved: int = 0
+    rejected: int = 0
+    takedown: int = 0
+    deleted: int = 0
+
+
+class UserSubmissionRecordRead(BaseModel):
+    id: int
+    status: SubmissionStatus
+    archive_type: ArchiveType
+    course_name: str
+    exam_name: str
+    academic_year: int
+    professor: str
+    has_answers: bool = False
+    requested_course_name: Optional[str] = None
+    requested_category_key: Optional[str] = None
+    is_admin_upload: bool = False
+    submitted_at: datetime
+    reviewed_at: Optional[datetime] = None
+    review_comment: Optional[str] = None
+
+
+class UserSubmissionStatsRead(BaseModel):
+    user_id: int
+    name: str
+    contributor_experience: int = 0
+    total_count: int = 0
+    status_counts: UserSubmissionStatusCounts
+    records_total: int = 0
+    submission_records: List[UserSubmissionRecordRead] = Field(default_factory=list)
 
 
 class UserCreate(BaseModel):
@@ -335,6 +511,7 @@ class UserUpdate(BaseModel):
 
 class UserNicknameUpdate(BaseModel):
     nickname: str
+    show_level_title: Optional[bool] = None
 
 
 class UserRoles(BaseModel):
@@ -422,6 +599,8 @@ class ArchiveDiscussionMessageRead(BaseModel):
     archive_id: int
     user_id: int
     user_name: str
+    author_show_level_title: bool = False
+    author_experience: Optional[int] = None
     content: str
     is_pinned: bool = False
     created_at: datetime

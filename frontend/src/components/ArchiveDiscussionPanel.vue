@@ -32,12 +32,19 @@
         class="message p-2.5"
         :class="{ 'is-pinned': msg.is_pinned }"
       >
-        <div class="flex align-items-center justify-content-between gap-3">
-          <div class="flex align-items-center gap-2 min-w-0">
+        <div class="discussion-message-header">
+          <div class="discussion-author flex align-items-center gap-2 min-w-0">
             <Tag v-if="msg.is_pinned" value="置頂" severity="warning" class="discussion-pin-tag" />
-            <div class="text-sm font-semibold">{{ msg.user_name }}</div>
+            <div class="discussion-author-name text-sm font-semibold">{{ msg.user_name }}</div>
+            <ContributorLevelBadge
+              v-if="shouldShowLevelTitle(msg)"
+              :level="getMessageLevel(msg).level"
+              :title="getMessageLevel(msg).name"
+              size="compact"
+              show-title
+            />
           </div>
-          <div class="flex align-items-center gap-2">
+          <div class="discussion-message-actions">
             <div class="text-xs" style="color: var(--text-secondary)">
               {{ formatTime(msg.created_at) }}
             </div>
@@ -149,6 +156,18 @@
             />
             <span>預設開啟討論區</span>
           </label>
+          <label for="discussion-show-level-title" class="discussion-setting-option">
+            <Checkbox
+              inputId="discussion-show-level-title"
+              name="discussion-show-level-title"
+              v-model="showLevelTitleDraft"
+              :binary="true"
+            />
+            <span>
+              <span>顯示我的等級稱號</span>
+              <small>開啟後，留言名稱旁會顯示目前的 Lv. 與投稿稱號</small>
+            </span>
+          </label>
         </div>
       </div>
 
@@ -181,8 +200,11 @@ import { formatRelativeTime } from '../utils/time'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { getBooleanPreference, setBooleanPreference } from '../utils/usePreferences'
 import { STORAGE_KEYS } from '../utils/storage'
+import { loadContributorLevelSettings, resolveSubmissionLevel } from '../utils/submissionLevel'
+import ContributorLevelBadge from './ContributorLevelBadge.vue'
 
 const DESKTOP_DEFAULT_OPEN_KEY = STORAGE_KEYS.local.DISCUSSION_DESKTOP_DEFAULT_OPEN
+loadContributorLevelSettings()
 
 const props = defineProps({
   courseId: {
@@ -231,9 +253,10 @@ const canSend = computed(() => props.enabled && connected.value && Boolean(curre
 const canPin = computed(() => Boolean(currentUser.value?.is_admin))
 const messagesRef = ref(null)
 
-const profile = ref({ nickname: '', name: '' })
+const profile = ref({ nickname: '', name: '', showLevelTitle: true })
 const showNicknameDialog = ref(false)
 const nicknameDraft = ref('')
+const showLevelTitleDraft = ref(true)
 const nicknameSaving = ref(false)
 const desktopDefaultOpen = ref(getBooleanPreference(DESKTOP_DEFAULT_OPEN_KEY, true))
 
@@ -302,6 +325,14 @@ function normalizeId(raw) {
 
 function formatTime(val) {
   return formatRelativeTime(val)
+}
+
+function shouldShowLevelTitle(message) {
+  return message?.author_show_level_title === true && Number.isFinite(message?.author_experience)
+}
+
+function getMessageLevel(message) {
+  return resolveSubmissionLevel(message?.author_experience)
 }
 
 function scrollToBottom() {
@@ -406,7 +437,11 @@ async function connect() {
         const preferredName = (profile.value.nickname || profile.value.name || '').trim()
         const normalized =
           user && preferredName && incoming.user_id === user.id
-            ? { ...incoming, user_name: preferredName }
+            ? {
+                ...incoming,
+                user_name: preferredName,
+                author_show_level_title: profile.value.showLevelTitle,
+              }
             : incoming
 
         messages.value = [...messages.value, normalized]
@@ -561,6 +596,7 @@ async function loadMe() {
     profile.value = {
       nickname: (data?.nickname || data?.name || '').trim(),
       name: (data?.name || '').trim(),
+      showLevelTitle: data?.show_level_title !== false,
     }
   } catch {
     // ignore
@@ -569,6 +605,7 @@ async function loadMe() {
 
 function openNicknameDialog() {
   nicknameDraft.value = (profile.value.nickname || profile.value.name || '').trim()
+  showLevelTitleDraft.value = profile.value.showLevelTitle
   desktopDefaultOpen.value = getBooleanPreference(DESKTOP_DEFAULT_OPEN_KEY, true)
   showNicknameDialog.value = true
 }
@@ -587,13 +624,20 @@ async function saveNickname() {
 
   nicknameSaving.value = true
   try {
-    const { data } = await userService.updateMyNickname(nextNickname)
+    const { data } = await userService.updateMyDiscussionSettings(
+      nextNickname,
+      showLevelTitleDraft.value
+    )
     const newNickname = (data?.nickname || data?.name || '').trim()
+    const newShowLevelTitle = data?.show_level_title !== false
     profile.value.nickname = newNickname
     profile.value.name = (data?.name || profile.value.name || '').trim()
+    profile.value.showLevelTitle = newShowLevelTitle
 
     messages.value = messages.value.map((m) =>
-      m.user_id === currentUser.value.id ? { ...m, user_name: newNickname } : m
+      m.user_id === currentUser.value.id
+        ? { ...m, user_name: newNickname, author_show_level_title: newShowLevelTitle }
+        : m
     )
 
     trackEvent(EVENTS.DISCUSSION_UPDATE_NICKNAME, {
@@ -657,6 +701,57 @@ function handleDesktopDefaultOpenChange() {
 .message.is-pinned {
   border-color: color-mix(in srgb, var(--brand-gold) 58%, var(--border-color));
   background: color-mix(in srgb, var(--brand-gold) 10%, var(--bg-secondary));
+}
+
+.discussion-author {
+  flex: 1 1 12rem;
+  flex-wrap: wrap;
+}
+
+.discussion-author-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.discussion-message-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  flex-wrap: wrap;
+}
+
+.discussion-message-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.discussion-author :deep(.contributor-level__title) {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.discussion-setting-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.discussion-setting-option > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.discussion-setting-option small {
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 :deep(.discussion-pin-tag.p-tag) {

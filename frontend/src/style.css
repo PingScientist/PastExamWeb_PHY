@@ -74,6 +74,77 @@ body {
   font-size: var(--app-font-size-base);
 }
 
+.chart-summary-control-row {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+}
+
+.chart-summary-group {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.chart-summary-item {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 6.25rem;
+  padding: 0.38rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+  line-height: 1.3;
+}
+
+.chart-summary-item strong {
+  color: var(--text-primary);
+  font-size: var(--app-font-size-sm);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.chart-control-stack {
+  display: grid;
+  flex: 0 1 auto;
+  justify-items: end;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.chart-timezone-label {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+  line-height: 1.35;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .chart-summary-control-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chart-summary-group,
+  .chart-control-stack {
+    width: 100%;
+  }
+
+  .chart-control-stack {
+    justify-items: stretch;
+  }
+
+  .chart-timezone-label {
+    text-align: right;
+  }
+}
+
 .p-button,
 .p-button-label,
 .p-button-icon,
@@ -536,6 +607,77 @@ body {
 .p-dialog .pdf-frame,
 .p-dialog .compare-preview-pane iframe {
   font-size: initial !important;
+}
+
+/* Submission dialogs are teleported to body, so their complete typography scope
+ * must live with the global PrimeVue overlay styles and use the root preference. */
+.submission-typography-dialog {
+  font-size: var(--app-font-size-base);
+}
+
+.submission-typography-dialog .p-dialog-title {
+  min-width: 0;
+  font-size: var(--app-font-size-lg);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.submission-typography-dialog .p-dialog-content,
+.submission-typography-dialog .p-dialog-footer,
+.submission-typography-dialog label,
+.submission-typography-dialog small,
+.submission-typography-dialog .p-message,
+.submission-typography-dialog .p-paginator {
+  font-size: inherit;
+}
+
+.submission-typography-dialog .p-dialog-close-button {
+  flex: 0 0 auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.submission-typography-overlay,
+.submission-typography-overlay .p-select-option,
+.submission-typography-overlay .p-select-empty-message {
+  font-size: var(--app-font-size-base);
+}
+
+.user-data-stats-dialog {
+  max-width: 96vw;
+  overflow: hidden;
+}
+
+.user-data-stats-dialog .user-data-stats-dialog__content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 1rem;
+}
+
+.user-data-stats-dialog .user-data-stats-dialog__footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--p-dialog-background, var(--bg-primary));
+}
+
+.user-data-stats-dialog .user-data-stats-dialog__close {
+  min-width: 5rem;
+}
+
+@media (max-width: 575px) {
+  .user-data-stats-dialog .user-data-stats-dialog__footer {
+    padding: 0.875rem 1rem;
+  }
+
+  .user-data-stats-dialog .user-data-stats-dialog__close {
+    width: 100%;
+  }
 }
 
 .p-dialog .pdf-frame,

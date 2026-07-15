@@ -399,6 +399,7 @@
           <Dialog
             v-model:visible="showSubmissionStatusDialog"
             header="我的投稿狀態"
+            class="submission-typography-dialog"
             modal
             :draggable="false"
             :style="{ width: '760px', maxWidth: '94vw' }"
@@ -408,8 +409,84 @@
               class="w-full flex justify-content-center my-4"
             />
             <div v-else class="submission-status-list">
+              <section class="submission-level" aria-labelledby="submission-level-title">
+                <div class="submission-level-header">
+                  <ContributorLevelBadge
+                    id="submission-level-title"
+                    :level="submissionLevel.level"
+                    :title="submissionLevel.name"
+                    size="regular"
+                    show-title
+                  />
+                  <span>{{ submissionLevel.currentExp }} EXP</span>
+                </div>
+                <div
+                  class="submission-level-progress-track"
+                  role="progressbar"
+                  :aria-label="submissionLevelAriaLabel"
+                  :aria-valuemin="0"
+                  :aria-valuemax="100"
+                  :aria-valuenow="submissionLevel.progressPercent"
+                  :title="submissionLevelAriaLabel"
+                  :style="submissionLevelProgressStyle"
+                >
+                  <span
+                    class="submission-level-progress-fill"
+                    :style="{ width: `${submissionLevel.progressPercent}%` }"
+                  ></span>
+                </div>
+                <div class="submission-level-meta">
+                  <span v-if="submissionLevel.isMaxLevel">已達最高等級</span>
+                  <span v-else>
+                    本級 {{ submissionLevel.progressInLevel }} /
+                    {{ submissionLevel.progressRange }} EXP，距離 Lv.
+                    {{ submissionLevel.level + 1 }} 還差 {{ submissionLevel.expToNextLevel }} EXP
+                  </span>
+                  <span
+                    >由已通過與已下架投稿累積（{{ submissionLevel.countedSubmissions }} 筆）</span
+                  >
+                </div>
+              </section>
+              <section class="submission-summary" aria-label="投稿統計">
+                <div class="submission-summary-header">
+                  <strong>共 {{ submissionSummary.total }} 筆投稿</strong>
+                  <span>不含已刪除</span>
+                </div>
+                <div
+                  class="submission-summary-bar"
+                  role="img"
+                  :aria-label="submissionSummaryAriaLabel"
+                  :title="submissionSummaryAriaLabel"
+                >
+                  <span
+                    v-for="status in submissionSummary.statuses"
+                    :key="status.key"
+                    class="submission-summary-segment"
+                    :style="{ width: `${status.ratio}%`, backgroundColor: status.color }"
+                  ></span>
+                </div>
+                <div v-if="submissionSummary.total === 0" class="submission-summary-empty">
+                  目前沒有可統計的投稿
+                </div>
+                <div v-else class="submission-summary-legend">
+                  <div
+                    v-for="status in submissionSummary.statuses"
+                    :key="`legend-${status.key}`"
+                    class="submission-summary-legend-item"
+                  >
+                    <span
+                      class="submission-summary-dot"
+                      :style="{ backgroundColor: status.color }"
+                      aria-hidden="true"
+                    ></span>
+                    <span>{{ status.label }}</span>
+                    <strong>{{ status.count }} 筆</strong>
+                    <span>{{ status.percentage }}</span>
+                  </div>
+                </div>
+              </section>
               <section>
-                <h3>考古題投稿</h3>
+                <h3>考古題投稿紀錄</h3>
                 <div v-if="archiveSubmissions.length === 0" class="submission-empty">
                   目前沒有考古題投稿
                 </div>
@@ -419,31 +496,33 @@
                   class="submission-status-card"
                 >
                   <div class="submission-status-head">
-                    <Tag
-                      :class="[
-                        'soft-badge',
-                        'submission-status-badge',
-                        'my-submission-status-badge',
-                        getSubmissionStatusClass(item.status),
-                      ]"
-                      :severity="getSubmissionSeverity(item.status)"
-                    >
-                      {{ getSubmissionLabel(item.status) }}
-                    </Tag>
-                    <Tag
-                      v-if="item.is_admin_upload"
-                      class="soft-badge soft-badge--admin submission-admin-badge"
-                      severity="secondary"
-                    >
-                      管理員投稿
-                    </Tag>
+                    <div class="submission-status-badges">
+                      <Tag
+                        :class="[
+                          'soft-badge',
+                          'submission-status-badge',
+                          'my-submission-status-badge',
+                          getSubmissionStatusClass(item.status),
+                        ]"
+                        :severity="getSubmissionSeverity(item.status)"
+                      >
+                        {{ getSubmissionLabel(item.status) }}
+                      </Tag>
+                      <Tag
+                        v-if="item.is_admin_upload"
+                        class="soft-badge soft-badge--admin submission-admin-badge"
+                        severity="secondary"
+                      >
+                        管理員投稿
+                      </Tag>
+                    </div>
                     <div class="submission-status-title">
                       <strong>{{ item.subject }}</strong>
                       <span>{{ item.name }}</span>
-                      <small class="my-submission-id"
-                        >投稿編號：{{ formatMySubmissionId(item) }}</small
-                      >
                     </div>
+                    <small class="my-submission-id"
+                      >投稿編號：{{ formatMySubmissionId(item) }}</small
+                    >
                   </div>
                   <div class="submission-status-meta">
                     <span
@@ -472,9 +551,21 @@
                     <strong>{{ item.requested_category_name }}</strong>
                     <small>{{ item.requested_category_key }}</small>
                   </div>
-                  <div v-if="shouldShowReviewNote(item)" class="submission-status-note is-review">
-                    <span>審核備註</span>
-                    <strong>{{ item.review_note }}</strong>
+                  <div class="submission-time-meta">
+                    <span>
+                      <i class="pi pi-clock" aria-hidden="true"></i>
+                      投稿時間：{{ formatSubmissionDateTime(item.created_at) }}
+                    </span>
+                    <span>
+                      <i class="pi pi-check-circle" aria-hidden="true"></i>
+                      審核時間：{{ formatSubmissionReviewedAt(item.reviewed_at) }}
+                    </span>
+                  </div>
+                  <div class="submission-review-note">
+                    <span class="submission-review-note-label">審核留言</span>
+                    <span class="submission-review-note-divider" aria-hidden="true">｜</span>
+                    <strong v-if="shouldShowReviewNote(item)">{{ item.review_note }}</strong>
+                    <span v-else class="submission-review-note-empty">尚無審核留言</span>
                   </div>
                 </article>
               </section>
@@ -662,11 +753,17 @@ import { ref, computed, onMounted, watch, inject, onBeforeUnmount } from 'vue'
 import { courseService, archiveService } from '../api'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import UploadArchiveDialog from '../components/UploadArchiveDialog.vue'
+import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
 import { getCurrentUser, isAuthenticated } from '../utils/auth'
 import { useTheme } from '../utils/useTheme'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { isUnauthorizedError } from '../utils/http'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
+import {
+  getContributorLevelPalette,
+  loadContributorLevelSettings,
+  resolveSubmissionLevel,
+} from '../utils/submissionLevel'
 import {
   STORAGE_KEYS,
   getLocalJson,
@@ -679,6 +776,7 @@ const toast = inject('toast')
 const confirm = inject('confirm')
 
 const { isDarkTheme } = useTheme()
+loadContributorLevelSettings()
 const sidebarVisible = inject('sidebarVisible')
 
 // Check if we're on mobile
@@ -760,6 +858,67 @@ const showUploadDialog = ref(false)
 const showSubmissionStatusDialog = ref(false)
 const submissionStatusLoading = ref(false)
 const archiveSubmissions = ref([])
+const submissionLevel = computed(() => {
+  const countedSubmissions = archiveSubmissions.value.filter((submission) =>
+    ['approved', 'takedown'].includes(getNormalizedSubmissionStatus(submission?.status))
+  ).length
+  return {
+    ...resolveSubmissionLevel(countedSubmissions),
+    countedSubmissions,
+  }
+})
+const submissionLevelAriaLabel = computed(() => {
+  const level = submissionLevel.value
+  if (level.isMaxLevel) {
+    return `投稿等級 Lv. ${level.level} ${level.name}，目前 ${level.currentExp} EXP，已達最高等級`
+  }
+  return `投稿等級 Lv. ${level.level} ${level.name}，經驗進度 ${level.progressPercent}%，本級 ${level.progressInLevel} / ${level.progressRange} EXP，距離下一級還差 ${level.expToNextLevel} EXP`
+})
+const submissionLevelProgressStyle = computed(() => {
+  const palette = getContributorLevelPalette(submissionLevel.value.level)
+  return {
+    '--level-progress-bg': palette.bg,
+    '--level-progress-border': palette.border,
+  }
+})
+const submissionStatusConfig = [
+  { key: 'pending', color: '#d29922' },
+  { key: 'approved', color: '#2da44e' },
+  { key: 'rejected', color: '#cf222e' },
+  { key: 'takedown', color: '#6e7781' },
+]
+const submissionSummary = computed(() => {
+  const counts = new Map(submissionStatusConfig.map(({ key }) => [key, 0]))
+  archiveSubmissions.value.forEach((submission) => {
+    const status = getNormalizedSubmissionStatus(submission?.status)
+    if (status !== 'deleted' && counts.has(status)) counts.set(status, counts.get(status) + 1)
+  })
+  const total = Array.from(counts.values()).reduce((sum, count) => sum + count, 0)
+  return {
+    total,
+    statuses: submissionStatusConfig
+      .map(({ key, color }) => {
+        const count = counts.get(key)
+        const ratio = total > 0 ? (count / total) * 100 : 0
+        return {
+          key,
+          color,
+          count,
+          ratio,
+          label: getSubmissionLabel(key),
+          percentage: `${ratio.toFixed(1)}%`,
+        }
+      })
+      .filter(({ count }) => count > 0),
+  }
+})
+const submissionSummaryAriaLabel = computed(() => {
+  if (submissionSummary.value.total === 0) return '投稿統計：目前沒有可統計的投稿，不含已刪除'
+  const details = submissionSummary.value.statuses
+    .map((status) => `${status.label} ${status.count} 筆，${status.percentage}`)
+    .join('；')
+  return `投稿統計：共 ${submissionSummary.value.total} 筆投稿，不含已刪除；${details}`
+})
 const uploadFormProfessors = ref([])
 const expandedPanels = ref([])
 const expandedMenuItems = ref({})
@@ -1129,6 +1288,27 @@ function getArchiveSubmissionKindClass(item) {
 function formatMySubmissionId(item) {
   const id = item?.submission_id ?? item?.submissionId ?? item?.id ?? item?.source_submission_id
   return id !== null && id !== undefined && id !== '' ? `#${id}` : '—'
+}
+
+function formatSubmissionDateTime(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  const parts = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]))
+  return `${values.year}/${values.month}/${values.day} ${values.hour}:${values.minute}`
+}
+
+function formatSubmissionReviewedAt(value) {
+  return value ? formatSubmissionDateTime(value) : '尚未審核'
 }
 
 function isBoilerplateReviewNote(note) {
@@ -3352,9 +3532,130 @@ const mobileMenuItems = computed(() => {
   flex-shrink: 0;
 }
 
+.submission-level {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, var(--primary-color) 12%);
+  overflow: hidden;
+}
+
+.submission-level-header,
+.submission-level-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.submission-level-header {
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.submission-level-header span,
+.submission-level-meta {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+}
+
+.submission-level-progress-track {
+  position: relative;
+  width: 100%;
+  height: 0.75rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 2px;
+  border: 1px solid var(--level-progress-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 82%, var(--bg-primary) 18%);
+}
+
+.submission-level-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--level-progress-bg);
+  box-shadow: inset 0 0 0 1px var(--level-progress-border);
+}
+
+.submission-level-meta {
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+  line-height: 1.35;
+}
+
+.submission-summary {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.submission-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+
+.submission-summary-header strong {
+  font-size: var(--app-font-size-base);
+}
+
+.submission-summary-header > span,
+.submission-summary-empty {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+}
+
+.submission-summary-bar {
+  display: flex;
+  width: 100%;
+  height: 0.65rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+.submission-summary-segment {
+  flex: 0 0 auto;
+  height: 100%;
+}
+
+.submission-summary-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+  margin-top: 0.85rem;
+}
+
+.submission-summary-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: var(--app-font-size-sm);
+}
+
+.submission-summary-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.submission-summary-empty {
+  margin-top: 0.75rem;
+}
+
 .submission-status-list h3 {
   margin: 0 0 0.75rem;
-  font-size: 1.1rem;
+  font-size: var(--app-font-size-lg);
 }
 
 .submission-empty {
@@ -3379,9 +3680,18 @@ const mobileMenuItems = computed(() => {
 }
 
 .submission-status-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: flex-start;
   gap: 0.75rem;
+}
+
+.submission-status-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 12rem;
 }
 
 .submission-status-title {
@@ -3392,7 +3702,7 @@ const mobileMenuItems = computed(() => {
 }
 
 .submission-status-title strong {
-  font-size: 1rem;
+  font-size: var(--app-font-size-base);
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
@@ -3403,17 +3713,36 @@ const mobileMenuItems = computed(() => {
 }
 
 .my-submission-id {
+  align-self: start;
   color: var(--text-secondary);
-  font-size: 0.86rem;
+  font-size: var(--app-font-size-sm);
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .submission-status-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.submission-time-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  line-height: 1.4;
+}
+
+.submission-time-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 :deep(.my-submission-status-badge.soft-badge) {
@@ -3464,8 +3793,84 @@ const mobileMenuItems = computed(() => {
   color: var(--text-secondary);
 }
 
-.submission-status-note.is-review {
+.submission-review-note {
+  display: flex;
   align-items: flex-start;
-  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.submission-review-note-label {
+  flex: 0 0 auto;
+  color: var(--text-color);
+  font-weight: 650;
+}
+
+.submission-review-note strong {
+  min-width: 0;
+  color: var(--text-color);
+  font-weight: 500;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.submission-review-note-empty {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .submission-level-header,
+  .submission-level-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .submission-summary-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .submission-summary-legend {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .submission-summary-legend-item {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .submission-time-meta {
+    flex-direction: column;
+  }
+
+  .submission-status-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .submission-status-badges {
+    max-width: none;
+  }
+
+  .my-submission-id {
+    text-align: left;
+  }
+
+  .submission-review-note {
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .submission-review-note-divider {
+    display: none;
+  }
 }
 </style>

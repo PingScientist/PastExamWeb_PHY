@@ -33,6 +33,7 @@
 import { useTheme } from '../utils/useTheme'
 import { getFieldBgSvg } from '../utils/svgBg'
 import { STORAGE_KEYS, setSessionItem } from '../utils/storage'
+import { api } from '../api/services/client'
 
 export default {
   data() {
@@ -68,6 +69,7 @@ export default {
       }
 
       setSessionItem(STORAGE_KEYS.session.AUTH_TOKEN, token)
+      await api.post('/auth/record-login')
       this.$router.replace('/archive')
     } catch (error) {
       console.error('Login callback error:', error)

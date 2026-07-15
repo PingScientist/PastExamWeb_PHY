@@ -12,6 +12,20 @@
         <TabPanels>
           <TabPanel value="0">
             <div class="p-2 md:p-4">
+              <Message v-if="courseLoadError" severity="error" :closable="false" class="mb-4">
+                <div class="flex flex-wrap align-items-center justify-content-between gap-3">
+                  <span>{{ courseLoadError }}</span>
+                  <Button
+                    label="重新載入"
+                    icon="pi pi-refresh"
+                    severity="danger"
+                    outlined
+                    size="small"
+                    :loading="coursesLoading"
+                    @click="loadCourses"
+                  />
+                </div>
+              </Message>
               <section class="admin-section mb-5">
                 <div class="admin-toolbar admin-toolbar--course admin-toolbar--section mb-3">
                   <div>
@@ -30,6 +44,7 @@
                   </div>
                 </div>
                 <DataTable
+                  v-if="!courseLoadError"
                   :value="courseCategories"
                   class="admin-data-table admin-desktop-data-table category-management-table"
                   tableStyle="min-width: 44rem"
@@ -133,7 +148,10 @@
                     </template>
                   </Column>
                 </DataTable>
-                <div class="admin-mobile-list admin-mobile-list--categories">
+                <div
+                  v-if="!courseLoadError"
+                  class="admin-mobile-list admin-mobile-list--categories"
+                >
                   <article
                     v-for="category in courseCategories"
                     :key="category.id"
@@ -279,7 +297,7 @@
                 strokeWidth="4"
               />
               <DataTable
-                v-else
+                v-else-if="!courseLoadError"
                 :value="filteredCourses"
                 class="admin-data-table admin-desktop-data-table course-management-table"
                 paginator
@@ -365,7 +383,10 @@
                   </template>
                 </Column>
               </DataTable>
-              <div v-if="!coursesLoading" class="admin-mobile-list admin-mobile-list--courses">
+              <div
+                v-if="!coursesLoading && !courseLoadError"
+                class="admin-mobile-list admin-mobile-list--courses"
+              >
                 <article
                   v-for="course in paginatedCourses"
                   :key="course.id"
@@ -460,6 +481,320 @@
 
           <TabPanel value="1">
             <div class="p-2 md:p-4">
+              <section
+                class="user-insights admin-insights-card"
+                aria-labelledby="user-insights-title"
+              >
+                <div class="user-insights__heading">
+                  <div>
+                    <h3 id="user-insights-title">使用者統計圖表</h3>
+                    <p>
+                      {{
+                        userInsightsView === 'level'
+                          ? userInsightsViewLabel
+                          : loginDistributionDescription
+                      }}
+                    </p>
+                  </div>
+                  <div class="user-insights__actions">
+                    <div
+                      class="user-insights__switch user-insights__switch--three"
+                      role="group"
+                      aria-label="切換使用者統計圖表"
+                    >
+                      <button
+                        type="button"
+                        class="user-insights__switch-option user-insights__switch-option--primary"
+                        :class="{ 'is-active': userInsightsView === 'login-hour' }"
+                        :aria-pressed="userInsightsView === 'login-hour'"
+                        @click="userInsightsView = 'login-hour'"
+                      >
+                        最近在線時間分布
+                      </button>
+                      <button
+                        type="button"
+                        class="user-insights__switch-option user-insights__switch-option--secondary"
+                        :class="{ 'is-active': userInsightsView === 'login-date' }"
+                        :aria-pressed="userInsightsView === 'login-date'"
+                        @click="userInsightsView = 'login-date'"
+                      >
+                        最近在線日期分布
+                      </button>
+                      <button
+                        type="button"
+                        class="user-insights__switch-option user-insights__switch-option--wide"
+                        :class="{ 'is-active': userInsightsView === 'level' }"
+                        :aria-pressed="userInsightsView === 'level'"
+                        @click="userInsightsView = 'level'"
+                      >
+                        投稿等級分布
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="user-insights__toggle section-collapse-toggle"
+                      :aria-expanded="isUserChartsExpanded"
+                      aria-controls="user-insights-content"
+                      :aria-label="
+                        isUserChartsExpanded ? '收合使用者統計圖表' : '展開使用者統計圖表'
+                      "
+                      @click="isUserChartsExpanded = !isUserChartsExpanded"
+                    >
+                      <span>{{ isUserChartsExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="isUserChartsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div v-show="isUserChartsExpanded" id="user-insights-content">
+                  <Message
+                    v-if="
+                      userStatsLoadError || (userInsightsView !== 'level' && onlineStatisticsError)
+                    "
+                    severity="error"
+                    :closable="false"
+                    class="user-insights__load-error"
+                  >
+                    <div class="flex flex-wrap align-items-center justify-content-between gap-3">
+                      <span>{{ userStatsLoadError || onlineStatisticsError }}</span>
+                      <Button
+                        label="重新載入"
+                        icon="pi pi-refresh"
+                        severity="danger"
+                        outlined
+                        size="small"
+                        :loading="usersLoading || onlineStatisticsLoading"
+                        @click="reloadUserStatistics"
+                      />
+                    </div>
+                  </Message>
+                  <div v-else-if="userInsightsView !== 'level'" class="user-insights__panel">
+                    <div class="chart-summary-control-row">
+                      <div
+                        v-if="onlineStatisticsSummary"
+                        class="chart-summary-group"
+                        aria-label="同時在線人數摘要"
+                      >
+                        <span class="chart-summary-item">
+                          <span>目前在線</span>
+                          <strong>{{ onlineStatisticsSummary.current }} 人</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間峰值</span>
+                          <strong>{{ onlineStatisticsSummary.peak }} 人</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間平均</span>
+                          <strong>{{ onlineStatisticsSummary.average }} 人</strong>
+                        </span>
+                      </div>
+                      <div class="chart-control-stack">
+                        <div
+                          class="user-insights__range"
+                          role="group"
+                          aria-label="最近在線統計範圍"
+                        >
+                          <button
+                            v-for="option in loginRangeOptions"
+                            :key="option"
+                            type="button"
+                            :class="{ 'is-active': activeLoginRange === option }"
+                            :aria-pressed="activeLoginRange === option"
+                            @click="setActiveLoginRange(option)"
+                          >
+                            {{ option }} {{ loginRangeUnit }}
+                          </button>
+                        </div>
+                        <span class="chart-timezone-label">
+                          統計時區：{{ PRODUCT_TIME_ZONE_LABEL }}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      v-if="onlineStatistics?.history_started_at"
+                      class="user-login-column-chart"
+                      role="img"
+                      :aria-label="loginChartData.ariaLabel"
+                    >
+                      <div class="user-login-column-chart__y-axis" aria-hidden="true">
+                        <span v-for="tick in loginChartData.yTicks" :key="`y-${tick}`">
+                          {{ tick }}
+                        </span>
+                      </div>
+                      <div class="user-login-column-chart__plot">
+                        <div class="user-login-column-chart__grid" aria-hidden="true">
+                          <span
+                            v-for="tick in loginChartData.yTicks"
+                            :key="`grid-${tick}`"
+                            :style="{ bottom: `${(tick / loginChartData.yMax) * 100}%` }"
+                          ></span>
+                        </div>
+                        <div
+                          class="user-login-column-chart__bars"
+                          :style="{ '--login-chart-columns': loginChartData.buckets.length }"
+                        >
+                          <div
+                            v-for="bucket in loginChartData.buckets"
+                            :key="bucket.key"
+                            class="user-login-column-chart__item"
+                            tabindex="0"
+                            :aria-label="
+                              bucket.has_data
+                                ? `${bucket.fullLabel}，${bucket.count} 人在線`
+                                : `${bucket.fullLabel}，尚無歷史資料`
+                            "
+                          >
+                            <span
+                              class="user-login-column-chart__bar"
+                              :class="{ 'has-value': bucket.count > 0 }"
+                              :style="{
+                                height: `${(bucket.count / loginChartData.yMax) * 100}%`,
+                              }"
+                            ></span>
+                            <span class="user-login-column-chart__tooltip" role="tooltip">
+                              {{
+                                bucket.has_data
+                                  ? `${bucket.fullLabel}：${bucket.count} 人在線`
+                                  : `${bucket.fullLabel}：尚無歷史資料`
+                              }}
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          ref="userStatisticsChartElement"
+                          class="user-login-column-chart__x-axis"
+                          :style="{ '--login-chart-columns': loginChartData.buckets.length }"
+                          aria-hidden="true"
+                        >
+                          <span
+                            v-for="bucket in loginChartData.buckets"
+                            :key="`label-${bucket.key}`"
+                            :class="{ 'is-multiline': bucket.isMultiline }"
+                          >
+                            <template v-if="bucket.showLabel">
+                              <span v-for="line in bucket.labelLines" :key="line">{{ line }}</span>
+                            </template>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="user-insights__empty" role="status">
+                      在線歷史資料將從此功能啟用後開始累積。
+                    </div>
+                  </div>
+
+                  <div v-else class="user-insights__panel">
+                    <p class="user-insights__description">
+                      依完整使用者集合統計，不受目前搜尋、分頁或等級篩選影響。
+                    </p>
+                    <div class="user-level-chart" aria-label="投稿等級分布">
+                      <div
+                        v-for="stat in contributorLevelDistribution"
+                        :key="`chart-level-${stat.level}`"
+                        class="user-level-chart__row"
+                        :style="{
+                          '--chart-level-color': stat.palette.bg,
+                          '--chart-level-border': stat.palette.border,
+                        }"
+                      >
+                        <ContributorLevelBadge
+                          :level="stat.level"
+                          :title="stat.name"
+                          size="compact"
+                        />
+                        <span class="user-level-chart__name">{{ stat.name }}</span>
+                        <div class="user-level-chart__track">
+                          <span
+                            class="user-level-chart__fill"
+                            :style="{ width: `${stat.percentage}%` }"
+                          ></span>
+                        </div>
+                        <strong>{{ stat.count }} 人</strong>
+                        <span>{{ stat.percentage.toFixed(1) }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="contributor-level-insights admin-insights-card"
+                aria-labelledby="contributor-level-insights-title"
+              >
+                <div class="contributor-level-insights__heading">
+                  <div>
+                    <h3 id="contributor-level-insights-title">投稿等級選單與設定</h3>
+                    <p>選擇等級以篩選使用者，或調整等級設定</p>
+                  </div>
+                  <div class="contributor-level-insights__actions">
+                    <Button
+                      v-if="selectedContributorLevels.length"
+                      label="清除選取"
+                      icon="pi pi-filter-slash"
+                      severity="secondary"
+                      size="small"
+                      outlined
+                      @click="clearContributorLevelFilter"
+                    />
+                    <Button
+                      label="等級設定"
+                      icon="pi pi-cog"
+                      severity="secondary"
+                      size="small"
+                      outlined
+                      class="contributor-level-settings-button"
+                      @click="openContributorLevelSettingsDialog"
+                    />
+                    <button
+                      type="button"
+                      class="contributor-level-toggle section-collapse-toggle"
+                      :aria-expanded="isLevelStatsExpanded"
+                      aria-controls="contributor-level-stats-grid"
+                      :aria-label="
+                        isLevelStatsExpanded ? '收合投稿等級選單與設定' : '展開投稿等級選單與設定'
+                      "
+                      @click="isLevelStatsExpanded = !isLevelStatsExpanded"
+                    >
+                      <span>{{ isLevelStatsExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="isLevelStatsExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+                <div
+                  v-show="isLevelStatsExpanded"
+                  id="contributor-level-stats-grid"
+                  class="contributor-level-insights__grid"
+                >
+                  <button
+                    v-for="level in SUBMISSION_LEVELS"
+                    :key="level.level"
+                    type="button"
+                    class="contributor-level-stat"
+                    :class="{
+                      'is-active': isContributorLevelSelected(level.level),
+                    }"
+                    :aria-pressed="isContributorLevelSelected(level.level)"
+                    :title="level.name"
+                    @click="toggleContributorLevel(level.level)"
+                  >
+                    <ContributorLevelBadge
+                      :level="level.level"
+                      :title="level.name"
+                      size="compact"
+                    />
+                    <span class="contributor-level-stat__name">{{ level.name }}</span>
+                  </button>
+                </div>
+              </section>
+
               <div class="admin-toolbar admin-toolbar--users mb-4">
                 <div class="admin-toolbar__filters">
                   <div class="admin-toolbar__search relative w-full md:w-auto">
@@ -510,7 +845,7 @@
                 :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                 paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
-                tableStyle="min-width: 50rem"
+                tableStyle="min-width: 62rem"
                 scrollable
                 scrollHeight="65vh"
                 responsiveLayout="stack"
@@ -521,6 +856,18 @@
                 @page="handleUserPage"
                 @sort="handleUserSort"
               >
+                <Column
+                  field="contributor_level"
+                  header="投稿等級"
+                  sortable
+                  style="width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem"
+                >
+                  <template #body="{ data }">
+                    <span class="user-table-contributor-level">
+                      Lv. {{ data.contributorLevel.level }}
+                    </span>
+                  </template>
+                </Column>
                 <Column header="使用者名稱" sortable style="width: 15%">
                   <template #body="{ data }">
                     <span class="mobile-primary-text admin-desktop-cell">{{ data.name }}</span>
@@ -530,6 +877,12 @@
                         <span class="admin-card-email">{{ data.email }}</span>
                       </div>
                       <div class="admin-card-meta">
+                        <ContributorLevelBadge
+                          :level="data.contributorLevel.level"
+                          :title="data.contributorLevel.name"
+                          size="compact"
+                          show-title
+                        />
                         <Tag :severity="data.is_admin ? 'success' : 'secondary'" class="text-sm">
                           {{ data.is_admin ? '是' : '否' }}
                         </Tag>
@@ -578,9 +931,18 @@
                     </span>
                   </template>
                 </Column>
-                <Column header="操作" style="width: 24%; min-width: 17rem">
+                <Column header="操作" style="width: 28%; min-width: 21rem">
                   <template #body="{ data }">
                     <div class="user-management-table-actions">
+                      <Button
+                        icon="pi pi-eye"
+                        severity="secondary"
+                        size="small"
+                        @click="openUserDataStats(data)"
+                        label="查看"
+                        aria-label="查看使用者資料統計"
+                        title="查看使用者資料統計"
+                      />
                       <Button
                         icon="pi pi-pencil"
                         severity="warning"
@@ -623,6 +985,7 @@
                 >
                   <header class="admin-tablet-card-header">
                     <div class="admin-tablet-title-group user-card-title-group">
+                      <span class="mobile-user-level-tag">Lv{{ user.contributorLevel.level }}</span>
                       <strong class="admin-card-title admin-tablet-card-title">{{
                         user.name
                       }}</strong>
@@ -660,6 +1023,15 @@
                   <section
                     class="admin-card-actions admin-mobile-card-actions user-management-card-actions admin-tablet-actions"
                   >
+                    <Button
+                      icon="pi pi-eye"
+                      severity="secondary"
+                      size="small"
+                      @click="openUserDataStats(user)"
+                      label="查看"
+                      aria-label="查看使用者資料統計"
+                      title="查看使用者資料統計"
+                    />
                     <Button
                       icon="pi pi-pencil"
                       severity="warning"
@@ -944,6 +1316,199 @@
 
           <TabPanel value="3">
             <div class="p-2 md:p-4 review-center">
+              <section
+                class="user-insights admin-insights-card review-submission-insights"
+                aria-labelledby="review-submission-insights-title"
+              >
+                <div class="user-insights__heading">
+                  <div>
+                    <h3 id="review-submission-insights-title">投稿統計圖表</h3>
+                    <p>{{ reviewSubmissionDescription }}</p>
+                  </div>
+                  <div class="user-insights__actions">
+                    <div
+                      class="user-insights__switch user-insights__switch--two"
+                      role="group"
+                      aria-label="切換投稿統計圖表"
+                    >
+                      <button
+                        type="button"
+                        class="user-insights__switch-option"
+                        :class="{ 'is-active': reviewSubmissionView === 'time' }"
+                        :aria-pressed="reviewSubmissionView === 'time'"
+                        @click="reviewSubmissionView = 'time'"
+                      >
+                        最近投稿時間分布
+                      </button>
+                      <button
+                        type="button"
+                        class="user-insights__switch-option"
+                        :class="{ 'is-active': reviewSubmissionView === 'date' }"
+                        :aria-pressed="reviewSubmissionView === 'date'"
+                        @click="reviewSubmissionView = 'date'"
+                      >
+                        最近投稿日期分布
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="user-insights__toggle section-collapse-toggle"
+                      :aria-expanded="isReviewSubmissionChartExpanded"
+                      aria-controls="review-submission-insights-content"
+                      :aria-label="
+                        isReviewSubmissionChartExpanded ? '收合投稿統計圖表' : '展開投稿統計圖表'
+                      "
+                      @click="isReviewSubmissionChartExpanded = !isReviewSubmissionChartExpanded"
+                    >
+                      <span>{{ isReviewSubmissionChartExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="
+                          isReviewSubmissionChartExpanded ? 'pi-chevron-up' : 'pi-chevron-down'
+                        "
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  v-show="isReviewSubmissionChartExpanded"
+                  id="review-submission-insights-content"
+                >
+                  <Message
+                    v-if="reviewSubmissionStatisticsError"
+                    severity="error"
+                    :closable="false"
+                    class="user-insights__load-error"
+                  >
+                    <div class="flex flex-wrap align-items-center justify-content-between gap-3">
+                      <span>{{ reviewSubmissionStatisticsError }}</span>
+                      <Button
+                        label="重新載入"
+                        icon="pi pi-refresh"
+                        severity="danger"
+                        outlined
+                        size="small"
+                        :loading="reviewSubmissionStatisticsLoading"
+                        @click="loadReviewSubmissionStatistics"
+                      />
+                    </div>
+                  </Message>
+                  <div
+                    v-else-if="reviewSubmissionStatisticsLoading"
+                    class="user-insights__empty"
+                    role="status"
+                  >
+                    投稿統計載入中…
+                  </div>
+                  <div v-else-if="reviewSubmissionStatistics" class="user-insights__panel">
+                    <div class="chart-summary-control-row">
+                      <div class="chart-summary-group" aria-label="投稿統計摘要">
+                        <span class="chart-summary-item">
+                          <span>區間投稿</span>
+                          <strong>{{ reviewSubmissionStatistics.summary.total }} 筆</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間峰值</span>
+                          <strong>{{ reviewSubmissionStatistics.summary.peak }} 筆</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間平均</span>
+                          <strong
+                            >{{ reviewSubmissionStatistics.summary.average.toFixed(1) }} 筆</strong
+                          >
+                        </span>
+                      </div>
+                      <div class="chart-control-stack">
+                        <div class="user-insights__range" role="group" aria-label="投稿統計範圍">
+                          <button
+                            v-for="option in reviewSubmissionRangeOptions"
+                            :key="option"
+                            type="button"
+                            :class="{ 'is-active': activeReviewSubmissionRange === option }"
+                            :aria-pressed="activeReviewSubmissionRange === option"
+                            @click="setActiveReviewSubmissionRange(option)"
+                          >
+                            {{ option }} {{ reviewSubmissionRangeUnit }}
+                          </button>
+                        </div>
+                        <span class="chart-timezone-label">
+                          統計時區：{{ PRODUCT_TIME_ZONE_LABEL }}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      class="user-login-column-chart"
+                      role="img"
+                      :aria-label="reviewSubmissionChartData.ariaLabel"
+                    >
+                      <div class="user-login-column-chart__y-axis" aria-hidden="true">
+                        <span
+                          v-for="tick in reviewSubmissionChartData.yTicks"
+                          :key="`review-y-${tick}`"
+                        >
+                          {{ tick }}
+                        </span>
+                      </div>
+                      <div class="user-login-column-chart__plot">
+                        <div class="user-login-column-chart__grid" aria-hidden="true">
+                          <span
+                            v-for="tick in reviewSubmissionChartData.yTicks"
+                            :key="`review-grid-${tick}`"
+                            :style="{
+                              bottom: `${(tick / reviewSubmissionChartData.yMax) * 100}%`,
+                            }"
+                          ></span>
+                        </div>
+                        <div
+                          class="user-login-column-chart__bars"
+                          :style="{
+                            '--login-chart-columns': reviewSubmissionChartData.buckets.length,
+                          }"
+                        >
+                          <div
+                            v-for="bucket in reviewSubmissionChartData.buckets"
+                            :key="bucket.key"
+                            class="user-login-column-chart__item"
+                            tabindex="0"
+                            :aria-label="`${bucket.fullLabel}，投稿 ${bucket.count} 筆`"
+                          >
+                            <span
+                              class="user-login-column-chart__bar"
+                              :class="{ 'has-value': bucket.count > 0 }"
+                              :style="{
+                                height: `${(bucket.count / reviewSubmissionChartData.yMax) * 100}%`,
+                              }"
+                            ></span>
+                            <span class="user-login-column-chart__tooltip" role="tooltip">
+                              {{ bucket.fullLabel }}：投稿 {{ bucket.count }} 筆
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          ref="reviewSubmissionChartElement"
+                          class="user-login-column-chart__x-axis"
+                          :style="{
+                            '--login-chart-columns': reviewSubmissionChartData.buckets.length,
+                          }"
+                          aria-hidden="true"
+                        >
+                          <span
+                            v-for="bucket in reviewSubmissionChartData.buckets"
+                            :key="`review-label-${bucket.key}`"
+                            :class="{ 'is-multiline': bucket.isMultiline }"
+                          >
+                            <template v-if="bucket.showLabel">
+                              <span v-for="line in bucket.labelLines" :key="line">{{ line }}</span>
+                            </template>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
               <div v-if="reviewLoadError" class="review-load-error">
                 {{ reviewLoadError }}
               </div>
@@ -977,7 +1542,7 @@
                     icon="pi pi-refresh"
                     label="重新整理"
                     outlined
-                    @click="loadReviewItems"
+                    @click="reloadReviewCenter"
                   />
                 </div>
               </div>
@@ -2195,28 +2760,35 @@
       <Dialog
         v-model:visible="showArchiveRequestDialog"
         header="考古題投稿詳情"
+        class="submission-typography-dialog"
         modal
         :draggable="false"
         :style="{ width: '760px', maxWidth: '96vw' }"
+        @hide="clearArchiveRequesterStats"
       >
         <div class="request-summary mb-4">
-          <Tag
-            :class="[
-              'soft-badge',
-              'review-card-chip',
-              getArchiveSubmissionKindClass(selectedArchiveRequest),
-            ]"
-            :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)"
+          <div class="request-summary__header">
+            <Tag
+              :class="[
+                'soft-badge',
+                'review-card-chip',
+                getArchiveSubmissionKindClass(selectedArchiveRequest),
+              ]"
+              :severity="getArchiveSubmissionKindSeverity(selectedArchiveRequest)"
+            >
+              {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
+            </Tag>
+            <small class="request-summary__id text-500">
+              投稿編號：{{ formatSubmissionLabel(selectedArchiveRequest) }}
+            </small>
+          </div>
+          <p
+            v-if="selectedArchiveRequest?.requested_course_name"
+            class="request-summary__description"
           >
-            {{ getArchiveSubmissionKind(selectedArchiveRequest) }}
-          </Tag>
-          <small class="text-500"
-            >投稿編號：{{ formatSubmissionLabel(selectedArchiveRequest) }}</small
-          >
-          <span v-if="selectedArchiveRequest?.requested_course_name">
             這筆投稿通過後會建立或使用新課程「{{ selectedArchiveRequest.requested_course_name }}」。
-          </span>
-          <span v-else>這筆投稿會掛到既有課程。</span>
+          </p>
+          <p v-else class="request-summary__description">這筆投稿會掛到既有課程。</p>
         </div>
         <Message
           v-if="archiveRequestReadonlyMessage"
@@ -2298,6 +2870,7 @@
               :options="categoryOptions"
               optionLabel="name"
               optionValue="value"
+              overlayClass="submission-typography-overlay"
               :disabled="!canEditSelectedArchiveRequest"
             />
           </div>
@@ -2338,6 +2911,7 @@
               :options="archiveTypeOptions"
               optionLabel="name"
               optionValue="value"
+              overlayClass="submission-typography-overlay"
               :disabled="!canEditSelectedArchiveRequest"
             />
           </div>
@@ -2477,36 +3051,71 @@
           </div>
         </div>
 
-        <div class="mt-4 review-history">
-          <h4 class="mb-2">此帳號投稿紀錄</h4>
-          <div class="review-requester mb-2">
-            <span class="text-sm text-500">投稿帳號</span>
-            <strong>{{ getRequesterDisplay(selectedArchiveRequest) }}</strong>
-          </div>
-          <div
-            v-if="getRequesterHistory(selectedArchiveRequest?.requester_id).length === 0"
-            class="text-sm text-500"
-          >
-            尚無其他投稿紀錄
-          </div>
-          <div
-            v-for="item in getRequesterHistory(selectedArchiveRequest?.requester_id)"
-            :key="`${item.kind}-${item.id}`"
-            class="review-history-row"
-          >
-            <span class="review-history-title">
-              {{ item.title }}
-              <small>投稿編號：{{ formatSubmissionLabel(item) }}</small>
-              <small>投稿：{{ item.requester }}</small>
-            </span>
-            <Tag
-              :class="['soft-badge', 'review-status-chip', getSubmissionStatusClass(item.status)]"
-              :severity="getSubmissionSeverity(item.status)"
+        <section class="archive-requester-stats mt-4" aria-label="投稿者統計">
+          <h4>投稿者統計</h4>
+          <div v-if="archiveRequesterStatsLoading" class="text-sm text-500">載入中...</div>
+          <Message v-else-if="archiveRequesterStatsError" severity="error" :closable="false">
+            {{ archiveRequesterStatsError }}
+          </Message>
+          <template v-else-if="archiveRequesterStats">
+            <div class="archive-requester-stats__identity">
+              <div>
+                <span>投稿者</span>
+                <strong>{{ getRequesterDisplay(selectedArchiveRequest) }}</strong>
+              </div>
+              <ContributorLevelBadge
+                :level="archiveRequesterContributorLevel.level"
+                :title="archiveRequesterContributorLevel.name"
+                size="compact"
+                show-title
+              />
+              <strong>全部投稿 {{ archiveRequesterStats.total_count }} 筆</strong>
+            </div>
+            <div class="user-submission-status-cards">
+              <div
+                v-for="status in archiveRequesterSubmissionStatuses"
+                :key="`requester-summary-${status.key}`"
+                class="user-submission-status-card"
+              >
+                <span
+                  class="user-submission-status-dot"
+                  :style="{ background: status.color }"
+                ></span>
+                <span>{{ status.label }}</span>
+                <strong>{{ status.count }}</strong>
+              </div>
+            </div>
+            <div
+              v-if="archiveRequesterStats.total_count > 0"
+              class="user-submission-distribution__bar"
+              role="img"
+              :aria-label="archiveRequesterDistributionLabel"
             >
-              {{ getSubmissionLabel(item.status) }}
-            </Tag>
-          </div>
-        </div>
+              <span
+                v-for="status in archiveRequesterSubmissionStatuses"
+                :key="`requester-bar-${status.key}`"
+                :style="{ width: `${status.percentage}%`, background: status.color }"
+                :title="`${status.label} ${status.count} 筆（${status.percentage.toFixed(1)}%）`"
+              ></span>
+            </div>
+            <div v-else class="user-insights__empty">此投稿者目前沒有投稿</div>
+            <div class="user-submission-distribution__legend">
+              <div
+                v-for="status in archiveRequesterSubmissionStatuses"
+                :key="`requester-legend-${status.key}`"
+                class="user-submission-legend-row"
+              >
+                <span
+                  class="user-submission-status-dot"
+                  :style="{ background: status.color }"
+                ></span>
+                <span>{{ status.label }}</span>
+                <strong>{{ status.count }} 筆</strong>
+                <span>{{ status.percentage.toFixed(1) }}%</span>
+              </div>
+            </div>
+          </template>
+        </section>
 
         <div class="flex justify-end gap-2 mt-4 review-dialog-actions">
           <Button
@@ -2619,6 +3228,293 @@
             <ProgressSpinner v-else strokeWidth="4" />
           </section>
         </div>
+      </Dialog>
+
+      <Dialog
+        v-model:visible="showContributorLevelSettingsDialog"
+        modal
+        :draggable="false"
+        :closable="!contributorLevelSettingsSaving"
+        :closeOnEscape="!contributorLevelSettingsSaving"
+        header="投稿等級設定"
+        :style="{ width: 'min(860px, 96vw)' }"
+        :contentStyle="{ padding: 0, overflow: 'hidden' }"
+        @hide="closeContributorLevelSettingsDialog"
+      >
+        <div class="contributor-level-settings-dialog">
+          <p class="contributor-level-settings-help">
+            EXP 欄位代表「達到本級所需累積 EXP」。Lv.10 為最高等級，仍保留其累積門檻。
+          </p>
+          <Message v-if="contributorLevelSettingsError" severity="error" :closable="false">
+            {{ contributorLevelSettingsError }}
+          </Message>
+          <div class="contributor-level-settings-list">
+            <article
+              v-for="level in contributorLevelSettingsDraft"
+              :key="level.level"
+              class="contributor-level-settings-row"
+            >
+              <strong class="contributor-level-settings-number">Lv.{{ level.level }}</strong>
+              <ContributorLevelBadge :level="level.level" :title="level.name" size="compact" />
+              <label class="contributor-level-settings-field">
+                <span>等級名稱</span>
+                <InputText v-model="level.name" maxlength="30" class="w-full" />
+              </label>
+              <label class="contributor-level-settings-field">
+                <span>達到本級所需累積 EXP</span>
+                <InputNumber
+                  v-model="level.minExp"
+                  :min="0"
+                  :useGrouping="false"
+                  :minFractionDigits="0"
+                  :maxFractionDigits="0"
+                  :disabled="level.level === 1"
+                  class="w-full"
+                />
+              </label>
+              <span v-if="level.level === 10" class="contributor-level-settings-max">
+                最高等級
+              </span>
+            </article>
+          </div>
+        </div>
+        <template #footer>
+          <div class="contributor-level-settings-footer">
+            <Button
+              label="還原目前已保存設定"
+              severity="secondary"
+              text
+              :disabled="contributorLevelSettingsSaving"
+              @click="resetContributorLevelSettingsDraft"
+            />
+            <span class="contributor-level-settings-footer-spacer"></span>
+            <Button
+              label="取消"
+              severity="secondary"
+              :disabled="contributorLevelSettingsSaving"
+              @click="closeContributorLevelSettingsDialog"
+            />
+            <Button
+              label="保存全部設定"
+              severity="success"
+              :loading="contributorLevelSettingsSaving"
+              @click="confirmContributorLevelSettingsSave"
+            />
+          </div>
+        </template>
+      </Dialog>
+
+      <Dialog
+        v-model:visible="showUserDataStatsDialog"
+        modal
+        :draggable="false"
+        header="使用者資料統計"
+        class="submission-typography-dialog user-data-stats-dialog"
+        :style="{ width: 'min(760px, 96vw)', maxHeight: '90vh' }"
+        :pt="{
+          content: { class: 'user-data-stats-dialog__content' },
+          footer: { class: 'user-data-stats-dialog__footer' },
+        }"
+        @hide="closeUserDataStatsDialog"
+      >
+        <div class="user-submission-dialog">
+          <UserOnlineDurationChart
+            :userId="selectedUserDataStatsId"
+            :active="showUserDataStatsDialog"
+          />
+          <ProgressSpinner
+            v-if="userSubmissionStatsLoading"
+            class="w-full flex justify-content-center"
+            strokeWidth="4"
+          />
+          <Message v-else-if="userSubmissionStatsError" severity="error" :closable="false">
+            {{ userSubmissionStatsError }}
+          </Message>
+          <template v-else-if="userSubmissionStats">
+            <section class="user-submission-summary" aria-label="使用者投稿摘要">
+              <div class="user-submission-summary__identity">
+                <div>
+                  <span class="user-submission-summary__eyebrow">使用者</span>
+                  <h3>{{ userSubmissionStats.name }}</h3>
+                </div>
+                <ContributorLevelBadge
+                  :level="selectedUserContributorLevel.level"
+                  :title="selectedUserContributorLevel.name"
+                  show-title
+                />
+              </div>
+              <div class="user-submission-summary__exp">
+                <strong>{{ userSubmissionStats.contributor_experience }} EXP</strong>
+                <span v-if="selectedUserContributorLevel.isMaxLevel">已達最高等級</span>
+                <span v-else>
+                  距離 Lv.{{ selectedUserContributorLevel.level + 1 }} 還差
+                  {{ selectedUserContributorLevel.expToNextLevel }} EXP
+                </span>
+              </div>
+              <div
+                class="user-submission-level-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-valuenow="selectedUserContributorLevel.progressPercent"
+                :aria-label="`Lv.${selectedUserContributorLevel.level} 經驗進度 ${selectedUserContributorLevel.progressPercent}%`"
+                :style="selectedUserLevelProgressStyle"
+              >
+                <span :style="{ width: `${selectedUserContributorLevel.progressPercent}%` }"></span>
+              </div>
+            </section>
+
+            <section class="user-submission-overview" aria-label="投稿狀態總覽">
+              <div class="user-submission-total">
+                <span>全部投稿</span>
+                <strong>{{ userSubmissionStats.total_count }} 筆</strong>
+              </div>
+              <div class="user-submission-status-cards">
+                <div
+                  v-for="status in selectedUserSubmissionStatuses"
+                  :key="`summary-${status.key}`"
+                  class="user-submission-status-card"
+                >
+                  <span
+                    class="user-submission-status-dot"
+                    :style="{ background: status.color }"
+                  ></span>
+                  <span>{{ status.label }}</span>
+                  <strong>{{ status.count }}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="user-submission-distribution" aria-label="投稿狀態比例">
+              <div
+                v-if="userSubmissionStats.total_count > 0"
+                class="user-submission-distribution__bar"
+                role="img"
+                :aria-label="selectedUserSubmissionDistributionLabel"
+              >
+                <span
+                  v-for="status in selectedUserSubmissionStatuses"
+                  :key="`bar-${status.key}`"
+                  :style="{ width: `${status.percentage}%`, background: status.color }"
+                  :title="`${status.label} ${status.count} 筆（${status.percentage.toFixed(1)}%）`"
+                ></span>
+              </div>
+              <div v-else class="user-insights__empty">此使用者目前沒有投稿</div>
+              <div class="user-submission-distribution__legend">
+                <div
+                  v-for="status in selectedUserSubmissionStatuses"
+                  :key="`legend-${status.key}`"
+                  class="user-submission-legend-row"
+                >
+                  <span
+                    class="user-submission-status-dot"
+                    :style="{ background: status.color }"
+                  ></span>
+                  <span>{{ status.label }}</span>
+                  <strong>{{ status.count }} 筆</strong>
+                  <span>{{ status.percentage.toFixed(1) }}%</span>
+                </div>
+              </div>
+            </section>
+
+            <section
+              class="user-submission-records"
+              aria-labelledby="user-submission-records-title"
+            >
+              <div class="user-submission-records__heading">
+                <div>
+                  <h4 id="user-submission-records-title">此帳號投稿紀錄</h4>
+                  <span v-if="normalizedUserSubmissionRecordSearch">
+                    符合 {{ filteredUserSubmissionRecords.length }} 筆／共
+                    {{ userSubmissionStats.records_total }} 筆
+                  </span>
+                  <span v-else>共 {{ userSubmissionStats.records_total }} 筆</span>
+                </div>
+                <div class="user-submission-records__search relative">
+                  <i class="pi pi-search search-icon" aria-hidden="true"></i>
+                  <InputText
+                    id="user-submission-record-search"
+                    v-model="userSubmissionRecordSearch"
+                    placeholder="搜尋投稿紀錄……"
+                    aria-label="搜尋此帳號投稿紀錄"
+                    class="w-full pl-6"
+                  />
+                </div>
+              </div>
+              <div v-if="paginatedUserSubmissionRecords.length" class="user-submission-record-list">
+                <article
+                  v-for="record in paginatedUserSubmissionRecords"
+                  :key="`user-submission-record-${record.id}`"
+                  class="user-submission-record"
+                >
+                  <header class="user-submission-record__header">
+                    <div>
+                      <Tag
+                        :class="[
+                          'soft-badge',
+                          'review-status-chip',
+                          getSubmissionStatusClass(record.status),
+                        ]"
+                        :severity="getSubmissionSeverity(record.status)"
+                      >
+                        {{ getUserSubmissionStatusLabel(record.status) }}
+                      </Tag>
+                      <span class="user-submission-record__kind">
+                        {{ getArchiveSubmissionKind(record) }}
+                      </span>
+                    </div>
+                    <strong>投稿編號：#{{ record.id }}</strong>
+                  </header>
+                  <div class="user-submission-record__title">
+                    <strong>{{ record.course_name || '—' }}</strong>
+                    <span>{{ record.exam_name || '—' }}</span>
+                  </div>
+                  <div class="user-submission-record__meta">
+                    <span>學期：{{ formatAcademicTerm(record.academic_year) || '—' }}</span>
+                    <span>授課教師：{{ record.professor || '—' }}</span>
+                    <span>投稿時間：{{ formatDateTime(record.submitted_at) }}</span>
+                    <span>
+                      審核時間：{{
+                        record.reviewed_at ? formatDateTime(record.reviewed_at) : '尚未審核'
+                      }}
+                    </span>
+                  </div>
+                  <div class="user-submission-record__comment">
+                    <strong>審核留言</strong>
+                    <span>{{ record.review_comment?.trim() || '尚無審核留言' }}</span>
+                  </div>
+                </article>
+              </div>
+              <div v-else class="user-insights__empty">
+                {{
+                  normalizedUserSubmissionRecordSearch
+                    ? '找不到符合搜尋條件的投稿紀錄。'
+                    : '此帳號目前沒有投稿紀錄'
+                }}
+              </div>
+              <Paginator
+                v-if="filteredUserSubmissionRecords.length > userSubmissionRecordRows"
+                :first="userSubmissionRecordFirst"
+                :rows="userSubmissionRecordRows"
+                :totalRecords="filteredUserSubmissionRecords.length"
+                :rowsPerPageOptions="[10, 20, 50]"
+                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+                aria-label="此帳號投稿紀錄分頁"
+                class="user-submission-records__paginator"
+                @page="handleUserSubmissionRecordPage"
+              />
+            </section>
+          </template>
+        </div>
+        <template #footer>
+          <Button
+            class="user-data-stats-dialog__close"
+            label="關閉"
+            severity="secondary"
+            @click="closeUserDataStatsDialog"
+          />
+        </template>
       </Dialog>
 
       <Dialog
@@ -3058,12 +3954,18 @@ defineOptions({
   name: 'AdminView',
 })
 
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { getCurrentUser } from '../utils/auth'
 import { isUnauthorizedError } from '../utils/http'
 import { formatRelativeTime } from '../utils/time'
+import {
+  PRODUCT_TIME_ZONE,
+  PRODUCT_TIME_ZONE_LABEL,
+  formatProductDateTime,
+} from '../utils/productTimezone'
+import { buildTemporalTicks, resolveTemporalTickLayout } from '../utils/temporalChart'
 import {
   getCourses,
   createCourse,
@@ -3071,6 +3973,8 @@ import {
   reorderCourses,
   deleteCourse,
   getUsers,
+  getOnlineStatistics,
+  getUserSubmissionStats,
   createUser,
   updateUser,
   deleteUser,
@@ -3083,12 +3987,24 @@ import { trackEvent, EVENTS } from '../utils/analytics'
 import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
+import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
+import UserOnlineDurationChart from '../components/UserOnlineDurationChart.vue'
+import {
+  SUBMISSION_LEVELS,
+  getContributorLevelPalette,
+  getContributorLevelSettingsSnapshot,
+  loadContributorLevelSettings,
+  resolveSubmissionLevel,
+  saveContributorLevelSettings,
+  validateContributorLevelSettings,
+} from '../utils/submissionLevel'
 
 const confirm = useConfirm()
 const toast = useToast()
 
 const courses = ref([])
 const coursesLoading = ref(false)
+const courseLoadError = ref('')
 const searchQuery = ref('')
 const filterCategory = ref(null)
 const courseOrderLoading = ref(false)
@@ -3139,10 +4055,71 @@ const legacyCategoryBadgeColorMap = {
 }
 const users = ref([])
 const usersLoading = ref(false)
+const userStatsLoadError = ref('')
 const userSearchQuery = ref('')
 const filterUserType = ref(null)
+const selectedContributorLevels = ref([])
+const isLevelStatsExpanded = ref(false)
+const showContributorLevelSettingsDialog = ref(false)
+const contributorLevelSettingsDraft = ref([])
+const contributorLevelSettingsError = ref('')
+const contributorLevelSettingsSaving = ref(false)
 const userFirst = ref(0)
 const userRows = ref(10)
+const LOGIN_HOUR_RANGE_OPTIONS = [24, 48, 72]
+const LOGIN_DATE_RANGE_OPTIONS = [7, 30, 90]
+const LOGIN_HOUR_BUCKET_CONFIG = {
+  24: { bucketMinutes: 10, bucketCount: 144, labelEvery: 12 },
+  48: { bucketMinutes: 20, bucketCount: 144, labelEvery: 18 },
+  72: { bucketMinutes: 30, bucketCount: 144, labelEvery: 18 },
+}
+const LOGIN_DATE_BUCKET_CONFIG = {
+  7: { bucketMinutes: 4 * 60, bucketCount: 42, labelEvery: 6 },
+  30: { bucketMinutes: 12 * 60, bucketCount: 60, labelEvery: 10 },
+  90: { bucketMinutes: 24 * 60, bucketCount: 90, labelEvery: 15 },
+}
+const userInsightsView = ref('login-hour')
+const isUserChartsExpanded = ref(false)
+const loginRangeHours = ref(24)
+const loginRangeDays = ref(30)
+const onlineStatistics = ref(null)
+const onlineStatisticsLoading = ref(false)
+const onlineStatisticsError = ref('')
+const userStatisticsChartElement = ref(null)
+const reviewSubmissionChartElement = ref(null)
+const userStatisticsChartWidth = ref(Number.POSITIVE_INFINITY)
+const reviewSubmissionChartWidth = ref(Number.POSITIVE_INFINITY)
+const statisticsFontScale = ref(1)
+let statisticsChartResizeObserver = null
+let statisticsFontScaleObserver = null
+let onlineStatisticsRequestId = 0
+let loginStatsRefreshTimer = null
+const showUserDataStatsDialog = ref(false)
+const selectedUserDataStatsId = ref(null)
+const userSubmissionStatsLoading = ref(false)
+const userSubmissionStatsError = ref('')
+const userSubmissionStats = ref(null)
+const userSubmissionRecordSearch = ref('')
+const userSubmissionRecordFirst = ref(0)
+const userSubmissionRecordRows = ref(10)
+let userSubmissionStatsController = null
+const archiveRequesterStats = ref(null)
+const archiveRequesterStatsLoading = ref(false)
+const archiveRequesterStatsError = ref('')
+let archiveRequesterStatsController = null
+
+const USER_SUBMISSION_STATUS_CONFIG = [
+  { key: 'pending', label: '待審核', color: '#b7791f' },
+  { key: 'approved', label: '已通過', color: '#2f855a' },
+  { key: 'rejected', label: '未通過', color: '#c2414d' },
+  { key: 'takedown', label: '已下架', color: '#64748b' },
+  { key: 'deleted', label: '已刪除', color: '#8c2f46' },
+]
+
+const getUserSubmissionStatusLabel = (status) => {
+  const normalized = String(status || '').toLowerCase()
+  return USER_SUBMISSION_STATUS_CONFIG.find((item) => item.key === normalized)?.label || '未知狀態'
+}
 
 const userSortMeta = ref([
   { field: 'is_admin', order: -1 },
@@ -3231,6 +4208,14 @@ const notificationForm = ref({
 const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const reviewLoadError = ref('')
+const reviewSubmissionView = ref('time')
+const isReviewSubmissionChartExpanded = ref(false)
+const reviewSubmissionRangeHours = ref(24)
+const reviewSubmissionRangeDays = ref(30)
+const reviewSubmissionStatistics = ref(null)
+const reviewSubmissionStatisticsLoading = ref(false)
+const reviewSubmissionStatisticsError = ref('')
+let reviewSubmissionStatisticsRequestId = 0
 const reviewSearchQuery = ref('')
 const reviewStatusFilter = ref(null)
 const newSubmissionFirst = ref(0)
@@ -3927,6 +4912,451 @@ const userTypeFilterOptions = [
   { name: '一般使用者', value: false },
 ]
 
+const contributorLevelStats = computed(() => {
+  const counts = new Map(SUBMISSION_LEVELS.map((level) => [level.level, 0]))
+  users.value.forEach((user) => {
+    counts.set(user.contributorLevel.level, (counts.get(user.contributorLevel.level) || 0) + 1)
+  })
+  return SUBMISSION_LEVELS.map((level) => ({
+    ...level,
+    count: counts.get(level.level) || 0,
+  }))
+})
+
+const contributorLevelDistribution = computed(() => {
+  const total = users.value.length
+  return contributorLevelStats.value.map((stat) => ({
+    ...stat,
+    palette: getContributorLevelPalette(stat.level),
+    percentage: total > 0 ? (stat.count / total) * 100 : 0,
+  }))
+})
+
+const userInsightsViewLabel = computed(() => {
+  if (userInsightsView.value === 'login-hour') return '最近在線時間分布'
+  if (userInsightsView.value === 'login-date') return '最近在線日期分布'
+  return '投稿等級分布'
+})
+
+const activeLoginBucketConfig = computed(() =>
+  userInsightsView.value === 'login-hour'
+    ? LOGIN_HOUR_BUCKET_CONFIG[loginRangeHours.value]
+    : LOGIN_DATE_BUCKET_CONFIG[loginRangeDays.value]
+)
+const loginDistributionDescription = computed(() => {
+  const range =
+    userInsightsView.value === 'login-hour'
+      ? `${loginRangeHours.value} 小時`
+      : `${loginRangeDays.value} 日`
+  const bucketMinutes = activeLoginBucketConfig.value.bucketMinutes
+  const sampling =
+    bucketMinutes === 24 * 60
+      ? '每日取樣一次'
+      : bucketMinutes < 60
+        ? `每 ${bucketMinutes} 分鐘取樣一次`
+        : `每 ${bucketMinutes / 60} 小時取樣一次`
+  return `統計最近 ${range}內，${sampling}的同時在線使用者人數。`
+})
+
+const loginRangeOptions = computed(() =>
+  userInsightsView.value === 'login-hour' ? LOGIN_HOUR_RANGE_OPTIONS : LOGIN_DATE_RANGE_OPTIONS
+)
+const activeLoginRange = computed(() =>
+  userInsightsView.value === 'login-hour' ? loginRangeHours.value : loginRangeDays.value
+)
+const loginRangeUnit = computed(() => (userInsightsView.value === 'login-hour' ? '小時' : '日'))
+const setActiveLoginRange = (value) => {
+  if (userInsightsView.value === 'login-hour') loginRangeHours.value = value
+  else loginRangeDays.value = value
+  void loadOnlineStatistics()
+  if (typeof window !== 'undefined') scheduleLoginStatsRefresh()
+}
+
+watch(userInsightsView, (mode) => {
+  if (mode === 'login-hour') loginRangeHours.value = 24
+  if (mode === 'login-date') loginRangeDays.value = 30
+  if (mode !== 'level') void loadOnlineStatistics()
+})
+
+const buildIntegerAxis = (buckets) => {
+  const maxCount = Math.max(0, ...buckets.map(({ count }) => count))
+  const step = Math.max(1, Math.ceil(maxCount / 4))
+  const yMax = Math.max(1, Math.ceil(maxCount / step) * step)
+  const yTicks = []
+  for (let value = 0; value <= yMax; value += step) yTicks.push(value)
+  if (yTicks.at(-1) !== yMax) yTicks.push(yMax)
+  return { yMax, yTicks: yTicks.reverse() }
+}
+
+const activeReviewSubmissionBucketConfig = computed(() =>
+  reviewSubmissionView.value === 'time'
+    ? LOGIN_HOUR_BUCKET_CONFIG[reviewSubmissionRangeHours.value]
+    : LOGIN_DATE_BUCKET_CONFIG[reviewSubmissionRangeDays.value]
+)
+const reviewSubmissionRangeOptions = computed(() =>
+  reviewSubmissionView.value === 'time' ? LOGIN_HOUR_RANGE_OPTIONS : LOGIN_DATE_RANGE_OPTIONS
+)
+const activeReviewSubmissionRange = computed(() =>
+  reviewSubmissionView.value === 'time'
+    ? reviewSubmissionRangeHours.value
+    : reviewSubmissionRangeDays.value
+)
+const reviewSubmissionRangeUnit = computed(() =>
+  reviewSubmissionView.value === 'time' ? '小時' : '日'
+)
+const activeReviewSubmissionRangeKey = () =>
+  reviewSubmissionView.value === 'time'
+    ? `${reviewSubmissionRangeHours.value}h`
+    : `${reviewSubmissionRangeDays.value}d`
+const reviewSubmissionDescription = computed(() => {
+  if (reviewSubmissionView.value === 'time') {
+    const bucketMinutes = activeReviewSubmissionBucketConfig.value.bucketMinutes
+    return `統計最近 ${reviewSubmissionRangeHours.value} 小時內，每 ${bucketMinutes} 分鐘區間的投稿筆數。`
+  }
+  const days = reviewSubmissionRangeDays.value
+  const bucketMinutes = activeReviewSubmissionBucketConfig.value.bucketMinutes
+  if (bucketMinutes === 24 * 60) return `統計最近 ${days} 日內，每日的投稿筆數。`
+  return `統計最近 ${days} 日內，每 ${bucketMinutes / 60} 小時區間的投稿筆數。`
+})
+const reviewSubmissionChartData = computed(() => {
+  const source = Array.isArray(reviewSubmissionStatistics.value?.points)
+    ? reviewSubmissionStatistics.value.points
+    : []
+  const config = activeReviewSubmissionBucketConfig.value
+  const mode = reviewSubmissionView.value === 'time' ? 'hour' : 'date'
+  const tickLayout = resolveTemporalTickLayout({
+    baseLabelEvery: config.labelEvery,
+    chartWidth: reviewSubmissionChartWidth.value,
+    pointCount: source.length,
+    mode,
+    fontScale: statisticsFontScale.value,
+  })
+  const ticks = buildTemporalTicks(source, {
+    mode,
+    ...tickLayout,
+  })
+  const buckets = source.map((point, index) => ({
+    ...point,
+    ...ticks[index],
+    key: point.start,
+    fullLabel: `${formatProductDateTime(new Date(point.start))}–${formatProductDateTime(
+      new Date(point.end)
+    )}`,
+  }))
+  return {
+    ...buildIntegerAxis(buckets),
+    buckets,
+    ariaLabel:
+      reviewSubmissionView.value === 'time'
+        ? `最近 ${reviewSubmissionRangeHours.value} 小時的投稿筆數分布`
+        : `最近 ${reviewSubmissionRangeDays.value} 日的投稿筆數分布`,
+  }
+})
+
+const setActiveReviewSubmissionRange = (value) => {
+  if (reviewSubmissionView.value === 'time') reviewSubmissionRangeHours.value = value
+  else reviewSubmissionRangeDays.value = value
+  void loadReviewSubmissionStatistics()
+}
+
+watch(reviewSubmissionView, (mode) => {
+  if (mode === 'time') reviewSubmissionRangeHours.value = 24
+  else reviewSubmissionRangeDays.value = 30
+  void loadReviewSubmissionStatistics()
+})
+
+const loginChartData = computed(() => {
+  const mode = userInsightsView.value
+  const source = Array.isArray(onlineStatistics.value?.points) ? onlineStatistics.value.points : []
+  const config = activeLoginBucketConfig.value
+  const tickMode = mode === 'login-hour' ? 'hour' : 'date'
+  const tickLayout = resolveTemporalTickLayout({
+    baseLabelEvery: config.labelEvery,
+    chartWidth: userStatisticsChartWidth.value,
+    pointCount: source.length,
+    mode: tickMode,
+    fontScale: statisticsFontScale.value,
+  })
+  const ticks = buildTemporalTicks(source, {
+    mode: tickMode,
+    ...tickLayout,
+  })
+  const buckets = source.map((point, index) => {
+    const start = new Date(point.start)
+    const end = new Date(point.end)
+    return {
+      ...point,
+      ...ticks[index],
+      key: point.at,
+      fullLabel: `${formatProductDateTime(new Date(point.at))} 取樣（區間 ${formatProductDateTime(start)}–${formatProductDateTime(end)}）`,
+    }
+  })
+  const axis = buildIntegerAxis(buckets)
+  return {
+    ...axis,
+    bucketMinutes: config.bucketMinutes,
+    labels: buckets.map(({ labelLines }) => labelLines),
+    counts: buckets.map(({ count }) => count),
+    buckets,
+    ariaLabel:
+      mode === 'login-hour'
+        ? `最近 ${loginRangeHours.value} 小時的同時在線人數分布`
+        : `最近 ${loginRangeDays.value} 日的同時在線人數分布`,
+  }
+})
+
+const onlineStatisticsSummary = computed(() =>
+  onlineStatistics.value
+    ? {
+        current: onlineStatistics.value.current_online,
+        peak: onlineStatistics.value.peak_online,
+        average: Number(onlineStatistics.value.average_online).toFixed(1),
+      }
+    : null
+)
+
+const selectedUserContributorLevel = computed(() =>
+  resolveSubmissionLevel(userSubmissionStats.value?.contributor_experience || 0)
+)
+
+const selectedUserLevelProgressStyle = computed(() => {
+  const palette = getContributorLevelPalette(selectedUserContributorLevel.value.level)
+  return {
+    '--user-level-color': palette.bg,
+    '--user-level-border': palette.border,
+  }
+})
+
+const buildUserSubmissionStatuses = (stats) => {
+  const counts = stats?.status_counts || {}
+  const total = stats?.total_count || 0
+  return USER_SUBMISSION_STATUS_CONFIG.map((status) => {
+    const count = Number(counts[status.key]) || 0
+    return {
+      ...status,
+      count,
+      percentage: total > 0 ? (count / total) * 100 : 0,
+    }
+  })
+}
+
+const selectedUserSubmissionStatuses = computed(() =>
+  buildUserSubmissionStatuses(userSubmissionStats.value)
+)
+
+const archiveRequesterSubmissionStatuses = computed(() =>
+  buildUserSubmissionStatuses(archiveRequesterStats.value)
+)
+
+const archiveRequesterContributorLevel = computed(() =>
+  resolveSubmissionLevel(archiveRequesterStats.value?.contributor_experience || 0)
+)
+
+const selectedUserSubmissionDistributionLabel = computed(() =>
+  selectedUserSubmissionStatuses.value
+    .map((status) => `${status.label} ${status.count} 筆`)
+    .join('，')
+)
+
+const archiveRequesterDistributionLabel = computed(() =>
+  archiveRequesterSubmissionStatuses.value
+    .map((status) => `${status.label} ${status.count} 筆`)
+    .join('，')
+)
+
+const normalizedUserSubmissionRecordSearch = computed(() =>
+  normalizeReviewSearchText(userSubmissionRecordSearch.value.trim())
+)
+
+const getUserSubmissionRecordSearchHaystack = (record) => {
+  const statusLabel = getUserSubmissionStatusLabel(record.status)
+  const submissionKind = getArchiveSubmissionKind(record)
+  const fields = [
+    record.course_name,
+    record.exam_name,
+    record.professor,
+    record.academic_year,
+    formatAcademicTerm(record.academic_year),
+    record.id,
+    record.id ? `#${record.id}` : '',
+    record.id ? `投稿編號 ${record.id}` : '',
+    record.id ? `投稿編號 #${record.id}` : '',
+    record.status,
+    statusLabel,
+    submissionKind,
+    record.review_comment,
+  ]
+  return fields.map(normalizeReviewSearchText).filter(Boolean).join(' ')
+}
+
+const filteredUserSubmissionRecords = computed(() => {
+  const records = userSubmissionStats.value?.submission_records || []
+  const query = normalizedUserSubmissionRecordSearch.value
+  const filtered = query
+    ? records.filter((record) => getUserSubmissionRecordSearchHaystack(record).includes(query))
+    : records
+  return [...filtered].sort((left, right) => {
+    const timeDifference =
+      new Date(right.submitted_at || 0).getTime() - new Date(left.submitted_at || 0).getTime()
+    return timeDifference || Number(right.id || 0) - Number(left.id || 0)
+  })
+})
+
+const paginatedUserSubmissionRecords = computed(() =>
+  filteredUserSubmissionRecords.value.slice(
+    userSubmissionRecordFirst.value,
+    userSubmissionRecordFirst.value + userSubmissionRecordRows.value
+  )
+)
+
+const handleUserSubmissionRecordPage = (event) => {
+  userSubmissionRecordFirst.value = event.first
+  userSubmissionRecordRows.value = event.rows
+}
+
+watch(userSubmissionRecordSearch, () => {
+  userSubmissionRecordFirst.value = 0
+})
+
+const isContributorLevelSelected = (level) => selectedContributorLevels.value.includes(level)
+
+const toggleContributorLevel = (level) => {
+  selectedContributorLevels.value = isContributorLevelSelected(level)
+    ? selectedContributorLevels.value.filter((selectedLevel) => selectedLevel !== level)
+    : [...selectedContributorLevels.value, level].sort((left, right) => left - right)
+  userFirst.value = 0
+}
+
+const clearContributorLevelFilter = () => {
+  selectedContributorLevels.value = []
+  userFirst.value = 0
+}
+
+const closeUserDataStatsDialog = () => {
+  userSubmissionStatsController?.abort()
+  userSubmissionStatsController = null
+  showUserDataStatsDialog.value = false
+  selectedUserDataStatsId.value = null
+  userSubmissionStatsLoading.value = false
+  userSubmissionStats.value = null
+  userSubmissionStatsError.value = ''
+  userSubmissionRecordSearch.value = ''
+  userSubmissionRecordFirst.value = 0
+}
+
+const openUserDataStats = async (user) => {
+  userSubmissionStatsController?.abort()
+  const controller = new AbortController()
+  userSubmissionStatsController = controller
+  userSubmissionStats.value = null
+  userSubmissionStatsError.value = ''
+  userSubmissionRecordSearch.value = ''
+  userSubmissionStatsLoading.value = true
+  userSubmissionRecordFirst.value = 0
+  selectedUserDataStatsId.value = user.id
+  showUserDataStatsDialog.value = true
+
+  try {
+    const { data } = await getUserSubmissionStats(user.id, {
+      includeRecords: true,
+      signal: controller.signal,
+    })
+    if (userSubmissionStatsController === controller) {
+      userSubmissionStats.value = data
+    }
+  } catch (error) {
+    if (error?.code === 'ERR_CANCELED') return
+    if (userSubmissionStatsController === controller) {
+      const statusCode = error?.response?.status
+      userSubmissionStatsError.value =
+        statusCode === 403
+          ? '你沒有權限查看此使用者的投稿統計'
+          : statusCode === 404
+            ? '找不到此使用者'
+            : '投稿統計載入失敗，請稍後再試'
+    }
+  } finally {
+    if (userSubmissionStatsController === controller) {
+      userSubmissionStatsLoading.value = false
+      userSubmissionStatsController = null
+    }
+  }
+}
+
+const resetContributorLevelSettingsDraft = () => {
+  contributorLevelSettingsDraft.value = getContributorLevelSettingsSnapshot()
+  contributorLevelSettingsError.value = ''
+}
+
+const recalculateUserContributorLevels = () => {
+  users.value = users.value.map((user) => {
+    const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
+    return {
+      ...user,
+      contributorLevel,
+      contributor_level: contributorLevel.level,
+    }
+  })
+}
+
+const openContributorLevelSettingsDialog = async () => {
+  contributorLevelSettingsError.value = ''
+  await loadContributorLevelSettings({ force: true })
+  recalculateUserContributorLevels()
+  resetContributorLevelSettingsDraft()
+  showContributorLevelSettingsDialog.value = true
+}
+
+const closeContributorLevelSettingsDialog = () => {
+  if (contributorLevelSettingsSaving.value) return
+  showContributorLevelSettingsDialog.value = false
+  contributorLevelSettingsError.value = ''
+}
+
+const persistContributorLevelSettings = async (settings) => {
+  contributorLevelSettingsSaving.value = true
+  contributorLevelSettingsError.value = ''
+  try {
+    await saveContributorLevelSettings(settings)
+    recalculateUserContributorLevels()
+    userFirst.value = 0
+    resetContributorLevelSettingsDraft()
+    showContributorLevelSettingsDialog.value = false
+    toast.add({
+      severity: 'success',
+      summary: '設定已保存',
+      detail: '投稿等級名稱與累積 EXP 門檻已更新。',
+      life: 3000,
+    })
+  } catch (error) {
+    contributorLevelSettingsError.value =
+      error?.response?.data?.detail || error?.message || '投稿等級設定保存失敗'
+  } finally {
+    contributorLevelSettingsSaving.value = false
+  }
+}
+
+const confirmContributorLevelSettingsSave = () => {
+  let normalized
+  try {
+    normalized = validateContributorLevelSettings(contributorLevelSettingsDraft.value)
+    contributorLevelSettingsDraft.value = normalized.map((level) => ({ ...level }))
+    contributorLevelSettingsError.value = ''
+  } catch (error) {
+    contributorLevelSettingsError.value = error?.message || '投稿等級設定格式錯誤'
+    return
+  }
+
+  confirm.require({
+    header: '確認更新投稿等級設定',
+    message: '修改等級名稱或 EXP 門檻後，使用者目前顯示的投稿等級可能立即重新計算。',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: '取消',
+    acceptLabel: '確認保存',
+    accept: () => persistContributorLevelSettings(normalized),
+  })
+}
+
 const getCategoryName = (category) => {
   return categoryInfoMap.value[category]?.name || category
 }
@@ -4350,6 +5780,12 @@ const filteredUsers = computed(() => {
     filtered = filtered.filter((user) => user.is_admin === filterUserType.value)
   }
 
+  if (selectedContributorLevels.value.length > 0) {
+    filtered = filtered.filter((user) =>
+      selectedContributorLevels.value.includes(user.contributorLevel.level)
+    )
+  }
+
   return filtered
 })
 
@@ -4358,6 +5794,17 @@ const sortRecords = (records, sortMeta) => {
 
   return [...records].sort((left, right) => {
     for (const { field, order } of sortMeta) {
+      if (field === 'contributor_level') {
+        const leftLevel = Number.isInteger(left.contributor_level) ? left.contributor_level : null
+        const rightLevel = Number.isInteger(right.contributor_level)
+          ? right.contributor_level
+          : null
+        if (leftLevel === rightLevel) continue
+        if (leftLevel === null) return 1
+        if (rightLevel === null) return -1
+        return (leftLevel - rightLevel) * order
+      }
+
       const leftValue = left[field]
       const rightValue = right[field]
       if (leftValue === rightValue) continue
@@ -4369,6 +5816,9 @@ const sortRecords = (records, sortMeta) => {
         sensitivity: 'base',
       })
       if (comparison !== 0) return comparison * order
+    }
+    if (sortMeta.some(({ field }) => field === 'contributor_level')) {
+      return left.name.localeCompare(right.name, 'zh-Hant', { sensitivity: 'base' })
     }
     return 0
   })
@@ -4445,7 +5895,7 @@ const clampPaginatorFirst = (firstRef, rowsRef, totalRecords) => {
 watch([searchQuery, filterCategory], () => {
   courseFirst.value = 0
 })
-watch([userSearchQuery, filterUserType], () => {
+watch([userSearchQuery, filterUserType, selectedContributorLevels], () => {
   userFirst.value = 0
 })
 watch([notificationSearchQuery, notificationSeverityFilter], () => {
@@ -4479,21 +5929,28 @@ const loadCategories = async () => {
 
 const loadCourses = async () => {
   coursesLoading.value = true
+  courseLoadError.value = ''
   try {
     const [categoryResponse, courseResponse] = await Promise.all([
       courseService.listAdminCategories(),
       courseService.getAllCourses(),
     ])
-    courseCategories.value = Array.isArray(categoryResponse.data) ? categoryResponse.data : []
-    const response = courseResponse
-    const courseList = Array.isArray(response.data) ? response.data : []
+    if (!Array.isArray(categoryResponse.data) || !Array.isArray(courseResponse.data)) {
+      throw new TypeError('Invalid course management response')
+    }
+    courseCategories.value = categoryResponse.data
+    const courseList = courseResponse.data
     courses.value = courseList.map((course) => ({
       ...course,
       name: formatCourseDisplayName(course?.name),
     }))
   } catch (error) {
     console.error('載入課程失敗:', error)
-    if (isUnauthorizedError(error)) {
+    const unauthorized = isUnauthorizedError(error)
+    courseLoadError.value = unauthorized
+      ? '登入階段已過期，請重新登入後再載入課程資料。'
+      : '課程資料載入失敗，請稍後再試或查看伺服器日誌。'
+    if (unauthorized) {
       return
     }
     toast.add({
@@ -4509,12 +5966,28 @@ const loadCourses = async () => {
 
 const loadUsers = async () => {
   usersLoading.value = true
+  userStatsLoadError.value = ''
   try {
+    await loadContributorLevelSettings()
     const response = await getUsers()
-    users.value = response.data
+    if (!Array.isArray(response.data)) {
+      throw new TypeError('Invalid users response')
+    }
+    users.value = response.data.map((user) => {
+      const contributorLevel = resolveSubmissionLevel(user.contributor_experience)
+      return {
+        ...user,
+        contributorLevel,
+        contributor_level: contributorLevel.level,
+      }
+    })
   } catch (error) {
     console.error('載入使用者失敗:', error)
-    if (isUnauthorizedError(error)) {
+    const unauthorized = isUnauthorizedError(error)
+    userStatsLoadError.value = unauthorized
+      ? '登入階段已過期，請重新登入後再載入使用者統計。'
+      : '使用者統計載入失敗，請稍後再試或查看伺服器日誌。'
+    if (unauthorized) {
       return
     }
     toast.add({
@@ -4526,6 +5999,54 @@ const loadUsers = async () => {
   } finally {
     usersLoading.value = false
   }
+}
+
+const activeOnlineRangeKey = () =>
+  userInsightsView.value === 'login-hour' ? `${loginRangeHours.value}h` : `${loginRangeDays.value}d`
+
+const loadOnlineStatistics = async () => {
+  if (userInsightsView.value === 'level') return
+  const requestId = ++onlineStatisticsRequestId
+  onlineStatisticsLoading.value = true
+  onlineStatisticsError.value = ''
+  try {
+    const expectedRange = activeOnlineRangeKey()
+    const expectedConfig = activeLoginBucketConfig.value
+    const { data } = await getOnlineStatistics(expectedRange)
+    if (requestId !== onlineStatisticsRequestId) return
+    if (
+      !data ||
+      data.range !== expectedRange ||
+      data.bucket_minutes !== expectedConfig.bucketMinutes ||
+      !Array.isArray(data.points) ||
+      data.points.length !== expectedConfig.bucketCount ||
+      data.points.some(
+        (point) =>
+          !point?.start ||
+          !point?.end ||
+          !point?.at ||
+          !Number.isInteger(point?.count) ||
+          point.count < 0 ||
+          typeof point.has_data !== 'boolean'
+      )
+    ) {
+      throw new TypeError('Invalid online statistics response')
+    }
+    onlineStatistics.value = data
+  } catch (error) {
+    if (requestId !== onlineStatisticsRequestId) return
+    console.error('載入在線統計失敗:', error)
+    onlineStatistics.value = null
+    onlineStatisticsError.value = isUnauthorizedError(error)
+      ? '登入階段已過期，請重新登入後再載入在線統計。'
+      : '在線統計載入失敗，請稍後再試或查看伺服器日誌。'
+  } finally {
+    if (requestId === onlineStatisticsRequestId) onlineStatisticsLoading.value = false
+  }
+}
+
+const reloadUserStatistics = async () => {
+  await Promise.all([loadUsers(), loadOnlineStatistics()])
 }
 
 const loadNotifications = async () => {
@@ -4576,6 +6097,68 @@ const loadReviewItems = async () => {
   } finally {
     reviewLoading.value = false
   }
+}
+
+const loadReviewSubmissionStatistics = async () => {
+  const requestId = ++reviewSubmissionStatisticsRequestId
+  reviewSubmissionStatisticsLoading.value = true
+  reviewSubmissionStatisticsError.value = ''
+  try {
+    const expectedMode = reviewSubmissionView.value
+    const expectedRange = activeReviewSubmissionRangeKey()
+    const expectedConfig = activeReviewSubmissionBucketConfig.value
+    const { data } = await archiveService.getSubmissionStatistics(expectedRange, expectedMode)
+    if (requestId !== reviewSubmissionStatisticsRequestId) return
+    const points = data?.points
+    const counts = Array.isArray(points) ? points.map(({ count }) => count) : []
+    const total = counts.reduce((sum, count) => sum + count, 0)
+    const peak = Math.max(0, ...counts)
+    const expectedAverage = Number((total / expectedConfig.bucketCount).toFixed(1))
+    if (
+      data?.mode !== expectedMode ||
+      data?.range !== expectedRange ||
+      data?.timezone !== PRODUCT_TIME_ZONE ||
+      data?.bucket_minutes !== expectedConfig.bucketMinutes ||
+      !data?.range_start ||
+      !data?.range_end ||
+      !Array.isArray(points) ||
+      points.length !== expectedConfig.bucketCount ||
+      points.some(
+        (point) =>
+          !point?.start ||
+          !point?.end ||
+          !Number.isFinite(Date.parse(point.start)) ||
+          !Number.isFinite(Date.parse(point.end)) ||
+          Date.parse(point.start) >= Date.parse(point.end) ||
+          !Number.isInteger(point?.count) ||
+          point.count < 0
+      ) ||
+      !Number.isInteger(data?.summary?.total) ||
+      !Number.isInteger(data?.summary?.peak) ||
+      typeof data?.summary?.average !== 'number' ||
+      data?.summary?.total !== total ||
+      data?.summary?.peak !== peak ||
+      data?.summary?.average !== expectedAverage
+    ) {
+      throw new TypeError('Invalid review submission statistics response')
+    }
+    reviewSubmissionStatistics.value = data
+  } catch (error) {
+    if (requestId !== reviewSubmissionStatisticsRequestId) return
+    console.error('載入投稿統計失敗:', error)
+    reviewSubmissionStatistics.value = null
+    reviewSubmissionStatisticsError.value = isUnauthorizedError(error)
+      ? '登入階段已過期，請重新登入後再載入投稿統計。'
+      : '投稿統計載入失敗，請稍後再試或查看伺服器日誌。'
+  } finally {
+    if (requestId === reviewSubmissionStatisticsRequestId) {
+      reviewSubmissionStatisticsLoading.value = false
+    }
+  }
+}
+
+const reloadReviewCenter = async () => {
+  await Promise.all([loadReviewItems(), loadReviewSubmissionStatistics()])
 }
 
 const loadTrashItems = async () => {
@@ -5165,7 +6748,7 @@ const openArchiveRequestDialog = async (request) => {
     requested_category_icon: request.requested_category_icon || 'pi pi-fw pi-book',
   }
   showArchiveRequestDialog.value = true
-  await loadArchiveComparison(request)
+  await Promise.all([loadArchiveComparison(request), loadArchiveRequesterStats(request)])
 }
 
 const saveArchiveRequestEdit = async () => {
@@ -5300,6 +6883,46 @@ const loadArchiveComparison = async (request) => {
   }
 }
 
+const clearArchiveRequesterStats = () => {
+  archiveRequesterStatsController?.abort()
+  archiveRequesterStatsController = null
+  archiveRequesterStats.value = null
+  archiveRequesterStatsLoading.value = false
+  archiveRequesterStatsError.value = ''
+}
+
+const loadArchiveRequesterStats = async (request) => {
+  clearArchiveRequesterStats()
+  if (!request?.requester_id) {
+    archiveRequesterStatsError.value = '找不到投稿者資料'
+    return
+  }
+
+  const controller = new AbortController()
+  archiveRequesterStatsController = controller
+  archiveRequesterStatsLoading.value = true
+  try {
+    const { data } = await getUserSubmissionStats(request.requester_id, {
+      includeRecords: false,
+      signal: controller.signal,
+    })
+    if (archiveRequesterStatsController === controller) {
+      archiveRequesterStats.value = data
+    }
+  } catch (error) {
+    if (error?.code === 'ERR_CANCELED') return
+    if (archiveRequesterStatsController === controller) {
+      archiveRequesterStatsError.value =
+        error?.response?.status === 404 ? '找不到投稿者資料' : '投稿者統計載入失敗'
+    }
+  } finally {
+    if (archiveRequesterStatsController === controller) {
+      archiveRequesterStatsLoading.value = false
+      archiveRequesterStatsController = null
+    }
+  }
+}
+
 const getComparisonBasisText = (item) => {
   const course = item?.requested_course_name || item?.subject || '—'
   const exam = item?.name || '—'
@@ -5348,20 +6971,6 @@ const takedownComparisonItem = async (item) => {
       life: 3000,
     })
   }
-}
-
-const getRequesterHistory = (requesterId) => {
-  if (!requesterId) return []
-  const archiveHistory = archiveRequests.value
-    .filter((item) => item.requester_id === requesterId)
-    .map((item) => ({
-      kind: 'archive',
-      id: item.id,
-      title: `考古題：${item.subject} / ${item.name}`,
-      requester: getRequesterDisplay(item),
-      status: item.status,
-    }))
-  return archiveHistory
 }
 
 const getRequesterDisplay = (request) => {
@@ -6146,7 +7755,7 @@ const loadTabData = async (value) => {
   }
 
   if (tab === '1') {
-    await loadUsers()
+    await reloadUserStatistics()
     return
   }
 
@@ -6156,7 +7765,7 @@ const loadTabData = async (value) => {
   }
 
   if (tab === '3') {
-    await loadReviewItems()
+    await reloadReviewCenter()
     return
   }
 
@@ -6191,7 +7800,87 @@ watch(
   { immediate: true }
 )
 
+const refreshOnlineStatistics = () => {
+  if (currentTab.value === '1' && userInsightsView.value !== 'level') {
+    void loadOnlineStatistics()
+  }
+}
+
+const scheduleLoginStatsRefresh = () => {
+  if (loginStatsRefreshTimer !== null) window.clearTimeout(loginStatsRefreshTimer)
+  const now = new Date()
+  const bucketMinutes = activeLoginBucketConfig.value.bucketMinutes
+  const nextHour = new Date(now)
+  const nextBucketMinute = (Math.floor(now.getMinutes() / bucketMinutes) + 1) * bucketMinutes
+  nextHour.setMinutes(nextBucketMinute, 0, 50)
+  loginStatsRefreshTimer = window.setTimeout(
+    () => {
+      refreshOnlineStatistics()
+      scheduleLoginStatsRefresh()
+    },
+    Math.max(1000, nextHour.getTime() - now.getTime())
+  )
+}
+
+const updateStatisticsFontScale = () => {
+  if (typeof document === 'undefined') return
+  const scale = Number.parseFloat(
+    window.getComputedStyle(document.documentElement).getPropertyValue('--app-font-scale')
+  )
+  statisticsFontScale.value = Number.isFinite(scale) && scale > 0 ? scale : 1
+}
+
+const observeStatisticsChartElement = (current, previous) => {
+  if (!statisticsChartResizeObserver) return
+  if (previous) statisticsChartResizeObserver.unobserve(previous)
+  if (current) statisticsChartResizeObserver.observe(current)
+}
+
+watch(userStatisticsChartElement, observeStatisticsChartElement)
+watch(reviewSubmissionChartElement, observeStatisticsChartElement)
+
+onMounted(() => {
+  if (typeof window === 'undefined') return
+  updateStatisticsFontScale()
+  if (typeof ResizeObserver !== 'undefined') {
+    statisticsChartResizeObserver = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        const width = Math.max(0, Math.round(entry.contentRect.width))
+        if (entry.target === userStatisticsChartElement.value) {
+          userStatisticsChartWidth.value = width
+        }
+        if (entry.target === reviewSubmissionChartElement.value) {
+          reviewSubmissionChartWidth.value = width
+        }
+      })
+    })
+    if (userStatisticsChartElement.value) {
+      statisticsChartResizeObserver.observe(userStatisticsChartElement.value)
+    }
+    if (reviewSubmissionChartElement.value) {
+      statisticsChartResizeObserver.observe(reviewSubmissionChartElement.value)
+    }
+  }
+  if (typeof MutationObserver !== 'undefined') {
+    statisticsFontScaleObserver = new MutationObserver(updateStatisticsFontScale)
+    statisticsFontScaleObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-app-font-scale'],
+    })
+  }
+  window.addEventListener('focus', refreshOnlineStatistics)
+  scheduleLoginStatsRefresh()
+})
+
 onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', refreshOnlineStatistics)
+    if (loginStatsRefreshTimer !== null) window.clearTimeout(loginStatsRefreshTimer)
+  }
+  statisticsChartResizeObserver?.disconnect()
+  statisticsFontScaleObserver?.disconnect()
+  userSubmissionStatsController?.abort()
+  archiveRequesterStatsController?.abort()
   closeArchiveRequestPreview()
   closeComparePreview()
 })
@@ -6327,6 +8016,921 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.admin-insights-card {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-color);
+}
+
+.user-insights.admin-insights-card {
+  row-gap: 0.5rem;
+}
+
+.admin-insights-card .chart-summary-item {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.contributor-level-insights {
+  margin-top: 1rem;
+}
+
+.contributor-level-insights__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  color: var(--text-color);
+}
+
+.contributor-level-insights__heading h3,
+.contributor-level-insights__heading p {
+  margin: 0;
+}
+
+.contributor-level-insights__heading h3 {
+  font-size: 1rem;
+}
+
+.contributor-level-insights__heading p {
+  margin-top: 0.12rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.contributor-level-insights__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.contributor-level-insights__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem 0.6rem;
+}
+
+:deep(.contributor-level-settings-button.p-button) {
+  min-height: 2.25rem;
+  padding: 0.28rem 0.52rem;
+  gap: 0.28rem;
+  font-size: var(--app-font-size-xs) !important;
+}
+
+:deep(.contributor-level-settings-button .p-button-icon),
+:deep(.contributor-level-settings-button .p-button-label) {
+  font-size: inherit !important;
+}
+
+.contributor-level-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.32rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-color);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.contributor-level-toggle:hover {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+}
+
+.contributor-level-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.section-collapse-toggle {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.section-collapse-toggle:hover {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+}
+
+.section-collapse-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.contributor-level-stat {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.35rem;
+  padding: 0.28rem 0.32rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-primary);
+  color: var(--text-color);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.contributor-level-stat:hover,
+.contributor-level-stat:focus-visible {
+  border-color: var(--primary-color);
+}
+
+.contributor-level-stat:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.contributor-level-stat.is-active {
+  border-color: var(--primary-color);
+  box-shadow: inset 0 0 0 1px var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-primary));
+}
+
+.contributor-level-stat__name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contributor-level-stat :deep(.contributor-level--compact .contributor-level__badge) {
+  min-width: calc(2.9rem * var(--app-font-scale));
+  padding: calc(0.12rem * var(--app-font-scale)) calc(0.34rem * var(--app-font-scale));
+  font-size: var(--app-font-size-xs);
+}
+
+.user-table-contributor-level {
+  color: var(--text-color);
+  font-size: var(--app-font-size-sm);
+  white-space: nowrap;
+}
+
+.admin-mobile-list--users .mobile-user-level-tag {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.18rem 0.38rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: var(--app-badge-font-size);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+:deep(.user-management-table .p-datatable-thead > tr > th:first-child),
+:deep(.user-management-table .p-datatable-tbody > tr > td:first-child) {
+  width: clamp(7.5rem, calc(7.5rem * var(--app-font-scale)), 10.5rem);
+  min-width: clamp(7.5rem, calc(7.5rem * var(--app-font-scale)), 10.5rem);
+  max-width: clamp(7.5rem, calc(7.5rem * var(--app-font-scale)), 10.5rem);
+  white-space: nowrap;
+}
+
+:deep(
+  .user-management-table .p-datatable-thead > tr > th:first-child .p-datatable-column-header-content
+) {
+  gap: 0.3rem;
+}
+
+.user-insights__heading,
+.user-insights__actions,
+.user-insights__switch,
+.user-insights__range {
+  display: flex;
+  align-items: center;
+}
+
+.user-insights__heading {
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.user-insights__heading h3,
+.user-insights__heading p,
+.user-insights__panel p {
+  margin: 0;
+}
+
+.user-insights__heading h3 {
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.user-insights__heading p,
+.user-insights__description {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.user-insights__actions,
+.user-insights__range,
+.user-insights__switch {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.user-insights__switch,
+.user-insights__range {
+  padding: 0.16rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-primary);
+}
+
+.user-insights__switch button,
+.user-insights__range button,
+.user-insights__toggle {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.user-insights__switch button,
+.user-insights__range button {
+  padding: 0.34rem 0.55rem;
+}
+
+.user-insights__switch button.is-active,
+.user-insights__range button.is-active {
+  background: color-mix(in srgb, var(--p-primary-color) 15%, var(--bg-primary));
+  color: var(--p-primary-color);
+}
+
+.user-insights__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.user-insights__switch button:focus-visible,
+.user-insights__range button:focus-visible,
+.user-insights__toggle:focus-visible {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 2px;
+}
+
+.user-insights__panel {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  padding-top: 0.2rem;
+}
+
+.user-level-chart {
+  display: grid;
+  gap: 0.42rem;
+  min-width: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.15rem 0.2rem 0.15rem 0;
+}
+
+.user-login-column-chart {
+  --temporal-edge-padding: clamp(1rem, calc(1.35rem * var(--app-font-scale)), 2rem);
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.45rem;
+  min-width: 0;
+  height: clamp(13rem, 28vw, 18rem);
+  padding-top: 0.35rem;
+  color: var(--text-color);
+  font-size: var(--app-font-size-xs);
+}
+
+.user-login-column-chart__y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: calc(100% - 2.55rem);
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.user-login-column-chart__plot {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-left: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-login-column-chart__grid,
+.user-login-column-chart__bars {
+  position: absolute;
+  inset: 0 0 2.55rem;
+}
+
+.user-login-column-chart__grid {
+  pointer-events: none;
+}
+
+.user-login-column-chart__grid span {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+.user-login-column-chart__bars,
+.user-login-column-chart__x-axis {
+  display: grid;
+  grid-template-columns: repeat(var(--login-chart-columns), minmax(0, 1fr));
+}
+
+.user-login-column-chart__bars {
+  box-sizing: border-box;
+  z-index: 1;
+  align-items: end;
+  gap: clamp(1px, 0.25vw, 3px);
+  padding: 0 var(--temporal-edge-padding);
+}
+
+.user-login-column-chart__item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: flex-end;
+  justify-content: center;
+  outline: none;
+}
+
+.user-login-column-chart__item:hover,
+.user-login-column-chart__item:focus-visible {
+  z-index: 3;
+}
+
+.user-login-column-chart__tooltip {
+  position: absolute;
+  top: 0.35rem;
+  left: 50%;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 3rem));
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--app-font-size-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 120ms ease;
+}
+
+.user-login-column-chart__item:hover .user-login-column-chart__tooltip,
+.user-login-column-chart__item:focus-visible .user-login-column-chart__tooltip {
+  opacity: 1;
+}
+
+.user-login-column-chart__item:first-child .user-login-column-chart__tooltip {
+  left: 0;
+  transform: none;
+}
+
+.user-login-column-chart__item:last-child .user-login-column-chart__tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-login-column-chart__tooltip {
+    transition: none;
+  }
+}
+
+.user-login-column-chart__item:focus-visible {
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 2px var(--p-primary-color);
+}
+
+.user-login-column-chart__bar {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  border-radius: 4px 4px 1px 1px;
+  background: transparent;
+}
+
+.user-login-column-chart__bar.has-value {
+  min-height: 2px;
+  background: var(--p-primary-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--p-primary-color) 60%, transparent);
+}
+
+.user-login-column-chart__x-axis {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+  height: 2.5rem;
+  align-items: start;
+  gap: 1px;
+  padding: 0.35rem var(--temporal-edge-padding) 0;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.user-login-column-chart__x-axis > span {
+  min-width: 0;
+  overflow: visible;
+  font-size: var(--app-font-size-xs);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.user-login-column-chart__x-axis > span > span {
+  display: block;
+}
+
+.user-level-chart__track {
+  height: 0.72rem;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 42%, var(--bg-primary));
+}
+
+.user-level-chart__fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+}
+
+.user-level-chart__row {
+  display: grid;
+  grid-template-columns: 4rem minmax(7.5rem, 0.75fr) minmax(8rem, 2fr) 3.7rem 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: var(--text-color);
+  font-size: 0.75rem;
+}
+
+.user-level-chart__name {
+  min-width: 0;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.user-level-chart__fill {
+  box-sizing: border-box;
+  border: 1px solid var(--chart-level-border);
+  background: var(--chart-level-color);
+}
+
+.user-level-chart__row > strong,
+.user-level-chart__row > span:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.user-insights__empty {
+  padding: 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 7px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.user-submission-dialog {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.user-submission-summary,
+.user-submission-overview,
+.user-submission-distribution {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+}
+
+.user-submission-summary__identity,
+.user-submission-summary__exp,
+.user-submission-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.user-submission-summary__identity h3 {
+  margin: 0.1rem 0 0;
+  color: var(--text-color);
+}
+
+.user-submission-summary__eyebrow,
+.user-submission-summary__exp span,
+.user-submission-total span {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+}
+
+.user-submission-level-progress {
+  height: 0.72rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 2px;
+  border: 1px solid var(--user-level-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 55%, var(--bg-primary));
+}
+
+.user-submission-level-progress > span {
+  display: block;
+  height: 100%;
+  border: 1px solid var(--user-level-border);
+  border-radius: inherit;
+  background: var(--user-level-color);
+}
+
+.user-submission-status-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.user-submission-status-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+}
+
+.user-submission-status-card strong {
+  grid-column: 1 / -1;
+  color: var(--text-color);
+  font-size: var(--app-font-size-base);
+}
+
+.user-submission-status-dot {
+  width: 0.58rem;
+  height: 0.58rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.user-submission-distribution__bar {
+  display: flex;
+  width: 100%;
+  height: 0.85rem;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-primary);
+}
+
+.user-submission-distribution__bar > span {
+  height: 100%;
+}
+
+.user-submission-distribution__legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+}
+
+.user-submission-legend-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 3.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+}
+
+.user-submission-legend-row strong,
+.user-submission-legend-row > span:last-child {
+  color: var(--text-color);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.request-summary {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.request-summary__header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+}
+
+.request-summary__header :deep(.p-tag),
+.request-summary__id {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.request-summary__id {
+  margin-left: auto;
+}
+
+.request-summary__description {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.archive-requester-stats {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+}
+
+.archive-requester-stats h4 {
+  margin: 0;
+}
+
+.archive-requester-stats__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+}
+
+.archive-requester-stats__identity > div {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.archive-requester-stats__identity span {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+}
+
+.archive-requester-stats__identity > strong {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.user-submission-records {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  padding-top: 0.2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.user-submission-records__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.user-submission-records__heading > div:first-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.user-submission-records__heading h4 {
+  margin: 0;
+}
+
+.user-submission-records__heading span {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+}
+
+.user-submission-records__search {
+  width: min(100%, 19rem);
+  margin-left: auto;
+}
+
+.user-submission-record-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.user-submission-record {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.user-submission-record__header,
+.user-submission-record__header > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+}
+
+.user-submission-record__header {
+  justify-content: space-between;
+}
+
+.user-submission-record__header > strong,
+.user-submission-record__kind {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+  white-space: nowrap;
+}
+
+.user-submission-record__title {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.55rem;
+}
+
+.user-submission-record__title strong,
+.user-submission-record__title span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-submission-record__title span {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+}
+
+.user-submission-record__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+}
+
+.user-submission-record__meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-submission-record__comment {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+}
+
+.user-submission-record__comment strong {
+  flex: 0 0 auto;
+  color: var(--text-color);
+}
+
+.user-submission-record__comment span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-submission-records__paginator {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.contributor-level-settings-dialog {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.contributor-level-settings-help {
+  margin: 0;
+  padding: 0.8rem 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.contributor-level-settings-list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: min(62vh, 34rem);
+  overflow-y: auto;
+  padding: 0 1rem 1rem;
+}
+
+.contributor-level-settings-row {
+  display: grid;
+  grid-template-columns: 3.2rem 4rem minmax(10rem, 1fr) minmax(11rem, 0.8fr) auto;
+  min-width: 0;
+  align-items: end;
+  gap: 0.55rem;
+  padding: 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.contributor-level-settings-number {
+  align-self: center;
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+.contributor-level-settings-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.contributor-level-settings-max {
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.contributor-level-settings-footer {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contributor-level-settings-footer-spacer {
+  flex: 1 1 auto;
+}
+
 .admin-toolbar--section {
   align-items: flex-start;
 }
@@ -6408,43 +9012,6 @@ onBeforeUnmount(() => {
 
 .review-empty-state {
   padding: 1rem;
-  color: var(--text-secondary);
-}
-
-.review-history {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.875rem;
-  background: color-mix(in srgb, var(--bg-secondary) 75%, transparent);
-}
-
-.review-history-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-top: 1px solid var(--border-color);
-}
-
-.review-history-row:first-of-type {
-  border-top: 0;
-}
-
-.review-requester {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.review-history-title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.review-history-title small {
   color: var(--text-secondary);
 }
 
@@ -9784,6 +12351,67 @@ onBeforeUnmount(() => {
   font-size: inherit !important;
 }
 
+.admin-insights-card,
+.admin-insights-card :deep(.p-component) {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.admin-insights-card h3,
+.admin-insights-card .user-insights__switch button,
+.admin-insights-card .user-insights__range button,
+.admin-insights-card .section-collapse-toggle,
+.admin-insights-card .contributor-level-toggle,
+.admin-insights-card .contributor-level-stat strong,
+.admin-insights-card .user-level-chart__name {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+
+.admin-insights-card p,
+.admin-insights-card .user-insights__empty,
+.admin-insights-card .contributor-level-stat span,
+.admin-insights-card .contributor-level-stats__summary,
+.admin-insights-card .user-level-chart__row > span,
+.admin-insights-card .user-login-column-chart__y-axis,
+.admin-insights-card .user-login-column-chart__x-axis > span {
+  font-size: var(--app-font-size-xs) !important;
+  line-height: 1.35;
+}
+
+.admin-insights-card :deep(.p-button) {
+  min-height: max(2.25rem, calc(2rem * var(--app-font-scale)));
+  font-size: var(--app-font-size-sm) !important;
+}
+
+.admin-insights-card .user-insights__switch button,
+.admin-insights-card .user-insights__range button,
+.admin-insights-card .section-collapse-toggle,
+.admin-insights-card .contributor-level-toggle,
+.admin-insights-card .contributor-level-stat {
+  min-height: max(2.25rem, calc(2rem * var(--app-font-scale)));
+}
+
+.admin-toolbar--users :deep(.p-inputtext),
+.admin-toolbar--users :deep(.p-select) {
+  min-height: max(2.35rem, calc(2.35rem * var(--app-font-scale)));
+}
+
+.admin-toolbar--users :deep(.p-button),
+.user-management-table :deep(.p-button),
+.admin-mobile-list--users :deep(.p-button) {
+  min-height: max(2.25rem, calc(2rem * var(--app-font-scale)));
+}
+
+.admin-insights-card :deep(.p-button-label),
+.admin-insights-card :deep(.p-button-icon) {
+  font-size: inherit !important;
+}
+
+.admin-insights-card :deep(.p-tag),
+.admin-insights-card .contributor-level-badge {
+  font-size: var(--app-badge-font-size) !important;
+}
+
 .trash-center,
 .trash-center :deep(.p-component),
 .trash-table,
@@ -9930,6 +12558,293 @@ onBeforeUnmount(() => {
     white-space: normal;
     word-break: normal;
     overflow-wrap: break-word;
+  }
+}
+
+@media (max-width: 640px) {
+  .archive-requester-stats__identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .archive-requester-stats__identity > strong {
+    margin-left: 0;
+  }
+
+  .user-submission-record__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .user-submission-record__comment {
+    flex-direction: column;
+  }
+
+  .user-insights__heading,
+  .user-submission-summary__identity,
+  .user-submission-summary__exp {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .user-insights__actions {
+    width: 100%;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .user-insights__switch {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline-start: 0;
+    justify-content: flex-end;
+  }
+
+  .user-insights__switch button {
+    flex: 0 1 auto;
+    white-space: nowrap;
+  }
+
+  .user-insights__toggle {
+    margin-inline-start: 0;
+  }
+
+  .admin-insights-card .chart-summary-control-row {
+    display: grid;
+    grid-template-areas:
+      'controls'
+      'summary'
+      'timezone';
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.45rem;
+  }
+
+  .admin-insights-card .chart-control-stack {
+    display: contents;
+  }
+
+  .admin-insights-card .chart-summary-group {
+    display: grid;
+    grid-area: summary;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  .admin-insights-card .chart-summary-item {
+    min-width: 0;
+    padding: 0.35rem 0.2rem;
+  }
+
+  .admin-insights-card .chart-summary-item > span,
+  .admin-insights-card .chart-summary-item > strong {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+    word-break: keep-all;
+  }
+
+  .admin-insights-card .chart-control-stack .user-insights__range {
+    grid-area: controls;
+    width: max-content;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    justify-self: end;
+  }
+
+  .admin-insights-card .chart-control-stack .user-insights__range button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .admin-insights-card .chart-timezone-label {
+    grid-area: timezone;
+    justify-self: end;
+  }
+
+  .user-login-column-chart {
+    --temporal-edge-padding: clamp(1.5rem, calc(1.75rem * var(--app-font-scale)), 2.5rem);
+    grid-template-columns: 1.6rem minmax(0, 1fr);
+    height: 13rem;
+    gap: 0.3rem;
+  }
+
+  .user-login-column-chart__grid,
+  .user-login-column-chart__bars {
+    inset-block-end: 3rem;
+  }
+
+  .user-login-column-chart__x-axis {
+    height: 3rem;
+  }
+
+  .admin-mobile-list--users .user-card-title-group {
+    display: grid;
+    grid-template-areas:
+      'level name'
+      'role role';
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+  }
+
+  .admin-mobile-list--users .mobile-user-level-tag {
+    grid-area: level;
+  }
+
+  .admin-mobile-list--users .user-card-title-group .admin-tablet-card-title {
+    grid-area: name;
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-mobile-list--users .user-role-tag-group {
+    grid-area: role;
+  }
+
+  .user-level-chart__row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.35rem 0.45rem;
+  }
+
+  .user-level-chart__track {
+    grid-column: 1 / 3;
+  }
+
+  .user-level-chart__row > span:last-child {
+    grid-column: 3;
+  }
+
+  .user-submission-status-cards,
+  .user-submission-distribution__legend {
+    grid-template-columns: 1fr;
+  }
+
+  .user-submission-status-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .user-submission-status-card strong {
+    grid-column: auto;
+  }
+
+  .contributor-level-insights__heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .contributor-level-insights__heading p {
+    display: none;
+  }
+
+  .contributor-level-insights__actions {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+
+  .contributor-level-stat {
+    max-width: 100%;
+    min-width: 8.5rem;
+    min-height: 2.75rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .contributor-level-settings-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .contributor-level-settings-field {
+    grid-column: 1 / -1;
+  }
+
+  .contributor-level-settings-max {
+    grid-column: 1 / -1;
+  }
+
+  .contributor-level-settings-footer-spacer {
+    display: none;
+  }
+
+  .contributor-level-settings-footer :deep(.p-button) {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 438px) {
+  .admin-insights-card .user-insights__switch.user-insights__switch--two,
+  .admin-insights-card .user-insights__switch.user-insights__switch--three {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-insights-card .user-insights__switch > .user-insights__switch-option {
+    display: block;
+    flex: none;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    white-space: normal;
+  }
+
+  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--primary {
+    grid-area: primary;
+  }
+
+  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--secondary {
+    grid-area: secondary;
+  }
+
+  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--wide {
+    grid-area: wide;
+    justify-self: stretch;
+  }
+
+  .admin-insights-card .user-insights__switch.user-insights__switch--three {
+    grid-template-areas:
+      'primary secondary'
+      'wide wide';
+  }
+}
+
+@media (min-width: 641px) and (max-width: 899px) {
+  .user-insights__heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .user-submission-status-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .contributor-level-insights__heading {
+    align-items: flex-start;
+  }
+
+  .contributor-level-insights__actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 871px) {
+  .user-insights__actions {
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+    margin-inline-start: auto;
+    justify-content: flex-end;
+  }
+
+  .user-insights__switch {
+    max-width: 100%;
+    justify-content: flex-end;
+  }
+
+  .user-insights__toggle {
+    margin-inline-start: 0;
   }
 }
 

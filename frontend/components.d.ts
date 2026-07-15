@@ -22,6 +22,7 @@ declare module 'vue' {
     Checkbox: typeof import('primevue/checkbox')['default']
     Column: typeof import('primevue/column')['default']
     ConfirmDialog: typeof import('primevue/confirmdialog')['default']
+    ContributorLevelBadge: typeof import('./src/components/ContributorLevelBadge.vue')['default']
     DataTable: typeof import('primevue/datatable')['default']
     DatePicker: typeof import('primevue/datepicker')['default']
     Dialog: typeof import('primevue/dialog')['default']
@@ -62,5 +63,6 @@ declare module 'vue' {
     ToggleSwitch: typeof import('primevue/toggleswitch')['default']
     Toolbar: typeof import('primevue/toolbar')['default']
     UploadArchiveDialog: typeof import('./src/components/UploadArchiveDialog.vue')['default']
+    UserOnlineDurationChart: typeof import('./src/components/UserOnlineDurationChart.vue')['default']
   }
 }

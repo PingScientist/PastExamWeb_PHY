@@ -60,6 +60,12 @@ export const archiveService = {
     return api.get('/archives/admin/submissions')
   },
 
+  getSubmissionStatistics(range, mode) {
+    return api.get('/archives/admin/submission-statistics', {
+      params: { range, mode },
+    })
+  },
+
   listSubmissionComparisons(submissionId) {
     return api.get(`/archives/admin/submissions/${submissionId}/comparisons`)
   },

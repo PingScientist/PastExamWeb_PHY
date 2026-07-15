@@ -97,6 +97,11 @@ describe('API service wrappers', () => {
       course_name: 'Linear',
       course_category: 'freshman',
     })
+
+    archiveService.getSubmissionStatistics('24h', 'time')
+    expect(getMock).toHaveBeenCalledWith('/archives/admin/submission-statistics', {
+      params: { range: '24h', mode: 'time' },
+    })
   })
 
   it('notification service proxies', () => {
@@ -193,6 +198,28 @@ describe('API service wrappers', () => {
 
     adminService.getUsers()
     expect(getMock).toHaveBeenCalledWith('/users/admin/users')
+
+    adminService.getOnlineStatistics('24h')
+    expect(getMock).toHaveBeenCalledWith('/users/admin/online-statistics', {
+      params: { range: '24h' },
+    })
+
+    const signal = new AbortController().signal
+    adminService.getUserOnlineDuration(2, {
+      mode: 'hourly',
+      date: '2026-07-15',
+      signal,
+    })
+    expect(getMock).toHaveBeenCalledWith('/users/admin/users/2/online-duration', {
+      signal,
+      params: { mode: 'hourly', date: '2026-07-15' },
+    })
+
+    adminService.getUserOnlineDuration(2, { mode: 'daily', days: 90 })
+    expect(getMock).toHaveBeenCalledWith('/users/admin/users/2/online-duration', {
+      signal: undefined,
+      params: { mode: 'daily', days: 90 },
+    })
 
     adminService.createUser({ name: 'Alice' })
     expect(postMock).toHaveBeenCalledWith('/users/admin/users', { name: 'Alice' })

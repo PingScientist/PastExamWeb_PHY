@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import AdminView from '@/views/Admin.vue'
+import { applyFontSizePreference } from '@/utils/fontSizePreference'
 
 const sampleCourses = [
   { id: 1, name: 'Algorithms', category: 'junior' },
@@ -13,6 +14,77 @@ const sampleUsers = [
 ]
 
 const now = new Date()
+const onlineRangeConfig = {
+  '24h': [10, 144],
+  '48h': [20, 144],
+  '72h': [30, 144],
+  '7d': [240, 42],
+  '30d': [720, 60],
+  '90d': [1440, 90],
+}
+const makeOnlineStatistics = (range = '24h', counts = {}) => {
+  const [bucketMinutes, bucketCount] = onlineRangeConfig[range]
+  const end = new Date(now)
+  end.setMinutes(0, 0, 0)
+  const points = Array.from({ length: bucketCount }, (_, index) => {
+    const start = new Date(end.getTime() - (bucketCount - index) * bucketMinutes * 60_000)
+    const bucketEnd = new Date(start.getTime() + bucketMinutes * 60_000)
+    return {
+      start: start.toISOString(),
+      end: bucketEnd.toISOString(),
+      at: index === bucketCount - 1 ? end.toISOString() : bucketEnd.toISOString(),
+      count: counts[index] ?? 0,
+      has_data: true,
+    }
+  })
+  const values = points.map(({ count }) => count)
+  return {
+    range,
+    bucket_minutes: bucketMinutes,
+    timezone: 'UTC',
+    online_timeout_seconds: 300,
+    current_online: values.at(-1) ?? 0,
+    peak_online: Math.max(0, ...values),
+    average_online: values.reduce((sum, value) => sum + value, 0) / values.length,
+    history_started_at: points[0].start,
+    points,
+  }
+}
+const makeSubmissionStatistics = (range = '24h', counts = {}) => {
+  const [bucketMinutes, bucketCount] = onlineRangeConfig[range]
+  const mode = range.endsWith('h') ? 'time' : 'date'
+  const currentStart = new Date(now)
+  currentStart.setUTCMinutes(
+    Math.floor(currentStart.getUTCMinutes() / bucketMinutes) * bucketMinutes,
+    0,
+    0
+  )
+  const firstStart = new Date(currentStart.getTime() - (bucketCount - 1) * bucketMinutes * 60_000)
+  const points = Array.from({ length: bucketCount }, (_, index) => {
+    const start = new Date(firstStart.getTime() + index * bucketMinutes * 60_000)
+    return {
+      start: start.toISOString(),
+      end: new Date(start.getTime() + bucketMinutes * 60_000).toISOString(),
+      count: counts[index] ?? 0,
+    }
+  })
+  const values = points.map(({ count }) => count)
+  const total = values.reduce((sum, value) => sum + value, 0)
+  return {
+    mode,
+    range,
+    timezone: 'Asia/Taipei',
+    bucket_minutes: bucketMinutes,
+    range_start: points[0].start,
+    range_end: points.at(-1).end,
+    summary: {
+      total,
+      peak: Math.max(0, ...values),
+      average: Number((total / bucketCount).toFixed(1)),
+    },
+    points,
+  }
+}
 const sampleNotifications = [
   {
     id: 1,
@@ -40,8 +112,13 @@ const getCoursesMock = vi.hoisted(() => vi.fn())
 const createCourseMock = vi.hoisted(() => vi.fn())
 const updateCourseMock = vi.hoisted(() => vi.fn())
 const deleteCourseMock = vi.hoisted(() => vi.fn())
+const listAdminCategoriesMock = vi.hoisted(() => vi.fn())
+const getAllCoursesMock = vi.hoisted(() => vi.fn())
 
 const getUsersMock = vi.hoisted(() => vi.fn())
+const getOnlineStatisticsMock = vi.hoisted(() => vi.fn())
+const getUserSubmissionStatsMock = vi.hoisted(() => vi.fn())
+const getUserOnlineDurationMock = vi.hoisted(() => vi.fn())
 const createUserMock = vi.hoisted(() => vi.fn())
 const updateUserMock = vi.hoisted(() => vi.fn())
 const deleteUserMock = vi.hoisted(() => vi.fn())
@@ -50,6 +127,8 @@ const notificationGetAllMock = vi.hoisted(() => vi.fn())
 const notificationCreateMock = vi.hoisted(() => vi.fn())
 const notificationUpdateMock = vi.hoisted(() => vi.fn())
 const notificationRemoveMock = vi.hoisted(() => vi.fn())
+const listAdminSubmissionsMock = vi.hoisted(() => vi.fn())
+const getSubmissionStatisticsMock = vi.hoisted(() => vi.fn())
 
 const trackEventMock = vi.hoisted(() => vi.fn())
 const isUnauthorizedErrorMock = vi.hoisted(() => vi.fn(() => false))
@@ -99,6 +178,9 @@ vi.mock('@/api', () => ({
   updateCourse: updateCourseMock,
   deleteCourse: deleteCourseMock,
   getUsers: getUsersMock,
+  getOnlineStatistics: getOnlineStatisticsMock,
+  getUserSubmissionStats: getUserSubmissionStatsMock,
+  getUserOnlineDuration: getUserOnlineDurationMock,
   createUser: createUserMock,
   updateUser: updateUserMock,
   deleteUser: deleteUserMock,
@@ -107,6 +189,14 @@ vi.mock('@/api', () => ({
     create: notificationCreateMock,
     update: notificationUpdateMock,
     remove: notificationRemoveMock,
+  },
+  courseService: {
+    listAdminCategories: listAdminCategoriesMock,
+    getAllCourses: getAllCoursesMock,
+  },
+  archiveService: {
+    listAdminSubmissions: listAdminSubmissionsMock,
+    getSubmissionStatistics: getSubmissionStatisticsMock,
   },
 }))
 
@@ -122,11 +212,19 @@ describe('AdminView', () => {
     vi.useFakeTimers()
     vi.setSystemTime(now)
     getCoursesMock.mockResolvedValue({ data: sampleCourses })
+    listAdminCategoriesMock.mockResolvedValue({
+      data: [{ id: 1, key: 'freshman', name: '基礎必修', label: '基礎', is_active: true }],
+    })
+    getAllCoursesMock.mockResolvedValue({ data: sampleCourses })
     createCourseMock.mockResolvedValue()
     updateCourseMock.mockResolvedValue()
     deleteCourseMock.mockResolvedValue()
 
     getUsersMock.mockResolvedValue({ data: sampleUsers })
+    getOnlineStatisticsMock.mockImplementation((range) => {
+      const bucketCount = onlineRangeConfig[range][1]
+      return Promise.resolve({ data: makeOnlineStatistics(range, { [bucketCount - 1]: 2 }) })
+    })
     createUserMock.mockResolvedValue()
     updateUserMock.mockResolvedValue()
     deleteUserMock.mockResolvedValue()
@@ -135,6 +233,10 @@ describe('AdminView', () => {
     notificationCreateMock.mockResolvedValue()
     notificationUpdateMock.mockResolvedValue()
     notificationRemoveMock.mockResolvedValue()
+    listAdminSubmissionsMock.mockResolvedValue({ data: [] })
+    getSubmissionStatisticsMock.mockImplementation((range) =>
+      Promise.resolve({ data: makeSubmissionStatistics(range, { 0: 2, 1: 1 }) })
+    )
 
     trackEventMock.mockReset()
     toastAddMock.mockReset()
@@ -164,11 +266,13 @@ describe('AdminView', () => {
 
     await flushPromises()
 
-    expect(getCoursesMock).toHaveBeenCalled()
+    expect(listAdminCategoriesMock).toHaveBeenCalled()
+    expect(getAllCoursesMock).toHaveBeenCalled()
     expect(getUsersMock).not.toHaveBeenCalled()
     expect(wrapper.vm.filteredCourses.length).toBe(2)
 
     await wrapper.vm.handleTabChange('1')
+    await wrapper.vm.loadUsers()
     await flushPromises()
 
     expect(getUsersMock).toHaveBeenCalled()
@@ -242,12 +346,11 @@ describe('AdminView', () => {
     expect(notificationGetAllMock).toHaveBeenCalled()
 
     expect(wrapper.vm.getCategoryName('freshman')).toBe('基礎必修')
-    expect(wrapper.vm.getCategorySeverity('graduate')).toBe('contrast')
     expect(wrapper.vm.getNotificationSeverity('danger')).toBe('danger')
     expect(wrapper.vm.getNotificationSeverityLabel('info')).toBe('一般')
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[0])).toBe(true)
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[1])).toBe(false)
-    expect(wrapper.vm.formatNotificationDate('invalid')).toBe('invalid')
+    expect(wrapper.vm.formatNotificationDate('invalid')).toBe('—')
     expect(wrapper.vm.formatNotificationDate(now.toISOString())).not.toBe('—')
 
     wrapper.unmount()
@@ -300,15 +403,41 @@ describe('AdminView', () => {
 
     toastAddMock.mockClear()
     isUnauthorizedErrorMock.mockReturnValueOnce(true)
-    getCoursesMock.mockRejectedValueOnce(new Error('unauthorized'))
+    getAllCoursesMock.mockRejectedValueOnce(new Error('unauthorized'))
     await wrapper.vm.loadCourses()
     expect(toastAddMock).not.toHaveBeenCalled()
+    expect(wrapper.vm.courseLoadError).toContain('登入階段已過期')
+
+    isUnauthorizedErrorMock.mockReturnValue(false)
+    getAllCoursesMock.mockResolvedValueOnce({ data: { courses: sampleCourses } })
+    await wrapper.vm.loadCourses()
+    expect(wrapper.vm.courseLoadError).toContain('課程資料載入失敗')
+    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入課程失敗' }))
 
     toastAddMock.mockClear()
     isUnauthorizedErrorMock.mockReturnValueOnce(false)
     getUsersMock.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.loadUsers()
     expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入使用者失敗' }))
+    expect(wrapper.vm.userStatsLoadError).toContain('使用者統計載入失敗')
+
+    toastAddMock.mockClear()
+    getUsersMock.mockResolvedValueOnce({ data: { users: sampleUsers } })
+    await wrapper.vm.loadUsers()
+    expect(wrapper.vm.userStatsLoadError).toContain('使用者統計載入失敗')
+    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入使用者失敗' }))
+
+    toastAddMock.mockClear()
+    isUnauthorizedErrorMock.mockReturnValueOnce(true)
+    getUsersMock.mockRejectedValueOnce(new Error('unauthorized'))
+    await wrapper.vm.loadUsers()
+    expect(wrapper.vm.userStatsLoadError).toContain('登入階段已過期')
+    expect(toastAddMock).not.toHaveBeenCalled()
+
+    isUnauthorizedErrorMock.mockReturnValue(false)
+    getUsersMock.mockResolvedValueOnce({ data: sampleUsers })
+    await wrapper.vm.loadUsers()
+    expect(wrapper.vm.userStatsLoadError).toBe('')
 
     toastAddMock.mockClear()
     isUnauthorizedErrorMock.mockReturnValueOnce(false)
@@ -350,6 +479,173 @@ describe('AdminView', () => {
 
     await flushPromises()
     expect(notificationGetAllMock).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+  })
+
+  it('maps online statistics for every supported range', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+    wrapper.vm.userInsightsView = 'login-hour'
+
+    const hourRanges = [
+      [24, 144, 10, '統計最近 24 小時內，每 10 分鐘取樣一次的同時在線使用者人數。'],
+      [48, 144, 20, '統計最近 48 小時內，每 20 分鐘取樣一次的同時在線使用者人數。'],
+      [72, 144, 30, '統計最近 72 小時內，每 30 分鐘取樣一次的同時在線使用者人數。'],
+    ]
+    for (const [range, bucketCount, bucketMinutes, description] of hourRanges) {
+      wrapper.vm.setActiveLoginRange(range)
+      await flushPromises()
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
+      expect(wrapper.vm.loginDistributionDescription).toBe(description)
+      const nonZeroBuckets = wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)
+      expect(nonZeroBuckets).toHaveLength(1)
+      expect(nonZeroBuckets[0].count).toBe(2)
+      expect(wrapper.vm.onlineStatisticsSummary).toMatchObject({ current: 2, peak: 2 })
+      expect(wrapper.vm.loginChartData.buckets[0].showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets[0].labelLines).toBeInstanceOf(Array)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).labelLines).toBeInstanceOf(Array)
+      const midnightBucket = wrapper.vm.loginChartData.buckets.find(
+        ({ isMultiline }) => isMultiline
+      )
+      expect(midnightBucket?.labelLines[0]).toBe('00 時')
+      expect(midnightBucket?.labelLines[1]).toMatch(/^\d{2}\/\d{2}$/)
+      expect(nonZeroBuckets[0].fullLabel).toContain('取樣')
+    }
+
+    wrapper.vm.userInsightsView = 'login-date'
+    await wrapper.vm.$nextTick()
+    const dateRanges = [
+      [7, 42, 4 * 60, '統計最近 7 日內，每 4 小時取樣一次的同時在線使用者人數。'],
+      [30, 60, 12 * 60, '統計最近 30 日內，每 12 小時取樣一次的同時在線使用者人數。'],
+      [90, 90, 24 * 60, '統計最近 90 日內，每日取樣一次的同時在線使用者人數。'],
+    ]
+    for (const [range, bucketCount, bucketMinutes, description] of dateRanges) {
+      wrapper.vm.setActiveLoginRange(range)
+      await flushPromises()
+      expect(wrapper.vm.loginChartData.buckets).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.labels).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.counts).toHaveLength(bucketCount)
+      expect(wrapper.vm.loginChartData.bucketMinutes).toBe(bucketMinutes)
+      expect(wrapper.vm.loginDistributionDescription).toBe(description)
+      expect(wrapper.vm.loginChartData.buckets[0].showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).showLabel).toBe(true)
+      expect(wrapper.vm.loginChartData.buckets.at(-1).labelLines[0]).toMatch(/^\d{2}\/\d{2}$/)
+      expect(wrapper.vm.loginChartData.buckets.filter(({ count }) => count > 0)).toEqual([
+        expect.objectContaining({ count: 2 }),
+      ])
+    }
+
+    wrapper.unmount()
+  })
+
+  it('keeps online API errors separate from empty history', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+    const empty = makeOnlineStatistics('24h')
+    empty.history_started_at = null
+    getOnlineStatisticsMock.mockResolvedValueOnce({ data: empty })
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatisticsError).toBe('')
+    expect(wrapper.vm.onlineStatistics.history_started_at).toBeNull()
+
+    const zeroData = makeOnlineStatistics('24h')
+    getOnlineStatisticsMock.mockResolvedValueOnce({ data: zeroData })
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatisticsSummary).toEqual({ current: 0, peak: 0, average: '0.0' })
+
+    getOnlineStatisticsMock.mockRejectedValueOnce(new Error('network'))
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatistics).toBeNull()
+    expect(wrapper.vm.onlineStatisticsSummary).toBeNull()
+    expect(wrapper.vm.onlineStatisticsError).toContain('在線統計載入失敗')
+
+    wrapper.unmount()
+  })
+
+  it('maps review submission statistics for every range and isolates API errors', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    for (const [range, bucketCount, bucketMinutes, description] of [
+      [24, 144, 10, '統計最近 24 小時內，每 10 分鐘區間的投稿筆數。'],
+      [48, 144, 20, '統計最近 48 小時內，每 20 分鐘區間的投稿筆數。'],
+      [72, 144, 30, '統計最近 72 小時內，每 30 分鐘區間的投稿筆數。'],
+    ]) {
+      wrapper.vm.setActiveReviewSubmissionRange(range)
+      await flushPromises()
+      expect(wrapper.vm.reviewSubmissionStatistics.points).toHaveLength(bucketCount)
+      expect(wrapper.vm.reviewSubmissionStatistics.bucket_minutes).toBe(bucketMinutes)
+      expect(wrapper.vm.reviewSubmissionStatistics.summary).toEqual({
+        total: 3,
+        peak: 2,
+        average: Number((3 / bucketCount).toFixed(1)),
+      })
+      expect(wrapper.vm.reviewSubmissionDescription).toBe(description)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets[0].showLabel).toBe(true)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets.at(-1).showLabel).toBe(true)
+    }
+
+    wrapper.vm.reviewSubmissionView = 'date'
+    await flushPromises()
+    for (const [range, bucketCount, bucketMinutes, description] of [
+      [7, 42, 240, '統計最近 7 日內，每 4 小時區間的投稿筆數。'],
+      [30, 60, 720, '統計最近 30 日內，每 12 小時區間的投稿筆數。'],
+      [90, 90, 1440, '統計最近 90 日內，每日的投稿筆數。'],
+    ]) {
+      wrapper.vm.setActiveReviewSubmissionRange(range)
+      await flushPromises()
+      expect(wrapper.vm.reviewSubmissionStatistics.points).toHaveLength(bucketCount)
+      expect(wrapper.vm.reviewSubmissionStatistics.bucket_minutes).toBe(bucketMinutes)
+      expect(wrapper.vm.reviewSubmissionDescription).toBe(description)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets.at(-1).labelLines[0]).toMatch(
+        /^\d{2}\/\d{2}$/
+      )
+    }
+
+    getSubmissionStatisticsMock.mockRejectedValueOnce(new Error('network'))
+    await wrapper.vm.loadReviewSubmissionStatistics()
+    expect(wrapper.vm.reviewSubmissionStatistics).toBeNull()
+    expect(wrapper.vm.reviewSubmissionStatisticsError).toContain('投稿統計載入失敗')
+    expect(wrapper.vm.reviewLoadError).toBe('')
+
+    wrapper.unmount()
+  })
+
+  it('rejects malformed online statistics contracts', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+    getOnlineStatisticsMock.mockResolvedValueOnce({ data: { range: '24h', points: [] } })
+    await wrapper.vm.loadOnlineStatistics()
+    expect(wrapper.vm.onlineStatistics).toBeNull()
+    expect(wrapper.vm.onlineStatisticsError).toContain('在線統計載入失敗')
+
+    wrapper.unmount()
+  })
+
+  it('keeps online chart data stable while applying 50, 100 and 150 percent font scales', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+    await wrapper.vm.loadReviewSubmissionStatistics()
+    const counts = [...wrapper.vm.loginChartData.counts]
+    const reviewCounts = wrapper.vm.reviewSubmissionChartData.buckets.map(({ count }) => count)
+
+    for (const [percent, scale] of [
+      [50, '0.45'],
+      [100, '0.9'],
+      [150, '1.35'],
+    ]) {
+      applyFontSizePreference(percent)
+      expect(document.documentElement.style.getPropertyValue('--app-font-scale')).toBe(scale)
+      expect(wrapper.vm.loginChartData.counts).toEqual(counts)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets.map(({ count }) => count)).toEqual(
+        reviewCounts
+      )
+    }
 
     wrapper.unmount()
   })
@@ -444,13 +740,17 @@ describe('AdminView', () => {
 
     wrapper.vm.userSearchQuery = 'bob'
     await wrapper.vm.$nextTick()
-    expect(wrapper.vm.filteredUsers).toEqual([sampleUsers[1]])
+    expect(wrapper.vm.filteredUsers).toEqual([
+      expect.objectContaining({ id: sampleUsers[1].id, email: sampleUsers[1].email }),
+    ])
 
     wrapper.vm.userSearchQuery = ''
     await wrapper.vm.$nextTick()
     wrapper.vm.filterUserType = true
     await wrapper.vm.$nextTick()
-    expect(wrapper.vm.filteredUsers).toEqual([sampleUsers[0]])
+    expect(wrapper.vm.filteredUsers).toEqual([
+      expect.objectContaining({ id: sampleUsers[0].id, email: sampleUsers[0].email }),
+    ])
 
     wrapper.vm.notificationSearchQuery = '維護'
     wrapper.vm.notificationSeverityFilter = 'info'
