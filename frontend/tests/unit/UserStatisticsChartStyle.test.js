@@ -39,4 +39,15 @@ describe('user statistics chart layout styles', () => {
       'grid-template-columns: repeat(var(--login-chart-columns), minmax(0, 1fr))'
     )
   })
+
+  it('places review submission statistics before review search and reuses chart styling', () => {
+    const statisticsIndex = adminSource.indexOf('id="review-submission-insights-title"')
+    const searchIndex = adminSource.indexOf('class="review-search-toolbar')
+
+    expect(statisticsIndex).toBeGreaterThan(-1)
+    expect(searchIndex).toBeGreaterThan(statisticsIndex)
+    expect(adminSource).toContain('統計時區：{{ PRODUCT_TIME_ZONE_LABEL }}')
+    expect(adminSource).toContain(':aria-label="reviewSubmissionChartData.ariaLabel"')
+    expect(adminSource).toContain('class="user-login-column-chart__bar"')
+  })
 })

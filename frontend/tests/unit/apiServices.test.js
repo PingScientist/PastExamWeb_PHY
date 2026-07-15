@@ -97,6 +97,11 @@ describe('API service wrappers', () => {
       course_name: 'Linear',
       course_category: 'freshman',
     })
+
+    archiveService.getSubmissionStatistics('24h', 'time')
+    expect(getMock).toHaveBeenCalledWith('/archives/admin/submission-statistics', {
+      params: { range: '24h', mode: 'time' },
+    })
   })
 
   it('notification service proxies', () => {

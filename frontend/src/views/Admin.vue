@@ -1313,6 +1313,192 @@
 
           <TabPanel value="3">
             <div class="p-2 md:p-4 review-center">
+              <section
+                class="user-insights admin-insights-card review-submission-insights"
+                aria-labelledby="review-submission-insights-title"
+              >
+                <div class="user-insights__heading">
+                  <div>
+                    <h3 id="review-submission-insights-title">投稿統計圖表</h3>
+                    <p>{{ reviewSubmissionDescription }}</p>
+                  </div>
+                  <div class="user-insights__actions">
+                    <div class="user-insights__switch" role="group" aria-label="切換投稿統計圖表">
+                      <button
+                        type="button"
+                        :class="{ 'is-active': reviewSubmissionView === 'time' }"
+                        :aria-pressed="reviewSubmissionView === 'time'"
+                        @click="reviewSubmissionView = 'time'"
+                      >
+                        最近投稿時間分布
+                      </button>
+                      <button
+                        type="button"
+                        :class="{ 'is-active': reviewSubmissionView === 'date' }"
+                        :aria-pressed="reviewSubmissionView === 'date'"
+                        @click="reviewSubmissionView = 'date'"
+                      >
+                        最近投稿日期分布
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      class="user-insights__toggle section-collapse-toggle"
+                      :aria-expanded="isReviewSubmissionChartExpanded"
+                      aria-controls="review-submission-insights-content"
+                      :aria-label="
+                        isReviewSubmissionChartExpanded ? '收合投稿統計圖表' : '展開投稿統計圖表'
+                      "
+                      @click="isReviewSubmissionChartExpanded = !isReviewSubmissionChartExpanded"
+                    >
+                      <span>{{ isReviewSubmissionChartExpanded ? '收合' : '展開' }}</span>
+                      <i
+                        class="pi"
+                        :class="
+                          isReviewSubmissionChartExpanded ? 'pi-chevron-up' : 'pi-chevron-down'
+                        "
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  v-show="isReviewSubmissionChartExpanded"
+                  id="review-submission-insights-content"
+                >
+                  <Message
+                    v-if="reviewSubmissionStatisticsError"
+                    severity="error"
+                    :closable="false"
+                    class="user-insights__load-error"
+                  >
+                    <div class="flex flex-wrap align-items-center justify-content-between gap-3">
+                      <span>{{ reviewSubmissionStatisticsError }}</span>
+                      <Button
+                        label="重新載入"
+                        icon="pi pi-refresh"
+                        severity="danger"
+                        outlined
+                        size="small"
+                        :loading="reviewSubmissionStatisticsLoading"
+                        @click="loadReviewSubmissionStatistics"
+                      />
+                    </div>
+                  </Message>
+                  <div
+                    v-else-if="reviewSubmissionStatisticsLoading"
+                    class="user-insights__empty"
+                    role="status"
+                  >
+                    投稿統計載入中…
+                  </div>
+                  <div v-else-if="reviewSubmissionStatistics" class="user-insights__panel">
+                    <div class="chart-summary-control-row">
+                      <div class="chart-summary-group" aria-label="投稿統計摘要">
+                        <span class="chart-summary-item">
+                          <span>區間投稿</span>
+                          <strong>{{ reviewSubmissionStatistics.summary.total }} 筆</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間峰值</span>
+                          <strong>{{ reviewSubmissionStatistics.summary.peak }} 筆</strong>
+                        </span>
+                        <span class="chart-summary-item">
+                          <span>區間平均</span>
+                          <strong
+                            >{{ reviewSubmissionStatistics.summary.average.toFixed(1) }} 筆</strong
+                          >
+                        </span>
+                      </div>
+                      <div class="chart-control-stack">
+                        <div class="user-insights__range" role="group" aria-label="投稿統計範圍">
+                          <button
+                            v-for="option in reviewSubmissionRangeOptions"
+                            :key="option"
+                            type="button"
+                            :class="{ 'is-active': activeReviewSubmissionRange === option }"
+                            :aria-pressed="activeReviewSubmissionRange === option"
+                            @click="setActiveReviewSubmissionRange(option)"
+                          >
+                            {{ option }} {{ reviewSubmissionRangeUnit }}
+                          </button>
+                        </div>
+                        <span class="chart-timezone-label">
+                          統計時區：{{ PRODUCT_TIME_ZONE_LABEL }}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      class="user-login-column-chart"
+                      role="img"
+                      :aria-label="reviewSubmissionChartData.ariaLabel"
+                    >
+                      <div class="user-login-column-chart__y-axis" aria-hidden="true">
+                        <span
+                          v-for="tick in reviewSubmissionChartData.yTicks"
+                          :key="`review-y-${tick}`"
+                        >
+                          {{ tick }}
+                        </span>
+                      </div>
+                      <div class="user-login-column-chart__plot">
+                        <div class="user-login-column-chart__grid" aria-hidden="true">
+                          <span
+                            v-for="tick in reviewSubmissionChartData.yTicks"
+                            :key="`review-grid-${tick}`"
+                            :style="{
+                              bottom: `${(tick / reviewSubmissionChartData.yMax) * 100}%`,
+                            }"
+                          ></span>
+                        </div>
+                        <div
+                          class="user-login-column-chart__bars"
+                          :style="{
+                            '--login-chart-columns': reviewSubmissionChartData.buckets.length,
+                          }"
+                        >
+                          <div
+                            v-for="bucket in reviewSubmissionChartData.buckets"
+                            :key="bucket.key"
+                            class="user-login-column-chart__item"
+                            tabindex="0"
+                            :aria-label="`${bucket.fullLabel}，投稿 ${bucket.count} 筆`"
+                          >
+                            <span
+                              class="user-login-column-chart__bar"
+                              :class="{ 'has-value': bucket.count > 0 }"
+                              :style="{
+                                height: `${(bucket.count / reviewSubmissionChartData.yMax) * 100}%`,
+                              }"
+                            ></span>
+                            <span class="user-login-column-chart__tooltip" role="tooltip">
+                              {{ bucket.fullLabel }}：投稿 {{ bucket.count }} 筆
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          class="user-login-column-chart__x-axis"
+                          :style="{
+                            '--login-chart-columns': reviewSubmissionChartData.buckets.length,
+                          }"
+                          aria-hidden="true"
+                        >
+                          <span
+                            v-for="bucket in reviewSubmissionChartData.buckets"
+                            :key="`review-label-${bucket.key}`"
+                            :class="{ 'is-multiline': bucket.isMultiline }"
+                          >
+                            <template v-if="bucket.showLabel">
+                              <span v-for="line in bucket.labelLines" :key="line">{{ line }}</span>
+                            </template>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
               <div v-if="reviewLoadError" class="review-load-error">
                 {{ reviewLoadError }}
               </div>
@@ -1346,7 +1532,7 @@
                     icon="pi pi-refresh"
                     label="重新整理"
                     outlined
-                    @click="loadReviewItems"
+                    @click="reloadReviewCenter"
                   />
                 </div>
               </div>
@@ -3764,7 +3950,11 @@ import { useToast } from 'primevue/usetoast'
 import { getCurrentUser } from '../utils/auth'
 import { isUnauthorizedError } from '../utils/http'
 import { formatRelativeTime } from '../utils/time'
-import { PRODUCT_TIME_ZONE_LABEL, formatProductDateTime } from '../utils/productTimezone'
+import {
+  PRODUCT_TIME_ZONE,
+  PRODUCT_TIME_ZONE_LABEL,
+  formatProductDateTime,
+} from '../utils/productTimezone'
 import { buildTemporalTicks } from '../utils/temporalChart'
 import {
   getCourses,
@@ -4001,6 +4191,14 @@ const notificationForm = ref({
 const notificationFormErrors = ref({})
 const reviewLoading = ref(false)
 const reviewLoadError = ref('')
+const reviewSubmissionView = ref('time')
+const isReviewSubmissionChartExpanded = ref(false)
+const reviewSubmissionRangeHours = ref(24)
+const reviewSubmissionRangeDays = ref(30)
+const reviewSubmissionStatistics = ref(null)
+const reviewSubmissionStatisticsLoading = ref(false)
+const reviewSubmissionStatisticsError = ref('')
+let reviewSubmissionStatisticsRequestId = 0
 const reviewSearchQuery = ref('')
 const reviewStatusFilter = ref(null)
 const newSubmissionFirst = ref(0)
@@ -4772,6 +4970,77 @@ const buildIntegerAxis = (buckets) => {
   if (yTicks.at(-1) !== yMax) yTicks.push(yMax)
   return { yMax, yTicks: yTicks.reverse() }
 }
+
+const activeReviewSubmissionBucketConfig = computed(() =>
+  reviewSubmissionView.value === 'time'
+    ? LOGIN_HOUR_BUCKET_CONFIG[reviewSubmissionRangeHours.value]
+    : LOGIN_DATE_BUCKET_CONFIG[reviewSubmissionRangeDays.value]
+)
+const reviewSubmissionRangeOptions = computed(() =>
+  reviewSubmissionView.value === 'time' ? LOGIN_HOUR_RANGE_OPTIONS : LOGIN_DATE_RANGE_OPTIONS
+)
+const activeReviewSubmissionRange = computed(() =>
+  reviewSubmissionView.value === 'time'
+    ? reviewSubmissionRangeHours.value
+    : reviewSubmissionRangeDays.value
+)
+const reviewSubmissionRangeUnit = computed(() =>
+  reviewSubmissionView.value === 'time' ? '小時' : '日'
+)
+const activeReviewSubmissionRangeKey = () =>
+  reviewSubmissionView.value === 'time'
+    ? `${reviewSubmissionRangeHours.value}h`
+    : `${reviewSubmissionRangeDays.value}d`
+const reviewSubmissionDescription = computed(() => {
+  if (reviewSubmissionView.value === 'time') {
+    const bucketMinutes = activeReviewSubmissionBucketConfig.value.bucketMinutes
+    return `統計最近 ${reviewSubmissionRangeHours.value} 小時內，每 ${bucketMinutes} 分鐘區間的投稿筆數。`
+  }
+  const days = reviewSubmissionRangeDays.value
+  const bucketMinutes = activeReviewSubmissionBucketConfig.value.bucketMinutes
+  if (bucketMinutes === 24 * 60) return `統計最近 ${days} 日內，每日的投稿筆數。`
+  return `統計最近 ${days} 日內，每 ${bucketMinutes / 60} 小時區間的投稿筆數。`
+})
+const reviewSubmissionChartData = computed(() => {
+  const source = Array.isArray(reviewSubmissionStatistics.value?.points)
+    ? reviewSubmissionStatistics.value.points
+    : []
+  const config = activeReviewSubmissionBucketConfig.value
+  const ticks = buildTemporalTicks(source, {
+    mode: reviewSubmissionView.value === 'time' ? 'hour' : 'date',
+    labelEvery: config.labelEvery,
+    minGap:
+      reviewSubmissionView.value === 'time' ? Math.max(6, Math.floor(config.labelEvery / 2)) : 1,
+  })
+  const buckets = source.map((point, index) => ({
+    ...point,
+    ...ticks[index],
+    key: point.start,
+    fullLabel: `${formatProductDateTime(new Date(point.start))}–${formatProductDateTime(
+      new Date(point.end)
+    )}`,
+  }))
+  return {
+    ...buildIntegerAxis(buckets),
+    buckets,
+    ariaLabel:
+      reviewSubmissionView.value === 'time'
+        ? `最近 ${reviewSubmissionRangeHours.value} 小時的投稿筆數分布`
+        : `最近 ${reviewSubmissionRangeDays.value} 日的投稿筆數分布`,
+  }
+})
+
+const setActiveReviewSubmissionRange = (value) => {
+  if (reviewSubmissionView.value === 'time') reviewSubmissionRangeHours.value = value
+  else reviewSubmissionRangeDays.value = value
+  void loadReviewSubmissionStatistics()
+}
+
+watch(reviewSubmissionView, (mode) => {
+  if (mode === 'time') reviewSubmissionRangeHours.value = 24
+  else reviewSubmissionRangeDays.value = 30
+  void loadReviewSubmissionStatistics()
+})
 
 const loginChartData = computed(() => {
   const mode = userInsightsView.value
@@ -5798,6 +6067,68 @@ const loadReviewItems = async () => {
   } finally {
     reviewLoading.value = false
   }
+}
+
+const loadReviewSubmissionStatistics = async () => {
+  const requestId = ++reviewSubmissionStatisticsRequestId
+  reviewSubmissionStatisticsLoading.value = true
+  reviewSubmissionStatisticsError.value = ''
+  try {
+    const expectedMode = reviewSubmissionView.value
+    const expectedRange = activeReviewSubmissionRangeKey()
+    const expectedConfig = activeReviewSubmissionBucketConfig.value
+    const { data } = await archiveService.getSubmissionStatistics(expectedRange, expectedMode)
+    if (requestId !== reviewSubmissionStatisticsRequestId) return
+    const points = data?.points
+    const counts = Array.isArray(points) ? points.map(({ count }) => count) : []
+    const total = counts.reduce((sum, count) => sum + count, 0)
+    const peak = Math.max(0, ...counts)
+    const expectedAverage = Number((total / expectedConfig.bucketCount).toFixed(1))
+    if (
+      data?.mode !== expectedMode ||
+      data?.range !== expectedRange ||
+      data?.timezone !== PRODUCT_TIME_ZONE ||
+      data?.bucket_minutes !== expectedConfig.bucketMinutes ||
+      !data?.range_start ||
+      !data?.range_end ||
+      !Array.isArray(points) ||
+      points.length !== expectedConfig.bucketCount ||
+      points.some(
+        (point) =>
+          !point?.start ||
+          !point?.end ||
+          !Number.isFinite(Date.parse(point.start)) ||
+          !Number.isFinite(Date.parse(point.end)) ||
+          Date.parse(point.start) >= Date.parse(point.end) ||
+          !Number.isInteger(point?.count) ||
+          point.count < 0
+      ) ||
+      !Number.isInteger(data?.summary?.total) ||
+      !Number.isInteger(data?.summary?.peak) ||
+      typeof data?.summary?.average !== 'number' ||
+      data?.summary?.total !== total ||
+      data?.summary?.peak !== peak ||
+      data?.summary?.average !== expectedAverage
+    ) {
+      throw new TypeError('Invalid review submission statistics response')
+    }
+    reviewSubmissionStatistics.value = data
+  } catch (error) {
+    if (requestId !== reviewSubmissionStatisticsRequestId) return
+    console.error('載入投稿統計失敗:', error)
+    reviewSubmissionStatistics.value = null
+    reviewSubmissionStatisticsError.value = isUnauthorizedError(error)
+      ? '登入階段已過期，請重新登入後再載入投稿統計。'
+      : '投稿統計載入失敗，請稍後再試或查看伺服器日誌。'
+  } finally {
+    if (requestId === reviewSubmissionStatisticsRequestId) {
+      reviewSubmissionStatisticsLoading.value = false
+    }
+  }
+}
+
+const reloadReviewCenter = async () => {
+  await Promise.all([loadReviewItems(), loadReviewSubmissionStatistics()])
 }
 
 const loadTrashItems = async () => {
@@ -7404,7 +7735,7 @@ const loadTabData = async (value) => {
   }
 
   if (tab === '3') {
-    await loadReviewItems()
+    await reloadReviewCenter()
     return
   }
 

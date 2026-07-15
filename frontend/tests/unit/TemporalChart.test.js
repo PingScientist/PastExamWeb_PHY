@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildOnlineDurationSummary, formatDuration } from '@/utils/onlineDurationSummary'
 import { buildTemporalTicks } from '@/utils/temporalChart'
+import { buildDurationAxis, formatDurationAxisTick } from '@/utils/durationAxis'
 
 const makePoints = ({ start, count, bucketMinutes, durations = {} }) =>
   Array.from({ length: count }, (_, index) => {
@@ -116,5 +117,35 @@ describe('online duration summaries', () => {
     expect(formatDuration(45)).toBe('45 秒')
     expect(formatDuration(480)).toBe('8 分鐘')
     expect(formatDuration(3900)).toBe('1 小時 5 分鐘')
+  })
+})
+
+describe('duration chart axis', () => {
+  it('keeps fractional daily-hour ticks distinguishable', () => {
+    const values = [0, 0.5, 1, 1.5, 2, 2.5, 3]
+    const labels = values.map((value) => formatDurationAxisTick(value, 'hours'))
+
+    expect(labels).toEqual([
+      '0 分鐘',
+      '30 分鐘',
+      '1 小時',
+      '1 小時 30 分鐘',
+      '2 小時',
+      '2 小時 30 分鐘',
+      '3 小時',
+    ])
+    expect(new Set(labels).size).toBe(labels.length)
+    expect(buildDurationAxis({ mode: 'daily', maxValue: 2.5 })).toEqual({
+      yMax: 3,
+      yTicks: [3, 2.5, 2, 1.5, 1, 0.5, 0],
+    })
+  })
+
+  it('preserves the current-day minute axis', () => {
+    expect(buildDurationAxis({ mode: 'hourly', maxValue: 19 })).toEqual({
+      yMax: 60,
+      yTicks: [60, 45, 30, 15, 0],
+    })
+    expect(formatDurationAxisTick(30, 'minutes')).toBe('30 分')
   })
 })

@@ -4,11 +4,11 @@ import re
 import logging
 import uuid
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import and_, func, or_, text
+from sqlalchemy import BigInteger, and_, cast, func, or_, text
 from sqlalchemy.orm import aliased
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -20,6 +20,7 @@ from app.models.models import (
     ArchiveSubmissionComparisonRead,
     ArchiveSubmission,
     ArchiveSubmissionRead,
+    SubmissionStatisticsRead,
     ArchiveSubmissionUpdate,
     Course,
     CourseCategoryConfig,
@@ -40,6 +41,11 @@ from app.utils.course_text import (
     normalized_course_text_expr,
 )
 from app.utils.storage import get_minio_client
+from app.api.services.submission_statistics import (
+    SUBMISSION_RANGE_CONFIG,
+    build_submission_statistics,
+    get_submission_statistics_window,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -656,6 +662,54 @@ async def list_archive_submissions_for_admin(
             skipped_submission_count,
         )
     return archive_submissions
+
+
+@router.get("/admin/submission-statistics", response_model=SubmissionStatisticsRead)
+async def get_archive_submission_statistics(
+    mode: str = Query("time"),
+    range_key: str = Query("24h", alias="range"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    config = SUBMISSION_RANGE_CONFIG.get(range_key)
+    if config is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid range")
+    expected_mode = config[0]
+    if mode not in {"time", "date"} or mode != expected_mode:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid mode")
+
+    now_utc = datetime.now(timezone.utc)
+    _, bucket_minutes, _, range_start, range_end = get_submission_statistics_window(
+        range_key, now_utc
+    )
+    bucket_seconds = bucket_minutes * 60
+    bucket_epoch = cast(
+        func.floor(
+            (func.extract("epoch", ArchiveSubmission.created_at) - range_start.timestamp())
+            / bucket_seconds
+        ),
+        BigInteger,
+    )
+    result = await db.execute(
+        select(bucket_epoch.label("bucket_index"), func.count(ArchiveSubmission.id))
+        .where(
+            ArchiveSubmission.created_at >= range_start,
+            ArchiveSubmission.created_at < range_end,
+            ArchiveSubmission.created_at <= now_utc,
+        )
+        .group_by(bucket_epoch)
+    )
+    counts_by_bucket_start = {
+        range_start + timedelta(seconds=int(bucket_index) * bucket_seconds): int(count)
+        for bucket_index, count in result.all()
+    }
+    return build_submission_statistics(
+        range_key=range_key,
+        counts_by_bucket_start=counts_by_bucket_start,
+        now=now_utc,
+    )
 
 
 @router.get("/admin/submissions/{submission_id}/comparisons", response_model=list[ArchiveSubmissionComparisonRead])

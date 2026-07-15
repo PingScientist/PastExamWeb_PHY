@@ -400,6 +400,29 @@ class OnlineStatisticsRead(BaseModel):
     points: List[OnlineStatisticsPoint] = Field(default_factory=list)
 
 
+class SubmissionStatisticsSummary(BaseModel):
+    total: int
+    peak: int
+    average: float
+
+
+class SubmissionStatisticsPoint(BaseModel):
+    start: datetime
+    end: datetime
+    count: int
+
+
+class SubmissionStatisticsRead(BaseModel):
+    mode: str
+    range: str
+    timezone: str
+    bucket_minutes: int
+    range_start: datetime
+    range_end: datetime
+    summary: SubmissionStatisticsSummary
+    points: List[SubmissionStatisticsPoint] = Field(default_factory=list)
+
+
 class UserOnlineDurationPoint(BaseModel):
     start: datetime
     end: datetime

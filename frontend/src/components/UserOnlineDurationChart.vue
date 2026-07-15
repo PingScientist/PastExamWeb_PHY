@@ -148,6 +148,7 @@ import {
 } from '../utils/productTimezone'
 import { buildTemporalTicks } from '../utils/temporalChart'
 import { buildOnlineDurationSummary, formatDuration } from '../utils/onlineDurationSummary'
+import { buildDurationAxis, formatDurationAxisTick } from '../utils/durationAxis'
 
 const props = defineProps({
   userId: { type: Number, default: null },
@@ -189,8 +190,7 @@ const chartData = computed(() => {
   const points = Array.isArray(durationData.value?.points) ? durationData.value.points : []
   const divisor = mode.value === 'hourly' ? 60 : 3600
   const maxValue = Math.max(0, ...points.map(({ duration_seconds }) => duration_seconds / divisor))
-  const yMax = mode.value === 'hourly' ? 60 : Math.min(24, Math.max(1, Math.ceil(maxValue)))
-  const yTicks = Array.from({ length: 5 }, (_, index) => Math.round(yMax * (1 - index / 4)))
+  const { yMax, yTicks } = buildDurationAxis({ mode: mode.value, maxValue })
   const labelEvery = mode.value === 'hourly' ? 3 : days.value === 7 ? 1 : days.value === 30 ? 5 : 15
   const ticks = buildTemporalTicks(points, {
     mode: mode.value === 'hourly' ? 'hour' : 'date',
@@ -243,7 +243,8 @@ const chartAriaLabel = computed(() =>
     ? `統計 ${selectedDate.value} 的二十四小時在線時長分布`
     : `統計最近 ${days.value} 個日曆日的每日在線時長分布`
 )
-const formatAxisTick = (seconds) => (mode.value === 'hourly' ? `${seconds} 分` : `${seconds} 時`)
+const formatAxisTick = (value) =>
+  formatDurationAxisTick(value, mode.value === 'hourly' ? 'minutes' : 'hours')
 
 const validateResponse = (data) => {
   const expectedCount = mode.value === 'hourly' ? 24 : days.value

@@ -50,6 +50,41 @@ const makeOnlineStatistics = (range = '24h', counts = {}) => {
     points,
   }
 }
+const makeSubmissionStatistics = (range = '24h', counts = {}) => {
+  const [bucketMinutes, bucketCount] = onlineRangeConfig[range]
+  const mode = range.endsWith('h') ? 'time' : 'date'
+  const currentStart = new Date(now)
+  currentStart.setUTCMinutes(
+    Math.floor(currentStart.getUTCMinutes() / bucketMinutes) * bucketMinutes,
+    0,
+    0
+  )
+  const firstStart = new Date(currentStart.getTime() - (bucketCount - 1) * bucketMinutes * 60_000)
+  const points = Array.from({ length: bucketCount }, (_, index) => {
+    const start = new Date(firstStart.getTime() + index * bucketMinutes * 60_000)
+    return {
+      start: start.toISOString(),
+      end: new Date(start.getTime() + bucketMinutes * 60_000).toISOString(),
+      count: counts[index] ?? 0,
+    }
+  })
+  const values = points.map(({ count }) => count)
+  const total = values.reduce((sum, value) => sum + value, 0)
+  return {
+    mode,
+    range,
+    timezone: 'Asia/Taipei',
+    bucket_minutes: bucketMinutes,
+    range_start: points[0].start,
+    range_end: points.at(-1).end,
+    summary: {
+      total,
+      peak: Math.max(0, ...values),
+      average: Number((total / bucketCount).toFixed(1)),
+    },
+    points,
+  }
+}
 const sampleNotifications = [
   {
     id: 1,
@@ -92,6 +127,8 @@ const notificationGetAllMock = vi.hoisted(() => vi.fn())
 const notificationCreateMock = vi.hoisted(() => vi.fn())
 const notificationUpdateMock = vi.hoisted(() => vi.fn())
 const notificationRemoveMock = vi.hoisted(() => vi.fn())
+const listAdminSubmissionsMock = vi.hoisted(() => vi.fn())
+const getSubmissionStatisticsMock = vi.hoisted(() => vi.fn())
 
 const trackEventMock = vi.hoisted(() => vi.fn())
 const isUnauthorizedErrorMock = vi.hoisted(() => vi.fn(() => false))
@@ -157,7 +194,10 @@ vi.mock('@/api', () => ({
     listAdminCategories: listAdminCategoriesMock,
     getAllCourses: getAllCoursesMock,
   },
-  archiveService: {},
+  archiveService: {
+    listAdminSubmissions: listAdminSubmissionsMock,
+    getSubmissionStatistics: getSubmissionStatisticsMock,
+  },
 }))
 
 function createWrapper() {
@@ -193,6 +233,10 @@ describe('AdminView', () => {
     notificationCreateMock.mockResolvedValue()
     notificationUpdateMock.mockResolvedValue()
     notificationRemoveMock.mockResolvedValue()
+    listAdminSubmissionsMock.mockResolvedValue({ data: [] })
+    getSubmissionStatisticsMock.mockImplementation((range) =>
+      Promise.resolve({ data: makeSubmissionStatistics(range, { 0: 2, 1: 1 }) })
+    )
 
     trackEventMock.mockReset()
     toastAddMock.mockReset()
@@ -523,6 +567,55 @@ describe('AdminView', () => {
     wrapper.unmount()
   })
 
+  it('maps review submission statistics for every range and isolates API errors', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    for (const [range, bucketCount, bucketMinutes, description] of [
+      [24, 144, 10, '統計最近 24 小時內，每 10 分鐘區間的投稿筆數。'],
+      [48, 144, 20, '統計最近 48 小時內，每 20 分鐘區間的投稿筆數。'],
+      [72, 144, 30, '統計最近 72 小時內，每 30 分鐘區間的投稿筆數。'],
+    ]) {
+      wrapper.vm.setActiveReviewSubmissionRange(range)
+      await flushPromises()
+      expect(wrapper.vm.reviewSubmissionStatistics.points).toHaveLength(bucketCount)
+      expect(wrapper.vm.reviewSubmissionStatistics.bucket_minutes).toBe(bucketMinutes)
+      expect(wrapper.vm.reviewSubmissionStatistics.summary).toEqual({
+        total: 3,
+        peak: 2,
+        average: Number((3 / bucketCount).toFixed(1)),
+      })
+      expect(wrapper.vm.reviewSubmissionDescription).toBe(description)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets[0].showLabel).toBe(true)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets.at(-1).showLabel).toBe(true)
+    }
+
+    wrapper.vm.reviewSubmissionView = 'date'
+    await flushPromises()
+    for (const [range, bucketCount, bucketMinutes, description] of [
+      [7, 42, 240, '統計最近 7 日內，每 4 小時區間的投稿筆數。'],
+      [30, 60, 720, '統計最近 30 日內，每 12 小時區間的投稿筆數。'],
+      [90, 90, 1440, '統計最近 90 日內，每日的投稿筆數。'],
+    ]) {
+      wrapper.vm.setActiveReviewSubmissionRange(range)
+      await flushPromises()
+      expect(wrapper.vm.reviewSubmissionStatistics.points).toHaveLength(bucketCount)
+      expect(wrapper.vm.reviewSubmissionStatistics.bucket_minutes).toBe(bucketMinutes)
+      expect(wrapper.vm.reviewSubmissionDescription).toBe(description)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets.at(-1).labelLines[0]).toMatch(
+        /^\d{2}\/\d{2}$/
+      )
+    }
+
+    getSubmissionStatisticsMock.mockRejectedValueOnce(new Error('network'))
+    await wrapper.vm.loadReviewSubmissionStatistics()
+    expect(wrapper.vm.reviewSubmissionStatistics).toBeNull()
+    expect(wrapper.vm.reviewSubmissionStatisticsError).toContain('投稿統計載入失敗')
+    expect(wrapper.vm.reviewLoadError).toBe('')
+
+    wrapper.unmount()
+  })
+
   it('rejects malformed online statistics contracts', async () => {
     const wrapper = createWrapper()
     await flushPromises()
@@ -537,7 +630,9 @@ describe('AdminView', () => {
   it('keeps online chart data stable while applying 50, 100 and 150 percent font scales', async () => {
     const wrapper = createWrapper()
     await flushPromises()
+    await wrapper.vm.loadReviewSubmissionStatistics()
     const counts = [...wrapper.vm.loginChartData.counts]
+    const reviewCounts = wrapper.vm.reviewSubmissionChartData.buckets.map(({ count }) => count)
 
     for (const [percent, scale] of [
       [50, '0.45'],
@@ -547,6 +642,9 @@ describe('AdminView', () => {
       applyFontSizePreference(percent)
       expect(document.documentElement.style.getPropertyValue('--app-font-scale')).toBe(scale)
       expect(wrapper.vm.loginChartData.counts).toEqual(counts)
+      expect(wrapper.vm.reviewSubmissionChartData.buckets.map(({ count }) => count)).toEqual(
+        reviewCounts
+      )
     }
 
     wrapper.unmount()
