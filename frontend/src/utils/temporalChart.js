@@ -1,5 +1,25 @@
 import { formatProductDate, getProductTimeParts } from './productTimezone'
 
+export function resolveTemporalLabelEvery({
+  baseLabelEvery,
+  chartWidth,
+  pointCount,
+  mode,
+  fontScale = 1,
+}) {
+  const base = Math.max(1, Math.floor(Number(baseLabelEvery) || 1))
+  const width = Number(chartWidth)
+  const count = Math.max(0, Math.floor(Number(pointCount) || 0))
+  if (!Number.isFinite(width) || width <= 0 || count <= 2) return base
+
+  const scale = Math.min(1.5, Math.max(0.5, Number(fontScale) || 1))
+  const minimumLabelWidth = (mode === 'hour' ? 44 : 48) * scale
+  const visibleLabelCapacity = Math.max(2, Math.floor(width / minimumLabelWidth))
+  const responsiveEvery = Math.ceil((count - 1) / Math.max(1, visibleLabelCapacity - 1))
+
+  return Math.max(base, responsiveEvery)
+}
+
 function selectVisibleTicks(points, { labelEvery, includeMidnights, minGap }) {
   if (points.length === 0) return new Set()
   const lastIndex = points.length - 1

@@ -608,6 +608,7 @@
                       </div>
                     </div>
                     <div
+                      ref="userStatisticsChartElement"
                       v-if="onlineStatistics?.history_started_at"
                       class="user-login-column-chart"
                       role="img"
@@ -1430,6 +1431,7 @@
                       </div>
                     </div>
                     <div
+                      ref="reviewSubmissionChartElement"
                       class="user-login-column-chart"
                       role="img"
                       :aria-label="reviewSubmissionChartData.ariaLabel"
@@ -3955,7 +3957,7 @@ import {
   PRODUCT_TIME_ZONE_LABEL,
   formatProductDateTime,
 } from '../utils/productTimezone'
-import { buildTemporalTicks } from '../utils/temporalChart'
+import { buildTemporalTicks, resolveTemporalLabelEvery } from '../utils/temporalChart'
 import {
   getCourses,
   createCourse,
@@ -4075,6 +4077,13 @@ const loginRangeDays = ref(30)
 const onlineStatistics = ref(null)
 const onlineStatisticsLoading = ref(false)
 const onlineStatisticsError = ref('')
+const userStatisticsChartElement = ref(null)
+const reviewSubmissionChartElement = ref(null)
+const userStatisticsChartWidth = ref(Number.POSITIVE_INFINITY)
+const reviewSubmissionChartWidth = ref(Number.POSITIVE_INFINITY)
+const statisticsFontScale = ref(1)
+let statisticsChartResizeObserver = null
+let statisticsFontScaleObserver = null
 let onlineStatisticsRequestId = 0
 let loginStatsRefreshTimer = null
 const showUserDataStatsDialog = ref(false)
@@ -5006,11 +5015,18 @@ const reviewSubmissionChartData = computed(() => {
     ? reviewSubmissionStatistics.value.points
     : []
   const config = activeReviewSubmissionBucketConfig.value
+  const mode = reviewSubmissionView.value === 'time' ? 'hour' : 'date'
+  const labelEvery = resolveTemporalLabelEvery({
+    baseLabelEvery: config.labelEvery,
+    chartWidth: reviewSubmissionChartWidth.value,
+    pointCount: source.length,
+    mode,
+    fontScale: statisticsFontScale.value,
+  })
   const ticks = buildTemporalTicks(source, {
-    mode: reviewSubmissionView.value === 'time' ? 'hour' : 'date',
-    labelEvery: config.labelEvery,
-    minGap:
-      reviewSubmissionView.value === 'time' ? Math.max(6, Math.floor(config.labelEvery / 2)) : 1,
+    mode,
+    labelEvery,
+    minGap: mode === 'hour' ? Math.max(6, Math.floor(labelEvery / 2)) : 1,
   })
   const buckets = source.map((point, index) => ({
     ...point,
@@ -5046,10 +5062,18 @@ const loginChartData = computed(() => {
   const mode = userInsightsView.value
   const source = Array.isArray(onlineStatistics.value?.points) ? onlineStatistics.value.points : []
   const config = activeLoginBucketConfig.value
+  const tickMode = mode === 'login-hour' ? 'hour' : 'date'
+  const labelEvery = resolveTemporalLabelEvery({
+    baseLabelEvery: config.labelEvery,
+    chartWidth: userStatisticsChartWidth.value,
+    pointCount: source.length,
+    mode: tickMode,
+    fontScale: statisticsFontScale.value,
+  })
   const ticks = buildTemporalTicks(source, {
-    mode: mode === 'login-hour' ? 'hour' : 'date',
-    labelEvery: config.labelEvery,
-    minGap: mode === 'login-hour' ? Math.max(6, Math.floor(config.labelEvery / 2)) : 1,
+    mode: tickMode,
+    labelEvery,
+    minGap: tickMode === 'hour' ? Math.max(6, Math.floor(labelEvery / 2)) : 1,
   })
   const buckets = source.map((point, index) => {
     const start = new Date(point.start)
@@ -7792,8 +7816,52 @@ const scheduleLoginStatsRefresh = () => {
   )
 }
 
+const updateStatisticsFontScale = () => {
+  if (typeof document === 'undefined') return
+  const scale = Number.parseFloat(
+    window.getComputedStyle(document.documentElement).getPropertyValue('--app-font-scale')
+  )
+  statisticsFontScale.value = Number.isFinite(scale) && scale > 0 ? scale : 1
+}
+
+const observeStatisticsChartElement = (current, previous) => {
+  if (!statisticsChartResizeObserver) return
+  if (previous) statisticsChartResizeObserver.unobserve(previous)
+  if (current) statisticsChartResizeObserver.observe(current)
+}
+
+watch(userStatisticsChartElement, observeStatisticsChartElement)
+watch(reviewSubmissionChartElement, observeStatisticsChartElement)
+
 onMounted(() => {
   if (typeof window === 'undefined') return
+  updateStatisticsFontScale()
+  if (typeof ResizeObserver !== 'undefined') {
+    statisticsChartResizeObserver = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        const width = Math.max(0, Math.round(entry.contentRect.width))
+        if (entry.target === userStatisticsChartElement.value) {
+          userStatisticsChartWidth.value = width
+        }
+        if (entry.target === reviewSubmissionChartElement.value) {
+          reviewSubmissionChartWidth.value = width
+        }
+      })
+    })
+    if (userStatisticsChartElement.value) {
+      statisticsChartResizeObserver.observe(userStatisticsChartElement.value)
+    }
+    if (reviewSubmissionChartElement.value) {
+      statisticsChartResizeObserver.observe(reviewSubmissionChartElement.value)
+    }
+  }
+  if (typeof MutationObserver !== 'undefined') {
+    statisticsFontScaleObserver = new MutationObserver(updateStatisticsFontScale)
+    statisticsFontScaleObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-app-font-scale'],
+    })
+  }
   window.addEventListener('focus', refreshOnlineStatistics)
   scheduleLoginStatsRefresh()
 })
@@ -7803,6 +7871,8 @@ onBeforeUnmount(() => {
     window.removeEventListener('focus', refreshOnlineStatistics)
     if (loginStatsRefreshTimer !== null) window.clearTimeout(loginStatsRefreshTimer)
   }
+  statisticsChartResizeObserver?.disconnect()
+  statisticsFontScaleObserver?.disconnect()
   userSubmissionStatsController?.abort()
   archiveRequesterStatsController?.abort()
   closeArchiveRequestPreview()
@@ -7953,6 +8023,12 @@ onBeforeUnmount(() => {
 
 .user-insights.admin-insights-card {
   row-gap: 0.5rem;
+}
+
+.admin-insights-card .chart-summary-item {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
 }
 
 .contributor-level-insights {
@@ -12498,6 +12574,59 @@ onBeforeUnmount(() => {
 
   .user-insights__toggle {
     margin-left: auto;
+  }
+
+  .admin-insights-card .chart-summary-control-row {
+    display: grid;
+    grid-template-areas:
+      'controls'
+      'summary'
+      'timezone';
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.45rem;
+  }
+
+  .admin-insights-card .chart-control-stack {
+    display: contents;
+  }
+
+  .admin-insights-card .chart-summary-group {
+    display: grid;
+    grid-area: summary;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  .admin-insights-card .chart-summary-item {
+    min-width: 0;
+    padding: 0.35rem 0.2rem;
+  }
+
+  .admin-insights-card .chart-summary-item > span,
+  .admin-insights-card .chart-summary-item > strong {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+    word-break: keep-all;
+  }
+
+  .admin-insights-card .chart-control-stack .user-insights__range {
+    grid-area: controls;
+    width: max-content;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    justify-self: end;
+  }
+
+  .admin-insights-card .chart-control-stack .user-insights__range button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .admin-insights-card .chart-timezone-label {
+    grid-area: timezone;
+    justify-self: end;
   }
 
   .user-login-column-chart {

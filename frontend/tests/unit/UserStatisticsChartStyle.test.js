@@ -50,4 +50,19 @@ describe('user statistics chart layout styles', () => {
     expect(adminSource).toContain(':aria-label="reviewSubmissionChartData.ariaLabel"')
     expect(adminSource).toContain('class="user-login-column-chart__bar"')
   })
+
+  it('centers shared summaries and keeps the mobile controls above one three-column row', () => {
+    expect(adminSource).toMatch(
+      /\.admin-insights-card \.chart-summary-item\s*\{[^}]*justify-items: center;[^}]*text-align: center;/s
+    )
+    expect(adminSource).toMatch(
+      /@media \(max-width: 640px\)[\s\S]*?\.admin-insights-card \.chart-summary-control-row\s*\{[^}]*grid-template-areas:[^}]*'controls'[^}]*'summary'[^}]*'timezone'/
+    )
+    expect(adminSource).toMatch(
+      /\.admin-insights-card \.chart-summary-group\s*\{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/s
+    )
+    expect(adminSource).toMatch(
+      /\.admin-insights-card \.chart-control-stack \.user-insights__range\s*\{[^}]*width: max-content;[^}]*justify-self: end;/s
+    )
+  })
 })

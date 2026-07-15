@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildOnlineDurationSummary, formatDuration } from '@/utils/onlineDurationSummary'
-import { buildTemporalTicks } from '@/utils/temporalChart'
+import { buildTemporalTicks, resolveTemporalLabelEvery } from '@/utils/temporalChart'
 import { buildDurationAxis, formatDurationAxisTick } from '@/utils/durationAxis'
 
 const makePoints = ({ start, count, bucketMinutes, durations = {} }) =>
@@ -14,6 +14,51 @@ const makePoints = ({ start, count, bucketMinutes, durations = {} }) =>
   })
 
 describe('temporal chart helpers', () => {
+  it.each([
+    ['24 hours', 'hour', 144, 12],
+    ['48 hours', 'hour', 144, 18],
+    ['72 hours', 'hour', 144, 18],
+    ['7 days', 'date', 42, 6],
+    ['30 days', 'date', 60, 10],
+    ['90 days', 'date', 90, 15],
+  ])(
+    'reduces %s tick density as the chart narrows without removing points',
+    (_range, mode, count, base) => {
+      const wideEvery = resolveTemporalLabelEvery({
+        baseLabelEvery: base,
+        chartWidth: 960,
+        pointCount: count,
+        mode,
+        fontScale: 1,
+      })
+      const narrowEvery = resolveTemporalLabelEvery({
+        baseLabelEvery: base,
+        chartWidth: 340,
+        pointCount: count,
+        mode,
+        fontScale: 1.35,
+      })
+
+      expect(wideEvery).toBe(base)
+      expect(narrowEvery).toBeGreaterThan(wideEvery)
+
+      const points = makePoints({
+        start: '2026-07-12T18:00:00Z',
+        count,
+        bucketMinutes: mode === 'hour' ? 10 : 24 * 60,
+      })
+      const wideTicks = buildTemporalTicks(points, { mode, labelEvery: wideEvery })
+      const narrowTicks = buildTemporalTicks(points, { mode, labelEvery: narrowEvery })
+
+      expect(narrowTicks).toHaveLength(points.length)
+      expect(narrowTicks.filter(({ showLabel }) => showLabel).length).toBeLessThan(
+        wideTicks.filter(({ showLabel }) => showLabel).length
+      )
+      expect(narrowTicks[0].showLabel).toBe(true)
+      expect(narrowTicks.at(-1).showLabel).toBe(true)
+    }
+  )
+
   it.each([
     [24, 10, 12],
     [48, 20, 18],
