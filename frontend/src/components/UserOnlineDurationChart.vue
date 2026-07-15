@@ -458,6 +458,10 @@ onBeforeUnmount(() => requestController?.abort())
   text-align: right;
 }
 
+.user-duration-chart__y-axis span {
+  white-space: nowrap;
+}
+
 .user-duration-chart__plot {
   position: relative;
   min-width: 0;

@@ -126,12 +126,12 @@ describe('duration chart axis', () => {
     const labels = values.map((value) => formatDurationAxisTick(value, 'hours'))
 
     expect(labels).toEqual([
-      '0 分鐘',
-      '30 分鐘',
+      '0 小時',
+      '0.5 小時',
       '1 小時',
-      '1 小時 30 分鐘',
+      '1.5 小時',
       '2 小時',
-      '2 小時 30 分鐘',
+      '2.5 小時',
       '3 小時',
     ])
     expect(new Set(labels).size).toBe(labels.length)
@@ -139,6 +139,15 @@ describe('duration chart axis', () => {
       yMax: 3,
       yTicks: [3, 2.5, 2, 1.5, 1, 0.5, 0],
     })
+  })
+
+  it('compacts arbitrary decimal-hour ticks without floating-point noise', () => {
+    expect(formatDurationAxisTick(1.0, 'hours')).toBe('1 小時')
+    expect(formatDurationAxisTick(1.25, 'hours')).toBe('1.25 小時')
+    expect(formatDurationAxisTick(1.5000000001, 'hours')).toBe('1.5 小時')
+    expect(typeof formatDurationAxisTick(0.75, 'hours')).toBe('string')
+    expect(formatDurationAxisTick(0.75, 'hours')).toBe('0.75 小時')
+    expect(formatDurationAxisTick(0.75, 'hours')).not.toContain('分鐘')
   })
 
   it('preserves the current-day minute axis', () => {

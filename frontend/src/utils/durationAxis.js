@@ -1,5 +1,3 @@
-import { formatDuration } from './onlineDurationSummary'
-
 export function buildDurationAxis({ mode, maxValue }) {
   if (mode === 'hourly') {
     return { yMax: 60, yTicks: [60, 45, 30, 15, 0] }
@@ -20,5 +18,6 @@ export function formatDurationAxisTick(value, unit) {
   if (!Number.isFinite(numericValue) || numericValue < 0) return ''
   if (unit === 'minutes') return `${numericValue} 分`
   if (unit !== 'hours') return ''
-  return numericValue === 0 ? '0 分鐘' : formatDuration(numericValue * 3600)
+  const compactValue = Number.parseFloat(numericValue.toFixed(2))
+  return `${compactValue} 小時`
 }

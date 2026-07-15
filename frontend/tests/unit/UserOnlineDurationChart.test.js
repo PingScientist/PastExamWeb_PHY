@@ -190,6 +190,12 @@ describe('UserOnlineDurationChart', () => {
       expect(wrapper.findAll('.user-duration-chart__bar')[3].attributes('style')).not.toContain(
         'height: 0%'
       )
+      const yAxisLabels = wrapper
+        .findAll('.user-duration-chart__y-axis span')
+        .map((label) => label.text())
+      expect(yAxisLabels).toContain('0.5 小時')
+      expect(yAxisLabels).not.toContain('30 分鐘')
+      expect(yAxisLabels.every((label) => !label.includes('小時 30 分鐘'))).toBe(true)
       expect(wrapper.text()).toContain(`統計最近 ${days} 個日曆日的每日在線使用時長。`)
       expect(wrapper.text()).toContain('區間總時長2 小時 35 分鐘')
       expect(wrapper.text()).toContain('每日平均')
@@ -247,6 +253,7 @@ describe('UserOnlineDurationChart', () => {
     }
 
     expect(componentSource).toMatch(/user-duration-chart__y-axis[\s\S]*var\(--app-font-size-xs\)/)
+    expect(componentSource).toMatch(/user-duration-chart__y-axis span[\s\S]*white-space: nowrap/)
     expect(componentSource).toMatch(/user-duration-chart__tooltip[\s\S]*var\(--app-font-size-xs\)/)
     expect(componentSource).toMatch(/user-duration-switch button[\s\S]*var\(--app-font-size-xs\)/)
     expect(componentSource).not.toMatch(/font-size:\s*(11|12)px/)
