@@ -62,6 +62,21 @@ const mountChart = () =>
   })
 
 describe('UserOnlineDurationChart', () => {
+  it('keeps all three duration summary cards in one mobile grid row', () => {
+    expect(componentSource).toMatch(
+      /\.user-duration-card\s*\{[^}]*container: user-duration \/ inline-size;/
+    )
+    expect(componentSource).toMatch(
+      /@container user-duration \(max-width: 40rem\)[\s\S]*?\.user-duration-card \.chart-summary-group\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);[^}]*width: 100%;/
+    )
+    expect(componentSource).toMatch(
+      /@container user-duration \(max-width: 40rem\)[\s\S]*?\.user-duration-card \.user-duration-switch\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
+    )
+    expect(componentSource).toMatch(
+      /\.user-duration-card \.chart-summary-item\s*\{[^}]*box-sizing: border-box;[^}]*min-width: 0;[^}]*width: 100%;[^}]*justify-items: center;[^}]*text-align: center;/
+    )
+  })
+
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-15T15:30:00Z'))
