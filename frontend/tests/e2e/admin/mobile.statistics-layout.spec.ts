@@ -213,9 +213,9 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
       })
     )
     expect(new Set(boxes.map(({ top }) => Math.round(top))).size).toBe(1)
-    expect(boxes.every(({ width: cardWidth, scrollWidth }) => scrollWidth <= Math.ceil(cardWidth))).toBe(
-      true
-    )
+    expect(
+      boxes.every(({ width: cardWidth, scrollWidth }) => scrollWidth <= Math.ceil(cardWidth))
+    ).toBe(true)
     await expectNoHorizontalOverflow(page)
   }
 
