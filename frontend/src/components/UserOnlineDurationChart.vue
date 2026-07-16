@@ -609,6 +609,28 @@ onBeforeUnmount(() => requestController?.abort())
     width: 100%;
   }
 
+  .user-duration-card .chart-summary-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  .user-duration-card .chart-summary-item {
+    min-width: 0;
+    padding: 0.35rem 0.2rem;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .user-duration-card .chart-summary-item > span,
+  .user-duration-card .chart-summary-item > strong {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .user-duration-chart {
     grid-template-columns: 2.75rem minmax(0, 1fr);
     height: 14rem;

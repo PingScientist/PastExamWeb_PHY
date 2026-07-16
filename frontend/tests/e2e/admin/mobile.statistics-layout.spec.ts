@@ -1,0 +1,246 @@
+import { expect, test } from '@playwright/test'
+import { buildJwt } from '../support/jwt'
+import { JSON_HEADERS } from '../support/constants'
+import {
+  defaultUsers,
+  mockAdminCourseEndpoints,
+  mockAdminUserEndpoints,
+} from '../support/adminFixtures'
+
+const json = (value: unknown) => ({
+  status: 200,
+  headers: JSON_HEADERS,
+  body: JSON.stringify(value),
+})
+
+const buildOnlinePoints = () => {
+  const start = Date.UTC(2026, 6, 15, 0, 0, 0)
+  return Array.from({ length: 144 }, (_, index) => ({
+    start: new Date(start + index * 600_000).toISOString(),
+    end: new Date(start + (index + 1) * 600_000).toISOString(),
+    at: new Date(start + index * 600_000).toISOString(),
+    count: index === 20 ? 1 : 0,
+    has_data: true,
+  }))
+}
+
+const buildDurationPoints = () => {
+  const start = Date.UTC(2026, 6, 14, 16, 0, 0)
+  return Array.from({ length: 24 }, (_, index) => ({
+    start: new Date(start + index * 3_600_000).toISOString(),
+    end: new Date(start + (index + 1) * 3_600_000).toISOString(),
+    duration_seconds: index === 4 ? 1140 : 0,
+    has_data: index <= 4,
+  }))
+}
+
+const expectNoHorizontalOverflow = async (page: import('@playwright/test').Page) => {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+      )
+    )
+    .toBe(true)
+}
+
+test.use({
+  viewport: { width: 393, height: 852 },
+  deviceScaleFactor: 3,
+  hasTouch: true,
+  isMobile: true,
+})
+
+test('keeps mobile statistics tabs and duration summaries aligned', async ({ page }) => {
+  const token = buildJwt({
+    uid: 1,
+    email: 'admin@example.com',
+    name: 'Admin',
+    is_admin: true,
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  })
+  await page.addInitScript((value: string) => {
+    window.sessionStorage.setItem('auth-token', value)
+    window.localStorage.setItem('auth-token', value)
+  }, token)
+
+  await page.route('**/api/notifications/active', (route) => route.fulfill(json([])))
+  await page.route('**/api/courses/admin/categories**', (route) => route.fulfill(json([])))
+  await page.route('**/api/settings/contributor-levels', (route) =>
+    route.fulfill(
+      json(
+        Array.from({ length: 10 }, (_, index) => ({
+          level: index + 1,
+          name: `等級 ${index + 1}`,
+          min_exp: index === 0 ? 0 : index * (index + 1),
+        }))
+      )
+    )
+  )
+  await mockAdminCourseEndpoints(page)
+  await mockAdminUserEndpoints(
+    page,
+    defaultUsers.map((user, index) => ({
+      ...user,
+      contributor_experience: index === 0 ? 5 : 0,
+      is_online: index === 0,
+      online_status_label: index === 0 ? '在線' : '離線',
+    }))
+  )
+
+  const onlinePoints = buildOnlinePoints()
+  await page.route('**/api/users/admin/online-statistics**', (route) =>
+    route.fulfill(
+      json({
+        range: '24h',
+        bucket_minutes: 10,
+        timezone: 'Asia/Taipei',
+        online_timeout_seconds: 300,
+        current_online: 0,
+        peak_online: 1,
+        average_online: 1 / 144,
+        history_started_at: onlinePoints[0].start,
+        points: onlinePoints,
+      })
+    )
+  )
+  await page.route('**/api/users/admin/users/1/submission-stats**', (route) =>
+    route.fulfill(
+      json({
+        user_id: 1,
+        name: 'Admin',
+        contributor_experience: 5,
+        total_count: 0,
+        status_counts: { pending: 0, approved: 0, rejected: 0, takedown: 0, deleted: 0 },
+        records_total: 0,
+        submission_records: [],
+      })
+    )
+  )
+  const durationPoints = buildDurationPoints()
+  await page.route('**/api/users/admin/users/1/online-duration**', (route) =>
+    route.fulfill(
+      json({
+        user_id: 1,
+        mode: 'hourly',
+        timezone: 'Asia/Taipei',
+        online_timeout_seconds: 300,
+        range_start: durationPoints[0].start,
+        range_end: durationPoints.at(-1)?.end,
+        history_started_at: durationPoints[0].start,
+        points: durationPoints,
+      })
+    )
+  )
+
+  await page.goto('/admin', { waitUntil: 'networkidle' })
+  const viewportMetrics = await page.evaluate(() => ({
+    innerWidth: window.innerWidth,
+    clientWidth: document.documentElement.clientWidth,
+    visualViewportWidth: window.visualViewport?.width ?? null,
+    devicePixelRatio: window.devicePixelRatio,
+  }))
+  expect(viewportMetrics.innerWidth).toBe(393)
+  expect(viewportMetrics.clientWidth).toBe(393)
+  expect(viewportMetrics.visualViewportWidth).toBe(393)
+  expect(viewportMetrics.devicePixelRatio).toBe(3)
+
+  await page.getByRole('tab', { name: '使用者管理' }).click()
+  await expect(page.getByRole('heading', { name: '使用者統計圖表' })).toBeVisible()
+
+  const modeSwitch = page.locator('.user-insights__switch--three')
+  const modeButtons = modeSwitch.locator(':scope > .user-insights__switch-option')
+  await expect(modeButtons).toHaveCount(3)
+  const switchStyle = await modeSwitch.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { display: style.display, columns: style.gridTemplateColumns }
+  })
+  expect(switchStyle.display).toBe('grid')
+  expect(switchStyle.columns.split(' ').length).toBe(2)
+
+  const firstBox = await modeButtons.nth(0).boundingBox()
+  const secondBox = await modeButtons.nth(1).boundingBox()
+  const fullRowBox = await modeButtons.nth(2).boundingBox()
+  expect(firstBox).not.toBeNull()
+  expect(secondBox).not.toBeNull()
+  expect(fullRowBox).not.toBeNull()
+  expect(Math.abs((fullRowBox?.x ?? 0) - (firstBox?.x ?? 0))).toBeLessThanOrEqual(1)
+  expect(
+    Math.abs(
+      (fullRowBox?.width ?? 0) -
+        ((secondBox?.x ?? 0) + (secondBox?.width ?? 0) - (firstBox?.x ?? 0))
+    )
+  ).toBeLessThanOrEqual(2)
+  expect(fullRowBox?.y ?? 0).toBeGreaterThan(firstBox?.y ?? 0)
+  const fullRowStyle = await modeButtons.nth(2).evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      gridColumnStart: style.gridColumnStart,
+      gridColumnEnd: style.gridColumnEnd,
+      minWidth: style.minWidth,
+    }
+  })
+  expect(fullRowStyle).toEqual({ gridColumnStart: '1', gridColumnEnd: '-1', minWidth: '0px' })
+
+  await modeButtons.nth(2).click()
+  const activeBackground = await modeButtons
+    .nth(2)
+    .evaluate((element) => getComputedStyle(element).backgroundColor)
+  expect(activeBackground).not.toBe('rgba(0, 0, 0, 0)')
+  await modeButtons.nth(0).click()
+  await expectNoHorizontalOverflow(page)
+
+  await page.getByRole('button', { name: '查看使用者資料統計' }).first().click()
+  const dialog = page.getByRole('dialog', { name: '使用者資料統計' })
+  await expect(dialog).toBeVisible()
+  const summaryCards = dialog.locator('.user-duration-card .chart-summary-item')
+  await expect(summaryCards).toHaveCount(3)
+
+  for (const dark of [false, true]) {
+    await page.evaluate(
+      (enabled) => document.documentElement.classList.toggle('dark', enabled),
+      dark
+    )
+    const boxes = await summaryCards.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect()
+        return { top: rect.top, width: rect.width, scrollWidth: element.scrollWidth }
+      })
+    )
+    expect(new Set(boxes.map(({ top }) => Math.round(top))).size).toBe(1)
+    expect(boxes.every(({ width, scrollWidth }) => scrollWidth <= Math.ceil(width))).toBe(true)
+    await expectNoHorizontalOverflow(page)
+  }
+
+  await page.evaluate(() => document.documentElement.style.setProperty('--app-font-scale', '1.5'))
+  const scaledTops = await summaryCards.evaluateAll((elements) =>
+    elements.map((element) => Math.round(element.getBoundingClientRect().top))
+  )
+  expect(new Set(scaledTops).size).toBe(1)
+  await expectNoHorizontalOverflow(page)
+
+  await dialog.getByRole('button', { name: '關閉' }).click()
+  for (const desktopWidth of [1280, 1440]) {
+    await page.setViewportSize({ width: desktopWidth, height: 900 })
+    await expect
+      .poll(() => modeSwitch.evaluate((element) => getComputedStyle(element).display))
+      .toBe('flex')
+    const desktopBoxes = await modeButtons.evaluateAll((elements) =>
+      elements.map((element) => Math.round(element.getBoundingClientRect().y))
+    )
+    expect(new Set(desktopBoxes).size).toBe(1)
+    await expectNoHorizontalOverflow(page)
+  }
+
+  await page.setViewportSize({ width: 393, height: 852 })
+  await page.getByRole('tab', { name: '審核中心' }).click()
+  const reviewModeSwitch = page.locator('.user-insights__switch--two')
+  const reviewModeButtons = reviewModeSwitch.locator(':scope > .user-insights__switch-option')
+  await expect(reviewModeButtons).toHaveCount(2)
+  const reviewBoxes = await reviewModeButtons.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect())
+  )
+  expect(Math.abs(reviewBoxes[0].top - reviewBoxes[1].top)).toBeLessThanOrEqual(1)
+  expect(Math.abs(reviewBoxes[0].width - reviewBoxes[1].width)).toBeLessThanOrEqual(1)
+  await expectNoHorizontalOverflow(page)
+})

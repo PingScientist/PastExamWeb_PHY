@@ -92,23 +92,20 @@ describe('user statistics chart layout styles', () => {
     }
   )
 
-  it.each([320, 344, 375, 399, 420, 437, 438])(
+  it.each([320, 344, 375, 393, 399, 420, 437, 438, 640])(
     'uses complete segmented grids at the %spx narrow width',
     (width) => {
-      expect(width).toBeLessThanOrEqual(438)
+      expect(width).toBeLessThanOrEqual(640)
       expect(adminSource).toContain('class="user-insights__switch user-insights__switch--three"')
       expect(adminSource).toContain('class="user-insights__switch user-insights__switch--two"')
       expect(adminSource).toContain(
         'class="user-insights__switch-option user-insights__switch-option--wide"'
       )
       expect(adminSource).toMatch(
-        /@media \(max-width: 438px\)[\s\S]*?\.user-insights__switch\.user-insights__switch--two,[\s\S]*?\.user-insights__switch\.user-insights__switch--three\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
+        /@media \(max-width: 640px\)[\s\S]*?\.user-insights__switch\.user-insights__switch--two,[\s\S]*?\.user-insights__switch\.user-insights__switch--three\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*width: 100%;/
       )
       expect(adminSource).toMatch(
-        /\.user-insights__switch--three\s*> \.user-insights__switch-option--wide\s*\{[^}]*grid-area: wide;[^}]*justify-self: stretch;/
-      )
-      expect(adminSource).toMatch(
-        /\.user-insights__switch\.user-insights__switch--three\s*\{[^}]*grid-template-areas:\s*'primary secondary'\s*'wide wide';/
+        /\.user-insights__switch--three\s*> \.user-insights__switch-option--wide\s*\{[^}]*grid-column: 1 \/ -1;[^}]*justify-self: stretch;[^}]*width: 100%;[^}]*min-width: 0;/
       )
       expect(adminSource).toMatch(
         /\.user-insights__switch > \.user-insights__switch-option\s*\{[^}]*display: block;[^}]*flex: none;[^}]*width: 100%;[^}]*min-width: 0;[^}]*max-width: none;/
@@ -116,10 +113,9 @@ describe('user statistics chart layout styles', () => {
     }
   )
 
-  it.each([439, 456])('keeps the existing flex layout at %spx', (width) => {
-    expect(width).toBeGreaterThan(438)
-    expect(adminSource).not.toContain('@media (max-width: 439px)')
-    expect(adminSource).not.toContain('@media (max-width: 456px)')
+  it.each([641, 1280, 1440])('keeps mobile tab grids out of the %spx layout', (width) => {
+    expect(width).toBeGreaterThan(640)
+    expect(adminSource).not.toContain('@media (max-width: 641px)')
   })
 
   it('observes the effective x-axis without changing the responsive tick owner', () => {

@@ -12771,7 +12771,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 438px) {
+@media (max-width: 640px) {
   .admin-insights-card .user-insights__switch.user-insights__switch--two,
   .admin-insights-card .user-insights__switch.user-insights__switch--three {
     display: grid;
@@ -12790,23 +12790,11 @@ onBeforeUnmount(() => {
     white-space: normal;
   }
 
-  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--primary {
-    grid-area: primary;
-  }
-
-  .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--secondary {
-    grid-area: secondary;
-  }
-
   .admin-insights-card .user-insights__switch--three > .user-insights__switch-option--wide {
-    grid-area: wide;
+    grid-column: 1 / -1;
     justify-self: stretch;
-  }
-
-  .admin-insights-card .user-insights__switch.user-insights__switch--three {
-    grid-template-areas:
-      'primary secondary'
-      'wide wide';
+    width: 100%;
+    min-width: 0;
   }
 }
 
