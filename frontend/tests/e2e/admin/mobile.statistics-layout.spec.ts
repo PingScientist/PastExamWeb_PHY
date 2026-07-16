@@ -44,9 +44,17 @@ const expectNoHorizontalOverflow = async (page: import('@playwright/test').Page)
     .toBe(true)
 }
 
+const responsiveWidths = [390, 438, 544, 545, 550, 558, 559, 640, 641, 650, 651, 768]
 const mobileSummaryWidths = [
   390, 430, 495, 544, 545, 550, 560, 567, 568, 600, 640, 641, 645, 650, 651,
 ]
+
+const expectSameRow = async (locator: import('@playwright/test').Locator) => {
+  const tops = await locator.evaluateAll((elements) =>
+    elements.map((element) => Math.round(element.getBoundingClientRect().top))
+  )
+  expect(new Set(tops).size).toBe(1)
+}
 
 test.use({
   viewport: { width: 393, height: 852 },
@@ -136,6 +144,43 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
       })
     )
   )
+  await page.route('**/api/archives/admin/submissions', (route) => route.fulfill(json([])))
+  await page.route('**/api/archives/admin/submission-statistics**', (route) => {
+    const url = new URL(route.request().url())
+    const range = url.searchParams.get('range') ?? '24h'
+    const mode = url.searchParams.get('mode') ?? 'time'
+    const bucketCount = range === '7d' ? 42 : range === '30d' ? 60 : range === '90d' ? 90 : 144
+    const bucketMinutes =
+      range === '24h'
+        ? 10
+        : range === '48h'
+          ? 20
+          : range === '72h'
+            ? 30
+            : range === '7d'
+              ? 240
+              : range === '30d'
+                ? 720
+                : 1440
+    const start = Date.UTC(2026, 6, 15) - bucketCount * bucketMinutes * 60_000
+    const points = Array.from({ length: bucketCount }, (_, index) => ({
+      start: new Date(start + index * bucketMinutes * 60_000).toISOString(),
+      end: new Date(start + (index + 1) * bucketMinutes * 60_000).toISOString(),
+      count: index === 2 ? 1 : 0,
+    }))
+    return route.fulfill(
+      json({
+        mode,
+        range,
+        timezone: 'Asia/Taipei',
+        bucket_minutes: bucketMinutes,
+        range_start: points[0].start,
+        range_end: points.at(-1)?.end,
+        summary: { total: 1, peak: 1, average: Number((1 / bucketCount).toFixed(1)) },
+        points,
+      })
+    )
+  })
 
   await page.goto('/admin', { waitUntil: 'networkidle' })
   const viewportMetrics = await page.evaluate(() => ({
@@ -151,6 +196,28 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
 
   await page.getByRole('tab', { name: '使用者管理' }).click()
   await expect(page.getByRole('heading', { name: '使用者統計圖表' })).toBeVisible()
+
+  const userInsightsCard = page
+    .locator('.admin-insights-card')
+    .filter({ hasText: '使用者統計圖表' })
+  const userSummaryCards = userInsightsCard.locator('.chart-summary-item')
+  const userRangeButtons = userInsightsCard.locator('.user-insights__range button')
+  await expect(userSummaryCards).toHaveCount(3)
+  await expect(userRangeButtons).toHaveCount(3)
+  for (const width of responsiveWidths) {
+    await page.setViewportSize({ width, height: 900 })
+    const metrics = await page.evaluate(() => ({
+      innerWidth: window.innerWidth,
+      clientWidth: document.documentElement.clientWidth,
+      visualViewportWidth: window.visualViewport?.width ?? null,
+    }))
+    expect(metrics).toEqual({ innerWidth: width, clientWidth: width, visualViewportWidth: width })
+    await expectSameRow(userSummaryCards)
+    await expectSameRow(userRangeButtons)
+    await expectNoHorizontalOverflow(page)
+  }
+
+  await page.setViewportSize({ width: 393, height: 852 })
 
   const modeSwitch = page.locator('.user-insights__switch--three')
   const modeButtons = modeSwitch.locator(':scope > .user-insights__switch-option')
@@ -199,7 +266,9 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
   await expect(dialog).toBeVisible()
   const summaryCards = dialog.locator('.user-duration-card .chart-summary-item')
   const summaryGroup = dialog.locator('.user-duration-card .chart-summary-group')
+  const durationModeButtons = dialog.locator('.user-duration-switch button')
   await expect(summaryCards).toHaveCount(3)
+  await expect(durationModeButtons).toHaveCount(2)
 
   for (const width of mobileSummaryWidths) {
     await page.setViewportSize({ width, height: 900 })
@@ -216,6 +285,7 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
     expect(
       boxes.every(({ width: cardWidth, scrollWidth }) => scrollWidth <= Math.ceil(cardWidth))
     ).toBe(true)
+    await expectSameRow(durationModeButtons)
     await expectNoHorizontalOverflow(page)
   }
 
@@ -277,5 +347,18 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
   )
   expect(Math.abs(reviewBoxes[0].top - reviewBoxes[1].top)).toBeLessThanOrEqual(1)
   expect(Math.abs(reviewBoxes[0].width - reviewBoxes[1].width)).toBeLessThanOrEqual(1)
+  const reviewInsightsCard = page
+    .locator('.admin-insights-card')
+    .filter({ hasText: '投稿統計圖表' })
+  const reviewSummaryCards = reviewInsightsCard.locator('.chart-summary-item')
+  const reviewRangeButtons = reviewInsightsCard.locator('.user-insights__range button')
+  await expect(reviewSummaryCards).toHaveCount(3)
+  await expect(reviewRangeButtons).toHaveCount(3)
+  for (const width of responsiveWidths) {
+    await page.setViewportSize({ width, height: 900 })
+    await expectSameRow(reviewSummaryCards)
+    await expectSameRow(reviewRangeButtons)
+    await expectNoHorizontalOverflow(page)
+  }
   await expectNoHorizontalOverflow(page)
 })

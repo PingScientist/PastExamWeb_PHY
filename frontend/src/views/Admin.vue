@@ -8017,6 +8017,7 @@ onBeforeUnmount(() => {
 }
 
 .admin-insights-card {
+  container: admin-insights / inline-size;
   display: grid;
   gap: 0.7rem;
   margin-bottom: 1rem;
@@ -12561,6 +12562,75 @@ onBeforeUnmount(() => {
   }
 }
 
+@container admin-insights (max-width: 40rem) {
+  .admin-insights-card .chart-summary-control-row {
+    display: grid;
+    grid-template-areas:
+      'controls'
+      'summary'
+      'timezone';
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.45rem;
+  }
+
+  .admin-insights-card .chart-control-stack {
+    display: contents;
+  }
+
+  .admin-insights-card .chart-summary-group {
+    display: grid;
+    grid-area: summary;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  .admin-insights-card .chart-summary-item {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    padding: 0.35rem 0.2rem;
+  }
+
+  .admin-insights-card .chart-summary-item > span,
+  .admin-insights-card .chart-summary-item > strong {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .admin-insights-card .chart-summary-item > span {
+    word-break: keep-all;
+  }
+
+  .admin-insights-card .chart-summary-item > strong {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-insights-card .chart-control-stack .user-insights__range {
+    display: inline-flex;
+    grid-area: controls;
+    width: max-content;
+    max-width: 100%;
+    margin-inline-start: auto;
+    flex-wrap: nowrap;
+    justify-self: end;
+  }
+
+  .admin-insights-card .chart-control-stack .user-insights__range button {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    min-width: 0;
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .admin-insights-card .chart-timezone-label {
+    grid-area: timezone;
+    justify-self: end;
+  }
+}
+
 @media (max-width: 640px) {
   .archive-requester-stats__identity {
     align-items: flex-start;
@@ -12606,59 +12676,6 @@ onBeforeUnmount(() => {
 
   .user-insights__toggle {
     margin-inline-start: 0;
-  }
-
-  .admin-insights-card .chart-summary-control-row {
-    display: grid;
-    grid-template-areas:
-      'controls'
-      'summary'
-      'timezone';
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.45rem;
-  }
-
-  .admin-insights-card .chart-control-stack {
-    display: contents;
-  }
-
-  .admin-insights-card .chart-summary-group {
-    display: grid;
-    grid-area: summary;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.3rem;
-    width: 100%;
-  }
-
-  .admin-insights-card .chart-summary-item {
-    min-width: 0;
-    padding: 0.35rem 0.2rem;
-  }
-
-  .admin-insights-card .chart-summary-item > span,
-  .admin-insights-card .chart-summary-item > strong {
-    max-width: 100%;
-    text-align: center;
-    white-space: normal;
-    word-break: keep-all;
-  }
-
-  .admin-insights-card .chart-control-stack .user-insights__range {
-    grid-area: controls;
-    width: max-content;
-    max-width: 100%;
-    flex-wrap: nowrap;
-    justify-self: end;
-  }
-
-  .admin-insights-card .chart-control-stack .user-insights__range button {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .admin-insights-card .chart-timezone-label {
-    grid-area: timezone;
-    justify-self: end;
   }
 
   .user-login-column-chart {

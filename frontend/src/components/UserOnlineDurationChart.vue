@@ -341,6 +341,29 @@ onBeforeUnmount(() => requestController?.abort())
 }
 
 @container user-duration (max-width: 40rem) {
+  .user-duration-card .user-duration-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-duration-card .user-duration-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .user-duration-card .user-duration-switch > button {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    white-space: normal;
+  }
+
+  .user-duration-card .user-duration-date-select,
+  .user-duration-card .user-duration-control-stack {
+    width: 100%;
+  }
+
   .user-duration-card .chart-summary-group {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -628,21 +651,6 @@ onBeforeUnmount(() => requestController?.abort())
 }
 
 @media (max-width: 640px) {
-  .user-duration-heading {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .user-duration-switch {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .user-duration-date-select,
-  .user-duration-control-stack {
-    width: 100%;
-  }
-
   .user-duration-chart {
     grid-template-columns: 2.75rem minmax(0, 1fr);
     height: 14rem;

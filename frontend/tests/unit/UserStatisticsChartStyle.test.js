@@ -56,13 +56,16 @@ describe('user statistics chart layout styles', () => {
       /\.admin-insights-card \.chart-summary-item\s*\{[^}]*justify-items: center;[^}]*text-align: center;/s
     )
     expect(adminSource).toMatch(
-      /@media \(max-width: 640px\)[\s\S]*?\.admin-insights-card \.chart-summary-control-row\s*\{[^}]*grid-template-areas:[^}]*'controls'[^}]*'summary'[^}]*'timezone'/
+      /@container admin-insights \(max-width: 40rem\)[\s\S]*?\.admin-insights-card \.chart-summary-control-row\s*\{[^}]*grid-template-areas:[^}]*'controls'[^}]*'summary'[^}]*'timezone'/
+    )
+    expect(adminSource).toMatch(
+      /\.admin-insights-card\s*\{[^}]*container: admin-insights \/ inline-size;/
     )
     expect(adminSource).toMatch(
       /\.admin-insights-card \.chart-summary-group\s*\{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/s
     )
     expect(adminSource).toMatch(
-      /\.admin-insights-card \.chart-control-stack \.user-insights__range\s*\{[^}]*width: max-content;[^}]*justify-self: end;/s
+      /\.admin-insights-card \.chart-control-stack \.user-insights__range\s*\{[^}]*display: inline-flex;[^}]*width: max-content;[^}]*flex-wrap: nowrap;[^}]*justify-self: end;/s
     )
   })
 
