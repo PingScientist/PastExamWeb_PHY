@@ -44,6 +44,10 @@ const expectNoHorizontalOverflow = async (page: import('@playwright/test').Page)
     .toBe(true)
 }
 
+const mobileSummaryWidths = [
+  390, 430, 495, 544, 545, 550, 560, 567, 568, 600, 640, 641, 645, 650, 651,
+]
+
 test.use({
   viewport: { width: 393, height: 852 },
   deviceScaleFactor: 3,
@@ -194,7 +198,26 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
   const dialog = page.getByRole('dialog', { name: '使用者資料統計' })
   await expect(dialog).toBeVisible()
   const summaryCards = dialog.locator('.user-duration-card .chart-summary-item')
+  const summaryGroup = dialog.locator('.user-duration-card .chart-summary-group')
   await expect(summaryCards).toHaveCount(3)
+
+  for (const width of mobileSummaryWidths) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect
+      .poll(() => summaryGroup.evaluate((element) => getComputedStyle(element).display))
+      .toBe('grid')
+    const boxes = await summaryCards.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect()
+        return { top: rect.top, width: rect.width, scrollWidth: element.scrollWidth }
+      })
+    )
+    expect(new Set(boxes.map(({ top }) => Math.round(top))).size).toBe(1)
+    expect(boxes.every(({ width: cardWidth, scrollWidth }) => scrollWidth <= Math.ceil(cardWidth))).toBe(
+      true
+    )
+    await expectNoHorizontalOverflow(page)
+  }
 
   for (const dark of [false, true]) {
     await page.evaluate(
@@ -218,6 +241,18 @@ test('keeps mobile statistics tabs and duration summaries aligned', async ({ pag
   )
   expect(new Set(scaledTops).size).toBe(1)
   await expectNoHorizontalOverflow(page)
+
+  for (const desktopWidth of [1280, 1440]) {
+    await page.setViewportSize({ width: desktopWidth, height: 900 })
+    await expect
+      .poll(() => summaryGroup.evaluate((element) => getComputedStyle(element).display))
+      .toBe('flex')
+    const desktopSummaryTops = await summaryCards.evaluateAll((elements) =>
+      elements.map((element) => Math.round(element.getBoundingClientRect().top))
+    )
+    expect(new Set(desktopSummaryTops).size).toBe(1)
+    await expectNoHorizontalOverflow(page)
+  }
 
   await dialog.getByRole('button', { name: '關閉' }).click()
   for (const desktopWidth of [1280, 1440]) {
