@@ -650,6 +650,12 @@ async function deleteMessage(message) {
   try {
     const { data } = await discussionService.deleteArchiveMessage(courseId, archiveId, message.id)
     applyDelete(message.id, Boolean(data?.preserve_thread))
+    toast?.add?.({
+      severity: 'success',
+      summary: '刪除成功',
+      detail: '留言已刪除',
+      life: 3000,
+    })
   } catch (error) {
     console.error('Delete message error:', error)
     toast?.add?.({

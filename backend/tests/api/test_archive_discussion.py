@@ -358,6 +358,94 @@ async def test_discussion_like_is_idempotent_and_can_be_removed(
 
 
 @pytest.mark.asyncio
+async def test_discussion_like_and_pin_create_one_durable_notification(
+    client, session_maker, make_user
+):
+    author = await make_user(name="notification-author", nickname="Author")
+    actor = await make_user(name="notification-actor", nickname="Actor")
+    admin = await make_user(name="notification-admin", is_admin=True)
+    async with session_maker() as session:
+        course = Course(name="Notification Course", category=CourseCategory.FRESHMAN)
+        session.add(course)
+        await session.commit()
+        await session.refresh(course)
+        archive = Archive(
+            name="Notification Exam",
+            academic_year=2024,
+            archive_type=ArchiveType.FINAL,
+            professor="Prof",
+            object_name="notification.pdf",
+            uploader_id=author.id,
+            course_id=course.id,
+        )
+        session.add(archive)
+        await session.commit()
+        await session.refresh(archive)
+        message = ArchiveDiscussionMessage(
+            archive_id=archive.id, user_id=author.id, content="notify me"
+        )
+        session.add(message)
+        await session.commit()
+        await session.refresh(message)
+
+    like_path = f"/courses/{course.id}/archives/{archive.id}/discussion/{message.id}/like"
+    pin_path = f"/courses/{course.id}/archives/{archive.id}/discussion/{message.id}/pin"
+    try:
+        app.dependency_overrides[get_current_user] = _override_user(actor.id)
+        assert (await client.put(like_path)).status_code == 200
+        assert (await client.put(like_path)).status_code == 200
+        assert (await client.delete(like_path)).status_code == 200
+
+        app.dependency_overrides[get_current_user] = _override_user(admin.id, is_admin=True)
+        assert (await client.patch(pin_path, data={"pinned": "true"})).status_code == 200
+        assert (await client.patch(pin_path, data={"pinned": "true"})).status_code == 200
+        assert (await client.patch(pin_path, data={"pinned": "false"})).status_code == 200
+
+        async with session_maker() as session:
+            notifications = list(
+                (
+                    await session.execute(
+                        select(PersonalNotification).where(
+                            PersonalNotification.user_id == author.id,
+                            PersonalNotification.notification_type.in_(
+                                ["discussion_like", "discussion_pin"]
+                            ),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert [item.notification_type for item in notifications].count(
+                "discussion_like"
+            ) == 1
+            assert [item.notification_type for item in notifications].count(
+                "discussion_pin"
+            ) == 1
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(PersonalNotification).where(
+                    PersonalNotification.user_id == author.id
+                )
+            )
+            await session.execute(
+                delete(ArchiveDiscussionLike).where(
+                    ArchiveDiscussionLike.message_id == message.id
+                )
+            )
+            await session.execute(
+                delete(ArchiveDiscussionMessage).where(
+                    ArchiveDiscussionMessage.archive_id == archive.id
+                )
+            )
+            await session.execute(delete(Archive).where(Archive.id == archive.id))
+            await session.execute(delete(Course).where(Course.id == course.id))
+            await session.commit()
+
+
+@pytest.mark.asyncio
 async def test_discussion_like_requires_authentication(client, session_maker, make_user):
     user = await make_user(name="anonymous-like-owner")
     async with session_maker() as session:

@@ -1560,8 +1560,8 @@ async function downloadArchive(archive) {
 
     toast.add({
       severity: 'success',
-      summary: '下載成功',
-      detail: `已下載 ${fileName}`,
+      summary: '已開始下載',
+      detail: `已開始下載 ${fileName}`,
       life: 3000,
     })
 
@@ -2028,8 +2028,8 @@ async function handlePreviewDownload(onComplete) {
 
     toast.add({
       severity: 'success',
-      summary: '下載成功',
-      detail: `已下載 ${fileName}`,
+      summary: '已開始下載',
+      detail: `已開始下載 ${fileName}`,
       life: 3000,
     })
 

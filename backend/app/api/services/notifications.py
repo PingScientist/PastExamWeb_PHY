@@ -127,9 +127,9 @@ async def _list_personal_notifications(
             source_message_id=item.source_message_id,
             metadata=dict(item.metadata_json or {}),
             source_available=(
-                item.source_message_id is None
-                if item.source_type is None
-                else item.source_message_id in available_source_ids
+                item.source_message_id in available_source_ids
+                if item.source_message_id is not None
+                else item.source_type in {None, "archive_submission", "comment_report"}
             ),
             read_at=item.read_at,
             created_at=item.created_at,

@@ -103,7 +103,7 @@
                 class="personal-item"
                 :class="{ 'personal-item--unread': !item.read_at }"
               >
-                <i class="pi pi-reply personal-item__icon" aria-hidden="true" />
+                <i :class="notificationIcon(item.notification_type)" aria-hidden="true" />
                 <div class="personal-item__body">
                   <div class="flex align-items-center gap-2">
                     <span v-if="!item.read_at" class="unread-dot" aria-label="未讀" />
@@ -194,6 +194,19 @@ function openPersonal(item) {
   selectedItem.value = item
   detailVisible.value = true
   if (!item.read_at) emit('mark-personal-read', item.id)
+}
+function notificationIcon(type) {
+  const icons = {
+    discussion_reply: 'pi pi-reply',
+    discussion_like: 'pi pi-heart-fill',
+    discussion_pin: 'pi pi-bookmark-fill',
+    archive_submission_approved: 'pi pi-check-circle',
+    archive_submission_rejected: 'pi pi-undo',
+    archive_submission_takedown: 'pi pi-eye-slash',
+    comment_report_submitted: 'pi pi-flag',
+    comment_report_result: 'pi pi-verified',
+  }
+  return `${icons[type] || 'pi pi-bell'} personal-item__icon`
 }
 watch(
   () => props.visible,

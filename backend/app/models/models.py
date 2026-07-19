@@ -30,6 +30,17 @@ class NotificationSeverity(str, PyEnum):
     DANGER = "danger"
 
 
+class PersonalNotificationType(str, PyEnum):
+    DISCUSSION_REPLY = "discussion_reply"
+    DISCUSSION_LIKE = "discussion_like"
+    DISCUSSION_PIN = "discussion_pin"
+    COMMENT_REPORT_SUBMITTED = "comment_report_submitted"
+    COMMENT_REPORT_RESULT = "comment_report_result"
+    ARCHIVE_SUBMISSION_APPROVED = "archive_submission_approved"
+    ARCHIVE_SUBMISSION_REJECTED = "archive_submission_rejected"
+    ARCHIVE_SUBMISSION_TAKEDOWN = "archive_submission_takedown"
+
+
 class TrashEntityType(str, PyEnum):
     ARCHIVE = "archive"
     ARCHIVE_SUBMISSION = "archive_submission"

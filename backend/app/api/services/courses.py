@@ -49,7 +49,7 @@ from app.models.models import (
     CourseSubmissionRead,
     CourseSubmissionUpdate,
     CourseUpdate,
-    PersonalNotification,
+    PersonalNotificationType,
     SubmissionDecision,
     SubmissionStatus,
     User,
@@ -64,6 +64,7 @@ from app.utils.course_text import (
     normalized_course_text_expr,
 )
 from app.core.config import settings
+from app.services.personal_notifications import enqueue_personal_notification
 
 router = APIRouter()
 
@@ -1129,31 +1130,24 @@ async def archive_discussion_ws(
                     nickname=user.nickname,
                     name=user.name,
                 )
-                await db.execute(
-                    pg_insert(PersonalNotification.__table__)
-                    .values(
-                        user_id=reply_target.user_id,
-                        notification_type="discussion_reply",
-                        title=f"{actor_name} 回覆了你的留言",
-                        message=content,
-                        source_type="archive_discussion_thread",
-                        source_id=parent_id,
-                        source_message_id=message.id,
-                        metadata={
-                            "archive_id": archive_id,
-                            "course_id": course_id,
-                            "thread_id": parent_id,
-                            "reply_message_id": message.id,
-                            "reply_to_message_id": reply_to_message_id,
-                        },
-                        dedupe_key=(
-                            f"discussion_reply:{message.id}:{reply_target.user_id}"
-                        ),
-                        created_at=message.created_at,
-                    )
-                    .on_conflict_do_nothing(
-                        constraint="uq_personal_notifications_dedupe_key"
-                    )
+                await enqueue_personal_notification(
+                    db,
+                    user_id=reply_target.user_id,
+                    notification_type=PersonalNotificationType.DISCUSSION_REPLY,
+                    title=f"{actor_name} 回覆了你的留言",
+                    message=content,
+                    source_type="archive_discussion_thread",
+                    source_id=parent_id,
+                    source_message_id=message.id,
+                    metadata={
+                        "archive_id": archive_id,
+                        "course_id": course_id,
+                        "thread_id": parent_id,
+                        "reply_message_id": message.id,
+                        "reply_to_message_id": reply_to_message_id,
+                    },
+                    dedupe_key=f"discussion_reply:{message.id}:{reply_target.user_id}",
+                    created_at=message.created_at,
                 )
             await db.commit()
             await db.refresh(message)
@@ -1266,16 +1260,45 @@ async def like_archive_discussion_message(
     current_user: UserRoles = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    await _ensure_archive_exists_for_discussion(course_id, archive_id, db)
-    await _get_active_discussion_message(archive_id, message_id, db)
+    archive = await _ensure_archive_exists_for_discussion(course_id, archive_id, db)
+    message = await _get_active_discussion_message(archive_id, message_id, db)
 
-    await db.execute(
+    like_id = await db.scalar(
         pg_insert(ArchiveDiscussionLike)
         .values(message_id=message_id, user_id=current_user.user_id)
         .on_conflict_do_nothing(
             constraint="uq_archive_discussion_likes_message_user"
         )
+        .returning(ArchiveDiscussionLike.id)
     )
+    if like_id is not None and message.user_id != current_user.user_id:
+        actor = await db.get(User, current_user.user_id)
+        course = await db.get(Course, course_id)
+        actor_name = _discussion_public_display_name(
+            user_id=current_user.user_id,
+            nickname=actor.nickname if actor else None,
+            name=actor.name if actor else None,
+        )
+        await enqueue_personal_notification(
+            db,
+            user_id=message.user_id,
+            notification_type=PersonalNotificationType.DISCUSSION_LIKE,
+            title=f"{actor_name} 對你的留言按了愛心",
+            message=(message.content[:80] + "…") if len(message.content) > 80 else message.content,
+            source_type="archive_discussion_thread",
+            source_id=message.parent_id or message.id,
+            source_message_id=message.id,
+            metadata={
+                "archive_id": archive_id,
+                "archive_name": archive.name,
+                "course_id": course_id,
+                "course_name": course.name if course else None,
+                "thread_id": message.parent_id or message.id,
+                "message_id": message.id,
+                "actor_user_id": current_user.user_id,
+            },
+            dedupe_key=f"discussion_like:{message.id}:{current_user.user_id}",
+        )
     await db.commit()
     like_count = await _discussion_like_count(message_id, db)
     await _broadcast_discussion(
@@ -1397,8 +1420,32 @@ async def pin_archive_discussion_message(
             detail="Replies cannot be pinned",
         )
 
+    was_pinned = bool(message.is_pinned)
     message.is_pinned = pinned
     db.add(message)
+    if pinned and not was_pinned and message.user_id != current_user.user_id:
+        archive = await db.get(Archive, archive_id)
+        course = await db.get(Course, course_id)
+        await enqueue_personal_notification(
+            db,
+            user_id=message.user_id,
+            notification_type=PersonalNotificationType.DISCUSSION_PIN,
+            title="你的留言已被管理員置頂",
+            message=(message.content[:80] + "…") if len(message.content) > 80 else message.content,
+            source_type="archive_discussion_thread",
+            source_id=message.id,
+            source_message_id=message.id,
+            metadata={
+                "archive_id": archive_id,
+                "archive_name": archive.name if archive else None,
+                "course_id": course_id,
+                "course_name": course.name if course else None,
+                "thread_id": message.id,
+                "message_id": message.id,
+                "actor_user_id": current_user.user_id,
+            },
+            dedupe_key=f"discussion_pin:{message.id}",
+        )
     await db.commit()
     await db.refresh(message)
 
