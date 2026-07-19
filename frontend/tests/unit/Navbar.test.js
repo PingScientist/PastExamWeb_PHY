@@ -549,11 +549,12 @@ describe('Navbar methods', () => {
       handleLogout: vi.fn(),
     }
     const actionsDesktop = Navbar.computed.moreActions.call(actionsCtxDesktop)
-    expect(actionsDesktop).toHaveLength(4)
+    expect(actionsDesktop).toHaveLength(3)
     actionsDesktop[0].command()
     expect(actionsCtxDesktop.invokeMenuAction).toHaveBeenCalled()
     expect(actionsCtxDesktop.handleNavigatePersonalSettings).toHaveBeenCalled()
     actionsDesktop[1].command()
+    expect(actionsDesktop[1].label).toBe('公告與通知')
     expect(actionsCtxDesktop.openNotificationCenter).toHaveBeenCalledWith('navbar-menu')
 
     const actionsCtxMobile = {
@@ -568,9 +569,9 @@ describe('Navbar methods', () => {
       handleLogout: vi.fn(),
     }
     const actionsMobile = Navbar.computed.moreActions.call(actionsCtxMobile)
-    expect(actionsMobile).toHaveLength(6)
-    expect(actionsMobile[4]).toHaveProperty('separator')
-    expect(actionsMobile[5].label).toBe('登出')
+    expect(actionsMobile).toHaveLength(5)
+    expect(actionsMobile[3]).toHaveProperty('separator')
+    expect(actionsMobile[4].label).toBe('登出')
 
     const canSubmitCtx = {
       issueForm: { type: 'bug', title: 'Title', description: 'Desc' },

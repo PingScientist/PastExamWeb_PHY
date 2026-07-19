@@ -53,12 +53,14 @@ router.beforeEach((to, from, next) => {
     const nowInSeconds = Math.floor(Date.now() / 1000)
 
     if (decoded?.exp && decoded.exp > nowInSeconds) {
+      removeSessionItem(STORAGE_KEYS.session.NOTIFICATION_LOGIN_CHECKED)
       setToken(token)
       next({ name: 'Archive', replace: true })
       return
     }
 
     removeSessionItem(STORAGE_KEYS.session.AUTH_TOKEN)
+    removeSessionItem(STORAGE_KEYS.session.NOTIFICATION_LOGIN_CHECKED)
     next({ name: 'Home', replace: true })
     return
   }

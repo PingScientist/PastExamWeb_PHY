@@ -429,6 +429,100 @@ class Notification(SQLModel, table=True):
     )
 
 
+class AnnouncementReadReceipt(SQLModel, table=True):
+    __tablename__ = "announcement_read_receipts"
+    __table_args__ = (
+        UniqueConstraint(
+            "notification_id",
+            "user_id",
+            name="uq_announcement_read_receipts_notification_user",
+        ),
+        Index("ix_announcement_read_receipts_user_read", "user_id", "read_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    notification_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("notifications.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    read_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, index=True)
+    )
+
+
+class PersonalNotification(SQLModel, table=True):
+    __tablename__ = "personal_notifications"
+    __table_args__ = (
+        UniqueConstraint(
+            "dedupe_key", name="uq_personal_notifications_dedupe_key"
+        ),
+        Index(
+            "ix_personal_notifications_user_read_created",
+            "user_id",
+            "read_at",
+            "created_at",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    notification_type: str = Field(
+        sa_column=Column(String(50), nullable=False, index=True)
+    )
+    title: str = Field(sa_column=Column(String(150), nullable=False))
+    message: str = Field(sa_column=Column(Text, nullable=False))
+    source_type: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String(50), nullable=True, index=True),
+    )
+    source_id: Optional[int] = Field(default=None, index=True)
+    source_message_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    metadata_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column("metadata", JSONB, nullable=False),
+    )
+    dedupe_key: str = Field(sa_column=Column(String(160), nullable=False))
+    read_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+            index=True,
+        )
+    )
+
+
 class UserRead(BaseModel):
     id: int
     email: str
@@ -614,6 +708,41 @@ class NotificationRead(NotificationBase):
 
     class Config:
         from_attributes = True
+
+
+class AnnouncementWithRead(NotificationRead):
+    is_read: bool = False
+    read_at: Optional[datetime] = None
+
+
+class PersonalNotificationRead(BaseModel):
+    id: int
+    notification_type: str
+    title: str
+    message: str
+    source_type: Optional[str] = None
+    source_id: Optional[int] = None
+    source_message_id: Optional[int] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    source_available: bool = True
+    read_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class NotificationUnreadCounts(BaseModel):
+    announcements: int = 0
+    personal_notifications: int = 0
+    total: int = 0
+
+
+class NotificationCenterRead(BaseModel):
+    announcements: List[AnnouncementWithRead] = Field(default_factory=list)
+    personal_notifications: List[PersonalNotificationRead] = Field(default_factory=list)
+    counts: NotificationUnreadCounts = Field(default_factory=NotificationUnreadCounts)
+
+
+class NotificationUnreadSummary(NotificationCenterRead):
+    pass
 
 
 class CourseInfo(BaseModel):

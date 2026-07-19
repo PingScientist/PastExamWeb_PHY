@@ -7,9 +7,11 @@ from sqlalchemy import delete
 
 from app.main import app
 from app.models.models import (
+    AnnouncementReadReceipt,
     Notification,
     NotificationCreate,
     NotificationSeverity,
+    PersonalNotification,
     UserRoles,
 )
 from app.utils.auth import get_current_user
@@ -208,3 +210,109 @@ async def test_admin_notifications_require_admin(
         async with session_maker() as session:
             await session.execute(delete(Notification))
             await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_announcement_reads_are_per_user_and_update_reopens_unread(
+    client: AsyncClient, session_maker, make_user
+):
+    first_user = await make_user()
+    second_user = await make_user()
+    announcement = await _create_notification(session_maker)
+    try:
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": first_user.id, "is_admin": False}
+        )
+        response = await client.put(
+            f"/notifications/announcements/{announcement.id}/read"
+        )
+        assert response.status_code == 200
+        first_center = (await client.get("/notifications/center")).json()
+        assert first_center["announcements"][0]["is_read"] is True
+
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": second_user.id, "is_admin": False}
+        )
+        second_center = (await client.get("/notifications/center")).json()
+        assert second_center["announcements"][0]["is_read"] is False
+
+        async with session_maker() as session:
+            stored = await session.get(Notification, announcement.id)
+            stored.updated_at = datetime.now(timezone.utc) + timedelta(seconds=1)
+            session.add(stored)
+            await session.commit()
+
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": first_user.id, "is_admin": False}
+        )
+        counts = (await client.get("/notifications/counts")).json()
+        assert counts["announcements"] == 1
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(delete(AnnouncementReadReceipt))
+            await session.execute(
+                delete(Notification).where(Notification.id == announcement.id)
+            )
+            await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_personal_notifications_are_owned_and_can_be_marked_read(
+    client: AsyncClient, session_maker, make_user
+):
+    owner = await make_user()
+    other = await make_user()
+    async with session_maker() as session:
+        item = PersonalNotification(
+            user_id=owner.id,
+            notification_type="discussion_reply",
+            title="有人回覆了你的留言",
+            message="reply",
+            dedupe_key=f"test:{uuid.uuid4().hex}",
+        )
+        session.add(item)
+        await session.commit()
+        await session.refresh(item)
+
+    try:
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": other.id, "is_admin": False}
+        )
+        center = (await client.get("/notifications/center")).json()
+        assert center["personal_notifications"] == []
+        assert (
+            await client.put(f"/notifications/personal/{item.id}/read")
+        ).status_code == 404
+
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": owner.id, "is_admin": False}
+        )
+        summary = (await client.get("/notifications/unread-summary")).json()
+        assert summary["counts"]["personal_notifications"] == 1
+        assert summary["personal_notifications"][0]["id"] == item.id
+        assert (
+            await client.put(f"/notifications/personal/{item.id}/read")
+        ).status_code == 200
+        assert (await client.get("/notifications/counts")).json()[
+            "personal_notifications"
+        ] == 0
+        assert (await client.put("/notifications/personal/read-all")).status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(PersonalNotification).where(PersonalNotification.id == item.id)
+            )
+            await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_notification_center_requires_authentication(client: AsyncClient):
+    for method, path in (
+        (client.get, "/notifications/center"),
+        (client.get, "/notifications/counts"),
+        (client.get, "/notifications/unread-summary"),
+        (client.put, "/notifications/personal/read-all"),
+    ):
+        assert (await method(path)).status_code == 401

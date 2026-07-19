@@ -49,6 +49,7 @@ from app.models.models import (
     CourseSubmissionRead,
     CourseSubmissionUpdate,
     CourseUpdate,
+    PersonalNotification,
     SubmissionDecision,
     SubmissionStatus,
     User,
@@ -1121,6 +1122,39 @@ async def archive_discussion_ws(
                 created_at=datetime.now(timezone.utc),
             )
             db.add(message)
+            await db.flush()
+            if reply_to_message_id is not None and reply_target.user_id != user.id:
+                actor_name = _discussion_public_display_name(
+                    user_id=user.id,
+                    nickname=user.nickname,
+                    name=user.name,
+                )
+                await db.execute(
+                    pg_insert(PersonalNotification.__table__)
+                    .values(
+                        user_id=reply_target.user_id,
+                        notification_type="discussion_reply",
+                        title=f"{actor_name} 回覆了你的留言",
+                        message=content,
+                        source_type="archive_discussion_thread",
+                        source_id=parent_id,
+                        source_message_id=message.id,
+                        metadata={
+                            "archive_id": archive_id,
+                            "course_id": course_id,
+                            "thread_id": parent_id,
+                            "reply_message_id": message.id,
+                            "reply_to_message_id": reply_to_message_id,
+                        },
+                        dedupe_key=(
+                            f"discussion_reply:{message.id}:{reply_target.user_id}"
+                        ),
+                        created_at=message.created_at,
+                    )
+                    .on_conflict_do_nothing(
+                        constraint="uq_personal_notifications_dedupe_key"
+                    )
+                )
             await db.commit()
             await db.refresh(message)
 

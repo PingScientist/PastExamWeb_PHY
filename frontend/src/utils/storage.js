@@ -1,7 +1,6 @@
 export const STORAGE_KEYS = {
   local: {
     THEME_PREFERENCE: 'theme-preference',
-    NOTIFICATION_LAST_SEEN: 'notification-last-seen',
     SELECTED_SUBJECT: 'selected-subject',
     ADMIN_CURRENT_TAB: 'admin-current-tab',
     AUTH_TOKEN: 'auth-token',
@@ -10,12 +9,12 @@ export const STORAGE_KEYS = {
   session: {
     AUTH_TOKEN: 'auth-token',
     ISSUE_CONTEXT: 'pastexam-issue-context',
+    NOTIFICATION_LOGIN_CHECKED: 'notification-login-checked',
   },
 }
 
 const LEGACY_KEYS = {
   local: {
-    [STORAGE_KEYS.local.NOTIFICATION_LAST_SEEN]: ['notification_last_seen'],
     [STORAGE_KEYS.local.SELECTED_SUBJECT]: ['selectedSubject'],
     [STORAGE_KEYS.local.ADMIN_CURRENT_TAB]: ['adminCurrentTab'],
     [STORAGE_KEYS.local.AUTH_TOKEN]: ['authToken'],

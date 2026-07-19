@@ -111,25 +111,41 @@
             @click="handleToggleTheme"
           />
         </div>
-        <Menu ref="moreActionsMenu" :model="moreActions" :popup="true" />
+        <Menu ref="moreActionsMenu" :model="moreActions" :popup="true">
+          <template #item="{ item, props }">
+            <a v-bind="props.action" class="flex align-items-center gap-2">
+              <span :class="item.icon" />
+              <span class="flex-1">{{ item.label }}</span>
+              <Badge v-if="item.badge" :value="item.badge" severity="danger" />
+            </a>
+          </template>
+        </Menu>
       </template>
     </Menubar>
 
     <NotificationModal
-      v-if="isAuthenticated && pendingNotification"
+      v-if="isAuthenticated"
       :visible="notificationStore.state.modalVisible"
-      :notification="pendingNotification"
+      :summary="notificationStore.state.unreadSummary"
       @update:visible="handleNotificationModalVisible"
-      @dismiss="handleNotificationDismiss"
       @open-center="() => openNotificationCenter('notification-modal')"
+      @mark-all-read="handleMarkAllRead"
+      @view-announcement="handleSummaryAnnouncement"
+      @view-personal="handleSummaryPersonal"
     />
     <NotificationCenterModal
       v-if="isAuthenticated"
       :visible="notificationStore.state.centerVisible"
-      :notifications="notificationStore.state.all"
-      :loading="notificationStore.state.loadingAll"
+      :announcements="notificationStore.state.announcements"
+      :personal-notifications="notificationStore.state.personalNotifications"
+      :counts="notificationStore.state.counts"
+      :loading="notificationStore.state.loadingCenter"
+      :focus-type="notificationFocusType"
+      :focus-id="notificationFocusId"
       @update:visible="handleNotificationCenterVisible"
-      @mark-seen="handleNotificationDetailSeen"
+      @mark-announcement-read="notificationStore.markAnnouncementRead"
+      @mark-personal-read="notificationStore.markPersonalRead"
+      @mark-all-personal-read="notificationStore.markAllPersonalRead"
     />
 
     <Dialog
@@ -323,6 +339,8 @@ export default {
       },
       heartbeatIntervalMs: 60000,
       heartbeatTimer: null,
+      notificationFocusType: null,
+      notificationFocusId: null,
       issueTypes: [
         { label: 'Bug / 程式錯誤', value: 'bug' },
         { label: '功能建議', value: 'enhancement' },
@@ -412,6 +430,7 @@ export default {
         this.notificationStore.state.active = []
         this.notificationStore.state.all = []
         this.notificationStore.state.initialized = false
+        this.notificationStore.resetForLogout?.()
       }
     },
   },
@@ -446,11 +465,20 @@ export default {
     },
 
     handleNotificationDismiss(notification) {
-      this.notificationStore.markNotificationAsSeen(notification)
+      this.notificationStore.markNotificationAsSeen?.(notification)
+      this.notificationStore.state.modalVisible = false
+    },
+
+    handleNotificationDetailSeen(notification) {
+      this.notificationStore.markNotificationAsSeen?.(notification)
     },
 
     handleNotificationCenterVisible(value) {
       this.notificationStore.state.centerVisible = value
+      if (!value) {
+        this.notificationFocusType = null
+        this.notificationFocusId = null
+      }
     },
 
     async initializeNotifications() {
@@ -462,19 +490,39 @@ export default {
         this.toast.add({
           severity: 'warn',
           summary: '請先登入',
-          detail: '登入後即可檢視所有公告',
+          detail: '登入後即可檢視公告與個人通知',
           life: 3000,
         })
         return
       }
 
       this.notificationStore.state.modalVisible = false
+      this.notificationFocusType = null
+      this.notificationFocusId = null
       trackEvent(EVENTS.OPEN_NOTIFICATION_CENTER, { from: source })
       await this.notificationStore.openCenter()
     },
 
-    handleNotificationDetailSeen(notification) {
-      this.notificationStore.markNotificationAsSeen(notification)
+    async handleMarkAllRead() {
+      await this.notificationStore.markAllRead()
+    },
+
+    async handleSummaryAnnouncement(id) {
+      await this.notificationStore.markAnnouncementRead(id)
+      this.notificationFocusType = 'announcement'
+      this.notificationFocusId = id
+      this.notificationStore.state.modalVisible = false
+      this.notificationStore.state.centerVisible = true
+      trackEvent(EVENTS.OPEN_NOTIFICATION_CENTER, { from: 'summary-announcement' })
+    },
+
+    async handleSummaryPersonal(id) {
+      await this.notificationStore.markPersonalRead(id)
+      this.notificationFocusType = 'personal'
+      this.notificationFocusId = id
+      this.notificationStore.state.modalVisible = false
+      this.notificationStore.state.centerVisible = true
+      trackEvent(EVENTS.OPEN_NOTIFICATION_CENTER, { from: 'summary-personal' })
     },
 
     handleToggleTheme() {
@@ -504,6 +552,7 @@ export default {
       this.loading = true
       try {
         const response = await authService.localLogin(this.username, this.password)
+        this.notificationStore?.beginLoginSession?.()
         setToken(response.access_token)
         this.loginVisible = false
         this.checkAuthentication()
@@ -555,6 +604,7 @@ export default {
       removeSessionItem(STORAGE_KEYS.session.AUTH_TOKEN)
       removeLocalItem(STORAGE_KEYS.local.SELECTED_SUBJECT)
       removeLocalItem(STORAGE_KEYS.local.ADMIN_CURRENT_TAB)
+      this.notificationStore.resetForLogout?.()
       this.isAuthenticated = false
       this.userData = null
 
@@ -609,9 +659,9 @@ export default {
         return
       }
 
-      await this.sendHeartbeat()
+      await this.sendHeartbeat(false)
       this.heartbeatTimer = setInterval(() => {
-        void this.sendHeartbeat()
+        void this.sendHeartbeat(true)
       }, this.heartbeatIntervalMs)
     },
 
@@ -622,13 +672,16 @@ export default {
       }
     },
 
-    async sendHeartbeat() {
+    async sendHeartbeat(refreshNotificationCounts = false) {
       if (!this.isAuthenticated) {
         return
       }
 
       try {
         await authService.heartbeat()
+        if (refreshNotificationCounts) {
+          await this.notificationStore.refreshCounts?.()
+        }
       } catch (error) {
         if (error?.response?.status !== 401) {
           console.debug('Heartbeat failed:', error?.message || error)
@@ -873,8 +926,9 @@ export default {
           command: () => this.invokeMenuAction(() => this.handleNavigatePersonalSettings()),
         },
         {
-          label: '公告中心',
+          label: '公告與通知',
           icon: 'pi pi-bell',
+          badge: this.notificationStore?.unreadTotal?.value || null,
           command: () => this.invokeMenuAction(() => this.openNotificationCenter('navbar-menu')),
         },
         {

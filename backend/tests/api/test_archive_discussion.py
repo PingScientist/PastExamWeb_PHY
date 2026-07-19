@@ -15,6 +15,7 @@ from app.models.models import (
     ArchiveType,
     Course,
     CourseCategory,
+    PersonalNotification,
     SubmissionStatus,
     UserRoles,
 )
@@ -505,6 +506,7 @@ async def test_discussion_reply_is_threaded_and_cross_archive_reply_is_rejected(
     client, session_maker, make_user, monkeypatch
 ):
     user = await make_user(name="reply-author", nickname="Reply Author")
+    replier = await make_user(name="reply-writer", nickname="Reply Writer")
     async with session_maker() as session:
         course = Course(name="Reply Course", category=CourseCategory.FRESHMAN)
         session.add(course)
@@ -546,7 +548,7 @@ async def test_discussion_reply_is_threaded_and_cross_archive_reply_is_rejected(
         await session.refresh(foreign_root)
 
     async def fake_ws_payload(websocket):
-        return {"uid": user.id, "exp": 4102444800}
+        return {"uid": replier.id, "exp": 4102444800}
 
     monkeypatch.setattr(
         "app.api.services.courses.get_ws_token_payload", fake_ws_payload
@@ -578,6 +580,40 @@ async def test_discussion_reply_is_threaded_and_cross_archive_reply_is_rejected(
             assert error_event["type"] == "error"
             assert error_event["code"] == "invalid_reply_target"
 
+    async def fake_self_ws_payload(websocket):
+        return {"uid": user.id, "exp": 4102444800}
+
+    monkeypatch.setattr(
+        "app.api.services.courses.get_ws_token_payload", fake_self_ws_payload
+    )
+    with TestClient(app) as ws_client:
+        with ws_client.websocket_connect(
+            f"/courses/{course.id}/archives/{first_archive.id}/discussion/ws"
+        ) as ws:
+            ws.receive_json()
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "send",
+                        "content": "self reply",
+                        "reply_to_message_id": root.id,
+                    }
+                )
+            )
+            assert ws.receive_json()["type"] == "message"
+
+    async with session_maker() as session:
+        personal = (
+            await session.execute(
+                select(PersonalNotification).where(
+                    PersonalNotification.user_id == user.id,
+                    PersonalNotification.notification_type == "discussion_reply",
+                )
+            )
+        ).scalar_one()
+        assert personal.source_id == root.id
+        assert personal.metadata_json["archive_id"] == first_archive.id
+
     app.dependency_overrides[get_current_user] = _override_user(user.id)
     try:
         response = await client.get(
@@ -585,10 +621,18 @@ async def test_discussion_reply_is_threaded_and_cross_archive_reply_is_rejected(
         )
         assert response.status_code == 200
         root_payload = response.json()[0]
-        assert [reply["content"] for reply in root_payload["replies"]] == ["reply"]
+        assert [reply["content"] for reply in root_payload["replies"]] == [
+            "reply",
+            "self reply",
+        ]
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         async with session_maker() as session:
+            await session.execute(
+                delete(PersonalNotification).where(
+                    PersonalNotification.user_id == user.id
+                )
+            )
             await session.execute(
                 delete(ArchiveDiscussionMessage).where(
                     ArchiveDiscussionMessage.archive_id.in_(
