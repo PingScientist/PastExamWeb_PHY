@@ -39,9 +39,13 @@ describe('DiscussionMessageCard', () => {
     expect(authorBlock.find('.discussion-card__author-line').exists()).toBe(true)
     expect(authorBlock.find('time.discussion-card__time').exists()).toBe(true)
     expect(authorBlock.element.parentElement).toBe(wrapper.get('.discussion-card').element)
-    expect(wrapper.get('.discussion-card__actions.is-primary').element.parentElement).toBe(
+    expect(wrapper.get('.discussion-card__action-stack').element.parentElement).toBe(
       wrapper.get('.discussion-card').element
     )
+    expect(
+      wrapper.get('.discussion-card__action-stack').findAll('.discussion-card__actions')
+    ).toHaveLength(2)
+    expect(wrapper.find('.discussion-card__footer').exists()).toBe(false)
     expect(wrapper.get('.discussion-card__like-button').text()).toContain('1234')
 
     const labels = wrapper.findAll('button').map((button) => button.attributes('aria-label'))

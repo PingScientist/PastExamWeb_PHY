@@ -29,69 +29,49 @@
       </time>
     </div>
 
-    <div v-if="!message.is_deleted" class="discussion-card__actions is-primary">
-      <Button
-        icon="pi pi-reply"
-        severity="secondary"
-        text
-        rounded
-        size="small"
-        aria-label="回覆留言"
-        title="回覆"
-        class="discussion-card__icon-button"
-        @click="$emit('reply', message)"
-      />
-      <Button
-        :icon="message.liked_by_current_user ? 'pi pi-heart-fill' : 'pi pi-heart'"
-        :label="formattedLikeCount"
-        :severity="message.liked_by_current_user ? 'danger' : 'secondary'"
-        text
-        rounded
-        size="small"
-        :loading="likeLoading"
-        :disabled="likeLoading"
-        :aria-label="message.liked_by_current_user ? '取消愛心' : '按愛心'"
-        :aria-pressed="Boolean(message.liked_by_current_user)"
-        :title="message.liked_by_current_user ? '取消愛心' : '按愛心'"
-        class="discussion-card__icon-button discussion-card__like-button"
-        :class="{ 'is-active': message.liked_by_current_user }"
-        @click="$emit('like', message)"
-      />
-      <Button
-        v-if="canPin && !isReply"
-        :icon="message.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
-        severity="warning"
-        text
-        rounded
-        size="small"
-        :aria-label="message.is_pinned ? '取消置頂' : '置頂留言'"
-        :title="message.is_pinned ? '取消置頂' : '置頂'"
-        class="discussion-card__icon-button"
-        @click="$emit('pin', message)"
-      />
-    </div>
-
-    <div v-if="message.is_deleted" class="discussion-card__deleted-text">此留言已刪除</div>
-    <div v-else class="discussion-card__body">
-      <div v-if="isReply && message.reply_to_user_name" class="discussion-card__reply-context">
-        回覆 @{{ message.reply_to_user_name }}
+    <div v-if="!message.is_deleted" class="discussion-card__action-stack">
+      <div class="discussion-card__actions is-primary">
+        <Button
+          icon="pi pi-reply"
+          severity="secondary"
+          text
+          rounded
+          size="small"
+          aria-label="回覆留言"
+          title="回覆"
+          class="discussion-card__icon-button"
+          @click="$emit('reply', message)"
+        />
+        <Button
+          :icon="message.liked_by_current_user ? 'pi pi-heart-fill' : 'pi pi-heart'"
+          :label="formattedLikeCount"
+          :severity="message.liked_by_current_user ? 'danger' : 'secondary'"
+          text
+          rounded
+          size="small"
+          :loading="likeLoading"
+          :disabled="likeLoading"
+          :aria-label="message.liked_by_current_user ? '取消愛心' : '按愛心'"
+          :aria-pressed="Boolean(message.liked_by_current_user)"
+          :title="message.liked_by_current_user ? '取消愛心' : '按愛心'"
+          class="discussion-card__icon-button discussion-card__like-button"
+          :class="{ 'is-active': message.liked_by_current_user }"
+          @click="$emit('like', message)"
+        />
+        <Button
+          v-if="canPin && !isReply"
+          :icon="message.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+          severity="warning"
+          text
+          rounded
+          size="small"
+          :aria-label="message.is_pinned ? '取消置頂' : '置頂留言'"
+          :title="message.is_pinned ? '取消置頂' : '置頂'"
+          class="discussion-card__icon-button"
+          @click="$emit('pin', message)"
+        />
       </div>
-      <div class="discussion-card__content">{{ displayedContent }}</div>
-      <div v-if="shouldShowToggle" class="discussion-card__more-row">
-        <button
-          type="button"
-          class="discussion-card__more-button"
-          :aria-expanded="expanded"
-          :aria-label="expanded ? '收合訊息' : '顯示完整訊息'"
-          @click="$emit('toggle-expanded', message.id)"
-        >
-          {{ expanded ? '顯示較少' : '顯示更多' }}
-          <i :class="`pi ${expanded ? 'pi-angle-up' : 'pi-angle-down'}`" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
 
-    <footer v-if="!message.is_deleted" class="discussion-card__footer">
       <div class="discussion-card__actions is-secondary">
         <Button
           icon="pi pi-flag"
@@ -117,7 +97,27 @@
           @click="$emit('delete', message)"
         />
       </div>
-    </footer>
+    </div>
+
+    <div v-if="message.is_deleted" class="discussion-card__deleted-text">此留言已刪除</div>
+    <div v-else class="discussion-card__body">
+      <div v-if="isReply && message.reply_to_user_name" class="discussion-card__reply-context">
+        回覆 @{{ message.reply_to_user_name }}
+      </div>
+      <div class="discussion-card__content">{{ displayedContent }}</div>
+      <div v-if="shouldShowToggle" class="discussion-card__more-row">
+        <button
+          type="button"
+          class="discussion-card__more-button"
+          :aria-expanded="expanded"
+          :aria-label="expanded ? '收合訊息' : '顯示完整訊息'"
+          @click="$emit('toggle-expanded', message.id)"
+        >
+          {{ expanded ? '顯示較少' : '顯示更多' }}
+          <i :class="`pi ${expanded ? 'pi-angle-up' : 'pi-angle-down'}`" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
 
     <InlineCommentReport
       v-if="reportOpen && !message.is_deleted"
@@ -191,9 +191,8 @@ const formattedLikeCount = computed(() =>
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    'author top-actions'
+    'author actions'
     'content content'
-    'bottom-actions bottom-actions'
     'inline-panel inline-panel';
   align-items: start;
   gap: 0 0.45rem;
@@ -257,10 +256,18 @@ const formattedLikeCount = computed(() =>
   gap: 0.2rem;
 }
 
-.discussion-card__actions.is-primary {
-  grid-area: top-actions;
+.discussion-card__action-stack {
+  grid-area: actions;
+  display: flex;
   align-self: start;
   justify-self: end;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.18rem;
+}
+
+.discussion-card__action-stack .discussion-card__actions {
   flex-wrap: nowrap;
   white-space: nowrap;
 }
@@ -293,13 +300,6 @@ const formattedLikeCount = computed(() =>
   margin-top: 0.55rem;
   color: var(--text-secondary);
   font-style: italic;
-}
-
-.discussion-card__footer {
-  grid-area: bottom-actions;
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.35rem;
 }
 
 .discussion-card__inline-panel {
