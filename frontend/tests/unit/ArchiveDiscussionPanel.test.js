@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   openSocket: vi.fn(),
   getMe: vi.fn(),
   updateSettings: vi.fn(),
-  routerPush: vi.fn(),
   toastAdd: vi.fn(),
 }))
 
@@ -49,13 +48,6 @@ vi.mock('@/utils/storage', () => ({
 vi.mock('@/utils/submissionLevel', () => ({
   loadContributorLevelSettings: vi.fn(),
 }))
-vi.mock('vue-router', () => ({
-  useRouter: () => ({
-    push: mocks.routerPush,
-    currentRoute: { value: { fullPath: '/archive' } },
-  }),
-}))
-
 function makeSocket() {
   return {
     readyState: 1,
@@ -186,13 +178,33 @@ describe('ArchiveDiscussionPanel', () => {
     expect(wrapper.vm.isLikeLoading(5)).toBe(false)
   })
 
-  it('navigates to the maintainable report route with archive context', () => {
+  it('keeps one inline reply or report composer open and resets report state predictably', () => {
     const wrapper = mountPanel(makeSocket())
-    wrapper.vm.openReport({ id: 99 })
-    expect(mocks.routerPush).toHaveBeenCalledWith({
-      name: 'CommentReport',
-      params: { courseId: '1', archiveId: '2', messageId: '99' },
-      query: { returnTo: '/archive' },
-    })
+    const root = { id: 10, user_name: 'Root' }
+    const reply = { id: 11, parent_id: 10, user_name: 'Reply' }
+    wrapper.vm.draft = '保留一般留言草稿'
+
+    wrapper.vm.startReply(root)
+    wrapper.vm.replyDraft = '尚未送出的回覆'
+    wrapper.vm.toggleReport(reply)
+
+    expect(wrapper.vm.replyTarget).toBeNull()
+    expect(wrapper.vm.replyDraft).toBe('')
+    expect(wrapper.vm.reportTarget.id).toBe(reply.id)
+    expect(wrapper.vm.draft).toBe('保留一般留言草稿')
+
+    wrapper.vm.reportReason = 'other'
+    wrapper.vm.reportCustomMessage = '自訂原因'
+    wrapper.vm.startReply(root)
+
+    expect(wrapper.vm.reportTarget).toBeNull()
+    expect(wrapper.vm.reportReason).toBeNull()
+    expect(wrapper.vm.reportCustomMessage).toBe('')
+    expect(wrapper.vm.replyTarget.message.id).toBe(root.id)
+
+    wrapper.vm.toggleReport(reply)
+    wrapper.vm.toggleReport(reply)
+    expect(wrapper.vm.reportTarget).toBeNull()
+    expect(wrapper.vm.reportReason).toBeNull()
   })
 })

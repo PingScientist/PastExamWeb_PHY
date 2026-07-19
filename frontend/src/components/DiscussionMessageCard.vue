@@ -7,71 +7,69 @@
       'is-deleted': message.is_deleted,
     }"
   >
-    <header class="discussion-card__header">
-      <div class="discussion-card__author-block">
-        <div class="discussion-card__author-line">
-          <span class="discussion-card__author-name">{{ message.user_name }}</span>
-          <ContributorLevelBadge
-            v-if="shouldShowLevelTitle"
-            :level="messageLevel.level"
-            :title="messageLevel.name"
-            size="compact"
-            show-title
-          />
-          <Tag
-            v-if="message.is_pinned"
-            value="置頂"
-            severity="warning"
-            class="discussion-card__pin-tag"
-          />
-        </div>
-        <time class="discussion-card__time" :datetime="message.created_at">
-          {{ formattedTime }}
-        </time>
-      </div>
-
-      <div v-if="!message.is_deleted" class="discussion-card__actions is-primary">
-        <Button
-          icon="pi pi-reply"
-          severity="secondary"
-          text
-          rounded
-          size="small"
-          aria-label="回覆留言"
-          title="回覆"
-          class="discussion-card__icon-button"
-          @click="$emit('reply', message)"
+    <div class="discussion-card__author-block">
+      <div class="discussion-card__author-line">
+        <span class="discussion-card__author-name">{{ message.user_name }}</span>
+        <ContributorLevelBadge
+          v-if="shouldShowLevelTitle"
+          :level="messageLevel.level"
+          :title="messageLevel.name"
+          size="compact"
+          show-title
         />
-        <Button
-          :icon="message.liked_by_current_user ? 'pi pi-heart-fill' : 'pi pi-heart'"
-          :label="formattedLikeCount"
-          :severity="message.liked_by_current_user ? 'danger' : 'secondary'"
-          text
-          rounded
-          size="small"
-          :loading="likeLoading"
-          :disabled="likeLoading"
-          :aria-label="message.liked_by_current_user ? '取消愛心' : '按愛心'"
-          :aria-pressed="Boolean(message.liked_by_current_user)"
-          :title="message.liked_by_current_user ? '取消愛心' : '按愛心'"
-          class="discussion-card__icon-button discussion-card__like-button"
-          :class="{ 'is-active': message.liked_by_current_user }"
-          @click="$emit('like', message)"
-        />
-        <Button
-          v-if="canPin && !isReply"
-          :icon="message.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+        <Tag
+          v-if="message.is_pinned"
+          value="置頂"
           severity="warning"
-          text
-          rounded
-          size="small"
-          :aria-label="message.is_pinned ? '取消置頂' : '置頂留言'"
-          :title="message.is_pinned ? '取消置頂' : '置頂'"
-          class="discussion-card__icon-button"
-          @click="$emit('pin', message)"
+          class="discussion-card__pin-tag"
         />
       </div>
-    </header>
+      <time class="discussion-card__time" :datetime="message.created_at">
+        {{ formattedTime }}
+      </time>
+    </div>
+
+    <div v-if="!message.is_deleted" class="discussion-card__actions is-primary">
+      <Button
+        icon="pi pi-reply"
+        severity="secondary"
+        text
+        rounded
+        size="small"
+        aria-label="回覆留言"
+        title="回覆"
+        class="discussion-card__icon-button"
+        @click="$emit('reply', message)"
+      />
+      <Button
+        :icon="message.liked_by_current_user ? 'pi pi-heart-fill' : 'pi pi-heart'"
+        :label="formattedLikeCount"
+        :severity="message.liked_by_current_user ? 'danger' : 'secondary'"
+        text
+        rounded
+        size="small"
+        :loading="likeLoading"
+        :disabled="likeLoading"
+        :aria-label="message.liked_by_current_user ? '取消愛心' : '按愛心'"
+        :aria-pressed="Boolean(message.liked_by_current_user)"
+        :title="message.liked_by_current_user ? '取消愛心' : '按愛心'"
+        class="discussion-card__icon-button discussion-card__like-button"
+        :class="{ 'is-active': message.liked_by_current_user }"
+        @click="$emit('like', message)"
+      />
+      <Button
+        v-if="canPin && !isReply"
+        :icon="message.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+        severity="warning"
+        text
+        rounded
+        size="small"
+        :aria-label="message.is_pinned ? '取消置頂' : '置頂留言'"
+        :title="message.is_pinned ? '取消置頂' : '置頂'"
+        class="discussion-card__icon-button"
+        @click="$emit('pin', message)"
+      />
+    </div>
 
     <div v-if="message.is_deleted" class="discussion-card__deleted-text">此留言已刪除</div>
     <div v-else class="discussion-card__body">
@@ -120,6 +118,18 @@
         />
       </div>
     </footer>
+
+    <InlineCommentReport
+      v-if="reportOpen && !message.is_deleted"
+      class="discussion-card__inline-panel"
+      :message="message"
+      :reason="reportReason"
+      :customMessage="reportCustomMessage"
+      @update:reason="$emit('update:reportReason', $event)"
+      @update:customMessage="$emit('update:reportCustomMessage', $event)"
+      @cancel="$emit('cancel-report')"
+      @submit="$emit('submit-report', $event)"
+    />
   </article>
 </template>
 
@@ -128,6 +138,7 @@ import { computed } from 'vue'
 import { formatRelativeTime } from '../utils/time'
 import { resolveSubmissionLevel } from '../utils/submissionLevel'
 import ContributorLevelBadge from './ContributorLevelBadge.vue'
+import InlineCommentReport from './InlineCommentReport.vue'
 
 const MESSAGE_PREVIEW_LENGTH = 100
 
@@ -138,9 +149,23 @@ const props = defineProps({
   canDelete: { type: Boolean, default: false },
   likeLoading: { type: Boolean, default: false },
   expanded: { type: Boolean, default: false },
+  reportOpen: { type: Boolean, default: false },
+  reportReason: { type: String, default: null },
+  reportCustomMessage: { type: String, default: '' },
 })
 
-defineEmits(['reply', 'like', 'pin', 'report', 'delete', 'toggle-expanded'])
+defineEmits([
+  'reply',
+  'like',
+  'pin',
+  'report',
+  'delete',
+  'toggle-expanded',
+  'update:reportReason',
+  'update:reportCustomMessage',
+  'cancel-report',
+  'submit-report',
+])
 
 const shouldShowLevelTitle = computed(
   () =>
@@ -163,6 +188,15 @@ const formattedLikeCount = computed(() =>
 <style scoped>
 .discussion-card {
   container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'author top-actions'
+    'content content'
+    'bottom-actions bottom-actions'
+    'inline-panel inline-panel';
+  align-items: start;
+  gap: 0 0.45rem;
   min-width: 0;
   padding: 0.65rem;
   border: 1px solid var(--border-color);
@@ -179,20 +213,13 @@ const formattedLikeCount = computed(() =>
   background: color-mix(in srgb, var(--bg-primary) 55%, var(--bg-secondary));
 }
 
-.discussion-card__header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
 .discussion-card__author-block,
 .discussion-card__author-line {
   min-width: 0;
 }
 
 .discussion-card__author-block {
+  grid-area: author;
   display: flex;
   flex-direction: column;
   gap: 0.18rem;
@@ -230,7 +257,16 @@ const formattedLikeCount = computed(() =>
   gap: 0.2rem;
 }
 
+.discussion-card__actions.is-primary {
+  grid-area: top-actions;
+  align-self: start;
+  justify-self: end;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .discussion-card__body {
+  grid-area: content;
   min-width: 0;
   margin-top: 0.55rem;
 }
@@ -245,6 +281,7 @@ const formattedLikeCount = computed(() =>
 
 .discussion-card__content,
 .discussion-card__deleted-text {
+  grid-area: content;
   color: var(--text-primary);
   font-size: var(--app-font-size-sm);
   line-height: 1.55;
@@ -259,9 +296,16 @@ const formattedLikeCount = computed(() =>
 }
 
 .discussion-card__footer {
+  grid-area: bottom-actions;
   display: flex;
   justify-content: flex-end;
   margin-top: 0.35rem;
+}
+
+.discussion-card__inline-panel {
+  grid-area: inline-panel;
+  min-width: 0;
+  margin-top: 0.55rem;
 }
 
 :deep(.discussion-card__icon-button.p-button) {
@@ -316,16 +360,6 @@ const formattedLikeCount = computed(() =>
 .discussion-card__more-button:hover,
 .discussion-card__more-button:focus-visible {
   background: var(--bg-secondary);
-}
-
-@container (max-width: 340px) {
-  .discussion-card__header {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .discussion-card__actions.is-primary {
-    justify-self: end;
-  }
 }
 
 @media (pointer: coarse) {

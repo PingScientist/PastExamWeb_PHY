@@ -31,6 +31,7 @@ declare module 'vue' {
     Drawer: typeof import('primevue/drawer')['default']
     FileUpload: typeof import('primevue/fileupload')['default']
     FloatLabel: typeof import('primevue/floatlabel')['default']
+    InlineCommentReport: typeof import('./src/components/InlineCommentReport.vue')['default']
     InputNumber: typeof import('primevue/inputnumber')['default']
     InputText: typeof import('primevue/inputtext')['default']
     Menu: typeof import('primevue/menu')['default']

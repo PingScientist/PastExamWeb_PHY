@@ -39,12 +39,19 @@
           :can-delete="canDelete(message)"
           :like-loading="isLikeLoading(message.id)"
           :expanded="isExpanded(message.id)"
+          :report-open="reportTarget?.id === message.id"
+          :report-reason="reportReason"
+          :report-custom-message="reportCustomMessage"
           @reply="startReply"
           @like="toggleLike"
           @pin="togglePin"
-          @report="openReport"
+          @report="toggleReport"
           @delete="confirmDelete"
           @toggle-expanded="toggleExpanded"
+          @update:report-reason="reportReason = $event"
+          @update:report-custom-message="reportCustomMessage = $event"
+          @cancel-report="cancelReport"
+          @submit-report="handleReportSubmit"
         />
 
         <div v-if="message.replies?.length" class="discussion-replies">
@@ -56,11 +63,18 @@
             :can-delete="canDelete(reply)"
             :like-loading="isLikeLoading(reply.id)"
             :expanded="isExpanded(reply.id)"
+            :report-open="reportTarget?.id === reply.id"
+            :report-reason="reportReason"
+            :report-custom-message="reportCustomMessage"
             @reply="startReply"
             @like="toggleLike"
-            @report="openReport"
+            @report="toggleReport"
             @delete="confirmDelete"
             @toggle-expanded="toggleExpanded"
+            @update:report-reason="reportReason = $event"
+            @update:report-custom-message="reportCustomMessage = $event"
+            @cancel-report="cancelReport"
+            @submit-report="handleReportSubmit"
           />
         </div>
 
@@ -214,7 +228,6 @@
 
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { discussionService, userService } from '../api'
 import { getCurrentUser } from '../utils/auth'
 import { trackEvent, EVENTS } from '../utils/analytics'
@@ -239,7 +252,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['desktop-default-open-change'])
-const router = useRouter()
 const toast = inject('toast', null)
 const confirm = inject('confirm', null)
 
@@ -250,6 +262,9 @@ const connecting = ref(false)
 const draft = ref('')
 const replyDraft = ref('')
 const replyTarget = ref(null)
+const reportTarget = ref(null)
+const reportReason = ref(null)
+const reportCustomMessage = ref('')
 const expandedById = ref({})
 const likeLoadingById = ref({})
 const reconnectAttempts = ref(0)
@@ -404,6 +419,8 @@ function applyIncomingMessage(incoming) {
 }
 
 function applyDelete(messageId, preserveThread) {
+  if (reportTarget.value?.id === messageId) cancelReport()
+  if (replyTarget.value?.message?.id === messageId) cancelReply()
   const root = messages.value.find((message) => message.id === messageId)
   if (root) {
     if (preserveThread) {
@@ -530,6 +547,7 @@ function startReply(message) {
     })
     return
   }
+  cancelReport()
   replyTarget.value = {
     message,
     rootId: message.parent_id || message.id,
@@ -540,6 +558,44 @@ function startReply(message) {
 function cancelReply() {
   replyTarget.value = null
   replyDraft.value = ''
+}
+
+function resetReportForm() {
+  reportReason.value = null
+  reportCustomMessage.value = ''
+}
+
+function cancelReport() {
+  reportTarget.value = null
+  resetReportForm()
+}
+
+function toggleReport(message) {
+  if (!currentUser.value) {
+    toast?.add?.({
+      severity: 'warn',
+      summary: '請先登入',
+      detail: '登入後即可回報留言',
+      life: 3000,
+    })
+    return
+  }
+  if (reportTarget.value?.id === message.id) {
+    cancelReport()
+    return
+  }
+  cancelReply()
+  resetReportForm()
+  reportTarget.value = message
+}
+
+function handleReportSubmit() {
+  toast?.add?.({
+    severity: 'info',
+    summary: '功能尚未開放',
+    detail: '目前不會送出回報或通知管理員',
+    life: 3000,
+  })
 }
 
 function sendReply() {
@@ -641,18 +697,6 @@ async function togglePin(message) {
   }
 }
 
-function openReport(message) {
-  router.push({
-    name: 'CommentReport',
-    params: {
-      courseId: String(props.courseId),
-      archiveId: String(props.archiveId),
-      messageId: String(message.id),
-    },
-    query: { returnTo: router.currentRoute.value.fullPath },
-  })
-}
-
 async function loadMe() {
   if (!currentUser.value) return
   try {
@@ -733,6 +777,7 @@ watch(
   () => {
     messages.value = []
     cancelReply()
+    cancelReport()
     connect()
   }
 )
