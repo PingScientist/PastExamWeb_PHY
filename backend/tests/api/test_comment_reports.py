@@ -14,6 +14,7 @@ from app.models.models import (
     Course,
     CourseCategory,
     PersonalNotification,
+    SystemIssueReport,
     UserRoles,
 )
 from app.utils.auth import get_current_user
@@ -223,4 +224,52 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
             )
             await session.execute(delete(Archive).where(Archive.id == archive.id))
             await session.execute(delete(Course).where(Course.id == course.id))
+            await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_system_issue_reports_are_local_admin_only_and_filter_unsafe_github_urls(
+    client, session_maker, make_user
+):
+    reporter = await make_user(name="system-issue-reporter")
+    admin = await make_user(name="system-issue-admin", is_admin=True)
+    payload = {
+        "report_type": "bug",
+        "title": "System issue",
+        "description": "Steps to reproduce",
+        "contact": "reporter@example.com",
+        "metadata": {"route": {"path": "/archive"}},
+    }
+    assert (await client.post("/reports/system-issues", json=payload)).status_code == 401
+    try:
+        app.dependency_overrides[get_current_user] = _override_user(reporter.id)
+        created = await client.post("/reports/system-issues", json=payload)
+        assert created.status_code == 201
+        body = created.json()
+        assert body["github_issue_number"] is None
+        assert body["github_issue_url"] is None
+        assert body["status"] == "local_only"
+        assert (await client.get("/reports/admin/system-issues")).status_code == 403
+
+        async with session_maker() as session:
+            report = await session.get(SystemIssueReport, body["id"])
+            report.github_issue_number = 123
+            report.github_issue_url = "https://evil.example/issues/123"
+            session.add(report)
+            await session.commit()
+
+        app.dependency_overrides[get_current_user] = _override_user(admin.id, is_admin=True)
+        listed = await client.get("/reports/admin/system-issues")
+        assert listed.status_code == 200
+        item = next(item for item in listed.json()["items"] if item["id"] == body["id"])
+        assert item["github_issue_number"] == 123
+        assert item["github_issue_url"] is None
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(SystemIssueReport).where(
+                    SystemIssueReport.reporter_user_id == reporter.id
+                )
+            )
             await session.commit()

@@ -46,6 +46,7 @@ declare module 'vue' {
     Password: typeof import('primevue/password')['default']
     PdfPreviewModal: typeof import('./src/components/PdfPreviewModal.vue')['default']
     ProgressSpinner: typeof import('primevue/progressspinner')['default']
+    ReportManagementPanel: typeof import('./src/components/admin/ReportManagementPanel.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Select: typeof import('primevue/select')['default']

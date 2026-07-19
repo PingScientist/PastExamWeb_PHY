@@ -750,6 +750,7 @@ defineOptions({
 })
 
 import { ref, computed, onMounted, watch, inject, onBeforeUnmount } from 'vue'
+import { routeLocationKey } from 'vue-router'
 import { courseService, archiveService } from '../api'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import UploadArchiveDialog from '../components/UploadArchiveDialog.vue'
@@ -774,6 +775,7 @@ import {
 
 const toast = inject('toast')
 const confirm = inject('confirm')
+const route = inject(routeLocationKey, { fullPath: '/archive', query: {} })
 
 const { isDarkTheme } = useTheme()
 loadContributorLevelSettings()
@@ -858,6 +860,7 @@ const showUploadDialog = ref(false)
 const showSubmissionStatusDialog = ref(false)
 const submissionStatusLoading = ref(false)
 const archiveSubmissions = ref([])
+const deepLinkReady = ref(false)
 const submissionLevel = computed(() => {
   const countedSubmissions = archiveSubmissions.value.filter((submission) =>
     ['approved', 'takedown'].includes(getNormalizedSubmissionStatus(submission?.status))
@@ -1349,6 +1352,26 @@ async function loadSubmissionStatus() {
 async function openSubmissionStatus() {
   showSubmissionStatusDialog.value = true
   await loadSubmissionStatus()
+}
+
+async function openRequestedSource() {
+  if (!deepLinkReady.value) return
+  if (String(route.query.showSubmissionStatus || '') === '1') {
+    await openSubmissionStatus()
+    return
+  }
+  const requestedCourseId = Number(route.query.courseId)
+  const requestedArchiveId = Number(route.query.archiveId)
+  if (!requestedCourseId || !requestedArchiveId) return
+  const course = Object.values(coursesList.value)
+    .flat()
+    .find((item) => Number(item.id) === requestedCourseId)
+  if (!course) return
+  selectedCourse.value = requestedCourseId
+  selectedSubject.value = formatCourseDisplayName(course.name)
+  await fetchArchives()
+  const archive = archives.value.find((item) => Number(item.id) === requestedArchiveId)
+  if (archive) await previewArchive(archive)
 }
 
 function openUploadFromMobileMenu() {
@@ -1950,7 +1973,16 @@ onMounted(async () => {
       removeLocalItem(STORAGE_KEYS.local.SELECTED_SUBJECT)
     }
   }
+  deepLinkReady.value = true
+  await openRequestedSource()
 })
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (deepLinkReady.value) void openRequestedSource()
+  }
+)
 
 watch(isDarkTheme, () => {})
 

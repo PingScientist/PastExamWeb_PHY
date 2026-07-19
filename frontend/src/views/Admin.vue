@@ -7,6 +7,7 @@
           <Tab value="0">課程管理</Tab>
           <Tab value="2">公告管理</Tab>
           <Tab value="1">使用者管理</Tab>
+          <Tab value="5"><i class="pi pi-flag mr-2" aria-hidden="true" />回報管理</Tab>
           <Tab value="4">垃圾桶</Tab>
         </TabList>
         <TabPanels>
@@ -2194,6 +2195,12 @@
             </div>
           </TabPanel>
 
+          <TabPanel value="5">
+            <div class="p-2 md:p-4">
+              <ReportManagementPanel />
+            </div>
+          </TabPanel>
+
           <TabPanel value="4">
             <div class="p-2 md:p-4 trash-center">
               <div class="admin-toolbar admin-toolbar--trash-shell mb-4">
@@ -3989,6 +3996,7 @@ import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/cou
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
 import UserOnlineDurationChart from '../components/UserOnlineDurationChart.vue'
+import ReportManagementPanel from '../components/admin/ReportManagementPanel.vue'
 import {
   SUBMISSION_LEVELS,
   getContributorLevelPalette,
@@ -4878,7 +4886,7 @@ const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
 const getInitialTab = () => {
   try {
     const savedTab = getLocalItem(TAB_STORAGE_KEY)
-    if (savedTab && ['0', '1', '2', '3', '4'].includes(savedTab)) {
+    if (savedTab && ['0', '1', '2', '3', '4', '5'].includes(savedTab)) {
       return savedTab
     }
   } catch (e) {
@@ -7771,7 +7779,10 @@ const loadTabData = async (value) => {
 
   if (tab === '4') {
     await loadTrashItems()
+    return
   }
+
+  if (tab === '5') return
 }
 
 const handleTabChange = (value) => {
@@ -7785,6 +7796,7 @@ const handleTabChange = (value) => {
     2: 'notifications',
     3: 'reviews',
     4: 'trash',
+    5: 'reports',
   }
 
   trackEvent(EVENTS.SWITCH_TAB, {

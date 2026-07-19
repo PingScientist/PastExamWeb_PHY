@@ -14,6 +14,7 @@ const getCurrentUserMock = vi.hoisted(() =>
 const isAuthenticatedMock = vi.hoisted(() => vi.fn(() => true))
 
 const listCoursesMock = vi.hoisted(() => vi.fn())
+const listCategoriesMock = vi.hoisted(() => vi.fn())
 const getCourseArchivesMock = vi.hoisted(() => vi.fn())
 const getArchiveDownloadUrlMock = vi.hoisted(() => vi.fn())
 const getArchivePreviewUrlMock = vi.hoisted(() => vi.fn())
@@ -73,11 +74,13 @@ const updatedArchives = baseArchives.map((archive, index) => ({
 vi.mock('@/api', () => ({
   courseService: {
     listCourses: listCoursesMock,
+    listCategories: listCategoriesMock,
     getCourseArchives: getCourseArchivesMock,
   },
   archiveService: {
     getArchiveDownloadUrl: getArchiveDownloadUrlMock,
     getArchivePreviewUrl: getArchivePreviewUrlMock,
+    getArchivePreviewFile: getArchivePreviewUrlMock,
     deleteArchive: deleteArchiveMock,
     updateArchive: updateArchiveMock,
     updateArchiveCourse: updateArchiveCourseMock,
@@ -165,6 +168,7 @@ describe('ArchiveView', () => {
     trackEventMock.mockReset()
     isUnauthorizedErrorMock.mockReturnValue(false)
     listCoursesMock.mockResolvedValue({ data: sampleCourses })
+    listCategoriesMock.mockResolvedValue({ data: [] })
     getCourseArchivesMock.mockReset()
     getCourseArchivesMock
       .mockResolvedValueOnce({ data: baseArchives })
@@ -275,7 +279,7 @@ describe('ArchiveView', () => {
     await vm.previewArchive(archiveItem)
     await flushPromises()
     expect(vm.showPreview).toBe(true)
-    expect(vm.selectedArchive.previewUrl).toContain('preview')
+    expect(vm.selectedArchive.previewUrl).toBe('blob:url')
 
     const issueContextAfterPreview = JSON.parse(sessionStorage.getItem('pastexam-issue-context'))
     expect(issueContextAfterPreview.preview).toEqual(

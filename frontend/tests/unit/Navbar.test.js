@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar.vue'
 const localLoginMock = vi.hoisted(() => vi.fn())
 const logoutMock = vi.hoisted(() => vi.fn())
 const loginRedirectMock = vi.hoisted(() => vi.fn())
+const createSystemIssueMock = vi.hoisted(() => vi.fn())
 const trackEventMock = vi.hoisted(() => vi.fn())
 const setTokenMock = vi.hoisted(() => vi.fn())
 const getCurrentUserMock = vi.hoisted(() => vi.fn())
@@ -33,6 +34,9 @@ vi.mock('@/api', () => ({
     localLogin: localLoginMock,
     logout: logoutMock,
     login: loginRedirectMock,
+  },
+  reportService: {
+    createSystemIssue: createSystemIssueMock,
   },
 }))
 
@@ -106,6 +110,8 @@ describe('Navbar methods', () => {
     localLoginMock.mockReset()
     logoutMock.mockReset()
     loginRedirectMock.mockReset()
+    createSystemIssueMock.mockReset()
+    createSystemIssueMock.mockResolvedValue({ data: { id: 1 } })
     toastAddMock.mockReset()
     notificationStoreMock.state.modalVisible = false
     notificationStoreMock.state.centerVisible = false
@@ -269,6 +275,35 @@ describe('Navbar methods', () => {
 
     Navbar.methods.handleNotificationDetailSeen.call(ctx, { id: 2 })
     expect(notificationStoreMock.markNotificationAsSeen).toHaveBeenCalledWith({ id: 2 })
+  })
+
+  it('routes persistent notification sources through internal archive queries', async () => {
+    const push = vi.fn().mockResolvedValue()
+    const ctx = {
+      notificationStore: notificationStoreMock,
+      $router: { push },
+    }
+
+    await Navbar.methods.handlePersonalNotificationSource.call(ctx, {
+      source_type: 'archive_submission',
+      source_id: 42,
+      metadata: { submission_id: 42 },
+    })
+    expect(push).toHaveBeenLastCalledWith({
+      path: '/archive',
+      query: { showSubmissionStatus: '1', submissionId: 42 },
+    })
+
+    await Navbar.methods.handlePersonalNotificationSource.call(ctx, {
+      source_type: 'archive_discussion_thread',
+      source_id: 7,
+      metadata: { course_id: 2, archive_id: 3, thread_id: 7, message_id: 9 },
+    })
+    expect(push).toHaveBeenLastCalledWith({
+      path: '/archive',
+      query: { courseId: 2, archiveId: 3, threadId: 7, messageId: 9 },
+    })
+    expect(notificationStoreMock.state.centerVisible).toBe(false)
   })
 
   it('toggles more actions menu and invokes menu actions', () => {
@@ -494,7 +529,7 @@ describe('Navbar methods', () => {
     expect(formatted).toContain('(UTC+8)')
   })
 
-  it('submits issue report through GitHub redirect', () => {
+  it('stores a local system issue before opening the GitHub prefill page', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
     const ctx = {
       issueForm: {
@@ -503,6 +538,8 @@ describe('Navbar methods', () => {
         description: '詳細描述',
         contact: 'contact@example.com',
       },
+      canSubmitIssue: true,
+      issueSubmitting: false,
       toast: { add: toastAddMock },
       closeIssueReportDialog: vi.fn(),
       getSystemInfo: vi.fn(() => ({
@@ -515,15 +552,18 @@ describe('Navbar methods', () => {
       formatIssueBody: vi.fn(() => 'issue body'),
     }
 
-    Navbar.methods.submitIssueReport.call(ctx)
+    await Navbar.methods.submitIssueReport.call(ctx)
     expect(trackEventMock).toHaveBeenCalledWith(
       'submit-issue-report',
       expect.objectContaining({ type: 'bug', hasContact: true })
     )
     expect(ctx.formatIssueBody).toHaveBeenCalled()
+    expect(createSystemIssueMock).toHaveBeenCalledWith(
+      expect.objectContaining({ report_type: 'bug', title: '系統問題' })
+    )
     expect(ctx.closeIssueReportDialog).toHaveBeenCalled()
     expect(toastAddMock).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success', summary: '已跳轉到 GitHub' })
+      expect.objectContaining({ severity: 'success', summary: '回報摘要已保存' })
     )
     expect(openSpy).toHaveBeenCalled()
     openSpy.mockRestore()

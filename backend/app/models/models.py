@@ -654,6 +654,52 @@ class CommentReport(SQLModel, table=True):
     )
 
 
+class SystemIssueReport(SQLModel, table=True):
+    __tablename__ = "system_issue_reports"
+    __table_args__ = (
+        Index("ix_system_issue_reports_status_created", "status", "created_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_user_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    report_type: str = Field(sa_column=Column(String(40), nullable=False, index=True))
+    title: str = Field(sa_column=Column(String(100), nullable=False))
+    description: str = Field(sa_column=Column(Text, nullable=False))
+    contact: Optional[str] = Field(default=None, sa_column=Column(String(200), nullable=True))
+    status: str = Field(
+        default="local_only",
+        sa_column=Column(String(30), nullable=False, index=True),
+    )
+    github_issue_number: Optional[int] = Field(default=None, index=True)
+    github_issue_url: Optional[str] = Field(
+        default=None, sa_column=Column(String(500), nullable=True)
+    )
+    metadata_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column("metadata", JSONB, nullable=False),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+            index=True,
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+
+
 class UserRead(BaseModel):
     id: int
     email: str
@@ -904,6 +950,34 @@ class CommentReportListRead(BaseModel):
     total: int = 0
     limit: int = 20
     offset: int = 0
+
+
+class SystemIssueReportCreate(BaseModel):
+    report_type: str = Field(min_length=1, max_length=40)
+    title: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=2000)
+    contact: Optional[str] = Field(default=None, max_length=200)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SystemIssueReportRead(BaseModel):
+    id: int
+    reporter_user_id: Optional[int]
+    reporter_name: str
+    report_type: str
+    title: str
+    description: str
+    contact: Optional[str]
+    status: str
+    github_issue_number: Optional[int]
+    github_issue_url: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class SystemIssueReportListRead(BaseModel):
+    items: List[SystemIssueReportRead] = Field(default_factory=list)
+    total: int = 0
 
 
 class NotificationUnreadCounts(BaseModel):

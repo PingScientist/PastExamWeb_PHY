@@ -174,6 +174,7 @@ const emit = defineEmits([
   'mark-announcement-read',
   'mark-personal-read',
   'mark-all-personal-read',
+  'open-personal-source',
 ])
 const activeTab = ref('announcements')
 const detailVisible = ref(false)
@@ -190,10 +191,17 @@ function openAnnouncement(item) {
   if (!item.is_read) emit('mark-announcement-read', item.id)
 }
 function openPersonal(item) {
+  if (!item.read_at) emit('mark-personal-read', item.id)
+  if (
+    item.source_available &&
+    ['archive_discussion_thread', 'archive_submission'].includes(item.source_type)
+  ) {
+    emit('open-personal-source', item)
+    return
+  }
   selectedType.value = 'personal'
   selectedItem.value = item
   detailVisible.value = true
-  if (!item.read_at) emit('mark-personal-read', item.id)
 }
 function notificationIcon(type) {
   const icons = {

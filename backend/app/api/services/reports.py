@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -20,6 +22,10 @@ from app.models.models import (
     CommentReportStatus,
     Course,
     PersonalNotificationType,
+    SystemIssueReport,
+    SystemIssueReportCreate,
+    SystemIssueReportListRead,
+    SystemIssueReportRead,
     User,
     UserRoles,
 )
@@ -41,6 +47,10 @@ REPORT_REASON_LABELS = {
     CommentReportReason.MISINFORMATION.value: "錯誤或誤導資訊",
     CommentReportReason.OTHER.value: "其他",
 }
+SYSTEM_ISSUE_TYPES = {"bug", "enhancement", "performance", "ui-ux", "question"}
+GITHUB_ISSUE_URL_PATTERN = re.compile(
+    r"^https://github\.com/PingScientist/PastExamWeb_PHY/issues/(?P<number>[1-9][0-9]*)$"
+)
 
 
 def _display_name(user_id: int | None, nickname: str | None, name: str | None) -> str:
@@ -130,6 +140,99 @@ async def _read_report(db: AsyncSession, report_id: int) -> CommentReportRead:
             status_code=status.HTTP_404_NOT_FOUND, detail="Comment report not found"
         )
     return _serialize_report(row)
+
+
+def _safe_github_issue_url(report: SystemIssueReport) -> str | None:
+    if not report.github_issue_url or report.github_issue_number is None:
+        return None
+    match = GITHUB_ISSUE_URL_PATTERN.fullmatch(report.github_issue_url)
+    if not match or int(match.group("number")) != report.github_issue_number:
+        return None
+    return report.github_issue_url
+
+
+def _serialize_system_issue(report: SystemIssueReport, nickname, name) -> SystemIssueReportRead:
+    return SystemIssueReportRead(
+        id=report.id,
+        reporter_user_id=report.reporter_user_id,
+        reporter_name=_display_name(report.reporter_user_id, nickname, name),
+        report_type=report.report_type,
+        title=report.title,
+        description=report.description,
+        contact=report.contact,
+        status=report.status,
+        github_issue_number=report.github_issue_number,
+        github_issue_url=_safe_github_issue_url(report),
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+    )
+
+
+@router.post(
+    "/system-issues",
+    response_model=SystemIssueReportRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_system_issue_report(
+    payload: SystemIssueReportCreate,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    report_type = payload.report_type.strip()
+    title = payload.title.strip()
+    description = payload.description.strip()
+    if report_type not in SYSTEM_ISSUE_TYPES or not title or not description:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid system issue report",
+        )
+    metadata = payload.metadata or {}
+    if len(json.dumps(metadata, ensure_ascii=False, default=str)) > 10_000:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="System issue metadata is too large",
+        )
+    report = SystemIssueReport(
+        reporter_user_id=current_user.user_id,
+        report_type=report_type,
+        title=title,
+        description=description,
+        contact=(payload.contact or "").strip() or None,
+        metadata_json=metadata,
+    )
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+    user = await db.get(User, current_user.user_id)
+    return _serialize_system_issue(
+        report,
+        user.nickname if user else None,
+        user.name if user else None,
+    )
+
+
+@router.get("/admin/system-issues", response_model=SystemIssueReportListRead)
+async def list_system_issue_reports(
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    _require_admin(current_user)
+    reporter = aliased(User)
+    statement = (
+        select(SystemIssueReport, reporter.nickname, reporter.name)
+        .outerjoin(reporter, reporter.id == SystemIssueReport.reporter_user_id)
+        .order_by(SystemIssueReport.created_at.desc(), SystemIssueReport.id.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    rows = (await db.execute(statement)).all()
+    total = int(await db.scalar(select(func.count(SystemIssueReport.id))) or 0)
+    return SystemIssueReportListRead(
+        items=[_serialize_system_issue(row[0], row[1], row[2]) for row in rows],
+        total=total,
+    )
 
 
 @router.post(
