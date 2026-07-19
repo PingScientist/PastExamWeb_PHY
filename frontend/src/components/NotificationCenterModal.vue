@@ -70,7 +70,12 @@
               </Column>
               <Column header="操作" style="width: 5rem">
                 <template #body="{ data }"
-                  ><Button label="檢視" size="small" outlined @click="openAnnouncement(data)"
+                  ><Button
+                    label="檢視"
+                    size="small"
+                    outlined
+                    class="notification-view-button"
+                    @click="openAnnouncement(data)"
                 /></template>
               </Column>
             </DataTable>
@@ -110,7 +115,13 @@
                     >來源已不存在</small
                   >
                 </div>
-                <Button label="檢視" size="small" outlined @click="openPersonal(item)" />
+                <Button
+                  label="檢視"
+                  size="small"
+                  outlined
+                  class="notification-view-button"
+                  @click="openPersonal(item)"
+                />
               </article>
             </div>
           </TabPanel>
@@ -229,6 +240,10 @@ function formatTimestamp(value, withTime = true) {
 .notification-table {
   font-size: 0.875rem;
   overflow-x: auto;
+}
+:deep(.notification-view-button.p-button) {
+  min-inline-size: 3.25rem;
+  white-space: nowrap;
 }
 :deep(.notification-table .p-datatable-wrapper) {
   overflow-x: auto;

@@ -59,6 +59,20 @@
           @click="$emit('like', message)"
         />
         <Button
+          icon="pi pi-flag"
+          severity="secondary"
+          text
+          rounded
+          size="small"
+          aria-label="回報留言"
+          title="回報"
+          class="discussion-card__icon-button"
+          @click="$emit('report', message)"
+        />
+      </div>
+
+      <div v-if="(canPin && !isReply) || canDelete" class="discussion-card__actions is-secondary">
+        <Button
           v-if="canPin && !isReply"
           :icon="message.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
           severity="warning"
@@ -69,20 +83,6 @@
           :title="message.is_pinned ? '取消置頂' : '置頂'"
           class="discussion-card__icon-button"
           @click="$emit('pin', message)"
-        />
-      </div>
-
-      <div class="discussion-card__actions is-secondary">
-        <Button
-          icon="pi pi-flag"
-          severity="secondary"
-          text
-          rounded
-          size="small"
-          aria-label="回報留言"
-          title="回報"
-          class="discussion-card__icon-button"
-          @click="$emit('report', message)"
         />
         <Button
           v-if="canDelete"
@@ -191,11 +191,12 @@ const formattedLikeCount = computed(() =>
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    'author actions'
+    'author primary-actions'
+    'time secondary-actions'
     'content content'
     'inline-panel inline-panel';
   align-items: start;
-  gap: 0 0.45rem;
+  gap: 0.12rem 0.45rem;
   min-width: 0;
   padding: 0.65rem;
   border: 1px solid var(--border-color);
@@ -218,13 +219,11 @@ const formattedLikeCount = computed(() =>
 }
 
 .discussion-card__author-block {
-  grid-area: author;
-  display: flex;
-  flex-direction: column;
-  gap: 0.18rem;
+  display: contents;
 }
 
 .discussion-card__author-line {
+  grid-area: author;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -240,6 +239,7 @@ const formattedLikeCount = computed(() =>
 }
 
 .discussion-card__time {
+  grid-area: time;
   width: fit-content;
   max-width: 100%;
   color: var(--text-secondary);
@@ -257,25 +257,28 @@ const formattedLikeCount = computed(() =>
 }
 
 .discussion-card__action-stack {
-  grid-area: actions;
-  display: flex;
-  align-self: start;
-  justify-self: end;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.18rem;
+  display: contents;
 }
 
 .discussion-card__action-stack .discussion-card__actions {
+  align-self: start;
+  justify-self: end;
   flex-wrap: nowrap;
   white-space: nowrap;
+}
+
+.discussion-card__actions.is-primary {
+  grid-area: primary-actions;
+}
+
+.discussion-card__actions.is-secondary {
+  grid-area: secondary-actions;
 }
 
 .discussion-card__body {
   grid-area: content;
   min-width: 0;
-  margin-top: 0.55rem;
+  margin-top: 0.3rem;
 }
 
 .discussion-card__reply-context {
@@ -297,7 +300,7 @@ const formattedLikeCount = computed(() =>
 }
 
 .discussion-card__deleted-text {
-  margin-top: 0.55rem;
+  margin-top: 0.3rem;
   color: var(--text-secondary);
   font-style: italic;
 }

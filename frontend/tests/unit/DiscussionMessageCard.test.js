@@ -49,7 +49,7 @@ describe('DiscussionMessageCard', () => {
     expect(wrapper.get('.discussion-card__like-button').text()).toContain('1234')
 
     const labels = wrapper.findAll('button').map((button) => button.attributes('aria-label'))
-    expect(labels).toEqual(['回覆留言', '取消愛心', '取消置頂', '回報留言', '刪除留言'])
+    expect(labels).toEqual(['回覆留言', '取消愛心', '回報留言', '取消置頂', '刪除留言'])
   })
 
   it('renders the inline report inside the exact reply card without reserving a pin gap', () => {
@@ -85,5 +85,6 @@ describe('DiscussionMessageCard', () => {
     )
     const labels = wrapper.findAll('button').map((button) => button.attributes('aria-label'))
     expect(labels).toEqual(['回覆留言', '按愛心', '回報留言'])
+    expect(wrapper.find('.discussion-card__actions.is-secondary').exists()).toBe(false)
   })
 })

@@ -4,6 +4,11 @@ import NotificationCenterModal from '@/components/NotificationCenterModal.vue'
 
 const slotStub = { template: '<div><slot /><slot name="header" /></div>' }
 const tabsStub = { template: '<div><slot /></div>' }
+const buttonStub = {
+  inheritAttrs: false,
+  props: ['label'],
+  template: '<button v-bind="$attrs">{{ label }}</button>',
+}
 const announcements = [
   {
     id: 1,
@@ -44,7 +49,7 @@ describe('NotificationCenterModal', () => {
           TabPanel: tabsStub,
           DataTable: tabsStub,
           Column: true,
-          Button: true,
+          Button: buttonStub,
           Tag: true,
           Badge: true,
         },
@@ -53,6 +58,9 @@ describe('NotificationCenterModal', () => {
     expect(wrapper.text()).toContain('公告與通知')
     expect(wrapper.text()).toContain('公告')
     expect(wrapper.text()).toContain('個人通知')
+    const viewButtons = wrapper.findAll('.notification-view-button')
+    expect(viewButtons).toHaveLength(1)
+    expect(viewButtons.every((button) => button.text() === '檢視')).toBe(true)
     wrapper.vm.openAnnouncement(announcements[0])
     expect(wrapper.emitted('mark-announcement-read')).toEqual([[1]])
     wrapper.vm.openPersonal(personal[0])
