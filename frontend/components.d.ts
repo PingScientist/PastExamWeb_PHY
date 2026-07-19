@@ -26,6 +26,7 @@ declare module 'vue' {
     DataTable: typeof import('primevue/datatable')['default']
     DatePicker: typeof import('primevue/datepicker')['default']
     Dialog: typeof import('primevue/dialog')['default']
+    DiscussionMessageCard: typeof import('./src/components/DiscussionMessageCard.vue')['default']
     Divider: typeof import('primevue/divider')['default']
     Drawer: typeof import('primevue/drawer')['default']
     FileUpload: typeof import('primevue/fileupload')['default']

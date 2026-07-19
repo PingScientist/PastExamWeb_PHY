@@ -1,6 +1,6 @@
 <template>
-  <div class="discussion-panel flex flex-column" :style="{ width }">
-    <div
+  <section class="discussion-panel" :style="{ width }" aria-label="考古題討論區">
+    <header
       v-if="showHeader"
       class="discussion-header p-3 flex align-items-center justify-content-between"
     >
@@ -12,85 +12,106 @@
         text
         rounded
         size="small"
-        aria-label="暱稱設定"
+        aria-label="開啟討論區設定"
+        title="討論區設定"
         class="discussion-settings-btn"
         @click="openNicknameDialog"
       />
-    </div>
+    </header>
 
-    <div ref="messagesRef" class="flex-1 overflow-auto p-3 flex flex-column gap-2">
-      <div v-if="loading" class="flex-1 flex align-items-center justify-content-center">
+    <div ref="messagesRef" class="discussion-messages">
+      <div v-if="loading" class="discussion-state">
         <ProgressSpinner strokeWidth="4" />
       </div>
-      <div v-else-if="messages.length === 0" class="text-sm" style="color: var(--text-secondary)">
+      <div v-else-if="sortedMessages.length === 0" class="discussion-empty">
         還沒有人發起討論，來當第一個吧！
       </div>
 
-      <div
-        v-for="msg in sortedMessages"
-        :key="msg.id"
-        class="message p-2.5"
-        :class="{ 'is-pinned': msg.is_pinned }"
+      <section
+        v-for="message in sortedMessages"
+        :key="message.id"
+        class="discussion-thread"
+        :aria-label="`${message.user_name} 的留言串`"
       >
-        <div class="discussion-message-header">
-          <div class="discussion-author flex align-items-center gap-2 min-w-0">
-            <Tag v-if="msg.is_pinned" value="置頂" severity="warning" class="discussion-pin-tag" />
-            <div class="discussion-author-name text-sm font-semibold">{{ msg.user_name }}</div>
-            <ContributorLevelBadge
-              v-if="shouldShowLevelTitle(msg)"
-              :level="getMessageLevel(msg).level"
-              :title="getMessageLevel(msg).name"
-              size="compact"
-              show-title
-            />
-          </div>
-          <div class="discussion-message-actions">
-            <div class="text-xs" style="color: var(--text-secondary)">
-              {{ formatTime(msg.created_at) }}
-            </div>
-            <Button
-              v-if="canPin"
-              :icon="msg.is_pinned ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
-              severity="warning"
-              text
-              size="small"
-              rounded
-              :aria-label="msg.is_pinned ? '取消置頂' : '置頂'"
-              class="discussion-pin-btn"
-              @click="togglePin(msg)"
-            />
-            <Button
-              v-if="canDelete(msg)"
-              icon="pi pi-trash"
-              severity="danger"
-              text
-              size="small"
-              rounded
-              aria-label="刪除"
-              class="discussion-delete-btn"
-              @click="confirmDelete(msg)"
-            />
-          </div>
+        <DiscussionMessageCard
+          :message="message"
+          :can-pin="canPin"
+          :can-delete="canDelete(message)"
+          :like-loading="isLikeLoading(message.id)"
+          :expanded="isExpanded(message.id)"
+          @reply="startReply"
+          @like="toggleLike"
+          @pin="togglePin"
+          @report="openReport"
+          @delete="confirmDelete"
+          @toggle-expanded="toggleExpanded"
+        />
+
+        <div v-if="message.replies?.length" class="discussion-replies">
+          <DiscussionMessageCard
+            v-for="reply in message.replies"
+            :key="reply.id"
+            :message="reply"
+            is-reply
+            :can-delete="canDelete(reply)"
+            :like-loading="isLikeLoading(reply.id)"
+            :expanded="isExpanded(reply.id)"
+            @reply="startReply"
+            @like="toggleLike"
+            @report="openReport"
+            @delete="confirmDelete"
+            @toggle-expanded="toggleExpanded"
+          />
         </div>
-        <div class="text-sm mt-1 whitespace-pre-wrap break-words">
-          <div>{{ getMessageText(msg) }}</div>
-          <div v-if="shouldShowToggle(msg)" class="flex justify-content-end mt-1">
-            <button
-              type="button"
-              class="discussion-more-btn"
-              @click="toggleExpanded(msg.id)"
-              :aria-label="isExpanded(msg.id) ? '收合訊息' : '顯示更多訊息'"
-            >
-              {{ isExpanded(msg.id) ? '顯示較少' : '顯示更多' }}
-              <i :class="`pi ${isExpanded(msg.id) ? 'pi-angle-up' : 'pi-angle-down'}`" />
-            </button>
+
+        <form
+          v-if="replyTarget?.rootId === message.id"
+          class="discussion-reply-editor"
+          @submit.prevent="sendReply"
+        >
+          <div class="discussion-reply-editor__heading">
+            <span>回覆 @{{ replyTarget.message.user_name }}</span>
+            <Button
+              icon="pi pi-times"
+              severity="secondary"
+              text
+              rounded
+              size="small"
+              aria-label="取消回覆"
+              title="取消回覆"
+              class="discussion-cancel-reply-btn"
+              @click="cancelReply"
+            />
           </div>
-        </div>
-      </div>
+          <Textarea
+            name="discussion-reply"
+            v-model="replyDraft"
+            :placeholder="`回覆 @${replyTarget.message.user_name}`"
+            class="w-full"
+            :maxlength="MESSAGE_MAX_LENGTH"
+            :disabled="!canSend"
+            rows="2"
+            autofocus
+            @keydown.enter.ctrl.exact.prevent="sendReply"
+            @keydown.enter.meta.exact.prevent="sendReply"
+          />
+          <div class="discussion-editor-meta">
+            <span :style="{ color: replyLengthColor }">{{ replyLengthLabel }}</span>
+            <Button
+              type="submit"
+              icon="pi pi-send"
+              label="送出回覆"
+              severity="secondary"
+              size="small"
+              :disabled="!canSend || !replyDraft.trim()"
+            />
+          </div>
+        </form>
+      </section>
     </div>
 
-    <div class="discussion-footer p-3 flex gap-2">
-      <div class="flex-1 flex flex-column gap-1 min-w-0">
+    <form class="discussion-footer" @submit.prevent="sendMessage">
+      <div class="discussion-composer">
         <Textarea
           name="discussion-message"
           v-model="draft"
@@ -99,26 +120,25 @@
           :maxlength="MESSAGE_MAX_LENGTH"
           :disabled="!canSend"
           rows="1"
-          style="resize: vertical"
-          @keydown.enter.ctrl.exact.prevent="send"
-          @keydown.enter.meta.exact.prevent="send"
+          @keydown.enter.ctrl.exact.prevent="sendMessage"
+          @keydown.enter.meta.exact.prevent="sendMessage"
         />
-        <div class="text-xs flex justify-content-end" :style="{ color: messageLengthColor }">
-          {{ messageLengthLabel }}
+        <div class="discussion-editor-meta">
+          <span :style="{ color: messageLengthColor }">{{ messageLengthLabel }}</span>
+          <Button
+            type="submit"
+            icon="pi pi-send"
+            label="送出"
+            severity="secondary"
+            :disabled="!canSend || !draft.trim()"
+          />
         </div>
       </div>
-      <Button
-        icon="pi pi-send"
-        label="送出"
-        severity="secondary"
-        :disabled="!canSend || !draft.trim() || draft.length > MESSAGE_MAX_LENGTH"
-        @click="send"
-      />
-    </div>
+    </form>
 
     <Dialog
       :visible="showNicknameDialog"
-      @update:visible="(val) => !val && closeNicknameDialog()"
+      @update:visible="(value) => !value && closeNicknameDialog()"
       :modal="true"
       :draggable="false"
       :style="{ width: '420px', maxWidth: '92vw' }"
@@ -142,10 +162,10 @@
             maxlength="15"
             class="w-full"
           />
-          <small class="text-xs" style="color: var(--text-secondary)">{{ nicknameHint }}</small>
+          <small class="discussion-setting-hint">{{ nicknameHint }}</small>
         </div>
         <div class="flex flex-column gap-2">
-          <label class="font-semibold">其他</label>
+          <span class="font-semibold">其他</span>
           <label for="discussion-desktop-default-open" class="flex align-items-center gap-2">
             <Checkbox
               inputId="discussion-desktop-default-open"
@@ -189,65 +209,50 @@
         </div>
       </template>
     </Dialog>
-  </div>
+  </section>
 </template>
 
 <script setup>
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { discussionService, userService } from '../api'
 import { getCurrentUser } from '../utils/auth'
-import { formatRelativeTime } from '../utils/time'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { getBooleanPreference, setBooleanPreference } from '../utils/usePreferences'
 import { STORAGE_KEYS } from '../utils/storage'
-import { loadContributorLevelSettings, resolveSubmissionLevel } from '../utils/submissionLevel'
-import ContributorLevelBadge from './ContributorLevelBadge.vue'
+import { loadContributorLevelSettings } from '../utils/submissionLevel'
+import DiscussionMessageCard from './DiscussionMessageCard.vue'
 
 const DESKTOP_DEFAULT_OPEN_KEY = STORAGE_KEYS.local.DISCUSSION_DESKTOP_DEFAULT_OPEN
+const MESSAGE_MAX_LENGTH = 200
+const WS_RECONNECT_MAX_ATTEMPTS = 6
+
 loadContributorLevelSettings()
 
 const props = defineProps({
-  courseId: {
-    type: [Number, String],
-    required: true,
-  },
-  archiveId: {
-    type: [Number, String],
-    required: true,
-  },
-  width: {
-    type: String,
-    default: '360px',
-  },
-  enabled: {
-    type: Boolean,
-    default: true,
-  },
-  showHeader: {
-    type: Boolean,
-    default: true,
-  },
-  showSettings: {
-    type: Boolean,
-    default: true,
-  },
+  courseId: { type: [Number, String], required: true },
+  archiveId: { type: [Number, String], required: true },
+  width: { type: String, default: '360px' },
+  enabled: { type: Boolean, default: true },
+  showHeader: { type: Boolean, default: true },
+  showSettings: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['desktop-default-open-change'])
+const router = useRouter()
+const toast = inject('toast', null)
+const confirm = inject('confirm', null)
 
 const messages = ref([])
 const loading = ref(false)
 const connected = ref(false)
 const connecting = ref(false)
 const draft = ref('')
-
-const toast = inject('toast', null)
-const confirm = inject('confirm', null)
-
-let socket = null
-let reconnectTimer = null
-let connectSeq = 0
-
+const replyDraft = ref('')
+const replyTarget = ref(null)
+const expandedById = ref({})
+const likeLoadingById = ref({})
+const reconnectAttempts = ref(0)
 const currentUser = computed(() => getCurrentUser())
 const canSend = computed(() => props.enabled && connected.value && Boolean(currentUser.value))
 const canPin = computed(() => Boolean(currentUser.value?.is_admin))
@@ -260,85 +265,78 @@ const showLevelTitleDraft = ref(true)
 const nicknameSaving = ref(false)
 const desktopDefaultOpen = ref(getBooleanPreference(DESKTOP_DEFAULT_OPEN_KEY, true))
 
-const MESSAGE_MAX_LENGTH = 200
-const MESSAGE_PREVIEW_LENGTH = 100
-const WS_RECONNECT_MAX_ATTEMPTS = 6
+let socket = null
+let reconnectTimer = null
+let connectSeq = 0
 
-const expandedById = ref({})
-const reconnectAttempts = ref(0)
-
-const sortedMessages = computed(() => {
-  return [...messages.value].sort((a, b) => {
-    if (Boolean(a.is_pinned) !== Boolean(b.is_pinned)) {
-      return a.is_pinned ? -1 : 1
-    }
-    return Number(a.id || 0) - Number(b.id || 0)
+const sortedMessages = computed(() =>
+  [...messages.value].sort((left, right) => {
+    if (Boolean(left.is_pinned) !== Boolean(right.is_pinned)) return left.is_pinned ? -1 : 1
+    const likeDifference = Number(right.like_count || 0) - Number(left.like_count || 0)
+    if (likeDifference) return likeDifference
+    const timeDifference =
+      new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    return timeDifference || Number(right.id || 0) - Number(left.id || 0)
   })
-})
+)
 
 const nicknameHint = computed(() => {
   const trimmed = (nicknameDraft.value || '').trim()
   return `設定後，討論區會以暱稱顯示，留空以清除暱稱（${trimmed.length}/15）`
 })
+const canSaveNickname = computed(() => Boolean(currentUser.value) && !nicknameSaving.value)
+const messageLengthLabel = computed(
+  () => `${String(draft.value ?? '').length}/${MESSAGE_MAX_LENGTH}`
+)
+const replyLengthLabel = computed(
+  () => `${String(replyDraft.value ?? '').length}/${MESSAGE_MAX_LENGTH}`
+)
+const messageLengthColor = computed(() =>
+  draft.value.length > MESSAGE_MAX_LENGTH ? 'var(--p-red-500)' : 'var(--text-secondary)'
+)
+const replyLengthColor = computed(() =>
+  replyDraft.value.length > MESSAGE_MAX_LENGTH ? 'var(--p-red-500)' : 'var(--text-secondary)'
+)
 
-const canSaveNickname = computed(() => {
-  return Boolean(currentUser.value) && !nicknameSaving.value
-})
-
-const messageLengthLabel = computed(() => {
-  return `${String(draft.value ?? '').length}/${MESSAGE_MAX_LENGTH}`
-})
-
-const messageLengthColor = computed(() => {
-  const len = (draft.value || '').length
-  return len > MESSAGE_MAX_LENGTH ? 'var(--red-500)' : 'var(--text-secondary)'
-})
+function normalizeId(raw) {
+  if (raw === null || raw === undefined) return null
+  const value = typeof raw === 'string' ? Number(raw) : raw
+  return Number.isFinite(value) ? value : null
+}
 
 function isExpanded(messageId) {
   return Boolean(expandedById.value?.[messageId])
 }
 
 function toggleExpanded(messageId) {
-  expandedById.value = {
-    ...(expandedById.value || {}),
-    [messageId]: !isExpanded(messageId),
+  expandedById.value = { ...expandedById.value, [messageId]: !isExpanded(messageId) }
+}
+
+function isLikeLoading(messageId) {
+  return Boolean(likeLoadingById.value?.[messageId])
+}
+
+function findMessage(messageId) {
+  for (const root of messages.value) {
+    if (root.id === messageId) return root
+    const reply = (root.replies || []).find((item) => item.id === messageId)
+    if (reply) return reply
   }
+  return null
 }
 
-function shouldShowToggle(msg) {
-  const content = String(msg?.content ?? '')
-  return content.length > MESSAGE_PREVIEW_LENGTH
-}
-
-function getMessageText(msg) {
-  const content = String(msg?.content ?? '')
-  if (isExpanded(msg?.id)) return content
-  if (content.length <= MESSAGE_PREVIEW_LENGTH) return content
-  return `${content.slice(0, MESSAGE_PREVIEW_LENGTH)}…`
-}
-
-function normalizeId(raw) {
-  if (raw === null || raw === undefined) return null
-  const n = typeof raw === 'string' ? Number(raw) : raw
-  return Number.isFinite(n) ? n : null
-}
-
-function formatTime(val) {
-  return formatRelativeTime(val)
-}
-
-function shouldShowLevelTitle(message) {
-  return message?.author_show_level_title === true && Number.isFinite(message?.author_experience)
-}
-
-function getMessageLevel(message) {
-  return resolveSubmissionLevel(message?.author_experience)
-}
-
-function scrollToBottom() {
-  const el = messagesRef.value
-  if (!el) return
-  el.scrollTop = el.scrollHeight
+function updateCurrentUserMessageNames() {
+  const user = currentUser.value
+  if (!user) return
+  const preferredName = (profile.value.nickname || profile.value.name || '').trim()
+  const update = (message) => {
+    if (message.user_id === user.id) {
+      message.user_name = preferredName
+      message.author_show_level_title = profile.value.showLevelTitle
+    }
+    ;(message.replies || []).forEach(update)
+  }
+  messages.value.forEach(update)
 }
 
 function closeSocket() {
@@ -359,9 +357,7 @@ function closeSocket() {
 }
 
 function scheduleReconnect() {
-  if (!props.enabled) return
-  if (!currentUser.value) return
-  if (reconnectTimer) return
+  if (!props.enabled || !currentUser.value || reconnectTimer) return
   if (reconnectAttempts.value >= WS_RECONNECT_MAX_ATTEMPTS) {
     toast?.add?.({
       severity: 'warn',
@@ -371,34 +367,73 @@ function scheduleReconnect() {
     })
     return
   }
-
   reconnectAttempts.value += 1
-  const baseDelayMs = 500
-  const maxDelayMs = 10_000
-  const delay = Math.min(maxDelayMs, baseDelayMs * 2 ** (reconnectAttempts.value - 1))
+  const delay = Math.min(10_000, 500 * 2 ** (reconnectAttempts.value - 1))
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null
     connect()
   }, delay)
 }
 
+function applyIncomingMessage(incoming) {
+  if (findMessage(incoming.id)) return
+  const user = currentUser.value
+  const preferredName = (profile.value.nickname || profile.value.name || '').trim()
+  const normalized =
+    user && preferredName && incoming.user_id === user.id
+      ? {
+          ...incoming,
+          user_name: preferredName,
+          author_show_level_title: profile.value.showLevelTitle,
+          replies: incoming.replies || [],
+        }
+      : { ...incoming, replies: incoming.replies || [] }
+
+  if (normalized.parent_id) {
+    const root = messages.value.find((message) => message.id === normalized.parent_id)
+    if (!root) return
+    root.replies = [...(root.replies || []), normalized].sort(
+      (left, right) =>
+        new Date(left.created_at).getTime() - new Date(right.created_at).getTime() ||
+        Number(left.id) - Number(right.id)
+    )
+    if (replyTarget.value?.message?.id === normalized.reply_to_message_id) cancelReply()
+    return
+  }
+  messages.value = [...messages.value, normalized]
+}
+
+function applyDelete(messageId, preserveThread) {
+  const root = messages.value.find((message) => message.id === messageId)
+  if (root) {
+    if (preserveThread) {
+      root.is_deleted = true
+      root.content = ''
+      root.is_pinned = false
+    } else {
+      messages.value = messages.value.filter((message) => message.id !== messageId)
+    }
+    return
+  }
+  for (const message of messages.value) {
+    message.replies = (message.replies || []).filter((reply) => reply.id !== messageId)
+  }
+}
+
 async function connect() {
   const seq = (connectSeq += 1)
   closeSocket()
-  if (!props.enabled) return
+  if (!props.enabled || !currentUser.value) return
   const courseId = normalizeId(props.courseId)
   const archiveId = normalizeId(props.archiveId)
   if (!courseId || !archiveId) return
-  if (!currentUser.value) return
 
   connecting.value = true
-  connected.value = false
   loading.value = true
-
   const ws = discussionService.openArchiveDiscussionWebSocket(courseId, archiveId)
   if (!ws) {
-    loading.value = false
     connecting.value = false
+    loading.value = false
     return
   }
   socket = ws
@@ -409,119 +444,156 @@ async function connect() {
     connected.value = true
     reconnectAttempts.value = 0
   }
-
-  ws.onmessage = async (event) => {
+  ws.onmessage = (event) => {
     try {
       if (seq !== connectSeq) return
       const data = JSON.parse(event.data)
-      if (!data || typeof data !== 'object') return
       if (data.type === 'history' && Array.isArray(data.messages)) {
         messages.value = data.messages
-        loading.value = false
-        await nextTick()
-        scrollToBottom()
-        return
-      }
-      if (data.type === 'error') {
+        updateCurrentUserMessageNames()
+      } else if (data.type === 'message' && data.message) {
+        applyIncomingMessage(data.message)
+      } else if (data.type === 'delete' && data.message_id) {
+        applyDelete(data.message_id, Boolean(data.preserve_thread))
+      } else if (data.type === 'pin' && data.message_id) {
+        const message = findMessage(data.message_id)
+        if (message) message.is_pinned = Boolean(data.is_pinned)
+      } else if (data.type === 'like' && data.message_id) {
+        const message = findMessage(data.message_id)
+        if (message) {
+          message.like_count = Math.max(0, Number(data.like_count) || 0)
+          if (Number(data.user_id) === Number(currentUser.value?.id)) {
+            message.liked_by_current_user = Boolean(data.liked)
+          }
+        }
+      } else if (data.type === 'error') {
         toast?.add?.({
           severity: 'error',
           summary: '送出失敗',
           detail: data.detail || '無法送出訊息，請稍後再試',
           life: 3000,
         })
-        return
-      }
-      if (data.type === 'message' && data.message) {
-        const incoming = data.message
-        const user = currentUser.value
-        const preferredName = (profile.value.nickname || profile.value.name || '').trim()
-        const normalized =
-          user && preferredName && incoming.user_id === user.id
-            ? {
-                ...incoming,
-                user_name: preferredName,
-                author_show_level_title: profile.value.showLevelTitle,
-              }
-            : incoming
-
-        messages.value = [...messages.value, normalized]
-        await nextTick()
-        scrollToBottom()
-        return
-      }
-      if (data.type === 'delete' && data.message_id) {
-        messages.value = messages.value.filter((m) => m.id !== data.message_id)
-      }
-      if (data.type === 'pin' && data.message_id) {
-        messages.value = messages.value.map((m) =>
-          m.id === data.message_id ? { ...m, is_pinned: Boolean(data.is_pinned) } : m
-        )
       }
     } catch {
-      // ignore
+      // Ignore malformed socket events.
     } finally {
       loading.value = false
     }
   }
-
   ws.onerror = () => {
-    if (seq !== connectSeq) return
-    if (ws.__manualClose) return
+    if (seq !== connectSeq || ws.__manualClose) return
     connected.value = false
     connecting.value = false
     loading.value = false
     scheduleReconnect()
   }
-
   ws.onclose = (event) => {
-    if (seq !== connectSeq) return
-    if (ws.__manualClose) return
+    if (seq !== connectSeq || ws.__manualClose) return
     connected.value = false
     connecting.value = false
     loading.value = false
-    if (event?.code === 4401) return
-    scheduleReconnect()
+    if (event?.code !== 4401) scheduleReconnect()
   }
 }
 
-async function send() {
-  const rawContent = String(draft.value ?? '')
-  if (!rawContent.trim()) return
-  if (!socket || socket.readyState !== WebSocket.OPEN) return
-
-  try {
-    socket.send(
-      JSON.stringify({
-        type: 'send',
-        content: rawContent,
-      })
-    )
-    trackEvent(EVENTS.DISCUSSION_SEND_MESSAGE, {
-      courseId: normalizeId(props.courseId),
-      archiveId: normalizeId(props.archiveId),
-      length: rawContent.length,
+function sendContent(content, replyToMessageId = null) {
+  const normalizedContent = String(content ?? '').trim()
+  if (!normalizedContent || normalizedContent.length > MESSAGE_MAX_LENGTH) return false
+  if (!socket || socket.readyState !== WebSocket.OPEN) return false
+  socket.send(
+    JSON.stringify({
+      type: 'send',
+      content: normalizedContent,
+      ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
     })
-    draft.value = ''
-  } catch {
-    // ignore
+  )
+  trackEvent(EVENTS.DISCUSSION_SEND_MESSAGE, {
+    courseId: normalizeId(props.courseId),
+    archiveId: normalizeId(props.archiveId),
+    length: normalizedContent.length,
+    isReply: Boolean(replyToMessageId),
+  })
+  return true
+}
+
+function sendMessage() {
+  if (sendContent(draft.value)) draft.value = ''
+}
+
+function startReply(message) {
+  if (!currentUser.value) {
+    toast?.add?.({
+      severity: 'warn',
+      summary: '請先登入',
+      detail: '登入後即可回覆留言',
+      life: 3000,
+    })
+    return
+  }
+  replyTarget.value = {
+    message,
+    rootId: message.parent_id || message.id,
+  }
+  replyDraft.value = ''
+}
+
+function cancelReply() {
+  replyTarget.value = null
+  replyDraft.value = ''
+}
+
+function sendReply() {
+  if (!replyTarget.value) return
+  if (sendContent(replyDraft.value, replyTarget.value.message.id)) {
+    replyDraft.value = ''
   }
 }
 
-function canDelete(msg) {
+function canDelete(message) {
   const user = currentUser.value
-  if (!user) return false
-  return Boolean(user.is_admin || msg.user_id === user.id)
+  return Boolean(user && !message.is_deleted && (user.is_admin || message.user_id === user.id))
 }
 
-async function deleteMessage(msg) {
+async function toggleLike(message) {
+  if (!currentUser.value || isLikeLoading(message.id)) return
   const courseId = normalizeId(props.courseId)
   const archiveId = normalizeId(props.archiveId)
   if (!courseId || !archiveId) return
 
+  const previousLiked = Boolean(message.liked_by_current_user)
+  const previousCount = Math.max(0, Number(message.like_count) || 0)
+  likeLoadingById.value = { ...likeLoadingById.value, [message.id]: true }
+  message.liked_by_current_user = !previousLiked
+  message.like_count = Math.max(0, previousCount + (previousLiked ? -1 : 1))
+
   try {
-    await discussionService.deleteArchiveMessage(courseId, archiveId, msg.id)
-    // optimistic; server will also broadcast delete
-    messages.value = messages.value.filter((m) => m.id !== msg.id)
+    const { data } = previousLiked
+      ? await discussionService.unlikeArchiveMessage(courseId, archiveId, message.id)
+      : await discussionService.likeArchiveMessage(courseId, archiveId, message.id)
+    message.liked_by_current_user = Boolean(data?.liked)
+    message.like_count = Math.max(0, Number(data?.like_count) || 0)
+  } catch (error) {
+    console.error('Toggle discussion like error:', error)
+    message.liked_by_current_user = previousLiked
+    message.like_count = previousCount
+    toast?.add?.({
+      severity: 'error',
+      summary: '愛心更新失敗',
+      detail: '無法更新愛心，請稍後再試',
+      life: 3000,
+    })
+  } finally {
+    likeLoadingById.value = { ...likeLoadingById.value, [message.id]: false }
+  }
+}
+
+async function deleteMessage(message) {
+  const courseId = normalizeId(props.courseId)
+  const archiveId = normalizeId(props.archiveId)
+  if (!courseId || !archiveId) return
+  try {
+    const { data } = await discussionService.deleteArchiveMessage(courseId, archiveId, message.id)
+    applyDelete(message.id, Boolean(data?.preserve_thread))
   } catch (error) {
     console.error('Delete message error:', error)
     toast?.add?.({
@@ -533,61 +605,53 @@ async function deleteMessage(msg) {
   }
 }
 
-async function togglePin(msg) {
-  if (!canPin.value) return
+function confirmDelete(message) {
+  if (!confirm?.require) {
+    deleteMessage(message)
+    return
+  }
+  confirm.require({
+    message: message.replies?.length
+      ? '確定要刪除這則訊息嗎？回覆會保留在「此留言已刪除」的討論串下。'
+      : '確定要刪除這則訊息嗎？',
+    header: '確認刪除',
+    icon: 'pi pi-exclamation-triangle',
+    accept: () => deleteMessage(message),
+  })
+}
+
+async function togglePin(message) {
+  if (!canPin.value || message.parent_id) return
   const courseId = normalizeId(props.courseId)
   const archiveId = normalizeId(props.archiveId)
   if (!courseId || !archiveId) return
-  const nextPinned = !msg.is_pinned
-
-  messages.value = messages.value.map((m) =>
-    m.id === msg.id ? { ...m, is_pinned: nextPinned } : m
-  )
-
+  const previous = Boolean(message.is_pinned)
+  message.is_pinned = !previous
   try {
-    await discussionService.pinArchiveMessage(courseId, archiveId, msg.id, nextPinned)
+    await discussionService.pinArchiveMessage(courseId, archiveId, message.id, !previous)
   } catch (error) {
     console.error('Pin message error:', error)
-    messages.value = messages.value.map((m) =>
-      m.id === msg.id ? { ...m, is_pinned: !nextPinned } : m
-    )
+    message.is_pinned = previous
     toast?.add?.({
       severity: 'error',
       summary: '置頂失敗',
-      detail: '無法更新留言置頂狀態，請稍後再試',
+      detail: '無法更新留言置頂狀態',
       life: 3000,
     })
   }
 }
 
-function confirmDelete(msg) {
-  if (!confirm?.require) {
-    deleteMessage(msg)
-    return
-  }
-  confirm.require({
-    message: '確定要刪除這則訊息嗎？',
-    header: '確認刪除',
-    icon: 'pi pi-exclamation-triangle',
-    accept: () => deleteMessage(msg),
+function openReport(message) {
+  router.push({
+    name: 'CommentReport',
+    params: {
+      courseId: String(props.courseId),
+      archiveId: String(props.archiveId),
+      messageId: String(message.id),
+    },
+    query: { returnTo: router.currentRoute.value.fullPath },
   })
 }
-
-watch(
-  () => [props.courseId, props.archiveId, props.enabled],
-  () => {
-    connect()
-  }
-)
-
-onMounted(() => {
-  loadMe()
-  connect()
-})
-
-onBeforeUnmount(() => {
-  closeSocket()
-})
 
 async function loadMe() {
   if (!currentUser.value) return
@@ -598,8 +662,9 @@ async function loadMe() {
       name: (data?.name || '').trim(),
       showLevelTitle: data?.show_level_title !== false,
     }
+    updateCurrentUserMessageNames()
   } catch {
-    // ignore
+    // Keep token profile fallback.
   }
 }
 
@@ -614,37 +679,27 @@ function closeNicknameDialog() {
   showNicknameDialog.value = false
 }
 
-defineExpose({
-  openNicknameDialog,
-})
+defineExpose({ openNicknameDialog })
 
 async function saveNickname() {
   if (!currentUser.value) return
-  const nextNickname = (nicknameDraft.value || '').trim()
-
   nicknameSaving.value = true
+  const nextNickname = (nicknameDraft.value || '').trim()
   try {
     const { data } = await userService.updateMyDiscussionSettings(
       nextNickname,
       showLevelTitleDraft.value
     )
-    const newNickname = (data?.nickname || data?.name || '').trim()
-    const newShowLevelTitle = data?.show_level_title !== false
-    profile.value.nickname = newNickname
-    profile.value.name = (data?.name || profile.value.name || '').trim()
-    profile.value.showLevelTitle = newShowLevelTitle
-
-    messages.value = messages.value.map((m) =>
-      m.user_id === currentUser.value.id
-        ? { ...m, user_name: newNickname, author_show_level_title: newShowLevelTitle }
-        : m
-    )
-
+    profile.value = {
+      nickname: (data?.nickname || data?.name || '').trim(),
+      name: (data?.name || profile.value.name || '').trim(),
+      showLevelTitle: data?.show_level_title !== false,
+    }
+    updateCurrentUserMessageNames()
     trackEvent(EVENTS.DISCUSSION_UPDATE_NICKNAME, {
       cleared: !nextNickname,
       length: nextNickname.length,
     })
-
     toast?.add?.({
       severity: 'success',
       summary: '儲存成功',
@@ -672,67 +727,128 @@ function handleDesktopDefaultOpenChange() {
   emit('desktop-default-open-change', next)
   trackEvent(EVENTS.DISCUSSION_SET_DEFAULT_OPEN, { enabled: next })
 }
+
+watch(
+  () => [props.courseId, props.archiveId, props.enabled],
+  () => {
+    messages.value = []
+    cancelReply()
+    connect()
+  }
+)
+
+onMounted(() => {
+  loadMe()
+  connect()
+})
+onBeforeUnmount(closeSocket)
 </script>
 
 <style scoped>
 .discussion-panel {
+  container-type: inline-size;
+  display: flex;
   min-width: 280px;
   max-width: 420px;
+  min-height: 0;
+  flex-direction: column;
   overflow: hidden;
-  background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 12px;
+  background: var(--bg-primary);
+}
+
+.discussion-header,
+.discussion-footer {
+  flex: 0 0 auto;
 }
 
 .discussion-header {
   border-bottom: 1px solid var(--border-color);
 }
 
-.discussion-footer {
-  border-top: 1px solid var(--border-color);
+.discussion-messages {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow: auto;
+  padding: 0.75rem;
 }
 
-.message {
-  border-radius: 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+.discussion-state {
+  display: flex;
+  min-height: 8rem;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
 }
 
-.message.is-pinned {
-  border-color: color-mix(in srgb, var(--brand-gold) 58%, var(--border-color));
-  background: color-mix(in srgb, var(--brand-gold) 10%, var(--bg-secondary));
+.discussion-empty {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  line-height: 1.5;
 }
 
-.discussion-author {
-  flex: 1 1 12rem;
-  flex-wrap: wrap;
-}
-
-.discussion-author-name {
+.discussion-thread,
+.discussion-replies {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.discussion-replies {
+  margin-left: clamp(0.55rem, 4cqi, 1rem);
+  padding-left: 0.5rem;
+  border-left: 2px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+}
+
+.discussion-reply-editor {
+  display: flex;
+  min-width: 0;
+  margin-left: clamp(0.55rem, 4cqi, 1rem);
+  padding: 0.65rem;
+  flex-direction: column;
+  gap: 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-secondary) 72%, var(--bg-primary));
+}
+
+.discussion-reply-editor__heading,
+.discussion-editor-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.discussion-reply-editor__heading {
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.discussion-message-header {
+.discussion-footer {
+  padding: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.discussion-composer {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.35rem 0.75rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.discussion-message-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-.discussion-author :deep(.contributor-level__title) {
+.discussion-editor-meta {
   color: var(--text-secondary);
-  font-weight: 600;
+  font-size: var(--app-font-size-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .discussion-setting-option {
@@ -748,69 +864,32 @@ function handleDesktopDefaultOpenChange() {
   gap: 0.15rem;
 }
 
-.discussion-setting-option small {
+.discussion-setting-option small,
+.discussion-setting-hint {
   color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
-:deep(.discussion-pin-tag.p-tag) {
-  padding: 0.1rem 0.45rem;
-  font-size: 0.7rem;
-  line-height: 1rem;
-}
-
-:deep(.discussion-pin-btn.p-button) {
-  width: 1.25rem;
-  height: 1.25rem;
+:deep(.discussion-settings-btn.p-button),
+:deep(.discussion-cancel-reply-btn.p-button) {
+  min-width: 2rem;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
-  min-width: 1.25rem;
-  flex: 0 0 auto;
 }
 
-:deep(.discussion-pin-btn.p-button .p-button-icon) {
-  font-size: 0.75rem;
-}
+@container (max-width: 320px) {
+  .discussion-messages,
+  .discussion-footer {
+    padding: 0.55rem;
+  }
 
-:deep(.discussion-delete-btn.p-button) {
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  min-width: 1.25rem;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-:deep(.discussion-delete-btn.p-button .p-button-icon) {
-  font-size: 0.75rem;
-}
-
-:deep(.discussion-settings-btn.p-button) {
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
-  min-width: 1.5rem;
-}
-
-.discussion-more-btn {
-  margin-left: 0.25rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.15rem 0.6rem;
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  background: var(--bg-primary);
-  color: var(--text-color);
-  cursor: pointer;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
-
-.discussion-more-btn:hover {
-  background: var(--bg-secondary);
+  .discussion-replies,
+  .discussion-reply-editor {
+    margin-left: 0.35rem;
+    padding-left: 0.35rem;
+  }
 }
 </style>

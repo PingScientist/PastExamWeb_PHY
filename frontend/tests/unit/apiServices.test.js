@@ -160,6 +160,12 @@ describe('API service wrappers', () => {
     discussionService.deleteArchiveMessage('course-1', 'arch-1', 123)
     expect(deleteMock).toHaveBeenCalledWith('/courses/course-1/archives/arch-1/discussion/123')
 
+    discussionService.likeArchiveMessage('course-1', 'arch-1', 123)
+    expect(putMock).toHaveBeenCalledWith('/courses/course-1/archives/arch-1/discussion/123/like')
+
+    discussionService.unlikeArchiveMessage('course-1', 'arch-1', 123)
+    expect(deleteMock).toHaveBeenCalledWith('/courses/course-1/archives/arch-1/discussion/123/like')
+
     const originalWebSocket = globalThis.WebSocket
     const webSocketMock = vi.fn(function WebSocket(url) {
       return { url }

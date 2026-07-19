@@ -3,7 +3,7 @@ from enum import Enum as PyEnum
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -322,6 +322,24 @@ class ArchiveDiscussionMessage(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     archive_id: int = Field(foreign_key="archives.id", index=True)
     user_id: int = Field(foreign_key="users.id", index=True)
+    parent_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    reply_to_message_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id"),
+            nullable=True,
+            index=True,
+        ),
+    )
     content: str = Field(sa_column=Column(Text, nullable=False))
     is_pinned: bool = Field(default=False, index=True)
     created_at: datetime = Field(
@@ -333,6 +351,42 @@ class ArchiveDiscussionMessage(SQLModel, table=True):
     )
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+
+class ArchiveDiscussionLike(SQLModel, table=True):
+    __tablename__ = "archive_discussion_likes"
+    __table_args__ = (
+        UniqueConstraint(
+            "message_id",
+            "user_id",
+            name="uq_archive_discussion_likes_message_user",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    message_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
     )
 
 
@@ -603,6 +657,13 @@ class ArchiveDiscussionMessageRead(BaseModel):
     author_experience: Optional[int] = None
     content: str
     is_pinned: bool = False
+    is_deleted: bool = False
+    parent_id: Optional[int] = None
+    reply_to_message_id: Optional[int] = None
+    reply_to_user_name: Optional[str] = None
+    like_count: int = 0
+    liked_by_current_user: bool = False
+    replies: List["ArchiveDiscussionMessageRead"] = Field(default_factory=list)
     created_at: datetime
 
     class Config:

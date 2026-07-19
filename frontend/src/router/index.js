@@ -29,6 +29,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/archive/:courseId/:archiveId/comments/:messageId/report',
+    name: 'CommentReport',
+    component: () => import(/* webpackChunkName: "comment-report" */ '../views/CommentReport.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/login/callback',
     name: 'LoginCallback',
     component: () => import(/* webpackChunkName: "login-callback" */ '../views/LoginCallback.vue'),
