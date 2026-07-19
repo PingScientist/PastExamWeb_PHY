@@ -42,6 +42,7 @@
           :report-open="reportTarget?.id === message.id"
           :report-reason="reportReason"
           :report-custom-message="reportCustomMessage"
+          :report-loading="reportSubmitting"
           @reply="startReply"
           @like="toggleLike"
           @pin="togglePin"
@@ -66,6 +67,7 @@
             :report-open="reportTarget?.id === reply.id"
             :report-reason="reportReason"
             :report-custom-message="reportCustomMessage"
+            :report-loading="reportSubmitting"
             @reply="startReply"
             @like="toggleLike"
             @report="toggleReport"
@@ -265,6 +267,7 @@ const replyTarget = ref(null)
 const reportTarget = ref(null)
 const reportReason = ref(null)
 const reportCustomMessage = ref('')
+const reportSubmitting = ref(false)
 const expandedById = ref({})
 const likeLoadingById = ref({})
 const reconnectAttempts = ref(0)
@@ -589,13 +592,36 @@ function toggleReport(message) {
   reportTarget.value = message
 }
 
-function handleReportSubmit() {
-  toast?.add?.({
-    severity: 'info',
-    summary: '功能尚未開放',
-    detail: '目前不會送出回報或通知管理員',
-    life: 3000,
-  })
+async function handleReportSubmit(payload) {
+  const courseId = normalizeId(props.courseId)
+  const archiveId = normalizeId(props.archiveId)
+  const commentId = normalizeId(payload?.comment_id)
+  if (!courseId || !archiveId || !commentId || reportSubmitting.value) return
+  reportSubmitting.value = true
+  try {
+    const { data } = await discussionService.reportArchiveMessage(courseId, archiveId, commentId, {
+      report_reason: payload.report_reason,
+      custom_message: payload.custom_message,
+    })
+    toast?.add?.({
+      severity: 'success',
+      summary: '回報已送出',
+      detail: `回報編號 #${data.id}，請等待管理員審核`,
+      life: 3500,
+    })
+    cancelReport()
+  } catch (error) {
+    console.error('Submit comment report error:', error)
+    const isDuplicate = error?.response?.status === 409
+    toast?.add?.({
+      severity: isDuplicate ? 'warn' : 'error',
+      summary: isDuplicate ? '已有待處理回報' : '回報送出失敗',
+      detail: isDuplicate ? '相同原因的回報仍在處理中' : '請稍後再試',
+      life: 3500,
+    })
+  } finally {
+    reportSubmitting.value = false
+  }
 }
 
 function sendReply() {

@@ -44,10 +44,6 @@
       </div>
     </div>
 
-    <div id="comment-report-unavailable" class="comment-inline-report__notice" role="status">
-      回報送出功能尚未開放；目前不會送出或通知管理員。
-    </div>
-
     <div class="comment-inline-report__actions">
       <Button
         type="button"
@@ -63,9 +59,9 @@
         icon="pi pi-send"
         severity="secondary"
         size="small"
+        :loading="loading"
         :disabled="!canSubmit"
-        aria-describedby="comment-report-unavailable"
-        title="回報送出功能尚未開放"
+        title="送出留言回報"
       />
     </div>
   </form>
@@ -86,6 +82,7 @@ const props = defineProps({
   message: { type: Object, required: true },
   reason: { type: String, default: null },
   customMessage: { type: String, default: '' },
+  loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:reason', 'update:customMessage', 'cancel', 'submit'])
@@ -115,7 +112,9 @@ const isFormValid = computed(
 const reportPayload = computed(() =>
   buildCommentReportPayload(props.message.id, props.reason, props.customMessage)
 )
-const canSubmit = computed(() => COMMENT_REPORT_SUBMISSION_AVAILABLE && isFormValid.value)
+const canSubmit = computed(
+  () => COMMENT_REPORT_SUBMISSION_AVAILABLE && isFormValid.value && !props.loading
+)
 
 function updateReason(value) {
   emit('update:reason', value)

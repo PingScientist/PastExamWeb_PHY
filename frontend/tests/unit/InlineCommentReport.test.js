@@ -65,8 +65,7 @@ describe('InlineCommentReport', () => {
         .map((option) => option.text().trim())
     ).toEqual(COMMENT_REPORT_REASONS.map((option) => option.label))
     expect(wrapper.vm.isFormValid).toBe(true)
-    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('回報送出功能尚未開放')
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
 
   it('requires trimmed custom text only for other and clears it when switching away', async () => {
@@ -98,5 +97,22 @@ describe('InlineCommentReport', () => {
 
     await wrapper.findAll('button')[0].trigger('click')
     expect(wrapper.emitted('cancel')).toHaveLength(1)
+  })
+
+  it('emits a validated API payload on submit and disables while loading', async () => {
+    const wrapper = mountReport({ reason: 'misinformation' })
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.emitted('submit')).toEqual([
+      [
+        {
+          comment_id: 42,
+          report_reason: 'misinformation',
+          custom_message: null,
+        },
+      ],
+    ])
+
+    await wrapper.setProps({ loading: true })
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
 })

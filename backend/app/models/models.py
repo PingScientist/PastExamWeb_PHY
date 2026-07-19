@@ -3,7 +3,18 @@ from enum import Enum as PyEnum
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -39,6 +50,22 @@ class PersonalNotificationType(str, PyEnum):
     ARCHIVE_SUBMISSION_APPROVED = "archive_submission_approved"
     ARCHIVE_SUBMISSION_REJECTED = "archive_submission_rejected"
     ARCHIVE_SUBMISSION_TAKEDOWN = "archive_submission_takedown"
+
+
+class CommentReportReason(str, PyEnum):
+    SPAM_OR_DUPLICATE = "spam_or_duplicate"
+    HARASSMENT_OR_HOSTILITY = "harassment_or_hostility"
+    INAPPROPRIATE_OR_ILLEGAL = "inappropriate_or_illegal"
+    PRIVACY_VIOLATION = "privacy_violation"
+    MISINFORMATION = "misinformation"
+    OTHER = "other"
+
+
+class CommentReportStatus(str, PyEnum):
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    UPHELD = "upheld"
+    DISMISSED = "dismissed"
 
 
 class TrashEntityType(str, PyEnum):
@@ -534,6 +561,99 @@ class PersonalNotification(SQLModel, table=True):
     )
 
 
+class CommentReport(SQLModel, table=True):
+    __tablename__ = "comment_reports"
+    __table_args__ = (
+        Index(
+            "uq_comment_reports_active_reporter_comment_reason",
+            "reporter_user_id",
+            "comment_id",
+            "reason",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'in_review')"),
+        ),
+        Index("ix_comment_reports_status_created", "status", "created_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_user_id: int = Field(
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        )
+    )
+    comment_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    comment_author_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    archive_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("archives.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    course_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    thread_id: Optional[int] = Field(default=None, index=True)
+    reply_to_message_id: Optional[int] = Field(default=None)
+    reason: str = Field(sa_column=Column(String(50), nullable=False, index=True))
+    custom_message: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    comment_content_snapshot: str = Field(sa_column=Column(Text, nullable=False))
+    comment_author_name_snapshot: str = Field(sa_column=Column(String(100), nullable=False))
+    comment_created_at_snapshot: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    archive_name_snapshot: str = Field(sa_column=Column(String(200), nullable=False))
+    course_name_snapshot: str = Field(sa_column=Column(String(200), nullable=False))
+    status: str = Field(
+        default=CommentReportStatus.PENDING.value,
+        sa_column=Column(String(30), nullable=False, index=True),
+    )
+    admin_response: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    reviewed_by: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    reviewed_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True, index=True)
+    )
+    comment_deleted: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+            index=True,
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+
+
 class UserRead(BaseModel):
     id: int
     email: str
@@ -738,6 +858,52 @@ class PersonalNotificationRead(BaseModel):
     source_available: bool = True
     read_at: Optional[datetime] = None
     created_at: datetime
+
+
+class CommentReportCreate(BaseModel):
+    report_reason: CommentReportReason
+    custom_message: Optional[str] = Field(default=None, max_length=200)
+
+
+class CommentReportAdminUpdate(BaseModel):
+    status: CommentReportStatus
+    admin_response: Optional[str] = Field(default=None, max_length=1000)
+    delete_comment: bool = False
+
+
+class CommentReportRead(BaseModel):
+    id: int
+    reporter_user_id: int
+    reporter_name: str
+    comment_id: Optional[int]
+    comment_author_id: Optional[int]
+    comment_author_name: str
+    archive_id: Optional[int]
+    course_id: Optional[int]
+    thread_id: Optional[int]
+    reply_to_message_id: Optional[int]
+    reason: str
+    custom_message: Optional[str]
+    comment_content_snapshot: str
+    comment_created_at_snapshot: datetime
+    archive_name: str
+    course_name: str
+    status: str
+    admin_response: Optional[str]
+    reviewed_by: Optional[int]
+    reviewer_name: Optional[str]
+    reviewed_at: Optional[datetime]
+    comment_deleted: bool
+    source_exists: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class CommentReportListRead(BaseModel):
+    items: List[CommentReportRead] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 20
+    offset: int = 0
 
 
 class NotificationUnreadCounts(BaseModel):

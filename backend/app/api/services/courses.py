@@ -65,6 +65,7 @@ from app.utils.course_text import (
 )
 from app.core.config import settings
 from app.services.personal_notifications import enqueue_personal_notification
+from app.services.discussions import soft_delete_discussion_message
 
 router = APIRouter()
 
@@ -1361,18 +1362,7 @@ async def delete_archive_discussion_message(
     if not current_user.is_admin and message.user_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
 
-    message.deleted_at = datetime.now(timezone.utc)
-    message.is_pinned = False
-    preserve_thread = bool(
-        message.parent_id is None
-        and await db.scalar(
-            select(exists().where(
-                ArchiveDiscussionMessage.parent_id == message.id,
-                ArchiveDiscussionMessage.deleted_at.is_(None),
-            ))
-        )
-    )
-    db.add(message)
+    preserve_thread = await soft_delete_discussion_message(db, message)
     await db.commit()
 
     await _broadcast_discussion(

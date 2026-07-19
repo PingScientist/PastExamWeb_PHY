@@ -1,6 +1,6 @@
 export const COMMENT_REPORT_CUSTOM_MESSAGE_MAX_LENGTH = 200
 export const COMMENT_REPORT_OTHER_REASON = 'other'
-export const COMMENT_REPORT_SUBMISSION_AVAILABLE = false
+export const COMMENT_REPORT_SUBMISSION_AVAILABLE = true
 
 export const COMMENT_REPORT_REASONS = Object.freeze([
   { label: '垃圾訊息或重複洗版', value: 'spam_or_duplicate' },

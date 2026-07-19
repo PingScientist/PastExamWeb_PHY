@@ -125,6 +125,7 @@
       :message="message"
       :reason="reportReason"
       :customMessage="reportCustomMessage"
+      :loading="reportLoading"
       @update:reason="$emit('update:reportReason', $event)"
       @update:customMessage="$emit('update:reportCustomMessage', $event)"
       @cancel="$emit('cancel-report')"
@@ -152,6 +153,7 @@ const props = defineProps({
   reportOpen: { type: Boolean, default: false },
   reportReason: { type: String, default: null },
   reportCustomMessage: { type: String, default: '' },
+  reportLoading: { type: Boolean, default: false },
 })
 
 defineEmits([

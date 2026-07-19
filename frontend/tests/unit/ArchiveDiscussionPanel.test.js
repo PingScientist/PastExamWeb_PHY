@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   unlike: vi.fn(),
   remove: vi.fn(),
   pin: vi.fn(),
+  report: vi.fn(),
   openSocket: vi.fn(),
   getMe: vi.fn(),
   updateSettings: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('@/api', () => ({
     unlikeArchiveMessage: mocks.unlike,
     deleteArchiveMessage: mocks.remove,
     pinArchiveMessage: mocks.pin,
+    reportArchiveMessage: mocks.report,
     openArchiveDiscussionWebSocket: mocks.openSocket,
   },
   userService: {
@@ -91,6 +93,7 @@ describe('ArchiveDiscussionPanel', () => {
     })
     mocks.like.mockResolvedValue({ data: { liked: true, like_count: 10 } })
     mocks.unlike.mockResolvedValue({ data: { liked: false, like_count: 9 } })
+    mocks.report.mockResolvedValue({ data: { id: 88 } })
   })
 
   it('sorts roots and appends a reply to the existing thread without reloading', async () => {
@@ -206,5 +209,25 @@ describe('ArchiveDiscussionPanel', () => {
     wrapper.vm.toggleReport(reply)
     expect(wrapper.vm.reportTarget).toBeNull()
     expect(wrapper.vm.reportReason).toBeNull()
+  })
+
+  it('submits an inline report to the backend and clears only the report composer', async () => {
+    const wrapper = mountPanel(makeSocket())
+    wrapper.vm.reportTarget = { id: 10 }
+    wrapper.vm.reportReason = 'misinformation'
+
+    await wrapper.vm.handleReportSubmit({
+      comment_id: 10,
+      report_reason: 'misinformation',
+      custom_message: null,
+    })
+
+    expect(mocks.report).toHaveBeenCalledWith(1, 2, 10, {
+      report_reason: 'misinformation',
+      custom_message: null,
+    })
+    expect(mocks.toastAdd).toHaveBeenCalledWith(expect.objectContaining({ summary: '回報已送出' }))
+    expect(wrapper.vm.reportTarget).toBeNull()
+    expect(wrapper.vm.reportSubmitting).toBe(false)
   })
 })
