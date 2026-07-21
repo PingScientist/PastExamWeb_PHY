@@ -73,9 +73,27 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.find('.report-management__header').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('檢視系統問題摘要並審核留言回報')
     expect(wrapper.text()).toContain('標題與內容')
+    const commentHeaders = wrapper
+      .find('.report-management__comment-table')
+      .findAll('.column-header')
+      .map((header) => header.text())
+    expect(commentHeaders).toEqual([
+      '回報時間',
+      '原因與留言摘要',
+      '回報者',
+      '留言作者',
+      '課程／考古題',
+      '審核人',
+      '審核時間',
+      '操作',
+    ])
+    expect(commentHeaders).not.toContain('原因')
+    expect(commentHeaders).not.toContain('留言摘要')
     expect(wrapper.text()).not.toContain('回報編號')
     expect(wrapper.vm.activeTab).toBeUndefined()
     expect(wrapper.vm.archiveListState).toMatchObject({ first: 0, total: 0, loading: false })
+    expect(wrapper.vm.formatDateTime('2026-07-20T13:37:00Z', true)).toMatch(/\d{2}:\d{2}/)
+    expect(wrapper.vm.formatDateTime('2026-07-20T13:37:00Z', true)).not.toMatch(/上午|下午/)
     expect(
       wrapper.vm.safeGithubIssueUrl({
         github_issue_number: 12,
@@ -90,7 +108,7 @@ describe('ReportManagementPanel', () => {
     ).toBe('https://github.com/PingScientist/PastExamWeb_PHY/issues/12')
   })
 
-  it('uses bounded summaries and separate review-time and action columns', () => {
+  it('uses compact columns and independently clamps each summary body to three lines', () => {
     const unwantedPdfText = ['本輪不要處理', '行動版 PDF 預覽'].join('')
 
     expect(reportManagementSource).toContain('system-report-summary__title')
@@ -98,11 +116,15 @@ describe('ReportManagementPanel', () => {
       /\.system-report-summary__title\s*\{[\s\S]*?white-space:\s*nowrap;/
     )
     expect(reportManagementSource).toMatch(
-      /\.system-report-summary__body\s*\{[\s\S]*?-webkit-line-clamp:\s*3;/
+      /\.system-report-summary__body\s*\{[\s\S]*?white-space:\s*normal;[\s\S]*?-webkit-line-clamp:\s*3;/
     )
     expect(reportManagementSource).toMatch(
-      /\.report-comment-summary__text\s*\{[\s\S]*?-webkit-line-clamp:\s*3;/
+      /\.comment-report-content__summary\s*\{[\s\S]*?white-space:\s*normal;[\s\S]*?-webkit-line-clamp:\s*3;/
     )
+    expect(reportManagementSource).toContain('width: clamp(15rem, 22vw, 21.25rem)')
+    expect(reportManagementSource).toContain('header="原因與留言摘要"')
+    expect(reportManagementSource).toContain('headerClass="report-user-column"')
+    expect(reportManagementSource).toContain('bodyClass="report-created-at-column"')
     expect(reportManagementSource).toContain('headerClass="report-reviewed-at-column"')
     expect(reportManagementSource).toContain('headerClass="report-actions-column"')
     expect(reportManagementSource).not.toContain(unwantedPdfText)

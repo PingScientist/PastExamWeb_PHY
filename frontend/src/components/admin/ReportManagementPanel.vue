@@ -81,7 +81,7 @@
           header="回報時間"
           sortable
           style="width: 10rem"
-          ><template #body="{ data }">{{ formatDateTime(data.created_at) }}</template></Column
+          ><template #body="{ data }">{{ formatDateTime(data.created_at, true) }}</template></Column
         >
         <Column
           field="reporter_name"
@@ -97,7 +97,7 @@
           sortable
           headerClass="system-report-column"
           bodyClass="system-report-column"
-          style="width: clamp(20rem, 32vw, 32.5rem)"
+          style="width: clamp(15rem, 22vw, 21.25rem)"
           ><template #body="{ data }"
             ><div class="system-report-summary">
               <strong class="system-report-summary__title" :title="data.title || '未命名回報'">
@@ -190,7 +190,7 @@
         responsiveLayout="stack"
         breakpoint="1199px"
         class="report-management__table report-management__comment-table admin-data-table"
-        tableStyle="table-layout: fixed; min-width: 110rem"
+        tableStyle="table-layout: fixed; min-width: 79rem"
         @page="onCommentPage"
         @sort="onCommentSort"
       >
@@ -200,40 +200,63 @@
           sortField="created_at"
           header="回報時間"
           sortable
-          style="width: 10rem"
-          ><template #body="{ data }">{{ formatDateTime(data.created_at) }}</template></Column
-        >
-        <Column field="status" sortField="status" header="狀態" sortable style="width: 9rem"
+          headerClass="report-created-at-column"
+          bodyClass="report-created-at-column"
+          style="width: 9.5rem; min-width: 9.5rem"
           ><template #body="{ data }"
-            ><Tag
-              :severity="statusSeverity(data.status)"
-              :value="statusLabel(data.status)" /></template
-        ></Column>
-        <Column field="reason" sortField="reason" header="原因" sortable style="width: 12rem"
-          ><template #body="{ data }">{{ reasonLabel(data.reason) }}</template></Column
+            ><span class="report-time-cell__text">{{
+              formatDateTime(data.created_at, true)
+            }}</span></template
+          ></Column
         >
+        <Column
+          field="reason"
+          sortField="reason"
+          header="原因與留言摘要"
+          sortable
+          headerClass="comment-report-content-column"
+          bodyClass="comment-report-content-column"
+          style="width: clamp(16rem, 24vw, 20rem)"
+          ><template #body="{ data }"
+            ><div class="comment-report-content" :title="data.comment_content_snapshot">
+              <strong class="comment-report-content__reason" :title="reasonLabel(data.reason)">
+                {{ reasonLabel(data.reason) }}
+              </strong>
+              <span class="comment-report-content__summary">{{
+                data.comment_content_snapshot || '—'
+              }}</span>
+            </div>
+          </template>
+        </Column>
         <Column
           field="reporter_name"
           sortField="reporter"
           header="回報者"
           sortable
-          style="width: 9rem"
-        />
+          headerClass="report-user-column"
+          bodyClass="report-user-column"
+          style="width: 7rem; min-width: 7rem"
+          ><template #body="{ data }"
+            ><span class="report-user-cell__text" :title="data.reporter_name">{{
+              data.reporter_name
+            }}</span></template
+          ></Column
+        >
         <Column
           field="comment_author_name"
           sortField="comment_author"
           header="留言作者"
           sortable
-          style="width: 9rem"
-        />
-        <Column header="留言摘要" style="width: clamp(17.5rem, 24vw, 26.25rem)"
+          headerClass="report-user-column"
+          bodyClass="report-user-column"
+          style="width: 7rem; min-width: 7rem"
           ><template #body="{ data }"
-            ><div class="report-comment-summary" :title="data.comment_content_snapshot">
-              <span class="report-comment-summary__text">{{ data.comment_content_snapshot }}</span>
-            </div></template
+            ><span class="report-user-cell__text" :title="data.comment_author_name">{{
+              data.comment_author_name
+            }}</span></template
           ></Column
         >
-        <Column sortField="course_archive" header="課程／考古題" sortable style="width: 14rem"
+        <Column sortField="course_archive" header="課程／考古題" sortable style="width: 11rem"
           ><template #body="{ data }"
             ><div class="report-management__summary">
               <span>{{ data.course_name }}</span
@@ -246,9 +269,16 @@
           sortField="reviewer"
           header="審核人"
           sortable
-          style="width: 9rem"
-          ><template #body="{ data }">{{ data.reviewer_name || '尚未審核' }}</template></Column
-        >
+          style="width: 8rem"
+          ><template #body="{ data }"
+            ><div class="report-reviewer-cell">
+              <Tag :severity="statusSeverity(data.status)" :value="statusLabel(data.status)" />
+              <span class="report-user-cell__text" :title="data.reviewer_name || '尚未審核'">
+                {{ data.reviewer_name || '尚未審核' }}
+              </span>
+            </div>
+          </template>
+        </Column>
         <Column
           field="reviewed_at"
           sortField="reviewed_at"
@@ -256,16 +286,16 @@
           sortable
           headerClass="report-reviewed-at-column"
           bodyClass="report-reviewed-at-column"
-          style="width: 11rem; min-width: 11rem"
+          style="width: 10rem; min-width: 10rem"
           ><template #body="{ data }">{{
-            data.reviewed_at ? formatDateTime(data.reviewed_at) : '—'
+            data.reviewed_at ? formatDateTime(data.reviewed_at, true) : '—'
           }}</template></Column
         >
         <Column
           header="操作"
           headerClass="report-actions-column"
           bodyClass="report-actions-column"
-          style="width: 10.5rem; min-width: 10.5rem"
+          style="width: 9.5rem; min-width: 9.5rem"
           ><template #body="{ data }"
             ><Button
               label="檢視／審核"
@@ -663,15 +693,17 @@ function safeGithubIssueUrl(item) {
   )
   return match && Number(match[1]) === Number(item.github_issue_number) ? url : null
 }
-function formatDateTime(value) {
+function formatDateTime(value, force24Hour = false) {
   if (!value) return '—'
-  return new Date(value).toLocaleString('zh-TW', {
+  const options = {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  }
+  if (force24Hour) options.hour12 = false
+  return new Date(value).toLocaleString('zh-TW', options)
 }
 
 onMounted(refreshAll)
@@ -736,13 +768,23 @@ onMounted(refreshAll)
   color: var(--text-color-secondary);
 }
 .system-report-summary {
-  width: clamp(20rem, 32vw, 32.5rem);
+  display: grid;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+  white-space: normal;
+}
+:deep(.system-report-column) {
+  width: clamp(15rem, 22vw, 21.25rem);
+  max-width: 21.25rem;
+  overflow: hidden;
+  white-space: normal;
 }
 .system-report-summary__title {
   display: block;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: var(--text-color);
   font-size: 0.9rem;
@@ -753,42 +795,97 @@ onMounted(refreshAll)
 }
 .system-report-summary__body {
   display: -webkit-box;
-  max-height: 4.35em;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(1.35em * 3);
   margin-top: 0.2rem;
   overflow: hidden;
   overflow-wrap: anywhere;
   color: var(--text-color-secondary);
   font-size: 0.82rem;
-  line-height: 1.45;
+  line-height: 1.35;
   text-overflow: ellipsis;
+  white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
-.report-comment-summary {
-  width: clamp(17.5rem, 24vw, 26.25rem);
+.comment-report-content {
+  display: grid;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
+  overflow: hidden;
+  white-space: normal;
 }
-.report-comment-summary__text {
+.comment-report-content__reason {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.comment-report-content__summary {
   display: -webkit-box;
-  max-height: 4.35em;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(1.35em * 3);
+  margin-top: 0.2rem;
   overflow: hidden;
   overflow-wrap: anywhere;
   color: var(--text-color-secondary);
   font-size: 0.82rem;
-  line-height: 1.45;
+  line-height: 1.35;
   text-overflow: ellipsis;
+  white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
+:deep(.comment-report-content-column) {
+  width: clamp(16rem, 24vw, 20rem);
+  max-width: 20rem;
+  overflow: hidden;
+  white-space: normal;
+}
+:deep(.report-created-at-column) {
+  width: 9.5rem;
+  min-width: 9.5rem;
+}
+:deep(.report-user-column) {
+  width: 7rem;
+  min-width: 7rem;
+  max-width: 7rem;
+  overflow: hidden;
+}
+.report-time-cell__text,
+.report-user-cell__text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-reviewer-cell {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+}
 :deep(.report-reviewed-at-column) {
-  width: 11rem;
-  min-width: 11rem;
+  width: 10rem;
+  min-width: 10rem;
   padding-inline-end: 1.25rem;
+  white-space: nowrap;
 }
 :deep(.report-actions-column) {
-  width: 10.5rem;
-  min-width: 10.5rem;
+  width: 9.5rem;
+  min-width: 9.5rem;
   padding-inline-start: 0.75rem;
 }
 :deep(.report-actions-column .p-button) {
@@ -873,16 +970,23 @@ onMounted(refreshAll)
   .report-management__filters {
     grid-template-columns: minmax(0, 1fr);
   }
-  .report-comment-summary {
-    width: 100%;
-  }
   .system-report-summary {
     width: 100%;
   }
+  :deep(.system-report-column) {
+    width: 100%;
+    max-width: none;
+  }
+}
+@media (max-width: 1199px) {
+  :deep(.comment-report-content-column),
+  :deep(.report-created-at-column),
+  :deep(.report-user-column),
   :deep(.report-reviewed-at-column),
   :deep(.report-actions-column) {
     width: 100%;
     min-width: 0;
+    max-width: none;
     padding-inline: var(--p-datatable-body-cell-padding, 0.75rem);
   }
 }
