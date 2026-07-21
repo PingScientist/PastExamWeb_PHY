@@ -247,13 +247,14 @@ describe('ArchiveView', () => {
     expect(getCourseArchivesMock).toHaveBeenCalled()
     expect(vm.selectedSubject).toBe('Calculus I')
     expect(vm.groupedArchives.length).toBeGreaterThan(0)
-    expect(wrapper.get('.subject-heading-row').find('.subject-title-block').text()).toContain(
-      'Calculus I'
-    )
-    expect(wrapper.get('.subject-heading-row').find('.subject-summary').text()).toContain(
-      '共 2 份考古題'
-    )
-    expect(wrapper.get('.subject-english-name').text()).toBe('Calculus I (English)')
+    const subjectHeadingRow = wrapper.get('.subject-heading-row')
+    expect(subjectHeadingRow.find('.subject-title-block').text()).toContain('Calculus I')
+    const subjectSummary = subjectHeadingRow.get('.subject-summary')
+    expect(subjectSummary.text()).toContain('共 2 份考古題')
+    expect(subjectSummary.findAll('span')).toHaveLength(2)
+    const subjectEnglishName = wrapper.get('.subject-english-name')
+    expect(subjectEnglishName.text()).toBe('Calculus I (English)')
+    expect(subjectHeadingRow.find('.subject-english-name').exists()).toBe(false)
     expect(wrapper.findAll('.archive-filter-controls .filter-select')).toHaveLength(3)
     expect(wrapper.get('.archive-filter-controls .answer-filter').text()).toContain('附解答')
     expect(wrapper.text()).toContain('投稿編號：#44')

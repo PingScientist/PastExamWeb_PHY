@@ -2922,8 +2922,9 @@ const mobileMenuItems = computed(() => {
   }
 
   .subject-heading-row {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
+    gap: 0.45rem 0.65rem;
   }
 
   .subject-title-block {
@@ -2935,16 +2936,18 @@ const mobileMenuItems = computed(() => {
   }
 
   .subject-summary {
+    flex-direction: column;
+    align-items: flex-end;
     justify-content: flex-start;
-    gap: 0.22rem 0.55rem;
+    justify-self: end;
+    gap: 0.12rem;
     font-size: calc(var(--app-font-size-base) * 0.8);
     line-height: 1.35;
+    text-align: right;
   }
 
   .subject-summary span + span::before {
-    width: 0.2rem;
-    height: 0.2rem;
-    margin-right: 0.55rem;
+    display: none;
   }
 
   .archive-filter-bar {
