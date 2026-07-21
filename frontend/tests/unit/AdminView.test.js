@@ -395,8 +395,24 @@ describe('AdminView', () => {
     ).toHaveLength(2)
     expect(adminViewSource.match(/admin-desktop-status-tag/g).length).toBeGreaterThanOrEqual(3)
     expect(adminTemplateSource.match(/class="admin-desktop-status-label"/g)).toHaveLength(3)
+    expect(adminTemplateSource.match(/'admin-desktop-status-tag'/g)).toHaveLength(3)
     expect(adminViewSource).toContain('Array.from(')
     expect(adminViewSource).not.toContain('writing-mode: vertical-rl')
+    expect(adminViewSource).not.toContain('min-inline-size: 4.75rem')
+    expect(adminViewSource).toContain('inline-size: fit-content')
+    expect(adminViewSource).toContain('@container admin-status-cell (max-width: 3.75rem)')
+    expect(adminViewSource).toMatch(
+      /admin-desktop-status-label[\s\S]*?flex-direction: row[\s\S]*?@container admin-status-cell[\s\S]*?flex-direction: column/
+    )
+    expect(adminTemplateSource.match(/class="review-submission-type-cell"/g)).toHaveLength(1)
+    expect(adminTemplateSource.match(/'review-desktop-submission-type-tag'/g)).toHaveLength(1)
+    expect(adminTemplateSource.match(/class="submission-type-combined-label"/g)).toHaveLength(1)
+    expect(adminTemplateSource).toContain('class="submission-type-combined-label__separator"')
+    expect(adminTemplateSource).toContain('＋')
+    expect(adminViewSource).toContain('@container review-submission-type-cell (max-width: 7.25rem)')
+    expect(adminViewSource).toMatch(
+      /submission-type-combined-label__separator[\s\S]*?display: none/
+    )
     expect(adminViewSource.match(/'review-mobile-card-status-badge'/g)).toHaveLength(2)
     expect(adminViewSource).toContain('headerClass="trash-dependencies-column"')
     expect(adminViewSource).toContain('width: clamp(17rem, 22vw, 23rem)')

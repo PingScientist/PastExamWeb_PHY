@@ -1619,16 +1619,32 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag
-                        :class="[
-                          'soft-badge',
-                          'review-card-chip',
-                          getArchiveSubmissionKindClass(data),
-                        ]"
-                        :severity="getArchiveSubmissionKindSeverity(data)"
-                      >
-                        {{ getArchiveSubmissionKind(data) }}
-                      </Tag>
+                      <div class="review-submission-type-cell">
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-desktop-submission-type-tag',
+                            getArchiveSubmissionKindClass(data),
+                          ]"
+                          :severity="getArchiveSubmissionKindSeverity(data)"
+                        >
+                          <span
+                            v-if="data.requested_category_key"
+                            class="submission-type-combined-label"
+                            aria-label="新分類＋新課程"
+                          >
+                            <span class="submission-type-combined-label__category">新分類</span>
+                            <span
+                              class="submission-type-combined-label__separator"
+                              aria-hidden="true"
+                              >＋</span
+                            >
+                            <span class="submission-type-combined-label__course">新課程</span>
+                          </span>
+                          <span v-else>{{ getArchiveSubmissionKind(data) }}</span>
+                        </Tag>
+                      </div>
                     </template>
                   </Column>
                   <Column field="subject">
@@ -9659,6 +9675,7 @@ onBeforeUnmount(() => {
 }
 
 .admin-desktop-status-cell {
+  container-name: admin-status-cell;
   container-type: inline-size;
   display: flex;
   align-items: center;
@@ -9667,12 +9684,14 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
-:deep(.admin-desktop-status-tag.soft-badge) {
+:deep(.admin-desktop-status-cell .admin-desktop-status-tag.soft-badge) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-inline-size: 4.75rem;
+  inline-size: fit-content;
+  min-inline-size: 0;
   max-width: 100%;
+  padding-inline: 0.5rem !important;
   text-align: center;
   white-space: nowrap;
 }
@@ -9688,16 +9707,51 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-@container (max-width: 3.75rem) {
-  :deep(.admin-desktop-status-tag.soft-badge) {
-    min-inline-size: 2rem;
-    max-inline-size: 2.4rem;
-    padding-inline: 0.3rem !important;
+@container admin-status-cell (max-width: 3.75rem) {
+  :deep(.admin-desktop-status-cell .admin-desktop-status-tag.soft-badge) {
+    inline-size: fit-content;
+    min-inline-size: 0;
+    max-inline-size: 2.1rem;
+    padding: 0.4rem 0.32rem !important;
     white-space: normal;
   }
 
   :deep(.admin-desktop-status-label) {
     flex-direction: column;
+  }
+}
+
+:deep(.review-submission-type-cell) {
+  container-name: review-submission-type-cell;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.review-desktop-submission-type-tag.soft-badge) {
+  max-width: 100%;
+  justify-content: center;
+}
+
+:deep(.submission-type-combined-label) {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+@container review-submission-type-cell (max-width: 7.25rem) {
+  :deep(.submission-type-combined-label) {
+    flex-direction: column;
+  }
+
+  :deep(.submission-type-combined-label__separator) {
+    display: none;
   }
 }
 
