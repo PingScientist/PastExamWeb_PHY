@@ -2487,7 +2487,12 @@
                     </Tag>
                   </template>
                 </Column>
-                <Column field="display_name">
+                <Column
+                  field="display_name"
+                  headerClass="trash-name-column"
+                  bodyClass="trash-name-column"
+                  style="width: clamp(14rem, 18vw, 18rem); max-width: 18rem"
+                >
                   <template #header>
                     <button
                       type="button"
@@ -2517,7 +2522,7 @@
                         >
                           {{ getTrashTreePrefix(data) }}
                         </span>
-                        {{ data.display_name }}
+                        <span class="trash-name-title__text">{{ data.display_name }}</span>
                       </strong>
                       <small v-if="getTrashSubmissionLabel(data)">{{
                         getTrashSubmissionLabel(data)
@@ -9795,14 +9800,25 @@ onBeforeUnmount(() => {
   display: inline-flex;
   flex-direction: column;
   gap: 0.2rem;
-  min-width: 16rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .trash-name-title {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.35rem;
-  white-space: nowrap;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trash-name-title__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .trash-tree-prefix {
@@ -9829,6 +9845,11 @@ onBeforeUnmount(() => {
 :deep(.trash-table .trash-dependencies-column) {
   width: clamp(17rem, 22vw, 23rem);
   max-width: 23rem;
+}
+
+:deep(.trash-table .trash-name-column) {
+  width: clamp(14rem, 18vw, 18rem);
+  max-width: 18rem;
 }
 
 :deep(.trash-table .trash-dependencies .trash-dependency-chip) {

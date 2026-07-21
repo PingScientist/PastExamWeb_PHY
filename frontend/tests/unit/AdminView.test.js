@@ -414,6 +414,13 @@ describe('AdminView', () => {
       /submission-type-combined-label__separator[\s\S]*?display: none/
     )
     expect(adminViewSource.match(/'review-mobile-card-status-badge'/g)).toHaveLength(2)
+    expect(adminTemplateSource.match(/trash-name-column/g)).toHaveLength(2)
+    expect(adminViewSource).toContain('width: clamp(14rem, 18vw, 18rem)')
+    expect(adminViewSource).toContain('overflow-wrap: anywhere')
+    expect(adminTemplateSource).toContain('class="trash-name-title__text"')
+    expect(adminTemplateSource).not.toContain('trash-mobile-card trash-name-column')
+    expect(adminTemplateSource.match(/class="trash-tree-prefix"/g)).toHaveLength(2)
+    expect(adminTemplateSource).toContain('getTrashNameIndent(data)')
     expect(adminViewSource).toContain('headerClass="trash-dependencies-column"')
     expect(adminViewSource).toContain('width: clamp(17rem, 22vw, 23rem)')
 
