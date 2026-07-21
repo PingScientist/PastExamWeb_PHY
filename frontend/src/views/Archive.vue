@@ -182,19 +182,20 @@
         <div class="card h-full flex flex-col">
           <div v-if="selectedSubject" class="subject-header">
             <div class="subject-heading-row">
-              <div class="subject-title-block">
-                <Tag severity="secondary" class="subject-tag">
-                  {{ currentCategoryLabel }}
-                </Tag>
+              <Tag severity="secondary" class="subject-tag">
+                {{ currentCategoryLabel }}
+              </Tag>
+              <div class="subject-title-stack">
                 <div class="subject-title">{{ selectedSubject }}</div>
+                <div v-if="currentCourseEnglishName" class="subject-english-name">
+                  {{ currentCourseEnglishName }}
+                </div>
               </div>
               <div class="subject-summary">
-                <span>共 {{ archiveTotalCount }} 份考古題</span>
-                <span>最新：{{ latestAcademicTerm }}</span>
+                <span class="subject-summary-item">共 {{ archiveTotalCount }} 份考古題</span>
+                <span class="subject-summary-separator" aria-hidden="true">・</span>
+                <span class="subject-summary-item">最新：{{ latestAcademicTerm }}</span>
               </div>
-            </div>
-            <div v-if="currentCourseEnglishName" class="subject-english-name">
-              {{ currentCourseEnglishName }}
             </div>
           </div>
           <Toolbar v-if="selectedSubject" class="archive-filter-bar mx-3 mt-3 mb-2">
@@ -2383,6 +2384,8 @@ const mobileMenuItems = computed(() => {
 }
 
 .subject-header {
+  container-name: course-header;
+  container-type: inline-size;
   border-bottom: 1px solid var(--border-color);
   background: #eef6f2;
   position: relative;
@@ -2396,20 +2399,21 @@ const mobileMenuItems = computed(() => {
 
 .subject-heading-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) max-content;
+  align-items: stretch;
   gap: 0.65rem 1rem;
 }
 
-.subject-title-block {
+.subject-title-stack {
   display: flex;
+  flex-direction: column;
   min-width: 0;
-  align-items: center;
-  gap: 0.85rem;
+  justify-content: center;
 }
 
 .subject-tag {
   flex: 0 0 auto;
+  align-self: center;
 }
 
 .subject-title {
@@ -2425,32 +2429,40 @@ const mobileMenuItems = computed(() => {
 }
 
 .subject-summary {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
   justify-content: flex-end;
-  gap: 0.35rem 0.75rem;
+  justify-self: end;
+  gap: 0.35rem;
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   font-weight: 650;
+  text-align: right;
   white-space: nowrap;
 }
 
-.subject-summary span + span::before {
-  content: '';
-  display: inline-block;
-  width: 0.24rem;
-  height: 0.24rem;
-  margin-right: 0.75rem;
-  border-radius: 50%;
-  vertical-align: middle;
-  background: #8aa49a;
+.subject-summary-item {
+  white-space: nowrap;
 }
 
 .subject-english-name {
-  margin-top: 0.3rem;
+  margin-top: 0.2rem;
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   line-height: 1.35;
+}
+
+@container course-header (max-width: 32rem) {
+  .subject-summary {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.12rem;
+  }
+
+  .subject-summary-separator {
+    display: none;
+  }
 }
 
 .archive-filter-bar {
@@ -2802,10 +2814,6 @@ const mobileMenuItems = computed(() => {
     padding: 0.75rem 1rem;
   }
 
-  .subject-title-block {
-    gap: 0.65rem;
-  }
-
   .subject-title {
     font-size: clamp(
       calc(1.12rem * var(--app-font-scale)),
@@ -2917,37 +2925,13 @@ const mobileMenuItems = computed(() => {
     padding: 0.62rem 0.8rem;
   }
 
-  .subject-tag {
-    align-self: flex-start;
-  }
-
-  .subject-heading-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 0.45rem 0.65rem;
-  }
-
-  .subject-title-block {
-    align-items: center;
-  }
-
   .subject-title {
     font-size: calc(1.22rem * var(--app-font-scale));
   }
 
   .subject-summary {
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: flex-start;
-    justify-self: end;
-    gap: 0.12rem;
     font-size: calc(var(--app-font-size-base) * 0.8);
     line-height: 1.35;
-    text-align: right;
-  }
-
-  .subject-summary span + span::before {
-    display: none;
   }
 
   .archive-filter-bar {
