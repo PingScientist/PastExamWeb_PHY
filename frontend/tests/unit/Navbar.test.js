@@ -612,6 +612,10 @@ describe('Navbar methods', () => {
     expect(actionsMobile).toHaveLength(5)
     expect(actionsMobile[3]).toHaveProperty('separator')
     expect(actionsMobile[4].label).toBe('登出')
+    expect(actionsMobile[4].icon).toBe('pi pi-sign-out')
+    actionsMobile[4].command()
+    expect(actionsCtxMobile.invokeMenuAction).toHaveBeenCalled()
+    expect(actionsCtxMobile.handleLogout).toHaveBeenCalled()
 
     const canSubmitCtx = {
       issueForm: { type: 'bug', title: 'Title', description: 'Desc' },
@@ -627,6 +631,18 @@ describe('Navbar methods', () => {
     }
 
     expect(Navbar.computed.moreActions.call(actionsCtx)).toEqual([])
+  })
+
+  it('updates the responsive menu mode from reactive viewport state', () => {
+    const ctx = { viewportWidth: 1024 }
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 524 })
+
+    Navbar.methods.updateViewportWidth.call(ctx)
+
+    expect(ctx.viewportWidth).toBe(524)
+    expect(Navbar.computed.isDesktopView.call(ctx)).toBe(false)
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
   })
 
   it('reacts to authentication watcher changes', async () => {

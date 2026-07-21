@@ -4,15 +4,16 @@
       :visible="visible"
       @update:visible="$emit('update:visible', $event)"
       modal
-      :style="{ width: '820px', maxWidth: '95vw' }"
+      :style="{ width: 'min(820px, calc(100vw - 2rem))', maxWidth: '100%' }"
       :draggable="false"
       :blockScroll="true"
+      class="notification-center-dialog"
       :pt="{ root: { 'aria-label': '公告與通知', 'aria-labelledby': null } }"
     >
       <template #header>
-        <div class="flex align-items-center gap-2">
+        <div class="notification-dialog-header">
           <i class="pi pi-bell text-2xl" />
-          <span class="text-xl font-semibold">公告與通知</span>
+          <span class="notification-dialog-header__title">公告與通知</span>
           <Badge v-if="counts.total" :value="counts.total" severity="danger" />
         </div>
       </template>
@@ -20,7 +21,7 @@
       <div v-if="loading" class="flex justify-content-center py-5">
         <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4" />
       </div>
-      <Tabs v-else v-model:value="activeTab">
+      <Tabs v-else v-model:value="activeTab" class="notification-center-tabs">
         <TabList>
           <Tab value="announcements"><i class="pi pi-megaphone mr-2" />公告</Tab>
           <Tab value="personal">
@@ -38,7 +39,15 @@
             <div v-if="announcements.length === 0" class="notification-empty">
               <i class="pi pi-megaphone text-4xl" /><span>目前沒有公告</span>
             </div>
-            <DataTable v-else :value="announcements" :rows="5" paginator class="notification-table">
+            <DataTable
+              v-else
+              :value="announcements"
+              :rows="ANNOUNCEMENT_PAGE_SIZE"
+              :first="announcementFirst"
+              paginator
+              class="notification-table notification-desktop-announcements"
+              @page="announcementFirst = $event.first"
+            >
               <Column field="title" header="標題">
                 <template #body="{ data }">
                   <div class="flex align-items-center gap-2 min-w-0">
@@ -79,16 +88,60 @@
                 /></template>
               </Column>
             </DataTable>
+            <div v-if="announcements.length" class="notification-mobile-announcements">
+              <div class="notification-card-list">
+                <article
+                  v-for="item in visibleMobileAnnouncements"
+                  :key="item.id"
+                  class="announcement-card"
+                  :class="{ 'announcement-card--unread': !item.is_read }"
+                >
+                  <div class="announcement-card__title-row">
+                    <span v-if="!item.is_read" class="unread-dot" aria-label="未讀" />
+                    <strong>{{ item.title }}</strong>
+                  </div>
+                  <div class="announcement-card__tags">
+                    <Tag :severity="severity(item.severity)">{{
+                      severityLabel(item.severity)
+                    }}</Tag>
+                    <Tag :severity="item.is_read ? 'secondary' : 'info'">{{
+                      item.is_read ? '已讀' : '未讀'
+                    }}</Tag>
+                  </div>
+                  <div class="announcement-card__footer">
+                    <small class="text-500">最近更新：{{ formatDate(item.updated_at) }}</small>
+                    <Button
+                      label="檢視"
+                      size="small"
+                      outlined
+                      class="notification-view-button"
+                      @click="openAnnouncement(item)"
+                    />
+                  </div>
+                </article>
+              </div>
+              <Paginator
+                v-if="announcements.length > ANNOUNCEMENT_PAGE_SIZE"
+                :first="announcementFirst"
+                :rows="ANNOUNCEMENT_PAGE_SIZE"
+                :totalRecords="announcements.length"
+                :pageLinkSize="1"
+                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink"
+                class="notification-mobile-paginator"
+                @page="announcementFirst = $event.first"
+              />
+            </div>
           </TabPanel>
 
           <TabPanel value="personal">
-            <div class="flex justify-content-between align-items-center gap-2 mb-3">
+            <div class="personal-toolbar">
               <span class="text-sm text-500">{{ counts.personal_notifications }} 則未讀</span>
               <Button
                 label="全部標記為已讀"
                 icon="pi pi-check-circle"
                 size="small"
                 outlined
+                class="personal-mark-all-button"
                 :disabled="!counts.personal_notifications"
                 @click="$emit('mark-all-personal-read')"
               />
@@ -180,7 +233,15 @@ const activeTab = ref('announcements')
 const detailVisible = ref(false)
 const selectedItem = ref(null)
 const selectedType = ref('announcement')
+const ANNOUNCEMENT_PAGE_SIZE = 5
+const announcementFirst = ref(0)
 const renderedBody = computed(() => renderMarkdown(selectedItem.value?.body || ''))
+const visibleMobileAnnouncements = computed(() =>
+  props.announcements.slice(
+    announcementFirst.value,
+    announcementFirst.value + ANNOUNCEMENT_PAGE_SIZE
+  )
+)
 const severity = (value) => (value === 'danger' ? 'danger' : 'info')
 const severityLabel = (value) => (value === 'danger' ? '重要' : '一般')
 
@@ -223,6 +284,16 @@ watch(
   }
 )
 watch(
+  () => props.announcements.length,
+  (length) => {
+    const lastPageFirst = Math.max(
+      0,
+      Math.floor(Math.max(0, length - 1) / ANNOUNCEMENT_PAGE_SIZE) * ANNOUNCEMENT_PAGE_SIZE
+    )
+    if (announcementFirst.value > lastPageFirst) announcementFirst.value = lastPageFirst
+  }
+)
+watch(
   () => [props.visible, props.focusType, props.focusId, props.loading],
   ([visible, type, id, loading]) => {
     if (!visible || !id || loading) return
@@ -250,6 +321,23 @@ function formatTimestamp(value, withTime = true) {
 </script>
 
 <style scoped>
+.notification-dialog-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+.notification-dialog-header__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.notification-center-tabs {
+  container-name: notification-center;
+  container-type: inline-size;
+  min-width: 0;
+}
 .notification-empty {
   display: flex;
   flex-direction: column;
@@ -261,6 +349,9 @@ function formatTimestamp(value, withTime = true) {
 .notification-table {
   font-size: 0.875rem;
   overflow-x: auto;
+}
+.notification-mobile-announcements {
+  display: none;
 }
 :deep(.notification-view-button.p-button) {
   min-inline-size: 3.25rem;
@@ -284,6 +375,13 @@ function formatTimestamp(value, withTime = true) {
   gap: 0.6rem;
   max-height: 55vh;
   overflow-y: auto;
+}
+.personal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 .personal-item {
   display: grid;
@@ -319,13 +417,141 @@ function formatTimestamp(value, withTime = true) {
   margin-top: 1rem;
   overflow-wrap: anywhere;
 }
-@media (max-width: 480px) {
+@container notification-center (max-width: 640px) {
+  .notification-desktop-announcements {
+    display: none;
+  }
+  .notification-mobile-announcements {
+    display: block;
+  }
+  .notification-card-list {
+    display: grid;
+    gap: 0.55rem;
+  }
+  .announcement-card {
+    display: grid;
+    min-width: 0;
+    gap: 0.55rem;
+    padding: 0.7rem;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--content-border-radius);
+    background: var(--surface-card);
+  }
+  .announcement-card--unread {
+    background: var(--highlight-bg);
+  }
+  .announcement-card__title-row,
+  .announcement-card__tags,
+  .announcement-card__footer {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+  }
+  .announcement-card__title-row {
+    gap: 0.45rem;
+  }
+  .announcement-card__title-row strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .announcement-card__tags {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .announcement-card__footer {
+    justify-content: space-between;
+    gap: 0.55rem;
+  }
+  .announcement-card__footer small {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  :deep(.p-tablist-tab-list) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  :deep(.p-tablist-prev-button),
+  :deep(.p-tablist-next-button) {
+    display: none;
+  }
+  :deep(.p-tab) {
+    min-width: 0;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  :deep(.p-tabpanels) {
+    padding: 0.75rem 0 0;
+  }
+  :deep(.notification-mobile-paginator.p-paginator) {
+    justify-content: center;
+    gap: 0.1rem;
+    padding: 0.55rem 0 0;
+    background: transparent;
+  }
+  :deep(.notification-mobile-paginator .p-paginator-first),
+  :deep(.notification-mobile-paginator .p-paginator-prev),
+  :deep(.notification-mobile-paginator .p-paginator-page),
+  :deep(.notification-mobile-paginator .p-paginator-next),
+  :deep(.notification-mobile-paginator .p-paginator-last) {
+    min-width: 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  .personal-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  :deep(.personal-mark-all-button.p-button) {
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .personal-list {
+    max-height: none;
+    overflow: visible;
+  }
   .personal-item {
     grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.55rem;
+    padding: 0.7rem;
   }
   .personal-item > .p-button {
     grid-column: 2;
     justify-self: end;
+  }
+  .personal-item__body p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}
+
+@media (max-width: 640px) {
+  :deep(.notification-center-dialog.p-dialog) {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    max-height: calc(100dvh - 1rem);
+    margin-inline: max(0.5rem, env(safe-area-inset-left));
+    overflow: hidden;
+  }
+  :deep(.notification-center-dialog .p-dialog-header) {
+    flex: 0 0 auto;
+    padding: 0.85rem max(0.85rem, env(safe-area-inset-right)) 0.75rem
+      max(0.85rem, env(safe-area-inset-left));
+  }
+  :deep(.notification-center-dialog .p-dialog-content) {
+    min-height: 0;
+    padding: 0 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .notification-dialog-header {
+    gap: 0.4rem;
+  }
+  .notification-dialog-header__title {
+    font-size: 1.05rem;
   }
 }
 </style>

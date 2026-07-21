@@ -340,6 +340,7 @@ export default {
         description: '',
         contact: '',
       },
+      viewportWidth: typeof window === 'undefined' ? 1024 : window.innerWidth,
       heartbeatIntervalMs: 60000,
       heartbeatTimer: null,
       notificationFocusType: null,
@@ -368,6 +369,10 @@ export default {
     }
   },
   mounted() {
+    if (typeof window !== 'undefined') {
+      this.updateViewportWidth()
+      window.addEventListener('resize', this.updateViewportWidth, { passive: true })
+    }
     this.checkAuthentication()
     if (this.isAuthenticated) {
       void this.initializeNotifications()
@@ -399,6 +404,9 @@ export default {
   },
 
   beforeUnmount() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.updateViewportWidth)
+    }
     this.stopHeartbeat()
 
     if (typeof window !== 'undefined' && window.__pastexam) {
@@ -438,6 +446,10 @@ export default {
     },
   },
   methods: {
+    updateViewportWidth() {
+      if (typeof window !== 'undefined') this.viewportWidth = window.innerWidth
+    },
+
     toggleMoreActions(event) {
       if (!this.moreActions.length) {
         return
@@ -941,10 +953,7 @@ export default {
 
   computed: {
     isDesktopView() {
-      if (typeof window === 'undefined') {
-        return false
-      }
-      return window.innerWidth >= 768
+      return this.viewportWidth >= 768
     },
 
     menuItems() {
