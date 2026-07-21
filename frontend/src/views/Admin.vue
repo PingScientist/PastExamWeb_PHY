@@ -5652,23 +5652,7 @@ const formatAdminActorTime = (value) => {
 }
 
 const getNotificationUpdaterLabel = (notification) => {
-  const updater =
-    notification?.updated_by_name ||
-    notification?.updated_by_username ||
-    notification?.last_editor_name ||
-    notification?.last_editor_username ||
-    notification?.updated_by ||
-    notification?.last_editor ||
-    notification?.created_by_name ||
-    notification?.created_by_username
-
-  if (typeof updater === 'object' && updater !== null) {
-    return updater.nickname || updater.name || updater.username || updater.email || '—'
-  }
-
-  if (typeof updater === 'number') return '—'
-
-  const label = String(updater || '').trim()
+  const label = String(notification?.updated_by_username || '').trim()
   return label || '—'
 }
 

@@ -21,11 +21,20 @@ from app.models.models import (
     PersonalNotification,
     PersonalNotificationRead,
     ArchiveDiscussionMessage,
+    User,
     UserRoles,
 )
 from app.utils.auth import get_current_user
 
 router = APIRouter()
+
+
+def _notification_read(
+    notification: Notification, updater: User | None = None
+) -> NotificationRead:
+    return NotificationRead.model_validate(notification).model_copy(
+        update={"updated_by_username": updater.name if updater else None}
+    )
 
 
 def _apply_time_filters(statement):
@@ -370,14 +379,15 @@ async def list_admin_notifications(
         )
 
     query = (
-        select(Notification)
+        select(Notification, User)
+        .outerjoin(User, User.id == Notification.updated_by_id)
         .where(Notification.deleted_at.is_(None))
         .order_by(Notification.updated_at.desc())
     )
     result = await db.execute(query)
-    notifications = result.scalars().all()
     return [
-        NotificationRead.model_validate(notification) for notification in notifications
+        _notification_read(notification, updater)
+        for notification, updater in result.all()
     ]
 
 
@@ -400,11 +410,13 @@ async def create_notification(
     now = datetime.now(timezone.utc)
     notification.created_at = now
     notification.updated_at = now
+    notification.updated_by_id = current_user.user_id
 
     db.add(notification)
     await db.commit()
     await db.refresh(notification)
-    return NotificationRead.model_validate(notification)
+    updater = await db.get(User, current_user.user_id)
+    return _notification_read(notification, updater)
 
 
 @router.put("/admin/notifications/{notification_id}", response_model=NotificationRead)
@@ -435,11 +447,13 @@ async def update_notification(
         setattr(notification, field, value)
 
     notification.updated_at = datetime.now(timezone.utc)
+    notification.updated_by_id = current_user.user_id
 
     db.add(notification)
     await db.commit()
     await db.refresh(notification)
-    return NotificationRead.model_validate(notification)
+    updater = await db.get(User, current_user.user_id)
+    return _notification_read(notification, updater)
 
 
 @router.delete(
@@ -469,4 +483,5 @@ async def delete_notification(
     now = datetime.now(timezone.utc)
     notification.deleted_at = now
     notification.updated_at = now
+    notification.deleted_by_id = current_user.user_id
     await db.commit()

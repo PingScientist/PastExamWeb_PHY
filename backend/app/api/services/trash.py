@@ -1275,8 +1275,10 @@ async def list_trash_items(
                         item_id=notification.id,
                         display_name=notification.title,
                         deleted_at=notification.deleted_at,
-                        deleted_by_id=None,
-                        deleted_by_name=None,
+                        deleted_by_id=notification.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(
+                            users_by_id, notification.deleted_by_id
+                        ),
                         status="deleted",
                         dependencies=[],
                     )
@@ -1613,6 +1615,7 @@ async def restore_trash_item(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
         notification.deleted_at = None
+        notification.deleted_by_id = None
         await db.commit()
         return {"message": "Notification restored"}
 

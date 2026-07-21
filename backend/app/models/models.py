@@ -465,6 +465,24 @@ class Notification(SQLModel, table=True):
             nullable=False,
         )
     )
+    updated_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
 
 
 class AnnouncementReadReceipt(SQLModel, table=True):
@@ -882,6 +900,7 @@ class NotificationRead(NotificationBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    updated_by_username: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -103,7 +103,7 @@ const sampleNotifications = [
     starts_at: new Date(now.getTime() - 3600_000).toISOString(),
     ends_at: new Date(now.getTime() + 3600_000).toISOString(),
     created_at: now.toISOString(),
-    updated_by_name: 'admin',
+    updated_by_username: 'admin',
   },
   {
     id: 2,
@@ -412,10 +412,8 @@ describe('AdminView', () => {
     ).toBe('管理員')
     expect(wrapper.vm.getNotificationUpdaterLabel({})).toBe('—')
     expect(wrapper.vm.hasNotificationUpdater({})).toBe(false)
-    expect(wrapper.vm.hasNotificationUpdater({ updated_by_name: 'admin' })).toBe(true)
-    expect(wrapper.vm.getNotificationUpdaterLabel({ updated_by: { name: 'editor' } })).toBe(
-      'editor'
-    )
+    expect(wrapper.vm.hasNotificationUpdater({ updated_by_username: 'admin' })).toBe(true)
+    expect(wrapper.vm.getNotificationUpdaterLabel({ updated_by_username: 'editor' })).toBe('editor')
     const actorTime = wrapper.vm.formatAdminActorTime('2026-07-20T05:32:00Z')
     expect(actorTime).toMatch(/2026\/07\/20.*\d{2}:32/)
     expect(actorTime).not.toMatch(/上午|下午/)

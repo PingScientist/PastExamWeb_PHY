@@ -85,6 +85,7 @@ async def test_admin_can_crud_notifications(
     make_user,
 ):
     admin = await make_user(is_admin=True)
+    editor = await make_user(is_admin=True)
     app.dependency_overrides[get_current_user] = _override_user(
         {"id": admin.id, "is_admin": True}
     )
@@ -110,7 +111,11 @@ async def test_admin_can_crud_notifications(
         created = response.json()
         created_id = created["id"]
         assert created["title"] == payload["title"]
+        assert created["updated_by_username"] == admin.name
 
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": editor.id, "is_admin": True}
+        )
         update_payload = {"title": "Updated title", "is_active": False}
         response = await client.put(
             f"/notifications/admin/notifications/{created_id}",
@@ -120,16 +125,51 @@ async def test_admin_can_crud_notifications(
         updated = response.json()
         assert updated["title"] == "Updated title"
         assert updated["is_active"] is False
+        assert updated["updated_by_username"] == editor.name
 
         response = await client.get("/notifications/admin/notifications")
         assert response.status_code == 200
         admin_list = response.json()
-        assert any(item["id"] == created_id for item in admin_list)
+        listed = next(item for item in admin_list if item["id"] == created_id)
+        assert listed["updated_by_username"] == editor.name
 
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": admin.id, "is_admin": True}
+        )
         response = await client.delete(
             f"/notifications/admin/notifications/{created_id}"
         )
         assert response.status_code == 204
+
+        app.dependency_overrides[get_current_user] = _override_user(
+            {"id": editor.id, "is_admin": True}
+        )
+        response = await client.get("/trash", params={"item_type": "notification"})
+        assert response.status_code == 200
+        trashed = next(item for item in response.json() if item["id"] == created_id)
+        assert trashed["deleted_by_id"] == admin.id
+        assert trashed["deleted_by_name"] == admin.name
+
+        response = await client.post(
+            "/trash/restore",
+            json={"item_type": "notification", "item_id": created_id},
+        )
+        assert response.status_code == 200
+        response = await client.delete(
+            f"/notifications/admin/notifications/{created_id}"
+        )
+        assert response.status_code == 204
+        response = await client.get("/trash", params={"item_type": "notification"})
+        assert response.status_code == 200
+        trashed = next(item for item in response.json() if item["id"] == created_id)
+        assert trashed["deleted_by_id"] == editor.id
+        assert trashed["deleted_by_name"] == editor.name
+
+        async with session_maker() as session:
+            stored = await session.get(Notification, created_id)
+            assert stored is not None
+            assert stored.updated_by_id == editor.id
+            assert stored.deleted_by_id == editor.id
         created_id = None
     finally:
         app.dependency_overrides.pop(get_current_user, None)
