@@ -53,7 +53,7 @@
                     class="notification-card"
                     :class="{
                       'notification-card--unread': !item.is_read,
-                      'notification-card--with-divider': itemIndex < group.items.length - 1,
+                      'notification-card--divided': itemIndex > 0,
                     }"
                   >
                     <div class="notification-card__heading">
@@ -130,7 +130,7 @@
                     class="notification-card"
                     :class="{
                       'notification-card--unread': !item.read_at,
-                      'notification-card--with-divider': itemIndex < group.items.length - 1,
+                      'notification-card--divided': itemIndex > 0,
                     }"
                   >
                     <div class="notification-card__heading">
@@ -420,10 +420,9 @@ function formatTimestamp(value, withTime = true) {
 }
 .notification-card-list {
   display: grid;
-  gap: 0.6rem;
+  gap: 0;
 }
 .notification-card {
-  position: relative;
   display: grid;
   min-width: 0;
   gap: 0.55rem;
@@ -432,15 +431,9 @@ function formatTimestamp(value, withTime = true) {
   border-radius: var(--content-border-radius);
   background: var(--surface-card);
 }
-.notification-card--with-divider::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  inset-block-end: -0.3rem;
-  block-size: 1px;
-  background: var(--surface-border);
-  opacity: 0.65;
-  pointer-events: none;
+.notification-card--divided {
+  margin-top: 0.6rem;
+  border-top: 1px solid var(--border-color);
 }
 .notification-card--unread {
   border-inline-start-color: var(--primary-color);

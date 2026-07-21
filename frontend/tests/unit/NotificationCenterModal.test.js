@@ -160,17 +160,19 @@ describe('NotificationCenterModal', () => {
     expect(wrapper.text()).not.toContain('2026年4月')
   })
 
-  it('adds dividers only between adjacent messages in the same month', () => {
+  it('adds a full-card divider from the second message in each month', () => {
     const wrapper = mount(NotificationCenterModal, {
       props: {
         visible: true,
         announcements: [
           { ...announcements[0], id: 1, updated_at: '2026-07-20T00:00:00Z' },
           { ...announcements[0], id: 2, updated_at: '2026-07-10T00:00:00Z' },
+          { ...announcements[0], id: 5, updated_at: '2026-06-20T00:00:00Z' },
         ],
         personalNotifications: [
           { ...personal[0], id: 3, created_at: '2026-07-20T00:00:00Z' },
           { ...personal[0], id: 4, created_at: '2026-07-10T00:00:00Z' },
+          { ...personal[0], id: 6, created_at: '2026-06-20T00:00:00Z' },
         ],
       },
       global: {
@@ -189,11 +191,25 @@ describe('NotificationCenterModal', () => {
     })
 
     for (const selector of ['.notification-announcement-groups', '.notification-personal-groups']) {
-      const cards = wrapper.find(selector).findAll('.notification-card')
-      expect(cards).toHaveLength(2)
-      expect(cards[0].classes()).toContain('notification-card--with-divider')
-      expect(cards[1].classes()).not.toContain('notification-card--with-divider')
+      const groups = wrapper.find(selector).findAll('.notification-month-group')
+      const julyCards = groups[0].findAll('.notification-card')
+      const juneCards = groups[1].findAll('.notification-card')
+
+      expect(julyCards).toHaveLength(2)
+      expect(julyCards[0].classes()).not.toContain('notification-card--divided')
+      expect(julyCards[1].classes()).toContain('notification-card--divided')
+      expect(julyCards[1].find('.notification-card__footer').exists()).toBe(true)
+      expect(julyCards[1].find('.notification-view-button').exists()).toBe(true)
+      expect(juneCards).toHaveLength(1)
+      expect(juneCards[0].classes()).not.toContain('notification-card--divided')
     }
+
+    expect(
+      wrapper
+        .get('.notification-personal-groups .notification-card--divided')
+        .find('.notification-card__actions')
+        .exists()
+    ).toBe(true)
   })
 
   it('shows empty states without rendering month groups', () => {
