@@ -1161,9 +1161,20 @@
                         <Tag :severity="isNotificationEffective(data) ? 'success' : 'secondary'">
                           {{ isNotificationEffective(data) ? '生效中' : '未生效' }}
                         </Tag>
-                        <span class="admin-card-meta-text">
-                          {{ formatNotificationDate(data.updated_at || data.created_at) }}
-                        </span>
+                        <div class="admin-actor-time admin-actor-time--mobile">
+                          <span
+                            class="admin-actor-time__name"
+                            :title="getNotificationUpdaterLabel(data)"
+                          >
+                            {{ getNotificationUpdaterLabel(data) }}
+                          </span>
+                          <time
+                            class="admin-actor-time__time"
+                            :datetime="data.updated_at || data.created_at"
+                          >
+                            {{ formatAdminActorTime(data.updated_at || data.created_at) }}
+                          </time>
+                        </div>
                       </div>
                     </div>
                   </template>
@@ -1200,12 +1211,23 @@
                   sortField="updated_at"
                   header="最近更新"
                   sortable
-                  style="width: 18%"
+                  style="width: 11rem; min-width: 11rem"
                 >
                   <template #body="{ data }">
-                    <span class="text-sm text-700">
-                      {{ formatNotificationDate(data.updated_at || data.created_at) }}
-                    </span>
+                    <div class="admin-actor-time admin-actor-time--notification">
+                      <span
+                        class="admin-actor-time__name"
+                        :title="getNotificationUpdaterLabel(data)"
+                      >
+                        {{ getNotificationUpdaterLabel(data) }}
+                      </span>
+                      <time
+                        class="admin-actor-time__time"
+                        :datetime="data.updated_at || data.created_at"
+                      >
+                        {{ formatAdminActorTime(data.updated_at || data.created_at) }}
+                      </time>
+                    </div>
                   </template>
                 </Column>
                 <Column header="操作" style="width: 20%">
@@ -1268,11 +1290,22 @@
                   <section class="admin-tablet-metadata">
                     <div class="admin-tablet-metadata-item">
                       <span class="admin-tablet-metadata-label">最近更新</span>
-                      <span class="admin-tablet-metadata-value">
-                        {{
-                          formatNotificationDate(notification.updated_at || notification.created_at)
-                        }}
-                      </span>
+                      <div class="admin-actor-time admin-actor-time--mobile">
+                        <span
+                          class="admin-actor-time__name"
+                          :title="getNotificationUpdaterLabel(notification)"
+                        >
+                          {{ getNotificationUpdaterLabel(notification) }}
+                        </span>
+                        <time
+                          class="admin-actor-time__time"
+                          :datetime="notification.updated_at || notification.created_at"
+                        >
+                          {{
+                            formatAdminActorTime(notification.updated_at || notification.created_at)
+                          }}
+                        </time>
+                      </div>
                     </div>
                   </section>
                   <section
@@ -1691,16 +1724,23 @@
                             <span class="review-mobile-info-value">{{ data.professor }}</span>
                           </div>
                           <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">審核人</span>
-                            <span class="review-mobile-info-value">{{
-                              formatReviewReviewer(data)
-                            }}</span>
-                          </div>
-                          <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">審核時間</span>
-                            <span class="review-mobile-info-value">{{
-                              formatReviewReviewedTime(data)
-                            }}</span>
+                            <span class="review-mobile-info-label">審核</span>
+                            <div class="admin-actor-time admin-actor-time--mobile">
+                              <span
+                                class="admin-actor-time__name"
+                                :title="getReviewReviewerDisplay(data)"
+                              >
+                                {{ getReviewReviewerDisplay(data) }}
+                              </span>
+                              <time
+                                v-if="getReviewReviewedAt(data)"
+                                class="admin-actor-time__time"
+                                :datetime="getReviewReviewedAt(data)"
+                              >
+                                {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
+                              </time>
+                              <span v-else class="admin-actor-time__time">—</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1772,14 +1812,14 @@
                       >
                     </template>
                   </Column>
-                  <Column>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
                     <template #header>
                       <button
                         type="button"
                         class="review-sort-header"
                         @click="toggleReviewSort('new', 'submitted_at')"
                       >
-                        申請時間
+                        申請
                         <i
                           class="review-sort-icon"
                           :class="getReviewSortHeaderIcon('new', 'submitted_at')"
@@ -1788,9 +1828,19 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewSubmissionTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span class="admin-actor-time__name" :title="getReviewRequesterLabel(data)">
+                          {{ getReviewRequesterLabel(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewSubmissionTimeValue(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewSubmissionTimeValue(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewSubmissionTimeValue(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
                   <Column field="status">
@@ -1822,16 +1872,38 @@
                       </Tag>
                     </template>
                   </Column>
-                  <Column header="審核人">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('new', 'reviewed_at')"
+                      >
+                        審核
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('new', 'reviewed_at')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
                     </template>
-                  </Column>
-                  <Column header="審核時間">
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewReviewedTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span
+                          class="admin-actor-time__name"
+                          :title="getReviewReviewerDisplay(data)"
+                        >
+                          {{ getReviewReviewerDisplay(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewReviewedAt(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewReviewedAt(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -1994,16 +2066,23 @@
                             <span class="review-mobile-info-value">{{ data.professor }}</span>
                           </div>
                           <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">審核人</span>
-                            <span class="review-mobile-info-value">{{
-                              formatReviewReviewer(data)
-                            }}</span>
-                          </div>
-                          <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">審核時間</span>
-                            <span class="review-mobile-info-value">{{
-                              formatReviewReviewedTime(data)
-                            }}</span>
+                            <span class="review-mobile-info-label">審核</span>
+                            <div class="admin-actor-time admin-actor-time--mobile">
+                              <span
+                                class="admin-actor-time__name"
+                                :title="getReviewReviewerDisplay(data)"
+                              >
+                                {{ getReviewReviewerDisplay(data) }}
+                              </span>
+                              <time
+                                v-if="getReviewReviewedAt(data)"
+                                class="admin-actor-time__time"
+                                :datetime="getReviewReviewedAt(data)"
+                              >
+                                {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
+                              </time>
+                              <span v-else class="admin-actor-time__time">—</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2075,14 +2154,14 @@
                       >
                     </template>
                   </Column>
-                  <Column>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
                     <template #header>
                       <button
                         type="button"
                         class="review-sort-header"
                         @click="toggleReviewSort('existing', 'submitted_at')"
                       >
-                        投稿時間
+                        投稿
                         <i
                           class="review-sort-icon"
                           :class="getReviewSortHeaderIcon('existing', 'submitted_at')"
@@ -2091,9 +2170,19 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewSubmissionTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span class="admin-actor-time__name" :title="getReviewRequesterLabel(data)">
+                          {{ getReviewRequesterLabel(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewSubmissionTimeValue(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewSubmissionTimeValue(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewSubmissionTimeValue(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
                   <Column field="status">
@@ -2125,16 +2214,38 @@
                       </Tag>
                     </template>
                   </Column>
-                  <Column header="審核人">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('existing', 'reviewed_at')"
+                      >
+                        審核
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('existing', 'reviewed_at')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
                     </template>
-                  </Column>
-                  <Column header="審核時間">
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewReviewedTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span
+                          class="admin-actor-time__name"
+                          :title="getReviewReviewerDisplay(data)"
+                        >
+                          {{ getReviewReviewerDisplay(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewReviewedAt(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewReviewedAt(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -2274,14 +2385,14 @@
                 breakpoint="1023px"
                 :rowClass="getTrashRowClass"
               >
-                <Column field="deleted_at">
+                <Column field="deleted_at" style="width: 10.5rem; min-width: 10.5rem">
                   <template #header>
                     <button
                       type="button"
                       class="review-sort-header"
                       @click="toggleTrashSort('deleted_at')"
                     >
-                      刪除時間
+                      刪除
                       <i
                         class="review-sort-icon"
                         :class="getTrashSortHeaderIcon('deleted_at')"
@@ -2290,7 +2401,14 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <span>{{ formatTrashDeletedAt(data.deleted_at) }}</span>
+                    <div class="admin-actor-time">
+                      <span class="admin-actor-time__name" :title="getTrashDeletedByLabel(data)">
+                        {{ getTrashDeletedByLabel(data) }}
+                      </span>
+                      <time class="admin-actor-time__time" :datetime="data.deleted_at">
+                        {{ formatAdminActorTime(data.deleted_at) }}
+                      </time>
+                    </div>
                   </template>
                 </Column>
                 <Column field="item_type">
@@ -2384,25 +2502,6 @@
                     >
                       {{ getTrashStatusLabel(data.status) }}
                     </Tag>
-                  </template>
-                </Column>
-                <Column field="deleted_by_name">
-                  <template #header>
-                    <button
-                      type="button"
-                      class="review-sort-header"
-                      @click="toggleTrashSort('deleted_by')"
-                    >
-                      刪除者
-                      <i
-                        class="review-sort-icon"
-                        :class="getTrashSortHeaderIcon('deleted_by')"
-                        aria-hidden="true"
-                      ></i>
-                    </button>
-                  </template>
-                  <template #body="{ data }">
-                    <span>{{ getTrashDeletedByLabel(data) }}</span>
                   </template>
                 </Column>
                 <Column header="依賴與阻擋">
@@ -2515,16 +2614,15 @@
                       <span class="trash-mobile-info-value">{{ getTrashSemesterValue(data) }}</span>
                     </div>
                     <div class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">刪除者</span>
-                      <span class="trash-mobile-info-value">{{
-                        getTrashDeletedByLabel(data)
-                      }}</span>
-                    </div>
-                    <div class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">刪除時間</span>
-                      <span class="trash-mobile-info-value">{{
-                        formatTrashDeletedAt(data.deleted_at)
-                      }}</span>
+                      <span class="trash-mobile-info-label">刪除</span>
+                      <div class="admin-actor-time admin-actor-time--mobile">
+                        <span class="admin-actor-time__name" :title="getTrashDeletedByLabel(data)">
+                          {{ getTrashDeletedByLabel(data) }}
+                        </span>
+                        <time class="admin-actor-time__time" :datetime="data.deleted_at">
+                          {{ formatAdminActorTime(data.deleted_at) }}
+                        </time>
+                      </div>
                     </div>
                     <div
                       v-if="getTrashContextLine(data)"
@@ -4399,14 +4497,20 @@ const formatReviewSubmissionTime = (item) => {
   }
   return formatRelativeTime(value)
 }
+const getReviewRequesterLabel = (item) => {
+  return item?.requester_name || item?.requester_email || '—'
+}
 const formatReviewReviewer = (item) => {
   return (
     item?.reviewer_name || item?.reviewerName || item?.reviewer_username || item?.reviewer_id || '—'
   )
 }
-const formatReviewReviewedTime = (item) => {
-  const value = item?.reviewed_at || item?.reviewedAt || item?.status_changed_at
-  return value ? formatRelativeTime(value) : '—'
+const getReviewReviewedAt = (item) => {
+  return item?.reviewed_at || item?.reviewedAt || item?.status_changed_at || null
+}
+const getReviewReviewerDisplay = (item) => {
+  if (!getReviewReviewedAt(item)) return '尚未審核'
+  return formatReviewReviewer(item)
 }
 const getReviewMobileCourseName = (item) => {
   return item?.requested_course_name || item?.requestedCourseName || item?.subject || '—'
@@ -4414,6 +4518,12 @@ const getReviewMobileCourseName = (item) => {
 const getReviewSortValue = (item, key) => {
   if (key === 'status') return getReviewItemStatusPriority(item)
   if (key === 'submitted_at') return getReviewTimestamp(item)
+  if (key === 'reviewed_at') {
+    const value = getReviewReviewedAt(item)
+    if (!value) return null
+    const time = new Date(value).getTime()
+    return Number.isNaN(time) ? null : time
+  }
   if (key === 'academic_year') return Number(item.academic_year) || null
   if (key === 'kind') return getArchiveSubmissionKind(item)
   return String(item?.[key] || '').trim()
@@ -4440,9 +4550,15 @@ const sortArchiveReviewItems = (items, section) => {
   return [...items].sort((a, b) => {
     const primaryDiff = compareReviewSortValues(a, b, key, direction)
     if (primaryDiff !== 0) return primaryDiff
+    if (key === 'submitted_at' || key === 'reviewed_at') {
+      const idDiff = (Number(a?.id) || 0) - (Number(b?.id) || 0)
+      return direction === 'desc' ? -idDiff : idDiff
+    }
     const statusDiff = getReviewItemStatusPriority(a) - getReviewItemStatusPriority(b)
     if (statusDiff !== 0) return statusDiff
-    return getReviewTimestamp(b) - getReviewTimestamp(a)
+    const timeDiff = getReviewTimestamp(b) - getReviewTimestamp(a)
+    if (timeDiff !== 0) return timeDiff
+    return (Number(b?.id) || 0) - (Number(a?.id) || 0)
   })
 }
 
@@ -4578,7 +4694,6 @@ const getTrashSortValue = (item, key) => {
   if (key === 'type') return getTrashTypeLabel(item?.item_type)
   if (key === 'name') return String(item?.display_name || '')
   if (key === 'status') return getTrashStatusLabel(item?.status)
-  if (key === 'deleted_by') return item?.deleted_by_name || ''
   if (key === 'dependencies')
     return getTrashDependencies(item)
       .map((dependency) => dependency.label)
@@ -4609,7 +4724,8 @@ const sortTrashItems = (rows) => {
   return [...rows].sort((a, b) => {
     const primaryDiff = compareTrashSortValues(a, b)
     if (primaryDiff !== 0) return primaryDiff
-    return getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a)
+    const idDiff = (Number(a?.id) || 0) - (Number(b?.id) || 0)
+    return trashSortState.value.direction === 'desc' ? -idDiff : idDiff
   })
 }
 const toggleTrashSort = (key) => {
@@ -5452,8 +5568,28 @@ const isNotificationEffective = (notification) => {
   return true
 }
 
-const formatNotificationDate = (value) => {
-  return formatRelativeTime(value)
+const formatAdminActorTime = (value) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+}
+
+const getNotificationUpdaterLabel = (notification) => {
+  return (
+    notification?.updated_by_name ||
+    notification?.updated_by_username ||
+    notification?.created_by_name ||
+    notification?.created_by_username ||
+    '—'
+  )
 }
 
 const getSubmissionLabel = (status) => {
@@ -6196,10 +6332,6 @@ const loadTrashItems = async () => {
   } finally {
     trashLoading.value = false
   }
-}
-
-const formatTrashDeletedAt = (value) => {
-  return value ? formatRelativeTime(value) : '—'
 }
 
 const getTrashSemesterText = (item) => {
@@ -9390,6 +9522,43 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: rgba(239, 68, 68, 0.12);
   color: #fecaca;
+}
+
+.admin-actor-time {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1.3;
+}
+
+.admin-actor-time__name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--app-font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-actor-time__time {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.admin-actor-time--mobile {
+  width: fit-content;
+  max-width: 100%;
+}
+
+:deep(.review-request-table .admin-actor-time),
+:deep(.trash-table .admin-actor-time),
+:deep(.notification-management-table .admin-actor-time) {
+  min-width: 0;
 }
 
 .trash-name-cell {

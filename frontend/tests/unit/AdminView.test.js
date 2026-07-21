@@ -1,7 +1,14 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import AdminView from '@/views/Admin.vue'
 import { applyFontSizePreference } from '@/utils/fontSizePreference'
+
+const adminViewSource = readFileSync(
+  resolve(globalThis.process.cwd(), 'src/views/Admin.vue'),
+  'utf8'
+)
 
 const sampleCourses = [
   { id: 1, name: 'Algorithms', category: 'junior' },
@@ -350,8 +357,72 @@ describe('AdminView', () => {
     expect(wrapper.vm.getNotificationSeverityLabel('info')).toBe('一般')
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[0])).toBe(true)
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[1])).toBe(false)
-    expect(wrapper.vm.formatNotificationDate('invalid')).toBe('—')
-    expect(wrapper.vm.formatNotificationDate(now.toISOString())).not.toBe('—')
+    expect(wrapper.vm.formatAdminActorTime('invalid')).toBe('—')
+    expect(wrapper.vm.formatAdminActorTime(now.toISOString())).not.toBe('—')
+
+    wrapper.unmount()
+  })
+
+  it('consolidates admin actor and time columns without adding mobile submitter identities', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    expect(adminViewSource).toContain("toggleReviewSort('new', 'submitted_at')")
+    expect(adminViewSource).toContain("toggleReviewSort('existing', 'submitted_at')")
+    expect(adminViewSource).toContain("toggleReviewSort('new', 'reviewed_at')")
+    expect(adminViewSource).toContain("toggleReviewSort('existing', 'reviewed_at')")
+    expect(adminViewSource).toContain("toggleTrashSort('deleted_at')")
+    expect(adminViewSource).not.toContain('header="審核人"')
+    expect(adminViewSource).not.toContain('header="審核時間"')
+    expect(adminViewSource).not.toContain("toggleTrashSort('deleted_by')")
+    expect(adminViewSource).not.toContain('<span class="review-mobile-info-label">申請人</span>')
+    expect(adminViewSource).not.toContain('<span class="review-mobile-info-label">投稿人</span>')
+
+    expect(wrapper.vm.getReviewRequesterLabel({ requester_name: '申請者' })).toBe('申請者')
+    expect(wrapper.vm.getReviewRequesterLabel({})).toBe('—')
+    expect(wrapper.vm.getReviewReviewerDisplay({})).toBe('尚未審核')
+    expect(
+      wrapper.vm.getReviewReviewerDisplay({
+        reviewer_name: '管理員',
+        reviewed_at: '2026-07-20T05:32:00Z',
+      })
+    ).toBe('管理員')
+    expect(wrapper.vm.getNotificationUpdaterLabel({})).toBe('—')
+    const actorTime = wrapper.vm.formatAdminActorTime('2026-07-20T05:32:00Z')
+    expect(actorTime).toMatch(/2026\/07\/20.*\d{2}:32/)
+    expect(actorTime).not.toMatch(/上午|下午/)
+
+    const reviewRows = [
+      {
+        id: 2,
+        created_at: '2026-07-20T02:00:00Z',
+        reviewed_at: '2026-07-20T04:00:00Z',
+      },
+      {
+        id: 1,
+        created_at: '2026-07-20T01:00:00Z',
+        reviewed_at: '2026-07-20T03:00:00Z',
+      },
+      { id: 3, created_at: '2026-07-20T03:00:00Z', reviewed_at: null },
+    ]
+    wrapper.vm.toggleReviewSort('new', 'submitted_at')
+    expect(wrapper.vm.sortArchiveReviewItems(reviewRows, 'new').map(({ id }) => id)).toEqual([
+      1, 2, 3,
+    ])
+    wrapper.vm.toggleReviewSort('new', 'reviewed_at')
+    expect(wrapper.vm.sortArchiveReviewItems(reviewRows, 'new').map(({ id }) => id)).toEqual([
+      1, 2, 3,
+    ])
+
+    wrapper.vm.toggleTrashSort('deleted_at')
+    expect(
+      wrapper.vm
+        .sortTrashItems([
+          { id: 2, deleted_at: '2026-07-20T02:00:00Z' },
+          { id: 1, deleted_at: '2026-07-20T01:00:00Z' },
+        ])
+        .map(({ id }) => id)
+    ).toEqual([1, 2])
 
     wrapper.unmount()
   })
@@ -445,7 +516,7 @@ describe('AdminView', () => {
     await wrapper.vm.loadNotifications()
     expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入公告失敗' }))
 
-    expect(wrapper.vm.formatNotificationDate(null)).toBe('—')
+    expect(wrapper.vm.formatAdminActorTime(null)).toBe('—')
     expect(wrapper.vm.formatDateTime(null)).toBe('從未登入')
     expect(wrapper.vm.formatDateTime(new Date(now.getTime() - 30_000).toISOString())).toBe('剛剛')
     expect(wrapper.vm.formatDateTime(new Date(now.getTime() - 10 * 60_000).toISOString())).toBe(
