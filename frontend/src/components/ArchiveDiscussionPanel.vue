@@ -55,7 +55,29 @@
           @submit-report="handleReportSubmit"
         />
 
-        <div v-if="message.replies?.length" class="discussion-replies">
+        <div v-if="message.replies?.length" class="discussion-thread-toggle">
+          <span class="discussion-thread-toggle__line" aria-hidden="true" />
+          <button
+            type="button"
+            class="discussion-thread-toggle__button"
+            :aria-expanded="isThreadExpanded(message.id)"
+            :aria-controls="replyRegionId(message.id)"
+            @click="toggleThread(message.id)"
+          >
+            <i
+              :class="`pi ${isThreadExpanded(message.id) ? 'pi-angle-up' : 'pi-angle-down'}`"
+              aria-hidden="true"
+            />
+            {{ isThreadExpanded(message.id) ? '收起' : '查看' }}
+            {{ message.replies.length }} 則回覆
+          </button>
+        </div>
+
+        <div
+          v-if="message.replies?.length && isThreadExpanded(message.id)"
+          :id="replyRegionId(message.id)"
+          class="discussion-replies"
+        >
           <DiscussionMessageCard
             v-for="reply in message.replies"
             :key="reply.id"
@@ -269,6 +291,7 @@ const reportReason = ref(null)
 const reportCustomMessage = ref('')
 const reportSubmitting = ref(false)
 const expandedById = ref({})
+const expandedThreadsById = ref({})
 const likeLoadingById = ref({})
 const reconnectAttempts = ref(0)
 const currentUser = computed(() => getCurrentUser())
@@ -328,6 +351,25 @@ function isExpanded(messageId) {
 
 function toggleExpanded(messageId) {
   expandedById.value = { ...expandedById.value, [messageId]: !isExpanded(messageId) }
+}
+
+function isThreadExpanded(messageId) {
+  return Boolean(expandedThreadsById.value?.[messageId])
+}
+
+function setThreadExpanded(messageId, expanded) {
+  const next = { ...expandedThreadsById.value }
+  if (expanded) next[messageId] = true
+  else delete next[messageId]
+  expandedThreadsById.value = next
+}
+
+function toggleThread(messageId) {
+  setThreadExpanded(messageId, !isThreadExpanded(messageId))
+}
+
+function replyRegionId(messageId) {
+  return `discussion-replies-${messageId}`
 }
 
 function isLikeLoading(messageId) {
@@ -415,6 +457,9 @@ function applyIncomingMessage(incoming) {
         new Date(left.created_at).getTime() - new Date(right.created_at).getTime() ||
         Number(left.id) - Number(right.id)
     )
+    if (Number(normalized.user_id) === Number(currentUser.value?.id)) {
+      setThreadExpanded(root.id, true)
+    }
     if (replyTarget.value?.message?.id === normalized.reply_to_message_id) cancelReply()
     return
   }
@@ -432,11 +477,13 @@ function applyDelete(messageId, preserveThread) {
       root.is_pinned = false
     } else {
       messages.value = messages.value.filter((message) => message.id !== messageId)
+      setThreadExpanded(messageId, false)
     }
     return
   }
   for (const message of messages.value) {
     message.replies = (message.replies || []).filter((reply) => reply.id !== messageId)
+    if (message.replies.length === 0) setThreadExpanded(message.id, false)
   }
 }
 
@@ -470,6 +517,7 @@ async function connect() {
       const data = JSON.parse(event.data)
       if (data.type === 'history' && Array.isArray(data.messages)) {
         messages.value = data.messages
+        expandedThreadsById.value = {}
         updateCurrentUserMessageNames()
       } else if (data.type === 'message' && data.message) {
         applyIncomingMessage(data.message)
@@ -874,6 +922,51 @@ onBeforeUnmount(closeSocket)
   min-width: 0;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.discussion-thread-toggle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  padding-inline: 0.15rem;
+}
+
+.discussion-thread-toggle__line {
+  width: 1.25rem;
+  height: 1px;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--text-secondary) 42%, transparent);
+}
+
+.discussion-thread-toggle__button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.15rem 0.2rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--app-font-size-xs);
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.discussion-thread-toggle__button:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-secondary) 9%, transparent);
+}
+
+.discussion-thread-toggle__button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.discussion-thread-toggle__button .pi {
+  font-size: 0.7rem;
 }
 
 .discussion-replies {

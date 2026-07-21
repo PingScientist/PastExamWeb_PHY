@@ -197,8 +197,8 @@ const formattedLikeCount = computed(() =>
     'time secondary-actions'
     'content content'
     'inline-panel inline-panel';
-  align-items: start;
-  gap: 0.12rem 0.45rem;
+  align-items: center;
+  gap: 0.08rem 0.45rem;
   min-width: 0;
   padding: 0.65rem;
   border: 1px solid var(--border-color);
@@ -229,6 +229,7 @@ const formattedLikeCount = computed(() =>
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-self: center;
   gap: 0.3rem 0.45rem;
 }
 
@@ -242,6 +243,7 @@ const formattedLikeCount = computed(() =>
 
 .discussion-card__time {
   grid-area: time;
+  align-self: center;
   width: fit-content;
   max-width: 100%;
   color: var(--text-secondary);
@@ -251,7 +253,7 @@ const formattedLikeCount = computed(() =>
 }
 
 .discussion-card__actions {
-  display: flex;
+  display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: flex-end;
@@ -263,7 +265,7 @@ const formattedLikeCount = computed(() =>
 }
 
 .discussion-card__action-stack .discussion-card__actions {
-  align-self: start;
+  align-self: center;
   justify-self: end;
   flex-wrap: nowrap;
   white-space: nowrap;

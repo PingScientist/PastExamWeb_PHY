@@ -162,7 +162,58 @@ describe('ArchiveDiscussionPanel', () => {
       }),
     })
     expect(wrapper.vm.messages[1].replies).toHaveLength(1)
+    expect(wrapper.vm.isThreadExpanded(2)).toBe(true)
     expect(mocks.openSocket).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps replies collapsed by default and clears the toggle after the final reply is deleted', async () => {
+    const socket = makeSocket()
+    const wrapper = mountPanel(socket)
+    socket.onopen()
+    socket.onmessage({
+      data: JSON.stringify({
+        type: 'history',
+        messages: [
+          {
+            id: 10,
+            user_id: 2,
+            user_name: 'Root',
+            content: 'Root message',
+            created_at: '2026-01-01T00:00:00Z',
+            replies: [
+              {
+                id: 11,
+                parent_id: 10,
+                user_id: 3,
+                user_name: 'Reply',
+                content: 'Reply message',
+                created_at: '2026-01-02T00:00:00Z',
+              },
+            ],
+          },
+        ],
+      }),
+    })
+    await flushPromises()
+
+    const toggle = wrapper.get('.discussion-thread-toggle__button')
+    expect(toggle.text()).toContain('查看 1 則回覆')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(toggle.attributes('aria-controls')).toBe('discussion-replies-10')
+    expect(wrapper.find('#discussion-replies-10').exists()).toBe(false)
+
+    await toggle.trigger('click')
+    expect(wrapper.get('.discussion-thread-toggle__button').text()).toContain('收起 1 則回覆')
+    expect(wrapper.get('.discussion-thread-toggle__button').attributes('aria-expanded')).toBe(
+      'true'
+    )
+    expect(wrapper.find('#discussion-replies-10').exists()).toBe(true)
+
+    wrapper.vm.applyDelete(11, false)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.messages[0].replies).toHaveLength(0)
+    expect(wrapper.vm.isThreadExpanded(10)).toBe(false)
+    expect(wrapper.find('.discussion-thread-toggle__button').exists()).toBe(false)
   })
 
   it('rolls back optimistic like state and reports an error when the API fails', async () => {
