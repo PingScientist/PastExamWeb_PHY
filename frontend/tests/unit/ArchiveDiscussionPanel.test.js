@@ -277,7 +277,12 @@ describe('ArchiveDiscussionPanel', () => {
       report_reason: 'misinformation',
       custom_message: null,
     })
-    expect(mocks.toastAdd).toHaveBeenCalledWith(expect.objectContaining({ summary: '回報已送出' }))
+    expect(mocks.toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: '回報已送出',
+        detail: '留言回報已送出，請等待管理員審核',
+      })
+    )
     expect(wrapper.vm.reportTarget).toBeNull()
     expect(wrapper.vm.reportSubmitting).toBe(false)
   })

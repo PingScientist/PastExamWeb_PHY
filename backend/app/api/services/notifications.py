@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, update
+from sqlalchemy import delete, func, or_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -326,6 +326,48 @@ async def mark_all_personal_notifications_read(
     )
     await db.commit()
     return {"success": True, "read_at": read_at}
+
+
+@router.delete("/personal/{personal_notification_id}")
+async def delete_personal_notification(
+    personal_notification_id: int,
+    db: AsyncSession = Depends(get_session),
+    current_user: UserRoles = Depends(get_current_user),
+):
+    deleted_id = await db.scalar(
+        delete(PersonalNotification)
+        .where(
+            PersonalNotification.id == personal_notification_id,
+            PersonalNotification.user_id == current_user.user_id,
+        )
+        .returning(PersonalNotification.id)
+    )
+    if deleted_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
+        )
+    await db.commit()
+    return {"success": True}
+
+
+@router.delete("/personal")
+async def delete_all_personal_notifications(
+    db: AsyncSession = Depends(get_session),
+    current_user: UserRoles = Depends(get_current_user),
+):
+    deleted_ids = list(
+        (
+            await db.execute(
+                delete(PersonalNotification)
+                .where(PersonalNotification.user_id == current_user.user_id)
+                .returning(PersonalNotification.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    await db.commit()
+    return {"deleted_count": len(deleted_ids)}
 
 
 @router.put("/mark-all-read")

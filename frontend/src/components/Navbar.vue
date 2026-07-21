@@ -142,10 +142,14 @@
       :loading="notificationStore.state.loadingCenter"
       :focus-type="notificationFocusType"
       :focus-id="notificationFocusId"
+      :deleting-personal-id="deletingPersonalNotificationId"
+      :deleting-all-personal="deletingAllPersonalNotifications"
       @update:visible="handleNotificationCenterVisible"
       @mark-announcement-read="notificationStore.markAnnouncementRead"
       @mark-personal-read="notificationStore.markPersonalRead"
       @mark-all-personal-read="notificationStore.markAllPersonalRead"
+      @delete-personal="handleDeletePersonalNotification"
+      @delete-all-personal="handleDeleteAllPersonalNotifications"
       @open-personal-source="handlePersonalNotificationSource"
     />
 
@@ -304,6 +308,7 @@ import { useTheme } from '../utils/useTheme'
 import { authService, reportService } from '../api'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { useNotifications } from '../utils/useNotifications'
 import NotificationModal from './NotificationModal.vue'
@@ -345,6 +350,8 @@ export default {
       heartbeatTimer: null,
       notificationFocusType: null,
       notificationFocusId: null,
+      deletingPersonalNotificationId: null,
+      deletingAllPersonalNotifications: false,
       issueTypes: [
         { label: 'Bug / 程式錯誤', value: 'bug' },
         { label: '功能建議', value: 'enhancement' },
@@ -358,6 +365,7 @@ export default {
     const { isDarkTheme, toggleTheme } = useTheme()
     const router = useRouter()
     const toast = useToast()
+    const confirm = useConfirm()
     const notificationStore = useNotifications()
 
     return {
@@ -365,6 +373,7 @@ export default {
       toggleTheme,
       router,
       toast,
+      confirm,
       notificationStore,
     }
   },
@@ -564,6 +573,78 @@ export default {
           },
         })
       }
+    },
+
+    async deletePersonalNotification(item) {
+      if (!item?.id || this.deletingPersonalNotificationId) return
+      this.deletingPersonalNotificationId = item.id
+      try {
+        await this.notificationStore.deletePersonalNotification(item.id)
+        this.toast.add({
+          severity: 'success',
+          summary: '通知已刪除',
+          detail: '這則個人通知已永久刪除',
+          life: 3000,
+        })
+      } catch (error) {
+        console.error('Delete personal notification error:', error)
+        this.toast.add({
+          severity: 'error',
+          summary: '刪除失敗',
+          detail: '無法刪除通知，請稍後再試',
+          life: 3000,
+        })
+      } finally {
+        this.deletingPersonalNotificationId = null
+      }
+    },
+
+    handleDeletePersonalNotification(item) {
+      this.confirm.require({
+        header: '刪除這則通知？',
+        message: '通知刪除後無法復原，也不會進入垃圾桶。',
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: '取消',
+        acceptLabel: '刪除',
+        acceptClass: 'p-button-danger',
+        accept: () => this.deletePersonalNotification(item),
+      })
+    },
+
+    async deleteAllPersonalNotifications() {
+      if (this.deletingAllPersonalNotifications) return
+      this.deletingAllPersonalNotifications = true
+      try {
+        await this.notificationStore.deleteAllPersonalNotifications()
+        this.toast.add({
+          severity: 'success',
+          summary: '已刪除全部個人通知',
+          detail: '所有個人通知已永久刪除',
+          life: 3000,
+        })
+      } catch (error) {
+        console.error('Delete all personal notifications error:', error)
+        this.toast.add({
+          severity: 'error',
+          summary: '刪除失敗',
+          detail: '無法刪除全部個人通知，請稍後再試',
+          life: 3000,
+        })
+      } finally {
+        this.deletingAllPersonalNotifications = false
+      }
+    },
+
+    handleDeleteAllPersonalNotifications() {
+      this.confirm.require({
+        header: '刪除全部個人通知？',
+        message: '這會永久刪除你的所有個人通知，刪除後無法復原，也不會進入垃圾桶。',
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: '取消',
+        acceptLabel: '全部刪除',
+        acceptClass: 'p-button-danger',
+        accept: () => this.deleteAllPersonalNotifications(),
+      })
     },
 
     handleToggleTheme() {

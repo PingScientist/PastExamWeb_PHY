@@ -373,10 +373,7 @@ async def create_comment_report(
         user_id=current_user.user_id,
         notification_type=PersonalNotificationType.COMMENT_REPORT_SUBMITTED,
         title="留言回報已成功送出",
-        message=(
-            f"回報編號 #{report.id}，原因：{REPORT_REASON_LABELS[reason]}。"
-            "請等待管理員審核。"
-        ),
+        message=f"原因：{REPORT_REASON_LABELS[reason]}。請等待管理員審核。",
         source_type="comment_report",
         source_id=report.id,
         metadata={"report_id": report.id, "reason": reason, "status": report.status},
@@ -540,7 +537,7 @@ async def review_comment_report(
             db,
             user_id=report.reporter_user_id,
             notification_type=PersonalNotificationType.COMMENT_REPORT_RESULT,
-            title=f"留言回報 #{report.id} 審核完成",
+            title="留言回報審核完成",
             message=(
                 f"審核結果：{result_label}。管理員答覆：{response}。"
                 f"處置：{'留言已刪除' if report.comment_deleted else '未刪除留言'}。"

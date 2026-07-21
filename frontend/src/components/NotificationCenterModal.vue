@@ -87,15 +87,28 @@
           <TabPanel value="personal">
             <div class="personal-toolbar">
               <span class="text-sm text-500">{{ counts.personal_notifications }} 則未讀</span>
-              <Button
-                label="全部標記為已讀"
-                icon="pi pi-check-circle"
-                size="small"
-                outlined
-                class="personal-mark-all-button"
-                :disabled="!counts.personal_notifications"
-                @click="$emit('mark-all-personal-read')"
-              />
+              <div class="personal-toolbar__actions">
+                <Button
+                  label="全部標記為已讀"
+                  icon="pi pi-check-circle"
+                  size="small"
+                  outlined
+                  class="personal-mark-all-button"
+                  :disabled="!counts.personal_notifications || deletingAllPersonal"
+                  @click="$emit('mark-all-personal-read')"
+                />
+                <Button
+                  label="全部刪除"
+                  icon="pi pi-trash"
+                  severity="danger"
+                  size="small"
+                  outlined
+                  class="personal-delete-all-button"
+                  :loading="deletingAllPersonal"
+                  :disabled="personalNotifications.length === 0 || deletingAllPersonal"
+                  @click="$emit('delete-all-personal')"
+                />
+              </div>
             </div>
             <div v-if="personalNotifications.length === 0" class="notification-empty">
               <i class="pi pi-bell text-4xl" /><span>目前沒有個人通知</span>
@@ -128,13 +141,28 @@
                     <small v-if="!item.source_available" class="text-500">來源已不存在</small>
                     <div class="notification-card__footer">
                       <small class="text-500">{{ formatTimestamp(item.created_at) }}</small>
-                      <Button
-                        label="檢視"
-                        size="small"
-                        outlined
-                        class="notification-view-button"
-                        @click="openPersonal(item)"
-                      />
+                      <div class="notification-card__actions">
+                        <Button
+                          label="檢視"
+                          size="small"
+                          outlined
+                          class="notification-view-button"
+                          :disabled="deletingPersonalId === item.id || deletingAllPersonal"
+                          @click="openPersonal(item)"
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          severity="danger"
+                          size="small"
+                          outlined
+                          class="notification-delete-button"
+                          aria-label="刪除通知"
+                          title="刪除通知"
+                          :loading="deletingPersonalId === item.id"
+                          :disabled="deletingPersonalId === item.id || deletingAllPersonal"
+                          @click="$emit('delete-personal', item)"
+                        />
+                      </div>
                     </div>
                   </article>
                 </div>
@@ -182,6 +210,8 @@ const props = defineProps({
   personalNotifications: { type: Array, default: () => [] },
   counts: { type: Object, default: () => ({ total: 0, personal_notifications: 0 }) },
   loading: Boolean,
+  deletingPersonalId: { type: Number, default: null },
+  deletingAllPersonal: Boolean,
   focusType: { type: String, default: null },
   focusId: { type: Number, default: null },
 })
@@ -190,6 +220,8 @@ const emit = defineEmits([
   'mark-announcement-read',
   'mark-personal-read',
   'mark-all-personal-read',
+  'delete-personal',
+  'delete-all-personal',
   'open-personal-source',
 ])
 const activeTab = ref('announcements')
@@ -266,6 +298,19 @@ watch(
   () => props.visible,
   (visible) => {
     if (!visible) detailVisible.value = false
+  }
+)
+watch(
+  () => props.personalNotifications,
+  (items) => {
+    if (
+      selectedType.value === 'personal' &&
+      selectedItem.value &&
+      !items.some((item) => item.id === selectedItem.value.id)
+    ) {
+      detailVisible.value = false
+      selectedItem.value = null
+    }
   }
 )
 watch(
@@ -387,7 +432,9 @@ function formatTimestamp(value, withTime = true) {
 .notification-card__heading,
 .notification-card__type,
 .notification-card__tags,
-.notification-card__footer {
+.notification-card__footer,
+.notification-card__actions,
+.personal-toolbar__actions {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -396,6 +443,14 @@ function formatTimestamp(value, withTime = true) {
 .notification-card__footer {
   justify-content: space-between;
   gap: 0.75rem;
+}
+.notification-card__actions,
+.personal-toolbar__actions {
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+:deep(.notification-delete-button.p-button) {
+  flex: 0 0 auto;
 }
 .notification-card__type {
   gap: 0.4rem;
@@ -436,6 +491,9 @@ function formatTimestamp(value, withTime = true) {
   gap: 0.5rem;
   margin-bottom: 0.75rem;
 }
+.personal-toolbar__actions {
+  flex-wrap: wrap;
+}
 .notification-detail {
   max-height: 60vh;
   overflow-y: auto;
@@ -469,6 +527,9 @@ function formatTimestamp(value, withTime = true) {
   .notification-card__footer {
     align-items: flex-end;
     gap: 0.55rem;
+  }
+  .personal-toolbar__actions {
+    width: 100%;
   }
 }
 

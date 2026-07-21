@@ -14,6 +14,8 @@ const service = vi.hoisted(() => ({
   markPersonalRead: vi.fn(),
   markAllPersonalRead: vi.fn(),
   markAllRead: vi.fn(),
+  deletePersonal: vi.fn(),
+  deleteAllPersonal: vi.fn(),
 }))
 vi.mock('@/api', () => ({ notificationService: service }))
 vi.mock('@/utils/http', () => ({ isUnauthorizedError: () => false }))
@@ -30,6 +32,50 @@ describe('useNotifications', () => {
     service.markPersonalRead.mockResolvedValue({})
     service.markAllPersonalRead.mockResolvedValue({})
     service.markAllRead.mockResolvedValue({})
+    service.deletePersonal.mockResolvedValue({ data: { success: true } })
+    service.deleteAllPersonal.mockResolvedValue({ data: { deleted_count: 1 } })
+  })
+
+  it('removes one notification and refreshes shared unread state after success', async () => {
+    const { useNotifications } = await import('@/utils/useNotifications.js')
+    const store = useNotifications()
+    await store.openCenter()
+    service.getCenter.mockResolvedValueOnce({
+      data: {
+        announcements: summary.announcements,
+        personal_notifications: [],
+        counts: { announcements: 1, personal_notifications: 0, total: 1 },
+      },
+    })
+    service.getUnreadSummary.mockResolvedValueOnce({
+      data: {
+        announcements: summary.announcements,
+        personal_notifications: [],
+        counts: { announcements: 1, personal_notifications: 0, total: 1 },
+      },
+    })
+
+    await store.deletePersonalNotification(2)
+
+    expect(service.deletePersonal).toHaveBeenCalledWith(2)
+    expect(store.state.personalNotifications).toEqual([])
+    expect(store.state.unreadSummary.personal_notifications).toEqual([])
+    expect(store.state.counts).toEqual({ announcements: 1, personal_notifications: 0, total: 1 })
+  })
+
+  it('keeps data on delete failure and clears all personal notification state after bulk success', async () => {
+    const { useNotifications } = await import('@/utils/useNotifications.js')
+    const store = useNotifications()
+    await store.openCenter()
+    service.deletePersonal.mockRejectedValueOnce(new Error('delete failed'))
+    await expect(store.deletePersonalNotification(2)).rejects.toThrow('delete failed')
+    expect(store.state.personalNotifications).toHaveLength(1)
+
+    await store.deleteAllPersonalNotifications()
+    expect(service.deleteAllPersonal).toHaveBeenCalledOnce()
+    expect(store.state.personalNotifications).toEqual([])
+    expect(store.state.unreadSummary.personal_notifications).toEqual([])
+    expect(store.state.counts).toEqual({ announcements: 1, personal_notifications: 0, total: 1 })
   })
 
   it('checks unread content once per login session', async () => {

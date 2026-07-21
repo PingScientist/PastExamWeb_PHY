@@ -104,6 +104,9 @@ async def test_comment_report_creation_validates_auth_reason_scope_and_duplicate
                 )
             )
             assert notification is not None
+            assert notification.title == "留言回報已成功送出"
+            assert "回報編號" not in notification.message
+            assert f"#{body['id']}" not in notification.message
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         async with session_maker() as session:
@@ -217,6 +220,16 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
                 or 0
             )
             assert result_count == 3
+            result_notification = await session.scalar(
+                select(PersonalNotification).where(
+                    PersonalNotification.user_id == reporter.id,
+                    PersonalNotification.notification_type == "comment_report_result",
+                    PersonalNotification.source_id == report_ids[0],
+                )
+            )
+            assert result_notification.title == "留言回報審核完成"
+            assert "回報編號" not in result_notification.title
+            assert "回報編號" not in result_notification.message
             deleted_message = await session.get(ArchiveDiscussionMessage, messages[2].id)
             assert deleted_message.deleted_at is not None
     finally:

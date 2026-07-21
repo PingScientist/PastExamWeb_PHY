@@ -70,6 +70,15 @@ describe('NotificationCenterModal', () => {
     const viewButtons = wrapper.findAll('.notification-view-button')
     expect(viewButtons).toHaveLength(2)
     expect(viewButtons.every((button) => button.text() === '檢視')).toBe(true)
+    expect(wrapper.findAll('.notification-delete-button')).toHaveLength(1)
+    expect(wrapper.get('.notification-delete-button').attributes('aria-label')).toBe('刪除通知')
+    expect(
+      wrapper.find('.notification-announcement-groups .notification-delete-button').exists()
+    ).toBe(false)
+    await wrapper.get('.notification-delete-button').trigger('click')
+    expect(wrapper.emitted('delete-personal')).toEqual([[personal[0]]])
+    await wrapper.get('.personal-delete-all-button').trigger('click')
+    expect(wrapper.emitted('delete-all-personal')).toHaveLength(1)
     wrapper.vm.openAnnouncement(announcements[0])
     expect(wrapper.emitted('mark-announcement-read')).toEqual([[1]])
     wrapper.vm.openPersonal(personal[0])
@@ -172,5 +181,31 @@ describe('NotificationCenterModal', () => {
     expect(wrapper.text()).toContain('目前沒有個人通知')
     expect(wrapper.find('.notification-month-group').exists()).toBe(false)
     expect(wrapper.find('.notification-card').exists()).toBe(false)
+  })
+
+  it('removes an empty month group when the last notification is deleted', async () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: { visible: true, personalNotifications: personal },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
+        },
+      },
+    })
+
+    expect(wrapper.find('.notification-personal-groups .notification-month-group').exists()).toBe(
+      true
+    )
+    await wrapper.setProps({ personalNotifications: [] })
+    expect(wrapper.find('.notification-personal-groups').exists()).toBe(false)
+    expect(wrapper.text()).toContain('目前沒有個人通知')
   })
 })

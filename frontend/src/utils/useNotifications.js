@@ -95,6 +95,51 @@ async function markAllRead() {
   state.modalVisible = false
 }
 
+function removePersonalFromLocalState(id) {
+  const item = state.personalNotifications.find((notification) => notification.id === id)
+  state.personalNotifications = state.personalNotifications.filter(
+    (notification) => notification.id !== id
+  )
+  state.unreadSummary = {
+    ...state.unreadSummary,
+    personal_notifications: (state.unreadSummary.personal_notifications || []).filter(
+      (notification) => notification.id !== id
+    ),
+  }
+  if (!item?.read_at) {
+    const personal = Math.max(0, Number(state.counts.personal_notifications || 0) - 1)
+    updateCounts({
+      ...state.counts,
+      personal_notifications: personal,
+      total: Number(state.counts.announcements || 0) + personal,
+    })
+    state.unreadSummary.counts = { ...state.counts }
+  }
+}
+
+async function deletePersonalNotification(id) {
+  const response = await notificationService.deletePersonal(id)
+  removePersonalFromLocalState(id)
+  await Promise.allSettled([refreshCenter(), refreshSummary()])
+  return response?.data
+}
+
+async function deleteAllPersonalNotifications() {
+  const response = await notificationService.deleteAllPersonal()
+  state.personalNotifications = []
+  updateCounts({
+    ...state.counts,
+    personal_notifications: 0,
+    total: Number(state.counts.announcements || 0),
+  })
+  state.unreadSummary = {
+    ...state.unreadSummary,
+    personal_notifications: [],
+    counts: { ...state.counts },
+  }
+  return response?.data
+}
+
 async function openCenter() {
   state.modalVisible = false
   await refreshCenter()
@@ -132,6 +177,8 @@ export function useNotifications() {
     markPersonalRead,
     markAllPersonalRead,
     markAllRead,
+    deletePersonalNotification,
+    deleteAllPersonalNotifications,
     openCenter,
     resetForLogout,
     beginLoginSession,

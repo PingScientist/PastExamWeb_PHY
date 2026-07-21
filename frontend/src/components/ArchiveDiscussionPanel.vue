@@ -647,14 +647,14 @@ async function handleReportSubmit(payload) {
   if (!courseId || !archiveId || !commentId || reportSubmitting.value) return
   reportSubmitting.value = true
   try {
-    const { data } = await discussionService.reportArchiveMessage(courseId, archiveId, commentId, {
+    await discussionService.reportArchiveMessage(courseId, archiveId, commentId, {
       report_reason: payload.report_reason,
       custom_message: payload.custom_message,
     })
     toast?.add?.({
       severity: 'success',
       summary: '回報已送出',
-      detail: `回報編號 #${data.id}，請等待管理員審核`,
+      detail: '留言回報已送出，請等待管理員審核',
       life: 3500,
     })
     cancelReport()

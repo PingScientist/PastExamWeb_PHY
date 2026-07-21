@@ -124,6 +124,12 @@ describe('API service wrappers', () => {
 
     notificationService.remove(1)
     expect(deleteMock).toHaveBeenCalledWith('/notifications/admin/notifications/1')
+
+    notificationService.deletePersonal(7)
+    expect(deleteMock).toHaveBeenCalledWith('/notifications/personal/7')
+
+    notificationService.deleteAllPersonal()
+    expect(deleteMock).toHaveBeenCalledWith('/notifications/personal')
   })
 
   it('auth service proxies', async () => {

@@ -27,6 +27,12 @@ export const notificationService = {
   markAllPersonalRead() {
     return api.put(`${BASE_PATH}/personal/read-all`)
   },
+  deletePersonal(id) {
+    return api.delete(`${BASE_PATH}/personal/${id}`)
+  },
+  deleteAllPersonal() {
+    return api.delete(`${BASE_PATH}/personal`)
+  },
   markAllRead() {
     return api.put(`${BASE_PATH}/mark-all-read`)
   },

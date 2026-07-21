@@ -12,6 +12,7 @@ const setTokenMock = vi.hoisted(() => vi.fn())
 const getCurrentUserMock = vi.hoisted(() => vi.fn())
 const isAuthenticatedMock = vi.hoisted(() => vi.fn())
 const toastAddMock = vi.hoisted(() => vi.fn())
+const confirmRequireMock = vi.hoisted(() => vi.fn())
 const notificationStoreMock = vi.hoisted(() => ({
   state: {
     modalVisible: false,
@@ -23,6 +24,8 @@ const notificationStoreMock = vi.hoisted(() => ({
   },
   initNotifications: vi.fn(),
   openCenter: vi.fn(),
+  deletePersonalNotification: vi.fn(),
+  deleteAllPersonalNotifications: vi.fn(),
   markNotificationAsSeen: vi.fn(),
   latestUnseenNotification: null,
 }))
@@ -66,6 +69,10 @@ vi.mock('primevue/usetoast', () => ({
   useToast: () => ({
     add: toastAddMock,
   }),
+}))
+
+vi.mock('primevue/useconfirm', () => ({
+  useConfirm: () => ({ require: confirmRequireMock }),
 }))
 
 vi.mock('@/utils/analytics', () => ({
@@ -113,6 +120,7 @@ describe('Navbar methods', () => {
     createSystemIssueMock.mockReset()
     createSystemIssueMock.mockResolvedValue({ data: { id: 1 } })
     toastAddMock.mockReset()
+    confirmRequireMock.mockReset()
     notificationStoreMock.state.modalVisible = false
     notificationStoreMock.state.centerVisible = false
     notificationStoreMock.state.all = []
@@ -121,6 +129,8 @@ describe('Navbar methods', () => {
     notificationStoreMock.state.loadingAll = false
     notificationStoreMock.initNotifications.mockReset()
     notificationStoreMock.openCenter.mockReset()
+    notificationStoreMock.deletePersonalNotification.mockReset()
+    notificationStoreMock.deleteAllPersonalNotifications.mockReset()
     notificationStoreMock.markNotificationAsSeen.mockReset()
     notificationStoreMock.latestUnseenNotification = null
     getCurrentUserMock.mockReset()
@@ -304,6 +314,42 @@ describe('Navbar methods', () => {
       query: { courseId: 2, archiveId: 3, threadId: 7, messageId: 9 },
     })
     expect(notificationStoreMock.state.centerVisible).toBe(false)
+  })
+
+  it('confirms personal notification deletion before calling the store', async () => {
+    const item = { id: 7 }
+    const ctx = {
+      confirm: { require: confirmRequireMock },
+      notificationStore: notificationStoreMock,
+      toast: { add: toastAddMock },
+      deletingPersonalNotificationId: null,
+    }
+
+    Navbar.methods.handleDeletePersonalNotification.call(ctx, item)
+    expect(notificationStoreMock.deletePersonalNotification).not.toHaveBeenCalled()
+    const options = confirmRequireMock.mock.calls[0][0]
+    expect(options.message).toContain('不會進入垃圾桶')
+    await Navbar.methods.deletePersonalNotification.call(ctx, item)
+    expect(notificationStoreMock.deletePersonalNotification).toHaveBeenCalledWith(7)
+    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ summary: '通知已刪除' }))
+  })
+
+  it('confirms and permanently deletes all personal notifications', async () => {
+    const ctx = {
+      confirm: { require: confirmRequireMock },
+      notificationStore: notificationStoreMock,
+      toast: { add: toastAddMock },
+      deletingAllPersonalNotifications: false,
+    }
+
+    Navbar.methods.handleDeleteAllPersonalNotifications.call(ctx)
+    expect(notificationStoreMock.deleteAllPersonalNotifications).not.toHaveBeenCalled()
+    expect(confirmRequireMock.mock.calls[0][0].message).toContain('所有個人通知')
+    await Navbar.methods.deleteAllPersonalNotifications.call(ctx)
+    expect(notificationStoreMock.deleteAllPersonalNotifications).toHaveBeenCalledOnce()
+    expect(toastAddMock).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: '已刪除全部個人通知' })
+    )
   })
 
   it('toggles more actions menu and invokes menu actions', () => {
