@@ -62,14 +62,14 @@ function makeSocket() {
   }
 }
 
-function mountPanel(socket) {
+function mountPanel(socket, confirm = { require: ({ accept }) => accept() }) {
   mocks.openSocket.mockReturnValue(socket)
   return mount(ArchiveDiscussionPanel, {
     props: { courseId: 1, archiveId: 2 },
     global: {
       provide: {
         toast: { add: mocks.toastAdd },
-        confirm: { require: ({ accept }) => accept() },
+        confirm,
       },
       stubs: {
         DiscussionMessageCard: { template: '<article />' },
@@ -94,6 +94,7 @@ describe('ArchiveDiscussionPanel', () => {
     mocks.like.mockResolvedValue({ data: { liked: true, like_count: 10 } })
     mocks.unlike.mockResolvedValue({ data: { liked: false, like_count: 9 } })
     mocks.report.mockResolvedValue({ data: { id: 88 } })
+    mocks.remove.mockResolvedValue({ data: { preserve_thread: false } })
   })
 
   it('sorts roots and appends a reply to the existing thread without reloading', async () => {
@@ -285,5 +286,31 @@ describe('ArchiveDiscussionPanel', () => {
     )
     expect(wrapper.vm.reportTarget).toBeNull()
     expect(wrapper.vm.reportSubmitting).toBe(false)
+  })
+
+  it('requires the localized irreversible-delete confirmation before deleting a comment', async () => {
+    const require = vi.fn()
+    const wrapper = mountPanel(makeSocket(), { require })
+    const message = { id: 10, parent_id: null, replies: [{ id: 11, parent_id: 10 }] }
+
+    wrapper.vm.confirmDelete(message)
+
+    expect(require).toHaveBeenCalledTimes(1)
+    const confirmation = require.mock.calls[0][0]
+    expect(confirmation).toMatchObject({
+      header: '刪除這則留言？',
+      message: '留言刪除後無法復原，也不會進入垃圾桶。已有的回覆會依目前討論串規則保留。',
+      rejectLabel: '取消',
+      acceptLabel: '刪除',
+      acceptClass: 'p-button-danger',
+    })
+    expect(mocks.remove).not.toHaveBeenCalled()
+
+    confirmation.accept()
+    confirmation.accept()
+    await flushPromises()
+
+    expect(mocks.remove).toHaveBeenCalledTimes(1)
+    expect(mocks.remove).toHaveBeenCalledWith(1, 2, 10)
   })
 })

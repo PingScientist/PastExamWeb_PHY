@@ -160,6 +160,42 @@ describe('NotificationCenterModal', () => {
     expect(wrapper.text()).not.toContain('2026年4月')
   })
 
+  it('adds dividers only between adjacent messages in the same month', () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: {
+        visible: true,
+        announcements: [
+          { ...announcements[0], id: 1, updated_at: '2026-07-20T00:00:00Z' },
+          { ...announcements[0], id: 2, updated_at: '2026-07-10T00:00:00Z' },
+        ],
+        personalNotifications: [
+          { ...personal[0], id: 3, created_at: '2026-07-20T00:00:00Z' },
+          { ...personal[0], id: 4, created_at: '2026-07-10T00:00:00Z' },
+        ],
+      },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
+        },
+      },
+    })
+
+    for (const selector of ['.notification-announcement-groups', '.notification-personal-groups']) {
+      const cards = wrapper.find(selector).findAll('.notification-card')
+      expect(cards).toHaveLength(2)
+      expect(cards[0].classes()).toContain('notification-card--with-divider')
+      expect(cards[1].classes()).not.toContain('notification-card--with-divider')
+    }
+  })
+
   it('shows empty states without rendering month groups', () => {
     const wrapper = mount(NotificationCenterModal, {
       props: { visible: true, announcements: [], personalNotifications: [] },

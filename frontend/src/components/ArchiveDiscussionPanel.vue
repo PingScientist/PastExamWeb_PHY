@@ -293,6 +293,7 @@ const reportSubmitting = ref(false)
 const expandedById = ref({})
 const expandedThreadsById = ref({})
 const likeLoadingById = ref({})
+const deleteLoadingById = ref({})
 const reconnectAttempts = ref(0)
 const currentUser = computed(() => getCurrentUser())
 const canSend = computed(() => props.enabled && connected.value && Boolean(currentUser.value))
@@ -718,9 +719,12 @@ async function toggleLike(message) {
 }
 
 async function deleteMessage(message) {
+  if (deleteLoadingById.value[message.id]) return
+
   const courseId = normalizeId(props.courseId)
   const archiveId = normalizeId(props.archiveId)
   if (!courseId || !archiveId) return
+  deleteLoadingById.value = { ...deleteLoadingById.value, [message.id]: true }
   try {
     const { data } = await discussionService.deleteArchiveMessage(courseId, archiveId, message.id)
     applyDelete(message.id, Boolean(data?.preserve_thread))
@@ -738,20 +742,24 @@ async function deleteMessage(message) {
       detail: '無法刪除訊息，請稍後再試',
       life: 3000,
     })
+  } finally {
+    deleteLoadingById.value = { ...deleteLoadingById.value, [message.id]: false }
   }
 }
 
 function confirmDelete(message) {
-  if (!confirm?.require) {
-    deleteMessage(message)
-    return
-  }
+  if (!confirm?.require || deleteLoadingById.value[message.id]) return
+
+  const hasReplies = !message.parent_id && Boolean(message.replies?.length)
   confirm.require({
-    message: message.replies?.length
-      ? '確定要刪除這則訊息嗎？回覆會保留在「此留言已刪除」的討論串下。'
-      : '確定要刪除這則訊息嗎？',
-    header: '確認刪除',
+    message: hasReplies
+      ? '留言刪除後無法復原，也不會進入垃圾桶。已有的回覆會依目前討論串規則保留。'
+      : '留言刪除後無法復原，也不會進入垃圾桶。',
+    header: '刪除這則留言？',
     icon: 'pi pi-exclamation-triangle',
+    rejectLabel: '取消',
+    acceptLabel: '刪除',
+    acceptClass: 'p-button-danger',
     accept: () => deleteMessage(message),
   })
 }

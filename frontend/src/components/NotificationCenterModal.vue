@@ -48,10 +48,13 @@
                 <h3 class="notification-month-heading">{{ group.label }}</h3>
                 <div class="notification-card-list">
                   <article
-                    v-for="item in group.items"
+                    v-for="(item, itemIndex) in group.items"
                     :key="item.id"
                     class="notification-card"
-                    :class="{ 'notification-card--unread': !item.is_read }"
+                    :class="{
+                      'notification-card--unread': !item.is_read,
+                      'notification-card--with-divider': itemIndex < group.items.length - 1,
+                    }"
                   >
                     <div class="notification-card__heading">
                       <span class="notification-card__type">
@@ -122,10 +125,13 @@
                 <h3 class="notification-month-heading">{{ group.label }}</h3>
                 <div class="notification-card-list">
                   <article
-                    v-for="item in group.items"
+                    v-for="(item, itemIndex) in group.items"
                     :key="item.id"
                     class="notification-card"
-                    :class="{ 'notification-card--unread': !item.read_at }"
+                    :class="{
+                      'notification-card--unread': !item.read_at,
+                      'notification-card--with-divider': itemIndex < group.items.length - 1,
+                    }"
                   >
                     <div class="notification-card__heading">
                       <span class="notification-card__type">
@@ -417,6 +423,7 @@ function formatTimestamp(value, withTime = true) {
   gap: 0.6rem;
 }
 .notification-card {
+  position: relative;
   display: grid;
   min-width: 0;
   gap: 0.55rem;
@@ -424,6 +431,16 @@ function formatTimestamp(value, withTime = true) {
   border: 1px solid var(--surface-border);
   border-radius: var(--content-border-radius);
   background: var(--surface-card);
+}
+.notification-card--with-divider::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: -0.3rem;
+  block-size: 1px;
+  background: var(--surface-border);
+  opacity: 0.65;
+  pointer-events: none;
 }
 .notification-card--unread {
   border-inline-start-color: var(--primary-color);
