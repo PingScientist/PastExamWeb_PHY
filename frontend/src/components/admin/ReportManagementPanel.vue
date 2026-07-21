@@ -69,8 +69,8 @@
         :sortOrder="systemPage.sortOrder"
         responsiveLayout="stack"
         breakpoint="1023px"
-        class="report-management__table admin-data-table"
-        tableStyle="table-layout: fixed; min-width: 64rem"
+        class="report-management__table report-management__system-table admin-data-table"
+        tableStyle="table-layout: fixed; min-width: 60rem"
         @page="onSystemPage"
         @sort="onSystemSort"
       >
@@ -78,18 +78,22 @@
         <Column
           field="created_at"
           sortField="created_at"
-          header="回報時間"
+          header="回報"
           sortable
-          style="width: 10rem"
-          ><template #body="{ data }">{{ formatDateTime(data.created_at, true) }}</template></Column
-        >
-        <Column
-          field="reporter_name"
-          sortField="reporter"
-          header="回報者"
-          sortable
-          style="width: 9rem"
-        />
+          headerClass="report-person-time-column"
+          bodyClass="report-person-time-column"
+          style="width: 10rem; min-width: 10rem"
+          ><template #body="{ data }"
+            ><div class="report-person-time">
+              <span class="report-person-time__name" :title="data.reporter_name">
+                {{ data.reporter_name }}
+              </span>
+              <time class="report-person-time__time" :datetime="data.created_at">
+                {{ formatDateTime(data.created_at, true) }}
+              </time>
+            </div>
+          </template>
+        </Column>
         <Column
           field="title"
           sortField="title"
@@ -190,7 +194,7 @@
         responsiveLayout="stack"
         breakpoint="1199px"
         class="report-management__table report-management__comment-table admin-data-table"
-        tableStyle="table-layout: fixed; min-width: 79rem"
+        tableStyle="table-layout: fixed; min-width: 75rem"
         @page="onCommentPage"
         @sort="onCommentSort"
       >
@@ -198,17 +202,22 @@
         <Column
           field="created_at"
           sortField="created_at"
-          header="回報時間"
+          header="回報"
           sortable
-          headerClass="report-created-at-column"
-          bodyClass="report-created-at-column"
+          headerClass="report-person-time-column"
+          bodyClass="report-person-time-column"
           style="width: 9.5rem; min-width: 9.5rem"
           ><template #body="{ data }"
-            ><span class="report-time-cell__text">{{
-              formatDateTime(data.created_at, true)
-            }}</span></template
-          ></Column
-        >
+            ><div class="report-person-time">
+              <span class="report-person-time__name" :title="data.reporter_name">
+                {{ data.reporter_name }}
+              </span>
+              <time class="report-person-time__time" :datetime="data.created_at">
+                {{ formatDateTime(data.created_at, true) }}
+              </time>
+            </div>
+          </template>
+        </Column>
         <Column
           field="reason"
           sortField="reason"
@@ -229,23 +238,9 @@
           </template>
         </Column>
         <Column
-          field="reporter_name"
-          sortField="reporter"
-          header="回報者"
-          sortable
-          headerClass="report-user-column"
-          bodyClass="report-user-column"
-          style="width: 7rem; min-width: 7rem"
-          ><template #body="{ data }"
-            ><span class="report-user-cell__text" :title="data.reporter_name">{{
-              data.reporter_name
-            }}</span></template
-          ></Column
-        >
-        <Column
           field="comment_author_name"
           sortField="comment_author"
-          header="留言作者"
+          header="留言者"
           sortable
           headerClass="report-user-column"
           bodyClass="report-user-column"
@@ -264,33 +259,39 @@
             </div></template
           ></Column
         >
-        <Column
-          field="reviewer_name"
-          sortField="reviewer"
-          header="審核人"
-          sortable
-          style="width: 8rem"
+        <Column field="status" sortField="status" header="狀態" sortable style="width: 8rem"
           ><template #body="{ data }"
-            ><div class="report-reviewer-cell">
-              <Tag :severity="statusSeverity(data.status)" :value="statusLabel(data.status)" />
-              <span class="report-user-cell__text" :title="data.reviewer_name || '尚未審核'">
-                {{ data.reviewer_name || '尚未審核' }}
-              </span>
-            </div>
-          </template>
+            ><Tag :severity="statusSeverity(data.status)" :value="statusLabel(data.status)"
+          /></template>
         </Column>
         <Column
           field="reviewed_at"
           sortField="reviewed_at"
-          header="審核時間"
+          header="審核"
           sortable
-          headerClass="report-reviewed-at-column"
-          bodyClass="report-reviewed-at-column"
+          headerClass="report-review-column"
+          bodyClass="report-review-column"
           style="width: 10rem; min-width: 10rem"
-          ><template #body="{ data }">{{
-            data.reviewed_at ? formatDateTime(data.reviewed_at, true) : '—'
-          }}</template></Column
-        >
+          ><template #body="{ data }"
+            ><div class="report-person-time">
+              <span
+                class="report-person-time__name"
+                :class="{ 'report-person-time__name--empty': !data.reviewer_name }"
+                :title="data.reviewer_name || '尚未審核'"
+              >
+                {{ data.reviewer_name || '尚未審核' }}
+              </span>
+              <time
+                v-if="data.reviewed_at"
+                class="report-person-time__time"
+                :datetime="data.reviewed_at"
+              >
+                {{ formatDateTime(data.reviewed_at, true) }}
+              </time>
+              <span v-else class="report-person-time__time">—</span>
+            </div>
+          </template>
+        </Column>
         <Column
           header="操作"
           headerClass="report-actions-column"
@@ -853,9 +854,9 @@ onMounted(refreshAll)
   overflow: hidden;
   white-space: normal;
 }
-:deep(.report-created-at-column) {
-  width: 9.5rem;
-  min-width: 9.5rem;
+:deep(.report-person-time-column) {
+  overflow: hidden;
+  white-space: normal;
 }
 :deep(.report-user-column) {
   width: 7rem;
@@ -863,7 +864,6 @@ onMounted(refreshAll)
   max-width: 7rem;
   overflow: hidden;
 }
-.report-time-cell__text,
 .report-user-cell__text {
   display: block;
   min-width: 0;
@@ -872,16 +872,40 @@ onMounted(refreshAll)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.report-reviewer-cell {
+.report-person-time {
   display: grid;
+  width: 100%;
   min-width: 0;
-  gap: 0.35rem;
+  max-width: 100%;
+  gap: 0.18rem;
 }
-:deep(.report-reviewed-at-column) {
+.report-person-time__name,
+.report-person-time__time {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-person-time__name {
+  color: var(--text-color);
+  line-height: 1.35;
+}
+.report-person-time__name--empty {
+  color: var(--text-color-secondary);
+}
+.report-person-time__time {
+  color: var(--text-color-secondary);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+:deep(.report-review-column) {
   width: 10rem;
   min-width: 10rem;
   padding-inline-end: 1.25rem;
-  white-space: nowrap;
+  overflow: hidden;
+  white-space: normal;
 }
 :deep(.report-actions-column) {
   width: 9.5rem;
@@ -980,9 +1004,9 @@ onMounted(refreshAll)
 }
 @media (max-width: 1199px) {
   :deep(.comment-report-content-column),
-  :deep(.report-created-at-column),
+  :deep(.report-person-time-column),
   :deep(.report-user-column),
-  :deep(.report-reviewed-at-column),
+  :deep(.report-review-column),
   :deep(.report-actions-column) {
     width: 100%;
     min-width: 0;

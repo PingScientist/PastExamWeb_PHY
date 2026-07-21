@@ -72,23 +72,29 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.findAll('.report-section')).toHaveLength(3)
     expect(wrapper.find('.report-management__header').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('檢視系統問題摘要並審核留言回報')
-    expect(wrapper.text()).toContain('標題與內容')
+    const systemHeaders = wrapper
+      .find('.report-management__system-table')
+      .findAll('.column-header')
+      .map((header) => header.text())
+    expect(systemHeaders).toEqual(['回報', '標題與內容', '類型', 'GitHub Issue', '狀態', '操作'])
+    expect(systemHeaders).not.toContain('回報時間')
+    expect(systemHeaders).not.toContain('回報者')
     const commentHeaders = wrapper
       .find('.report-management__comment-table')
       .findAll('.column-header')
       .map((header) => header.text())
     expect(commentHeaders).toEqual([
-      '回報時間',
+      '回報',
       '原因與留言摘要',
-      '回報者',
-      '留言作者',
+      '留言者',
       '課程／考古題',
-      '審核人',
-      '審核時間',
+      '狀態',
+      '審核',
       '操作',
     ])
-    expect(commentHeaders).not.toContain('原因')
-    expect(commentHeaders).not.toContain('留言摘要')
+    for (const removedHeader of ['回報時間', '回報者', '留言作者', '審核人', '審核時間']) {
+      expect(commentHeaders).not.toContain(removedHeader)
+    }
     expect(wrapper.text()).not.toContain('回報編號')
     expect(wrapper.vm.activeTab).toBeUndefined()
     expect(wrapper.vm.archiveListState).toMatchObject({ first: 0, total: 0, loading: false })
@@ -124,9 +130,16 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toContain('width: clamp(15rem, 22vw, 21.25rem)')
     expect(reportManagementSource).toContain('header="原因與留言摘要"')
     expect(reportManagementSource).toContain('headerClass="report-user-column"')
-    expect(reportManagementSource).toContain('bodyClass="report-created-at-column"')
-    expect(reportManagementSource).toContain('headerClass="report-reviewed-at-column"')
+    expect(reportManagementSource).toContain('headerClass="report-person-time-column"')
+    expect(reportManagementSource).toContain('headerClass="report-review-column"')
     expect(reportManagementSource).toContain('headerClass="report-actions-column"')
+    expect(reportManagementSource).toMatch(
+      /report-person-time__name[\s\S]*?reporter_name[\s\S]*?report-person-time__time[\s\S]*?created_at/
+    )
+    expect(reportManagementSource).toContain("data.reviewer_name || '尚未審核'")
+    expect(reportManagementSource).toContain(
+      '<span v-else class="report-person-time__time">—</span>'
+    )
     expect(reportManagementSource).not.toContain(unwantedPdfText)
   })
 
@@ -137,15 +150,16 @@ describe('ReportManagementPanel', () => {
     mocks.listComments.mockClear()
 
     await wrapper.vm.onSystemPage({ first: 10, rows: 10 })
-    await wrapper.vm.onCommentSort({ sortField: 'reason', sortOrder: 1 })
+    await wrapper.vm.onSystemSort({ sortField: 'created_at', sortOrder: 1 })
+    await wrapper.vm.onCommentSort({ sortField: 'reviewed_at', sortOrder: -1 })
 
     expect(mocks.listSystem).toHaveBeenLastCalledWith(
-      expect.objectContaining({ offset: 10, limit: 10, sort_by: 'created_at' })
+      expect.objectContaining({ offset: 0, limit: 10, sort_by: 'created_at', sort_order: 'asc' })
     )
     expect(mocks.listComments).toHaveBeenLastCalledWith(
-      expect.objectContaining({ offset: 0, sort_by: 'reason', sort_order: 'asc' })
+      expect.objectContaining({ offset: 0, sort_by: 'reviewed_at', sort_order: 'desc' })
     )
-    expect(wrapper.vm.systemPage.first).toBe(10)
+    expect(wrapper.vm.systemPage.first).toBe(0)
     expect(wrapper.vm.commentPage.first).toBe(0)
   })
 
