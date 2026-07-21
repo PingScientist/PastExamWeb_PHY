@@ -53,6 +53,7 @@ const baseArchives = [
     has_answers: true,
     uploader_id: 10,
     download_count: 3,
+    source_submission_ids: [44],
   },
   {
     id: 'a2',
@@ -166,6 +167,8 @@ describe('ArchiveView', () => {
     globalThis.localStorage?.clear?.()
     sessionStorage.clear()
     trackEventMock.mockReset()
+    getCurrentUserMock.mockReturnValue({ id: 10, is_admin: true })
+    isAuthenticatedMock.mockReturnValue(true)
     isUnauthorizedErrorMock.mockReturnValue(false)
     listCoursesMock.mockResolvedValue({ data: sampleCourses })
     listCategoriesMock.mockResolvedValue({ data: [] })
@@ -253,6 +256,7 @@ describe('ArchiveView', () => {
     expect(wrapper.get('.subject-english-name').text()).toBe('Calculus I (English)')
     expect(wrapper.findAll('.archive-filter-controls .filter-select')).toHaveLength(3)
     expect(wrapper.get('.archive-filter-controls .answer-filter').text()).toContain('附解答')
+    expect(wrapper.text()).toContain('投稿編號：#44')
 
     const issueContextAfterSelect = JSON.parse(sessionStorage.getItem('pastexam-issue-context'))
     expect(issueContextAfterSelect.course).toEqual({ id: 'c1', name: 'Calculus I' })
@@ -436,6 +440,33 @@ describe('ArchiveView', () => {
       expect.objectContaining({ detail: '無法取得下載連結' })
     )
 
+    wrapper.unmount()
+  })
+
+  it('shows a backend-authorized submission number to a regular archive owner', async () => {
+    getCurrentUserMock.mockReturnValue({ id: 10, is_admin: false })
+    getCourseArchivesMock.mockReset()
+    getCourseArchivesMock.mockResolvedValue({
+      data: [{ ...baseArchives[0], source_submission_ids: [45] }],
+    })
+    const sidebarInjected = ref(true)
+    const wrapper = mount(ArchiveView, {
+      global: {
+        provide: {
+          toast: { add: toastAddMock },
+          confirm: { require: confirmRequireMock },
+          sidebarVisible: sidebarInjected,
+        },
+        stubs: componentStubs,
+      },
+    })
+
+    await flushPromises()
+    wrapper.vm.filterBySubject({ label: 'Calculus I', id: 'c1' })
+    await flushPromises()
+
+    expect(wrapper.vm.isAdmin).toBe(false)
+    expect(wrapper.text()).toContain('投稿編號：#45')
     wrapper.unmount()
   })
 

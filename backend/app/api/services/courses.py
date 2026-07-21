@@ -616,13 +616,20 @@ async def get_course_archives(
 
     source_submission_ids_by_archive: dict[int, list[int]] = {}
     archive_ids = [archive.id for archive in archives if archive.id is not None]
-    if current_user.is_admin and archive_ids:
+    if archive_ids:
+        submission_visibility_conditions = [
+            ArchiveSubmission.created_archive_id.in_(archive_ids),
+            ArchiveSubmission.deleted_at.is_(None),
+            ArchiveSubmission.status != SubmissionStatus.DELETED,
+        ]
+        if not current_user.is_admin:
+            submission_visibility_conditions.append(
+                ArchiveSubmission.requester_id == current_user.user_id
+            )
         linked_submissions = (
             await db.execute(
                 select(ArchiveSubmission.id, ArchiveSubmission.created_archive_id).where(
-                    ArchiveSubmission.created_archive_id.in_(archive_ids),
-                    ArchiveSubmission.deleted_at.is_(None),
-                    ArchiveSubmission.status != SubmissionStatus.DELETED,
+                    *submission_visibility_conditions
                 )
             )
         ).all()

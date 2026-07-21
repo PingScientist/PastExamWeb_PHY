@@ -348,7 +348,7 @@
                             <span>{{ data.professor }}</span>
                             <span>{{ formatAnswerStatus(data) }}</span>
                             <span>{{ formatDownloadCount(data.downloadCount) }} 次下載</span>
-                            <span v-if="isAdmin && formatSourceSubmissionIds(data)">
+                            <span v-if="formatSourceSubmissionIds(data)">
                               投稿編號：{{ formatSourceSubmissionIds(data) }}
                             </span>
                           </div>
