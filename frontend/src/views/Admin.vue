@@ -1647,8 +1647,10 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <div class="mobile-primary-text review-card-title review-course-cell">
-                        <span>{{ data.subject }}</span>
+                      <div
+                        class="mobile-primary-text review-card-title review-course-cell review-desktop-course-cell"
+                      >
+                        <span class="review-desktop-course-cell__name">{{ data.subject }}</span>
                         <Tag
                           v-if="data.is_admin_upload"
                           class="soft-badge soft-badge--admin review-admin-upload-chip"
@@ -1837,7 +1839,12 @@
                       </div>
                     </template>
                   </Column>
-                  <Column field="status">
+                  <Column
+                    field="status"
+                    headerClass="admin-desktop-status-column"
+                    bodyClass="admin-desktop-status-column"
+                    style="width: 6rem; min-width: 6rem"
+                  >
                     <template #header>
                       <button
                         type="button"
@@ -1853,17 +1860,20 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag
-                        :class="[
-                          'soft-badge',
-                          'review-card-chip',
-                          'review-status-chip',
-                          getSubmissionStatusClass(data.status),
-                        ]"
-                        :severity="getSubmissionSeverity(data.status)"
-                      >
-                        {{ getSubmissionLabel(data.status) }}
-                      </Tag>
+                      <div class="admin-desktop-status-cell">
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-status-chip',
+                            'admin-desktop-status-tag',
+                            getSubmissionStatusClass(data.status),
+                          ]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          {{ getSubmissionLabel(data.status) }}
+                        </Tag>
+                      </div>
                     </template>
                   </Column>
                   <Column style="width: 10.5rem; min-width: 10.5rem">
@@ -1994,8 +2004,10 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <div class="mobile-primary-text review-card-title review-course-cell">
-                        <span>{{ data.subject }}</span>
+                      <div
+                        class="mobile-primary-text review-card-title review-course-cell review-desktop-course-cell"
+                      >
+                        <span class="review-desktop-course-cell__name">{{ data.subject }}</span>
                         <Tag
                           v-if="data.is_admin_upload"
                           class="soft-badge soft-badge--admin review-admin-upload-chip"
@@ -2172,7 +2184,12 @@
                       </div>
                     </template>
                   </Column>
-                  <Column field="status">
+                  <Column
+                    field="status"
+                    headerClass="admin-desktop-status-column"
+                    bodyClass="admin-desktop-status-column"
+                    style="width: 6rem; min-width: 6rem"
+                  >
                     <template #header>
                       <button
                         type="button"
@@ -2188,17 +2205,20 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag
-                        :class="[
-                          'soft-badge',
-                          'review-card-chip',
-                          'review-status-chip',
-                          getSubmissionStatusClass(data.status),
-                        ]"
-                        :severity="getSubmissionSeverity(data.status)"
-                      >
-                        {{ getSubmissionLabel(data.status) }}
-                      </Tag>
+                      <div class="admin-desktop-status-cell">
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-status-chip',
+                            'admin-desktop-status-tag',
+                            getSubmissionStatusClass(data.status),
+                          ]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          {{ getSubmissionLabel(data.status) }}
+                        </Tag>
+                      </div>
                     </template>
                   </Column>
                   <Column style="width: 10.5rem; min-width: 10.5rem">
@@ -2463,7 +2483,12 @@
                     </span>
                   </template>
                 </Column>
-                <Column field="status">
+                <Column
+                  field="status"
+                  headerClass="admin-desktop-status-column"
+                  bodyClass="admin-desktop-status-column"
+                  style="width: 6rem; min-width: 6rem"
+                >
                   <template #header>
                     <button
                       type="button"
@@ -2479,19 +2504,27 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <Tag
-                      :class="[
-                        'soft-badge',
-                        'review-status-chip',
-                        getSubmissionStatusClass(data.status),
-                      ]"
-                      :severity="getTrashStatusSeverity(data.status)"
-                    >
-                      {{ getTrashStatusLabel(data.status) }}
-                    </Tag>
+                    <div class="admin-desktop-status-cell">
+                      <Tag
+                        :class="[
+                          'soft-badge',
+                          'review-status-chip',
+                          'admin-desktop-status-tag',
+                          getSubmissionStatusClass(data.status),
+                        ]"
+                        :severity="getTrashStatusSeverity(data.status)"
+                      >
+                        {{ getTrashStatusLabel(data.status) }}
+                      </Tag>
+                    </div>
                   </template>
                 </Column>
-                <Column header="依賴與阻擋">
+                <Column
+                  header="依賴與阻擋"
+                  headerClass="trash-dependencies-column"
+                  bodyClass="trash-dependencies-column"
+                  style="width: clamp(17rem, 22vw, 23rem); max-width: 23rem"
+                >
                   <template #body="{ data }">
                     <div class="trash-dependencies">
                       <Tag
@@ -5575,13 +5608,24 @@ const formatAdminActorTime = (value) => {
 }
 
 const getNotificationUpdaterLabel = (notification) => {
-  return (
+  const updater =
     notification?.updated_by_name ||
     notification?.updated_by_username ||
+    notification?.last_editor_name ||
+    notification?.last_editor_username ||
+    notification?.updated_by ||
+    notification?.last_editor ||
     notification?.created_by_name ||
-    notification?.created_by_username ||
-    '—'
-  )
+    notification?.created_by_username
+
+  if (typeof updater === 'object' && updater !== null) {
+    return updater.nickname || updater.name || updater.username || updater.email || '—'
+  }
+
+  if (typeof updater === 'number') return '—'
+
+  const label = String(updater || '').trim()
+  return label || '—'
 }
 
 const hasNotificationUpdater = (notification) => {
@@ -9360,6 +9404,19 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
+.review-desktop-course-cell {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.review-desktop-course-cell__name {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .category-color-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
@@ -9556,6 +9613,46 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+:deep(.admin-desktop-status-column) {
+  width: 6rem;
+  min-width: 6rem;
+  text-align: center;
+}
+
+.admin-desktop-status-cell {
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.admin-desktop-status-tag.soft-badge) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 4.75rem;
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+}
+
+:deep(.admin-desktop-status-tag .p-tag-label) {
+  white-space: inherit;
+}
+
+@container (max-width: 4.75rem) {
+  :deep(.admin-desktop-status-tag.soft-badge) {
+    min-inline-size: 2rem;
+    max-inline-size: 2.4rem;
+    padding-inline: 0.3rem !important;
+    text-orientation: upright;
+    white-space: normal;
+    writing-mode: vertical-rl;
+  }
+}
+
 .notification-mobile-update,
 .notification-mobile-update__value {
   display: inline-flex;
@@ -9622,6 +9719,20 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+:deep(.trash-table .trash-dependencies-column) {
+  width: clamp(17rem, 22vw, 23rem);
+  max-width: 23rem;
+}
+
+:deep(.trash-table .trash-dependencies .trash-dependency-chip) {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .trash-mobile-list {

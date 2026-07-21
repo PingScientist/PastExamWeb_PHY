@@ -102,6 +102,7 @@ const sampleNotifications = [
     starts_at: new Date(now.getTime() - 3600_000).toISOString(),
     ends_at: new Date(now.getTime() + 3600_000).toISOString(),
     created_at: now.toISOString(),
+    updated_by_name: 'admin',
   },
   {
     id: 2,
@@ -385,6 +386,11 @@ describe('AdminView', () => {
     expect(adminViewSource).toContain('admin-actor-time--notification')
     expect(adminViewSource).toContain('notification-mobile-update__value')
     expect(adminViewSource).toContain('v-if="hasNotificationUpdater(notification)"')
+    expect(adminViewSource.match(/review-desktop-course-cell/g).length).toBeGreaterThanOrEqual(2)
+    expect(adminViewSource.match(/admin-desktop-status-tag/g).length).toBeGreaterThanOrEqual(3)
+    expect(adminViewSource.match(/'review-mobile-card-status-badge'/g)).toHaveLength(2)
+    expect(adminViewSource).toContain('headerClass="trash-dependencies-column"')
+    expect(adminViewSource).toContain('width: clamp(17rem, 22vw, 23rem)')
 
     expect(wrapper.vm.getReviewRequesterLabel({ requester_name: '申請者' })).toBe('申請者')
     expect(wrapper.vm.getReviewRequesterLabel({})).toBe('—')
@@ -398,6 +404,9 @@ describe('AdminView', () => {
     expect(wrapper.vm.getNotificationUpdaterLabel({})).toBe('—')
     expect(wrapper.vm.hasNotificationUpdater({})).toBe(false)
     expect(wrapper.vm.hasNotificationUpdater({ updated_by_name: 'admin' })).toBe(true)
+    expect(wrapper.vm.getNotificationUpdaterLabel({ updated_by: { name: 'editor' } })).toBe(
+      'editor'
+    )
     const actorTime = wrapper.vm.formatAdminActorTime('2026-07-20T05:32:00Z')
     expect(actorTime).toMatch(/2026\/07\/20.*\d{2}:32/)
     expect(actorTime).not.toMatch(/上午|下午/)
