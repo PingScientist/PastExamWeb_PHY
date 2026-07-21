@@ -1,35 +1,30 @@
 <template>
   <section class="report-management" aria-label="回報管理">
-    <header class="report-management__header">
-      <div>
-        <h3>回報管理</h3>
-        <p>檢視系統問題摘要並審核留言回報</p>
-      </div>
-      <Button
-        icon="pi pi-refresh"
-        label="重新整理"
-        outlined
-        :loading="loading"
-        @click="refreshAll"
-      />
-    </header>
-
     <section class="report-section" aria-labelledby="system-report-heading">
       <div class="report-section__header">
         <div>
           <h4 id="system-report-heading">系統問題回報</h4>
           <p>檢視使用者提交的系統問題摘要與 GitHub Issue 連結狀態。</p>
         </div>
-        <Button
-          as="a"
-          href="https://github.com/PingScientist/PastExamWeb_PHY/issues"
-          target="_blank"
-          rel="noopener noreferrer"
-          label="前往專案 Issues"
-          icon="pi pi-github"
-          outlined
-          size="small"
-        />
+        <div class="report-section__actions">
+          <Button
+            as="a"
+            href="https://github.com/PingScientist/PastExamWeb_PHY/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            label="前往專案 Issues"
+            icon="pi pi-github"
+            outlined
+            size="small"
+          />
+          <Button
+            icon="pi pi-refresh"
+            label="重新整理"
+            outlined
+            :loading="loading"
+            @click="refreshAll"
+          />
+        </div>
       </div>
       <div class="report-management__filters">
         <InputText
@@ -95,11 +90,20 @@
           sortable
           style="width: 9rem"
         />
-        <Column field="title" sortField="title" header="標題" sortable style="width: 20rem"
+        <Column
+          field="title"
+          sortField="title"
+          header="標題與內容"
+          sortable
+          headerClass="system-report-column"
+          bodyClass="system-report-column"
+          style="width: clamp(20rem, 32vw, 32.5rem)"
           ><template #body="{ data }"
-            ><div class="report-management__summary">
-              <strong>{{ data.title }}</strong
-              ><span>{{ truncate(data.description, 90) }}</span>
+            ><div class="system-report-summary">
+              <strong class="system-report-summary__title" :title="data.title || '未命名回報'">
+                {{ data.title || '未命名回報' }}
+              </strong>
+              <span class="system-report-summary__body">{{ data.description || '—' }}</span>
             </div></template
           ></Column
         >
@@ -250,12 +254,18 @@
           sortField="reviewed_at"
           header="審核時間"
           sortable
-          style="width: 10rem"
+          headerClass="report-reviewed-at-column"
+          bodyClass="report-reviewed-at-column"
+          style="width: 11rem; min-width: 11rem"
           ><template #body="{ data }">{{
             data.reviewed_at ? formatDateTime(data.reviewed_at) : '—'
           }}</template></Column
         >
-        <Column header="操作" style="width: 10rem"
+        <Column
+          header="操作"
+          headerClass="report-actions-column"
+          bodyClass="report-actions-column"
+          style="width: 10.5rem; min-width: 10.5rem"
           ><template #body="{ data }"
             ><Button
               label="檢視／審核"
@@ -620,10 +630,6 @@ function openReportSource() {
     },
   })
 }
-function truncate(value, max) {
-  const text = String(value || '')
-  return text.length > max ? `${text.slice(0, max)}…` : text
-}
 function reasonLabel(value) {
   return reasonOptions.find((item) => item.value === value)?.label || value
 }
@@ -675,7 +681,6 @@ onMounted(refreshAll)
 .report-management {
   min-width: 0;
 }
-.report-management__header,
 .report-section__header,
 .report-review__actions {
   display: flex;
@@ -683,17 +688,13 @@ onMounted(refreshAll)
   justify-content: space-between;
   gap: 0.75rem;
 }
-.report-management__header h3 {
-  margin: 0;
-}
-.report-management__header p {
-  margin: 0.25rem 0 0;
-  color: var(--text-color-secondary);
-}
 .report-section {
   min-width: 0;
   padding-block: 1.25rem;
   border-bottom: 1px solid var(--surface-border);
+}
+.report-section:first-of-type {
+  padding-top: 0;
 }
 .report-section:last-of-type {
   border-bottom: 0;
@@ -706,6 +707,13 @@ onMounted(refreshAll)
 .report-section__header p {
   margin: 0.25rem 0 0;
   color: var(--text-color-secondary);
+}
+.report-section__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .report-management__filters {
   display: grid;
@@ -727,6 +735,35 @@ onMounted(refreshAll)
 .report-management__summary span {
   color: var(--text-color-secondary);
 }
+.system-report-summary {
+  width: clamp(20rem, 32vw, 32.5rem);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.system-report-summary__title {
+  display: block;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.system-report-summary__body {
+  display: -webkit-box;
+  max-height: 4.35em;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--text-color-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
 .report-comment-summary {
   width: clamp(17.5rem, 24vw, 26.25rem);
   min-width: 0;
@@ -734,13 +771,28 @@ onMounted(refreshAll)
 }
 .report-comment-summary__text {
   display: -webkit-box;
-  max-height: 3em;
+  max-height: 4.35em;
   overflow: hidden;
   overflow-wrap: anywhere;
-  line-height: 1.5;
+  color: var(--text-color-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
   text-overflow: ellipsis;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
+}
+:deep(.report-reviewed-at-column) {
+  width: 11rem;
+  min-width: 11rem;
+  padding-inline-end: 1.25rem;
+}
+:deep(.report-actions-column) {
+  width: 10.5rem;
+  min-width: 10.5rem;
+  padding-inline-start: 0.75rem;
+}
+:deep(.report-actions-column .p-button) {
+  white-space: nowrap;
 }
 .report-management__empty {
   display: flex;
@@ -814,7 +866,6 @@ onMounted(refreshAll)
   flex: 1;
 }
 @media (max-width: 1023px) {
-  .report-management__header,
   .report-section__header {
     align-items: flex-start;
     flex-direction: column;
@@ -824,6 +875,15 @@ onMounted(refreshAll)
   }
   .report-comment-summary {
     width: 100%;
+  }
+  .system-report-summary {
+    width: 100%;
+  }
+  :deep(.report-reviewed-at-column),
+  :deep(.report-actions-column) {
+    width: 100%;
+    min-width: 0;
+    padding-inline: var(--p-datatable-body-cell-padding, 0.75rem);
   }
 }
 @media (max-width: 760px) {

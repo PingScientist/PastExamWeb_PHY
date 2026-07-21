@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ReportManagementPanel from '@/components/admin/ReportManagementPanel.vue'
+import reportManagementSource from '@/components/admin/ReportManagementPanel.vue?raw'
 
 const mocks = vi.hoisted(() => ({
   listSystem: vi.fn(),
@@ -69,6 +70,9 @@ describe('ReportManagementPanel', () => {
     expect(mocks.listSystem).toHaveBeenCalled()
     expect(mocks.listComments).toHaveBeenCalled()
     expect(wrapper.findAll('.report-section')).toHaveLength(3)
+    expect(wrapper.find('.report-management__header').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('檢視系統問題摘要並審核留言回報')
+    expect(wrapper.text()).toContain('標題與內容')
     expect(wrapper.text()).not.toContain('回報編號')
     expect(wrapper.vm.activeTab).toBeUndefined()
     expect(wrapper.vm.archiveListState).toMatchObject({ first: 0, total: 0, loading: false })
@@ -84,6 +88,24 @@ describe('ReportManagementPanel', () => {
         github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/12',
       })
     ).toBe('https://github.com/PingScientist/PastExamWeb_PHY/issues/12')
+  })
+
+  it('uses bounded summaries and separate review-time and action columns', () => {
+    const unwantedPdfText = ['本輪不要處理', '行動版 PDF 預覽'].join('')
+
+    expect(reportManagementSource).toContain('system-report-summary__title')
+    expect(reportManagementSource).toMatch(
+      /\.system-report-summary__title\s*\{[\s\S]*?white-space:\s*nowrap;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.system-report-summary__body\s*\{[\s\S]*?-webkit-line-clamp:\s*3;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-comment-summary__text\s*\{[\s\S]*?-webkit-line-clamp:\s*3;/
+    )
+    expect(reportManagementSource).toContain('headerClass="report-reviewed-at-column"')
+    expect(reportManagementSource).toContain('headerClass="report-actions-column"')
+    expect(reportManagementSource).not.toContain(unwantedPdfText)
   })
 
   it('keeps pagination and server sorting independent for each report list', async () => {
