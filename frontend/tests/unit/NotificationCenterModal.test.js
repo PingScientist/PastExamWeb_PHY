@@ -47,8 +47,6 @@ describe('NotificationCenterModal', () => {
           Tab: tabsStub,
           TabPanels: tabsStub,
           TabPanel: tabsStub,
-          DataTable: tabsStub,
-          Column: true,
           Button: buttonStub,
           Tag: true,
           Badge: true,
@@ -58,10 +56,17 @@ describe('NotificationCenterModal', () => {
     expect(wrapper.text()).toContain('公告與通知')
     expect(wrapper.text()).toContain('公告')
     expect(wrapper.text()).toContain('個人通知')
-    expect(wrapper.find('.notification-desktop-announcements').exists()).toBe(true)
-    expect(wrapper.find('.notification-mobile-announcements').exists()).toBe(true)
-    expect(wrapper.get('.announcement-card').text()).toContain('公告一')
-    expect(wrapper.get('.announcement-card').text()).toContain('最近更新')
+    expect(wrapper.findComponent({ name: 'DataTable' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'Paginator' }).exists()).toBe(false)
+    expect(wrapper.get('.notification-announcement-groups .notification-card').text()).toContain(
+      '公告一'
+    )
+    expect(wrapper.get('.notification-announcement-groups .notification-card').text()).toContain(
+      '最近更新'
+    )
+    expect(wrapper.get('.notification-personal-groups .notification-card').text()).toContain(
+      '回覆通知'
+    )
     const viewButtons = wrapper.findAll('.notification-view-button')
     expect(viewButtons).toHaveLength(2)
     expect(viewButtons.every((button) => button.text() === '檢視')).toBe(true)
@@ -87,13 +92,85 @@ describe('NotificationCenterModal', () => {
           Tab: tabsStub,
           TabPanels: tabsStub,
           TabPanel: tabsStub,
-          DataTable: tabsStub,
-          Column: true,
           Button: buttonStub,
         },
       },
     })
     wrapper.vm.openPersonal(item)
     expect(wrapper.emitted('open-personal-source')).toEqual([[item]])
+  })
+
+  it('groups each card list by month and sorts groups and items newest first', () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: {
+        visible: true,
+        announcements: [
+          { ...announcements[0], id: 1, title: '七月較早', updated_at: '2026-07-02T00:00:00Z' },
+          { ...announcements[0], id: 2, title: '六月公告', updated_at: '2026-06-30T00:00:00Z' },
+          { ...announcements[0], id: 3, title: '七月較新', updated_at: '2026-07-20T00:00:00Z' },
+        ],
+        personalNotifications: [
+          { ...personal[0], id: 4, title: '五月通知', created_at: '2026-05-01T00:00:00Z' },
+          { ...personal[0], id: 5, title: '七月通知', created_at: '2026-07-01T00:00:00Z' },
+          { ...personal[0], id: 6, title: '日期未明通知', created_at: 'invalid-date' },
+        ],
+      },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
+        },
+      },
+    })
+
+    const announcementGroups = wrapper.findAll(
+      '.notification-announcement-groups .notification-month-group'
+    )
+    expect(announcementGroups).toHaveLength(2)
+    expect(announcementGroups[0].get('.notification-month-heading').text()).toBe('2026年7月')
+    expect(announcementGroups[1].get('.notification-month-heading').text()).toBe('2026年6月')
+    expect(
+      announcementGroups[0].findAll('.notification-card__title').map((title) => title.text())
+    ).toEqual(['七月較新', '七月較早'])
+
+    const personalGroups = wrapper.findAll(
+      '.notification-personal-groups .notification-month-group'
+    )
+    expect(personalGroups.map((group) => group.get('.notification-month-heading').text())).toEqual([
+      '2026年7月',
+      '2026年5月',
+      '日期未明',
+    ])
+    expect(wrapper.text()).not.toContain('2026年4月')
+  })
+
+  it('shows empty states without rendering month groups', () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: { visible: true, announcements: [], personalNotifications: [] },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Badge: true,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('目前沒有公告')
+    expect(wrapper.text()).toContain('目前沒有個人通知')
+    expect(wrapper.find('.notification-month-group').exists()).toBe(false)
+    expect(wrapper.find('.notification-card').exists()).toBe(false)
   })
 })
