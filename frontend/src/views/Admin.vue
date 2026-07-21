@@ -7,7 +7,7 @@
           <Tab value="0">課程管理</Tab>
           <Tab value="2">公告管理</Tab>
           <Tab value="1">使用者管理</Tab>
-          <Tab value="5"><i class="pi pi-flag mr-2" aria-hidden="true" />回報管理</Tab>
+          <Tab value="5">回報管理</Tab>
           <Tab value="4">垃圾桶</Tab>
         </TabList>
         <TabPanels>

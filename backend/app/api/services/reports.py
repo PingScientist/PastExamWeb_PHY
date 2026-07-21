@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import String, cast, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 from sqlmodel import select
@@ -90,7 +90,7 @@ def _report_select():
             (source.id == CommentReport.comment_id) & (source.deleted_at.is_(None)),
         )
     )
-    return statement, reporter, author
+    return statement, reporter, author, reviewer
 
 
 def _serialize_report(row) -> CommentReportRead:
@@ -133,7 +133,7 @@ def _serialize_report(row) -> CommentReportRead:
 
 
 async def _read_report(db: AsyncSession, report_id: int) -> CommentReportRead:
-    statement, _, _ = _report_select()
+    statement, _, _, _ = _report_select()
     row = (await db.execute(statement.where(CommentReport.id == report_id))).one_or_none()
     if row is None:
         raise HTTPException(
@@ -213,6 +213,11 @@ async def create_system_issue_report(
 
 @router.get("/admin/system-issues", response_model=SystemIssueReportListRead)
 async def list_system_issue_reports(
+    search: str | None = Query(default=None, max_length=100),
+    report_type: str | None = Query(default=None, max_length=40),
+    report_status: str | None = Query(default=None, alias="status", max_length=30),
+    sort_by: str = Query(default="created_at"),
+    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     current_user: UserRoles = Depends(get_current_user),
@@ -220,15 +225,57 @@ async def list_system_issue_reports(
 ):
     _require_admin(current_user)
     reporter = aliased(User)
-    statement = (
-        select(SystemIssueReport, reporter.nickname, reporter.name)
-        .outerjoin(reporter, reporter.id == SystemIssueReport.reporter_user_id)
-        .order_by(SystemIssueReport.created_at.desc(), SystemIssueReport.id.desc())
-        .offset(offset)
-        .limit(limit)
+    statement = select(SystemIssueReport, reporter.nickname, reporter.name).outerjoin(
+        reporter, reporter.id == SystemIssueReport.reporter_user_id
     )
-    rows = (await db.execute(statement)).all()
-    total = int(await db.scalar(select(func.count(SystemIssueReport.id))) or 0)
+    filters = []
+    normalized_search = (search or "").strip()
+    if normalized_search:
+        pattern = f"%{normalized_search}%"
+        filters.append(
+            or_(
+                SystemIssueReport.title.ilike(pattern),
+                SystemIssueReport.description.ilike(pattern),
+                reporter.name.ilike(pattern),
+                reporter.nickname.ilike(pattern),
+            )
+        )
+    if report_type:
+        if report_type not in SYSTEM_ISSUE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid system issue report type",
+            )
+        filters.append(SystemIssueReport.report_type == report_type)
+    if report_status:
+        filters.append(SystemIssueReport.status == report_status)
+    if filters:
+        statement = statement.where(*filters)
+
+    sort_fields = {
+        "created_at": SystemIssueReport.created_at,
+        "reporter": func.coalesce(reporter.nickname, reporter.name, ""),
+        "title": SystemIssueReport.title,
+        "report_type": SystemIssueReport.report_type,
+        "status": SystemIssueReport.status,
+    }
+    sort_column = sort_fields.get(sort_by)
+    if sort_column is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid system issue sort field",
+        )
+    total = int(
+        await db.scalar(select(func.count()).select_from(statement.subquery())) or 0
+    )
+    ordering = sort_column.asc() if sort_order == "asc" else sort_column.desc()
+    rows = (
+        await db.execute(
+            statement.order_by(ordering, SystemIssueReport.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+    ).all()
     return SystemIssueReportListRead(
         items=[_serialize_system_issue(row[0], row[1], row[2]) for row in rows],
         total=total,
@@ -344,13 +391,15 @@ async def list_comment_reports(
     report_status: CommentReportStatus | None = Query(default=None, alias="status"),
     reason: CommentReportReason | None = None,
     search: str | None = Query(default=None, max_length=100),
+    sort_by: str = Query(default="created_at"),
+    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     current_user: UserRoles = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
     _require_admin(current_user)
-    statement, reporter, author = _report_select()
+    statement, reporter, author, reviewer = _report_select()
     filters = []
     if report_status:
         filters.append(CommentReport.status == report_status.value)
@@ -368,15 +417,33 @@ async def list_comment_reports(
                 reporter.nickname.ilike(pattern),
                 author.name.ilike(pattern),
                 author.nickname.ilike(pattern),
-                cast(CommentReport.id, String).ilike(pattern),
             )
         )
     if filters:
         statement = statement.where(*filters)
-    total = int(await db.scalar(select(func.count()).select_from(statement.subquery())) or 0)
+    total = int(
+        await db.scalar(select(func.count()).select_from(statement.subquery())) or 0
+    )
+    sort_fields = {
+        "created_at": CommentReport.created_at,
+        "status": CommentReport.status,
+        "reason": CommentReport.reason,
+        "reporter": func.coalesce(reporter.nickname, reporter.name, ""),
+        "comment_author": func.coalesce(author.nickname, author.name, ""),
+        "course_archive": func.coalesce(CommentReport.course_name_snapshot, ""),
+        "reviewer": func.coalesce(reviewer.nickname, reviewer.name, ""),
+        "reviewed_at": CommentReport.reviewed_at,
+    }
+    sort_column = sort_fields.get(sort_by)
+    if sort_column is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid comment report sort field",
+        )
+    ordering = sort_column.asc() if sort_order == "asc" else sort_column.desc()
     rows = (
         await db.execute(
-            statement.order_by(CommentReport.created_at.desc(), CommentReport.id.desc())
+            statement.order_by(ordering, CommentReport.id.desc())
             .offset(offset)
             .limit(limit)
         )

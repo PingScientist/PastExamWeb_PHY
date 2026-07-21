@@ -38,7 +38,7 @@ function mountPanel() {
         TabPanels: slotStub,
         TabPanel: slotStub,
         DataTable: slotStub,
-        Column: true,
+        Column: { props: ['header'], template: '<div class="column-header">{{ header }}</div>' },
         Dialog: slotStub,
         Button: true,
         InputText: true,
@@ -67,6 +67,11 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.text()).toContain('留言回報')
     expect(wrapper.text()).toContain('考古題回報功能尚未開放')
     expect(mocks.listSystem).toHaveBeenCalled()
+    expect(mocks.listComments).toHaveBeenCalled()
+    expect(wrapper.findAll('.report-section')).toHaveLength(3)
+    expect(wrapper.text()).not.toContain('回報編號')
+    expect(wrapper.vm.activeTab).toBeUndefined()
+    expect(wrapper.vm.archiveListState).toMatchObject({ first: 0, total: 0, loading: false })
     expect(
       wrapper.vm.safeGithubIssueUrl({
         github_issue_number: 12,
@@ -79,6 +84,37 @@ describe('ReportManagementPanel', () => {
         github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/12',
       })
     ).toBe('https://github.com/PingScientist/PastExamWeb_PHY/issues/12')
+  })
+
+  it('keeps pagination and server sorting independent for each report list', async () => {
+    const wrapper = mountPanel()
+    await flushPromises()
+    mocks.listSystem.mockClear()
+    mocks.listComments.mockClear()
+
+    await wrapper.vm.onSystemPage({ first: 10, rows: 10 })
+    await wrapper.vm.onCommentSort({ sortField: 'reason', sortOrder: 1 })
+
+    expect(mocks.listSystem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 10, limit: 10, sort_by: 'created_at' })
+    )
+    expect(mocks.listComments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0, sort_by: 'reason', sort_order: 'asc' })
+    )
+    expect(wrapper.vm.systemPage.first).toBe(10)
+    expect(wrapper.vm.commentPage.first).toBe(0)
+  })
+
+  it('keeps the available section usable when another report request fails', async () => {
+    mocks.listSystem.mockRejectedValueOnce(new Error('system unavailable'))
+    mocks.listComments.mockResolvedValueOnce({ data: { items: [{ id: 9 }], total: 1 } })
+
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    expect(wrapper.vm.systemError).toContain('無法載入系統問題回報')
+    expect(wrapper.vm.commentError).toBe('')
+    expect(wrapper.vm.commentReports).toEqual([{ id: 9 }])
   })
 
   it('loads and saves a comment review through the admin API', async () => {

@@ -10,176 +10,279 @@
         label="重新整理"
         outlined
         :loading="loading"
-        @click="refreshActiveTab"
+        @click="refreshAll"
       />
     </header>
 
-    <Tabs v-model:value="activeTab">
-      <TabList>
-        <Tab value="system"><i class="pi pi-wrench" aria-hidden="true" />系統問題回報</Tab>
-        <Tab value="comments"><i class="pi pi-flag" aria-hidden="true" />留言回報</Tab>
-        <Tab value="archives"><i class="pi pi-file-pdf" aria-hidden="true" />考古題回報</Tab>
-      </TabList>
-      <TabPanels>
-        <TabPanel value="system">
-          <div class="report-management__actions">
-            <span>共 {{ systemTotal }} 筆本地回報摘要</span>
-            <Button
+    <section class="report-section" aria-labelledby="system-report-heading">
+      <div class="report-section__header">
+        <div>
+          <h4 id="system-report-heading">系統問題回報</h4>
+          <p>檢視使用者提交的系統問題摘要與 GitHub Issue 連結狀態。</p>
+        </div>
+        <Button
+          as="a"
+          href="https://github.com/PingScientist/PastExamWeb_PHY/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          label="前往專案 Issues"
+          icon="pi pi-github"
+          outlined
+          size="small"
+        />
+      </div>
+      <div class="report-management__filters">
+        <InputText
+          v-model="systemFilters.search"
+          placeholder="搜尋標題、回報者或內容摘要"
+          @keyup.enter="applySystemFilters"
+        />
+        <Select
+          v-model="systemFilters.type"
+          :options="systemTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="全部類型"
+          showClear
+          @change="applySystemFilters"
+        />
+        <Select
+          v-model="systemFilters.status"
+          :options="systemStatusOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="全部狀態"
+          showClear
+          @change="applySystemFilters"
+        />
+        <Button label="搜尋" icon="pi pi-search" outlined @click="applySystemFilters" />
+      </div>
+      <Message v-if="systemError" severity="error" :closable="false">{{ systemError }}</Message>
+      <DataTable
+        v-else
+        :value="systemIssues"
+        :loading="loadingSystem"
+        lazy
+        paginator
+        :first="systemPage.first"
+        :rows="systemPage.rows"
+        :totalRecords="systemTotal"
+        :rowsPerPageOptions="PAGE_SIZE_OPTIONS"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+        currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+        :sortField="systemPage.sortField"
+        :sortOrder="systemPage.sortOrder"
+        responsiveLayout="stack"
+        breakpoint="1023px"
+        class="report-management__table admin-data-table"
+        tableStyle="table-layout: fixed; min-width: 64rem"
+        @page="onSystemPage"
+        @sort="onSystemSort"
+      >
+        <template #empty>目前沒有系統問題回報</template>
+        <Column
+          field="created_at"
+          sortField="created_at"
+          header="回報時間"
+          sortable
+          style="width: 10rem"
+          ><template #body="{ data }">{{ formatDateTime(data.created_at) }}</template></Column
+        >
+        <Column
+          field="reporter_name"
+          sortField="reporter"
+          header="回報者"
+          sortable
+          style="width: 9rem"
+        />
+        <Column field="title" sortField="title" header="標題" sortable style="width: 20rem"
+          ><template #body="{ data }"
+            ><div class="report-management__summary">
+              <strong>{{ data.title }}</strong
+              ><span>{{ truncate(data.description, 90) }}</span>
+            </div></template
+          ></Column
+        >
+        <Column
+          field="report_type"
+          sortField="report_type"
+          header="類型"
+          sortable
+          style="width: 8rem"
+          ><template #body="{ data }"><Tag :value="issueTypeLabel(data.report_type)" /></template
+        ></Column>
+        <Column header="GitHub Issue" style="width: 9rem"
+          ><template #body="{ data }">{{
+            data.github_issue_number ? `#${data.github_issue_number}` : '尚未連結'
+          }}</template></Column
+        >
+        <Column field="status" sortField="status" header="狀態" sortable style="width: 8rem"
+          ><template #body><Tag severity="secondary" value="本地摘要" /></template
+        ></Column>
+        <Column header="操作" style="width: 10rem"
+          ><template #body="{ data }"
+            ><Button
               as="a"
-              href="https://github.com/PingScientist/PastExamWeb_PHY/issues"
+              :href="safeGithubIssueUrl(data) || undefined"
               target="_blank"
               rel="noopener noreferrer"
-              label="前往專案 Issues"
-              icon="pi pi-github"
-              outlined
+              label="前往 GitHub"
+              icon="pi pi-external-link"
               size="small"
-            />
-          </div>
-          <DataTable
-            :value="systemIssues"
-            :loading="loadingSystem"
-            paginator
-            :rows="10"
-            responsiveLayout="stack"
-            breakpoint="900px"
-            class="report-management__table"
-          >
-            <template #empty>目前沒有系統問題回報</template>
-            <Column field="created_at" header="回報時間">
-              <template #body="{ data }">{{ formatDateTime(data.created_at) }}</template>
-            </Column>
-            <Column field="reporter_name" header="回報者" />
-            <Column field="title" header="標題">
-              <template #body="{ data }">
-                <div class="report-management__summary">
-                  <strong>{{ data.title }}</strong>
-                  <span>{{ truncate(data.description, 90) }}</span>
-                </div>
-              </template>
-            </Column>
-            <Column field="report_type" header="類型">
-              <template #body="{ data }"
-                ><Tag :value="issueTypeLabel(data.report_type)"
-              /></template>
-            </Column>
-            <Column header="GitHub Issue">
-              <template #body="{ data }">
-                {{ data.github_issue_number ? `#${data.github_issue_number}` : '尚未連結' }}
-              </template>
-            </Column>
-            <Column field="status" header="狀態">
-              <template #body><Tag severity="secondary" value="本地摘要" /></template>
-            </Column>
-            <Column header="操作">
-              <template #body="{ data }">
-                <Button
-                  as="a"
-                  :href="safeGithubIssueUrl(data) || undefined"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  label="前往 GitHub"
-                  icon="pi pi-external-link"
-                  size="small"
-                  outlined
-                  :disabled="!safeGithubIssueUrl(data)"
-                />
-              </template>
-            </Column>
-          </DataTable>
-        </TabPanel>
+              outlined
+              :disabled="!safeGithubIssueUrl(data)" /></template
+        ></Column>
+      </DataTable>
+    </section>
 
-        <TabPanel value="comments">
-          <div class="report-management__filters">
-            <InputText
-              v-model="commentFilters.search"
-              placeholder="搜尋編號、留言、課程或使用者"
-              @keyup.enter="loadCommentReports"
-            />
-            <Select
-              v-model="commentFilters.status"
-              :options="statusOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="全部狀態"
-              showClear
-              @change="loadCommentReports"
-            />
-            <Select
-              v-model="commentFilters.reason"
-              :options="reasonOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="全部原因"
-              showClear
-              @change="loadCommentReports"
-            />
-            <Button label="搜尋" icon="pi pi-search" outlined @click="loadCommentReports" />
-          </div>
-          <DataTable
-            :value="commentReports"
-            :loading="loadingComments"
-            paginator
-            :rows="10"
-            responsiveLayout="stack"
-            breakpoint="1000px"
-            class="report-management__table"
-          >
-            <template #empty>目前沒有符合條件的留言回報</template>
-            <Column field="id" header="回報編號">
-              <template #body="{ data }">#{{ data.id }}</template>
-            </Column>
-            <Column field="status" header="狀態">
-              <template #body="{ data }">
-                <Tag :severity="statusSeverity(data.status)" :value="statusLabel(data.status)" />
-              </template>
-            </Column>
-            <Column field="reason" header="原因">
-              <template #body="{ data }">{{ reasonLabel(data.reason) }}</template>
-            </Column>
-            <Column field="reporter_name" header="回報者" />
-            <Column field="comment_author_name" header="留言作者" />
-            <Column header="留言摘要">
-              <template #body="{ data }">
-                <div class="report-management__summary">
-                  <span>{{ truncate(data.comment_content_snapshot, 90) }}</span>
-                  <small>{{ data.course_name }} · {{ data.archive_name }}</small>
-                </div>
-              </template>
-            </Column>
-            <Column field="created_at" header="回報時間">
-              <template #body="{ data }">{{ formatDateTime(data.created_at) }}</template>
-            </Column>
-            <Column header="審核人／時間">
-              <template #body="{ data }">
-                <div class="report-management__summary">
-                  <span>{{ data.reviewer_name || '尚未審核' }}</span>
-                  <small>{{ data.reviewed_at ? formatDateTime(data.reviewed_at) : '—' }}</small>
-                </div>
-              </template>
-            </Column>
-            <Column header="操作">
-              <template #body="{ data }">
-                <Button
-                  label="檢視／審核"
-                  icon="pi pi-search"
-                  size="small"
-                  outlined
-                  @click="openCommentReport(data.id)"
-                />
-              </template>
-            </Column>
-          </DataTable>
-        </TabPanel>
+    <section class="report-section" aria-labelledby="comment-report-heading">
+      <div class="report-section__header">
+        <div>
+          <h4 id="comment-report-heading">留言回報</h4>
+          <p>依狀態、原因與內容搜尋留言回報，並開啟詳情完成審核。</p>
+        </div>
+      </div>
+      <div class="report-management__filters">
+        <InputText
+          v-model="commentFilters.search"
+          placeholder="搜尋留言、課程或使用者"
+          @keyup.enter="applyCommentFilters"
+        />
+        <Select
+          v-model="commentFilters.status"
+          :options="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="全部狀態"
+          showClear
+          @change="applyCommentFilters"
+        />
+        <Select
+          v-model="commentFilters.reason"
+          :options="reasonOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="全部原因"
+          showClear
+          @change="applyCommentFilters"
+        />
+        <Button label="搜尋" icon="pi pi-search" outlined @click="applyCommentFilters" />
+      </div>
+      <Message v-if="commentError" severity="error" :closable="false">{{ commentError }}</Message>
+      <DataTable
+        v-else
+        :value="commentReports"
+        :loading="loadingComments"
+        lazy
+        paginator
+        :first="commentPage.first"
+        :rows="commentPage.rows"
+        :totalRecords="commentTotal"
+        :rowsPerPageOptions="PAGE_SIZE_OPTIONS"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+        currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
+        :sortField="commentPage.sortField"
+        :sortOrder="commentPage.sortOrder"
+        responsiveLayout="stack"
+        breakpoint="1199px"
+        class="report-management__table report-management__comment-table admin-data-table"
+        tableStyle="table-layout: fixed; min-width: 110rem"
+        @page="onCommentPage"
+        @sort="onCommentSort"
+      >
+        <template #empty>目前沒有符合條件的留言回報</template>
+        <Column
+          field="created_at"
+          sortField="created_at"
+          header="回報時間"
+          sortable
+          style="width: 10rem"
+          ><template #body="{ data }">{{ formatDateTime(data.created_at) }}</template></Column
+        >
+        <Column field="status" sortField="status" header="狀態" sortable style="width: 9rem"
+          ><template #body="{ data }"
+            ><Tag
+              :severity="statusSeverity(data.status)"
+              :value="statusLabel(data.status)" /></template
+        ></Column>
+        <Column field="reason" sortField="reason" header="原因" sortable style="width: 12rem"
+          ><template #body="{ data }">{{ reasonLabel(data.reason) }}</template></Column
+        >
+        <Column
+          field="reporter_name"
+          sortField="reporter"
+          header="回報者"
+          sortable
+          style="width: 9rem"
+        />
+        <Column
+          field="comment_author_name"
+          sortField="comment_author"
+          header="留言作者"
+          sortable
+          style="width: 9rem"
+        />
+        <Column header="留言摘要" style="width: clamp(17.5rem, 24vw, 26.25rem)"
+          ><template #body="{ data }"
+            ><div class="report-comment-summary" :title="data.comment_content_snapshot">
+              <span class="report-comment-summary__text">{{ data.comment_content_snapshot }}</span>
+            </div></template
+          ></Column
+        >
+        <Column sortField="course_archive" header="課程／考古題" sortable style="width: 14rem"
+          ><template #body="{ data }"
+            ><div class="report-management__summary">
+              <span>{{ data.course_name }}</span
+              ><small>{{ data.archive_name }}</small>
+            </div></template
+          ></Column
+        >
+        <Column
+          field="reviewer_name"
+          sortField="reviewer"
+          header="審核人"
+          sortable
+          style="width: 9rem"
+          ><template #body="{ data }">{{ data.reviewer_name || '尚未審核' }}</template></Column
+        >
+        <Column
+          field="reviewed_at"
+          sortField="reviewed_at"
+          header="審核時間"
+          sortable
+          style="width: 10rem"
+          ><template #body="{ data }">{{
+            data.reviewed_at ? formatDateTime(data.reviewed_at) : '—'
+          }}</template></Column
+        >
+        <Column header="操作" style="width: 10rem"
+          ><template #body="{ data }"
+            ><Button
+              label="檢視／審核"
+              icon="pi pi-search"
+              size="small"
+              outlined
+              @click="openCommentReport(data.id)" /></template
+        ></Column>
+      </DataTable>
+    </section>
 
-        <TabPanel value="archives">
-          <div class="report-management__empty">
-            <i class="pi pi-file-pdf" aria-hidden="true" />
-            <strong>考古題回報功能尚未開放</strong>
-            <span>此分頁僅預留未來功能位置，目前沒有資料表或送出流程。</span>
-          </div>
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
+    <section
+      class="report-section"
+      aria-labelledby="archive-report-heading"
+      :aria-busy="archiveListState.loading"
+    >
+      <div class="report-section__header">
+        <div>
+          <h4 id="archive-report-heading">考古題回報</h4>
+          <p>此區段預留未來的考古題回報列表與獨立查詢狀態。</p>
+        </div>
+      </div>
+      <div class="report-management__empty">
+        <i class="pi pi-file-pdf" aria-hidden="true" /><strong>考古題回報功能尚未開放</strong
+        ><span>目前沒有資料表、分頁或送出流程。</span>
+      </div>
+    </section>
 
     <Dialog
       v-model:visible="reviewVisible"
@@ -190,7 +293,10 @@
     >
       <div v-if="selectedReport" class="report-review">
         <div class="report-review__title">
-          <strong>回報 #{{ selectedReport.id }}</strong>
+          <div>
+            <strong>留言回報</strong>
+            <small>{{ formatDateTime(selectedReport.created_at) }}</small>
+          </div>
           <Tag
             :severity="statusSeverity(selectedReport.status)"
             :value="statusLabel(selectedReport.status)"
@@ -219,7 +325,7 @@
           </div>
           <div>
             <dt>Thread</dt>
-            <dd>#{{ selectedReport.thread_id || '—' }}</dd>
+            <dd>{{ selectedReport.thread_id || '—' }}</dd>
           </div>
         </dl>
         <section class="report-review__quote">
@@ -288,7 +394,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
@@ -298,16 +404,33 @@ import { getCurrentUser } from '@/utils/auth'
 const confirm = useConfirm()
 const toast = useToast()
 const router = useRouter()
-const activeTab = ref('system')
+const PAGE_SIZE_OPTIONS = [10, 20, 50]
 const loadingSystem = ref(false)
 const loadingComments = ref(false)
 const systemIssues = ref([])
 const systemTotal = ref(0)
+const systemError = ref('')
 const commentReports = ref([])
+const commentTotal = ref(0)
+const commentError = ref('')
 const reviewVisible = ref(false)
 const reviewSaving = ref(false)
 const selectedReport = ref(null)
+const systemFilters = ref({ search: '', type: null, status: null })
 const commentFilters = ref({ search: '', status: null, reason: null })
+const systemPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
+const commentPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
+const archiveListState = ref({
+  first: 0,
+  rows: 10,
+  total: 0,
+  sortField: 'created_at',
+  sortOrder: -1,
+  search: '',
+  filter: null,
+  loading: false,
+  error: '',
+})
 const reviewForm = ref({ status: 'in_review', admin_response: '', delete_comment: false })
 const loading = computed(() => loadingSystem.value || loadingComments.value)
 
@@ -319,6 +442,14 @@ const reasonOptions = [
   { label: '錯誤或誤導資訊', value: 'misinformation' },
   { label: '其他', value: 'other' },
 ]
+const systemTypeOptions = [
+  { label: '程式錯誤', value: 'bug' },
+  { label: '功能建議', value: 'enhancement' },
+  { label: '效能問題', value: 'performance' },
+  { label: 'UI/UX', value: 'ui-ux' },
+  { label: '其他', value: 'question' },
+]
+const systemStatusOptions = [{ label: '本地摘要', value: 'local_only' }]
 const statusOptions = [
   { label: '待處理', value: 'pending' },
   { label: '審核中', value: 'in_review' },
@@ -340,12 +471,22 @@ function ensureAdmin() {
 async function loadSystemIssues() {
   ensureAdmin()
   loadingSystem.value = true
+  systemError.value = ''
   try {
-    const { data } = await reportService.listSystemIssues({ limit: 100 })
+    const { data } = await reportService.listSystemIssues({
+      search: systemFilters.value.search.trim() || undefined,
+      report_type: systemFilters.value.type || undefined,
+      status: systemFilters.value.status || undefined,
+      sort_by: systemPage.value.sortField,
+      sort_order: systemPage.value.sortOrder === 1 ? 'asc' : 'desc',
+      limit: systemPage.value.rows,
+      offset: systemPage.value.first,
+    })
     systemIssues.value = data.items || []
     systemTotal.value = Number(data.total || 0)
   } catch (error) {
     console.error('Load system issue reports error:', error)
+    systemError.value = '無法載入系統問題回報，請重新整理後再試。'
     toast.add({
       severity: 'error',
       summary: '載入失敗',
@@ -359,20 +500,59 @@ async function loadSystemIssues() {
 async function loadCommentReports() {
   ensureAdmin()
   loadingComments.value = true
+  commentError.value = ''
   try {
     const { data } = await reportService.listCommentReports({
       search: commentFilters.value.search.trim() || undefined,
       status: commentFilters.value.status || undefined,
       reason: commentFilters.value.reason || undefined,
-      limit: 100,
+      sort_by: commentPage.value.sortField,
+      sort_order: commentPage.value.sortOrder === 1 ? 'asc' : 'desc',
+      limit: commentPage.value.rows,
+      offset: commentPage.value.first,
     })
     commentReports.value = data.items || []
+    commentTotal.value = Number(data.total || 0)
   } catch (error) {
     console.error('Load comment reports error:', error)
+    commentError.value = '無法載入留言回報，請重新整理後再試。'
     toast.add({ severity: 'error', summary: '載入失敗', detail: '無法載入留言回報', life: 3000 })
   } finally {
     loadingComments.value = false
   }
+}
+function applySystemFilters() {
+  systemPage.value.first = 0
+  return loadSystemIssues()
+}
+function applyCommentFilters() {
+  commentPage.value.first = 0
+  return loadCommentReports()
+}
+function onSystemPage(event) {
+  systemPage.value.first = event.first
+  systemPage.value.rows = event.rows
+  return loadSystemIssues()
+}
+function onCommentPage(event) {
+  commentPage.value.first = event.first
+  commentPage.value.rows = event.rows
+  return loadCommentReports()
+}
+function onSystemSort(event) {
+  systemPage.value.first = 0
+  systemPage.value.sortField = event.sortField || 'created_at'
+  systemPage.value.sortOrder = event.sortOrder || -1
+  return loadSystemIssues()
+}
+function onCommentSort(event) {
+  commentPage.value.first = 0
+  commentPage.value.sortField = event.sortField || 'created_at'
+  commentPage.value.sortOrder = event.sortOrder || -1
+  return loadCommentReports()
+}
+function refreshAll() {
+  return Promise.allSettled([loadSystemIssues(), loadCommentReports()])
 }
 async function openCommentReport(id) {
   try {
@@ -415,7 +595,7 @@ async function saveReview() {
     toast.add({
       severity: 'success',
       summary: '審核已更新',
-      detail: `回報 #${data.id} 已更新`,
+      detail: '留言回報審核狀態已更新',
       life: 3000,
     })
     await loadCommentReports()
@@ -439,9 +619,6 @@ function openReportSource() {
       messageId: item.comment_id,
     },
   })
-}
-function refreshActiveTab() {
-  return activeTab.value === 'comments' ? loadCommentReports() : loadSystemIssues()
 }
 function truncate(value, max) {
   const text = String(value || '')
@@ -491,11 +668,7 @@ function formatDateTime(value) {
   })
 }
 
-watch(activeTab, (value) => {
-  if (value === 'comments' && !commentReports.value.length) void loadCommentReports()
-  if (value === 'system' && !systemIssues.value.length) void loadSystemIssues()
-})
-onMounted(loadSystemIssues)
+onMounted(refreshAll)
 </script>
 
 <style scoped>
@@ -503,7 +676,7 @@ onMounted(loadSystemIssues)
   min-width: 0;
 }
 .report-management__header,
-.report-management__actions,
+.report-section__header,
 .report-review__actions {
   display: flex;
   align-items: center;
@@ -517,14 +690,31 @@ onMounted(loadSystemIssues)
   margin: 0.25rem 0 0;
   color: var(--text-color-secondary);
 }
+.report-section {
+  min-width: 0;
+  padding-block: 1.25rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+.report-section:last-of-type {
+  border-bottom: 0;
+}
+.report-section__header h4 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1.05rem;
+}
+.report-section__header p {
+  margin: 0.25rem 0 0;
+  color: var(--text-color-secondary);
+}
 .report-management__filters {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) repeat(2, minmax(10rem, auto)) auto;
   gap: 0.6rem;
-  margin-bottom: 1rem;
+  margin-block: 1rem;
 }
 .report-management__table {
-  margin-top: 1rem;
+  width: 100%;
 }
 .report-management__summary {
   display: flex;
@@ -536,6 +726,21 @@ onMounted(loadSystemIssues)
 .report-management__summary small,
 .report-management__summary span {
   color: var(--text-color-secondary);
+}
+.report-comment-summary {
+  width: clamp(17.5rem, 24vw, 26.25rem);
+  min-width: 0;
+  max-width: 100%;
+}
+.report-comment-summary__text {
+  display: -webkit-box;
+  max-height: 3em;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .report-management__empty {
   display: flex;
@@ -559,6 +764,13 @@ onMounted(loadSystemIssues)
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+}
+.report-review__title > div {
+  display: grid;
+  gap: 0.2rem;
+}
+.report-review__title small {
+  color: var(--text-color-secondary);
 }
 .report-review__meta {
   display: grid;
@@ -601,20 +813,20 @@ onMounted(loadSystemIssues)
 .report-review__spacer {
   flex: 1;
 }
-:deep(.p-tablist-tab-list) {
-  flex-wrap: wrap;
-}
-:deep(.p-tab) {
-  gap: 0.4rem;
-}
-@media (max-width: 760px) {
-  .report-management__header {
+@media (max-width: 1023px) {
+  .report-management__header,
+  .report-section__header {
     align-items: flex-start;
     flex-direction: column;
   }
   .report-management__filters {
     grid-template-columns: minmax(0, 1fr);
   }
+  .report-comment-summary {
+    width: 100%;
+  }
+}
+@media (max-width: 760px) {
   .report-review__meta {
     grid-template-columns: minmax(0, 1fr);
   }

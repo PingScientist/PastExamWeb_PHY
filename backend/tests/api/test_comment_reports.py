@@ -158,6 +158,19 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
             await session.commit()
 
         app.dependency_overrides[get_current_user] = _override_user(admin.id, is_admin=True)
+        sorted_page = await client.get(
+            "/reports/admin/comments",
+            params={"sort_by": "reason", "sort_order": "asc", "limit": 1, "offset": 1},
+        )
+        assert sorted_page.status_code == 200
+        assert sorted_page.json()["total"] == 3
+        assert len(sorted_page.json()["items"]) == 1
+        assert (
+            await client.get(
+                "/reports/admin/comments", params={"sort_by": "comment_snapshot"}
+            )
+        ).status_code == 422
+
         in_review = await client.patch(
             f"/reports/admin/comments/{report_ids[0]}",
             json={"status": "in_review", "admin_response": "正在確認"},
@@ -259,11 +272,19 @@ async def test_system_issue_reports_are_local_admin_only_and_filter_unsafe_githu
             await session.commit()
 
         app.dependency_overrides[get_current_user] = _override_user(admin.id, is_admin=True)
-        listed = await client.get("/reports/admin/system-issues")
+        listed = await client.get(
+            "/reports/admin/system-issues",
+            params={"search": "System issue", "sort_by": "title", "sort_order": "asc"},
+        )
         assert listed.status_code == 200
         item = next(item for item in listed.json()["items"] if item["id"] == body["id"])
         assert item["github_issue_number"] == 123
         assert item["github_issue_url"] is None
+        assert (
+            await client.get(
+                "/reports/admin/system-issues", params={"sort_by": "description"}
+            )
+        ).status_code == 422
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         async with session_maker() as session:
