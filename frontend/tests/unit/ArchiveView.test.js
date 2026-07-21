@@ -33,7 +33,7 @@ let consoleErrorSpy
 
 const sampleCourses = {
   freshman: [
-    { id: 'c1', name: 'Calculus I' },
+    { id: 'c1', name: 'Calculus I', english_name: 'Calculus I (English)' },
     { id: 'c2', name: 'Linear Algebra' },
   ],
   sophomore: [{ id: 'c3', name: 'Data Structures' }],
@@ -139,7 +139,7 @@ const componentStubs = {
   PanelMenu: { template: slotDivTemplate },
   Drawer: { template: slotDivTemplate },
   Tag: { template: slotDivTemplate },
-  Toolbar: { template: slotDivTemplate },
+  Toolbar: { template: '<div><slot name="start" /></div>' },
   Select: { template: slotDivTemplate },
   Checkbox: { template: slotDivTemplate },
   ProgressSpinner: { template: '<div class="spinner"><slot /></div>' },
@@ -244,6 +244,15 @@ describe('ArchiveView', () => {
     expect(getCourseArchivesMock).toHaveBeenCalled()
     expect(vm.selectedSubject).toBe('Calculus I')
     expect(vm.groupedArchives.length).toBeGreaterThan(0)
+    expect(wrapper.get('.subject-heading-row').find('.subject-title-block').text()).toContain(
+      'Calculus I'
+    )
+    expect(wrapper.get('.subject-heading-row').find('.subject-summary').text()).toContain(
+      '共 2 份考古題'
+    )
+    expect(wrapper.get('.subject-english-name').text()).toBe('Calculus I (English)')
+    expect(wrapper.findAll('.archive-filter-controls .filter-select')).toHaveLength(3)
+    expect(wrapper.get('.archive-filter-controls .answer-filter').text()).toContain('附解答')
 
     const issueContextAfterSelect = JSON.parse(sessionStorage.getItem('pastexam-issue-context'))
     expect(issueContextAfterSelect.course).toEqual({ id: 'c1', name: 'Calculus I' })

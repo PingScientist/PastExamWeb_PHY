@@ -181,17 +181,20 @@
       <div class="main-content flex-1 h-full overflow-auto">
         <div class="card h-full flex flex-col">
           <div v-if="selectedSubject" class="subject-header">
-            <div class="subject-title-block">
-              <Tag severity="secondary" class="subject-tag">
-                {{ currentCategoryLabel }}
-              </Tag>
-              <div>
+            <div class="subject-heading-row">
+              <div class="subject-title-block">
+                <Tag severity="secondary" class="subject-tag">
+                  {{ currentCategoryLabel }}
+                </Tag>
                 <div class="subject-title">{{ selectedSubject }}</div>
-                <div class="subject-subtitle">
-                  <span>共 {{ archiveTotalCount }} 份考古題</span>
-                  <span>最新：{{ latestAcademicTerm }}</span>
-                </div>
               </div>
+              <div class="subject-summary">
+                <span>共 {{ archiveTotalCount }} 份考古題</span>
+                <span>最新：{{ latestAcademicTerm }}</span>
+              </div>
+            </div>
+            <div v-if="currentCourseEnglishName" class="subject-english-name">
+              {{ currentCourseEnglishName }}
             </div>
           </div>
           <Toolbar v-if="selectedSubject" class="archive-filter-bar mx-3 mt-3 mb-2">
@@ -2094,6 +2097,15 @@ const getCurrentCategory = computed(() => {
 
 const currentCategoryName = computed(() => getCategoryName(getCurrentCategory.value))
 const currentCategoryLabel = computed(() => getCategoryTag(currentCategoryName.value))
+const currentCourseEnglishName = computed(() => {
+  if (!selectedCourse.value) return ''
+
+  for (const courses of Object.values(coursesList.value)) {
+    const course = courses.find((item) => item.id === selectedCourse.value)
+    if (course) return course.english_name || course.englishName || ''
+  }
+  return ''
+})
 
 const searchEditProfessor = (event) => {
   const query = event?.query?.toLowerCase() || ''
@@ -2382,8 +2394,16 @@ const mobileMenuItems = computed(() => {
   background: #14211d;
 }
 
+.subject-heading-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem 1rem;
+}
+
 .subject-title-block {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 0.85rem;
 }
@@ -2401,19 +2421,21 @@ const mobileMenuItems = computed(() => {
   );
   font-weight: 800;
   line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
-.subject-subtitle {
+.subject-summary {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.35rem 0.75rem;
-  margin-top: 0.28rem;
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   font-weight: 650;
+  white-space: nowrap;
 }
 
-.subject-subtitle span + span::before {
+.subject-summary span + span::before {
   content: '';
   display: inline-block;
   width: 0.24rem;
@@ -2424,7 +2446,16 @@ const mobileMenuItems = computed(() => {
   background: #8aa49a;
 }
 
+.subject-english-name {
+  margin-top: 0.3rem;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  line-height: 1.35;
+}
+
 .archive-filter-bar {
+  container-name: archive-filters;
+  container-type: inline-size;
   border: 1px solid #d7e4df !important;
   border-radius: 8px;
   background: rgba(247, 251, 249, 0.84) !important;
@@ -2437,31 +2468,43 @@ const mobileMenuItems = computed(() => {
 }
 
 .archive-filter-shell {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
   gap: 0.85rem;
 }
 
 .filter-summary {
-  flex: 1 1 16rem;
-  min-width: 12rem;
+  min-width: 0;
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   font-weight: 650;
 }
 
 .archive-filter-controls {
-  display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(8rem, 10rem)) auto;
+  min-width: 0;
+  align-items: center;
   gap: 0.5rem;
 }
 
 .filter-select {
-  width: min(11rem, 100%);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.archive-filter-controls :deep(.p-select),
+.archive-filter-controls :deep(.p-select-label) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.archive-filter-controls :deep(.p-select) {
+  min-height: 2.35rem;
 }
 
 .answer-filter {
@@ -2473,6 +2516,28 @@ const mobileMenuItems = computed(() => {
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   font-weight: 650;
+}
+
+@container archive-filters (max-width: 52rem) {
+  .archive-filter-shell {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .archive-filter-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    width: 100%;
+  }
+}
+
+@container archive-filters (max-width: 34rem) {
+  .archive-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .answer-filter {
+    justify-content: flex-start;
+  }
 }
 
 .ellipsis {
@@ -2749,8 +2814,8 @@ const mobileMenuItems = computed(() => {
     );
   }
 
-  .subject-subtitle {
-    margin-top: 0.22rem;
+  .subject-summary,
+  .subject-english-name {
     font-size: calc(var(--app-font-size-base) * 0.84);
   }
 
@@ -2759,27 +2824,13 @@ const mobileMenuItems = computed(() => {
     padding: 0.55rem 0.65rem !important;
   }
 
-  .archive-filter-shell {
-    gap: 0.55rem;
-  }
-
   .filter-summary {
-    flex: 1 1 100%;
-    min-width: 0;
     font-size: calc(var(--app-font-size-base) * 0.84);
     line-height: 1.35;
   }
 
   .archive-filter-controls {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-    width: 100%;
     gap: 0.45rem;
-  }
-
-  .filter-select {
-    width: 100%;
-    min-width: 0;
   }
 
   .archive-filter-controls :deep(.p-select) {
@@ -2842,19 +2893,6 @@ const mobileMenuItems = computed(() => {
     max-width: 280px;
   }
 
-  .archive-filter-shell {
-    flex-wrap: nowrap;
-  }
-
-  .filter-summary {
-    flex: 0 1 18rem;
-  }
-
-  .archive-filter-controls {
-    flex: 1 1 auto;
-    grid-template-columns: repeat(3, minmax(8.5rem, 1fr)) auto;
-  }
-
   .archive-record-title-group {
     flex-basis: 13rem;
   }
@@ -2872,29 +2910,6 @@ const mobileMenuItems = computed(() => {
     padding-left: 0.75rem !important;
     padding-right: 0.75rem !important;
   }
-
-  .archive-filter-shell {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .archive-filter-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .answer-filter {
-    justify-content: flex-start;
-  }
-}
-
-@media (min-width: 481px) and (max-width: 767px) {
-  .archive-filter-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .answer-filter {
-    justify-content: flex-start;
-  }
 }
 
 @media (max-width: 767px) {
@@ -2906,21 +2921,27 @@ const mobileMenuItems = computed(() => {
     align-self: flex-start;
   }
 
+  .subject-heading-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
   .subject-title-block {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .subject-title {
     font-size: calc(1.22rem * var(--app-font-scale));
   }
 
-  .subject-subtitle {
+  .subject-summary {
+    justify-content: flex-start;
     gap: 0.22rem 0.55rem;
     font-size: calc(var(--app-font-size-base) * 0.8);
     line-height: 1.35;
   }
 
-  .subject-subtitle span + span::before {
+  .subject-summary span + span::before {
     width: 0.2rem;
     height: 0.2rem;
     margin-right: 0.55rem;
@@ -2929,12 +2950,6 @@ const mobileMenuItems = computed(() => {
   .archive-filter-bar {
     margin: 0.55rem 0.55rem 0.45rem !important;
     padding: 0.48rem 0.52rem !important;
-  }
-
-  .archive-filter-shell {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0.42rem;
   }
 
   .filter-summary {
@@ -3045,10 +3060,6 @@ const mobileMenuItems = computed(() => {
 }
 
 @media (max-width: 480px) {
-  .archive-filter-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .answer-filter {
     justify-content: flex-start;
     padding-left: 0.12rem;
