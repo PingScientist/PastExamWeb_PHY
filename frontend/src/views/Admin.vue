@@ -1650,14 +1650,18 @@
                       <div
                         class="mobile-primary-text review-card-title review-course-cell review-desktop-course-cell"
                       >
-                        <span class="review-desktop-course-cell__name">{{ data.subject }}</span>
-                        <Tag
+                        <div class="review-desktop-course-cell__name">{{ data.subject }}</div>
+                        <div
                           v-if="data.is_admin_upload"
-                          class="soft-badge soft-badge--admin review-admin-upload-chip"
-                          severity="info"
+                          class="review-desktop-course-cell__admin-row"
                         >
-                          管理員投稿
-                        </Tag>
+                          <Tag
+                            class="soft-badge soft-badge--admin review-admin-upload-chip review-course-cell__admin-tag"
+                            severity="info"
+                          >
+                            管理員投稿
+                          </Tag>
+                        </div>
                       </div>
                       <div class="review-mobile-card-header">
                         <div class="review-mobile-card-title-block">
@@ -1871,7 +1875,19 @@
                           ]"
                           :severity="getSubmissionSeverity(data.status)"
                         >
-                          {{ getSubmissionLabel(data.status) }}
+                          <span
+                            class="admin-desktop-status-label"
+                            :aria-label="getSubmissionLabel(data.status)"
+                          >
+                            <span
+                              v-for="(character, index) in Array.from(
+                                getSubmissionLabel(data.status)
+                              )"
+                              :key="`${character}-${index}`"
+                              aria-hidden="true"
+                              >{{ character }}</span
+                            >
+                          </span>
                         </Tag>
                       </div>
                     </template>
@@ -2007,14 +2023,18 @@
                       <div
                         class="mobile-primary-text review-card-title review-course-cell review-desktop-course-cell"
                       >
-                        <span class="review-desktop-course-cell__name">{{ data.subject }}</span>
-                        <Tag
+                        <div class="review-desktop-course-cell__name">{{ data.subject }}</div>
+                        <div
                           v-if="data.is_admin_upload"
-                          class="soft-badge soft-badge--admin review-admin-upload-chip"
-                          severity="info"
+                          class="review-desktop-course-cell__admin-row"
                         >
-                          管理員投稿
-                        </Tag>
+                          <Tag
+                            class="soft-badge soft-badge--admin review-admin-upload-chip review-course-cell__admin-tag"
+                            severity="info"
+                          >
+                            管理員投稿
+                          </Tag>
+                        </div>
                       </div>
                       <div class="review-mobile-card-header">
                         <div class="review-mobile-card-title-block">
@@ -2216,7 +2236,19 @@
                           ]"
                           :severity="getSubmissionSeverity(data.status)"
                         >
-                          {{ getSubmissionLabel(data.status) }}
+                          <span
+                            class="admin-desktop-status-label"
+                            :aria-label="getSubmissionLabel(data.status)"
+                          >
+                            <span
+                              v-for="(character, index) in Array.from(
+                                getSubmissionLabel(data.status)
+                              )"
+                              :key="`${character}-${index}`"
+                              aria-hidden="true"
+                              >{{ character }}</span
+                            >
+                          </span>
                         </Tag>
                       </div>
                     </template>
@@ -2514,7 +2546,19 @@
                         ]"
                         :severity="getTrashStatusSeverity(data.status)"
                       >
-                        {{ getTrashStatusLabel(data.status) }}
+                        <span
+                          class="admin-desktop-status-label"
+                          :aria-label="getTrashStatusLabel(data.status)"
+                        >
+                          <span
+                            v-for="(character, index) in Array.from(
+                              getTrashStatusLabel(data.status)
+                            )"
+                            :key="`${character}-${index}`"
+                            aria-hidden="true"
+                            >{{ character }}</span
+                          >
+                        </span>
                       </Tag>
                     </div>
                   </template>
@@ -9404,17 +9448,28 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-.review-desktop-course-cell {
+:deep(.review-desktop-course-cell) {
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.3rem;
   min-width: 0;
 }
 
-.review-desktop-course-cell__name {
+:deep(.review-desktop-course-cell__name),
+:deep(.review-desktop-course-cell__admin-row) {
+  display: block;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
+}
+
+:deep(.review-desktop-course-cell__name) {
   overflow-wrap: anywhere;
+}
+
+:deep(.review-desktop-course-cell__admin-row) {
+  line-height: 1;
 }
 
 .category-color-options {
@@ -9642,14 +9697,23 @@ onBeforeUnmount(() => {
   white-space: inherit;
 }
 
-@container (max-width: 4.75rem) {
+:deep(.admin-desktop-status-label) {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+@container (max-width: 3.75rem) {
   :deep(.admin-desktop-status-tag.soft-badge) {
     min-inline-size: 2rem;
     max-inline-size: 2.4rem;
     padding-inline: 0.3rem !important;
-    text-orientation: upright;
     white-space: normal;
-    writing-mode: vertical-rl;
+  }
+
+  :deep(.admin-desktop-status-label) {
+    flex-direction: column;
   }
 }
 

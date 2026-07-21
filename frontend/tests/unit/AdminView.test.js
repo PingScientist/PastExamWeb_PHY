@@ -9,6 +9,7 @@ const adminViewSource = readFileSync(
   resolve(globalThis.process.cwd(), 'src/views/Admin.vue'),
   'utf8'
 )
+const adminTemplateSource = adminViewSource.split('<script setup>')[0]
 
 const sampleCourses = [
   { id: 1, name: 'Algorithms', category: 'junior' },
@@ -387,7 +388,15 @@ describe('AdminView', () => {
     expect(adminViewSource).toContain('notification-mobile-update__value')
     expect(adminViewSource).toContain('v-if="hasNotificationUpdater(notification)"')
     expect(adminViewSource.match(/review-desktop-course-cell/g).length).toBeGreaterThanOrEqual(2)
+    expect(
+      adminTemplateSource.match(
+        /review-desktop-course-cell__name[\s\S]*?review-desktop-course-cell__admin-row/g
+      )
+    ).toHaveLength(2)
     expect(adminViewSource.match(/admin-desktop-status-tag/g).length).toBeGreaterThanOrEqual(3)
+    expect(adminTemplateSource.match(/class="admin-desktop-status-label"/g)).toHaveLength(3)
+    expect(adminViewSource).toContain('Array.from(')
+    expect(adminViewSource).not.toContain('writing-mode: vertical-rl')
     expect(adminViewSource.match(/'review-mobile-card-status-badge'/g)).toHaveLength(2)
     expect(adminViewSource).toContain('headerClass="trash-dependencies-column"')
     expect(adminViewSource).toContain('width: clamp(17rem, 22vw, 23rem)')
