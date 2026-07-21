@@ -1161,15 +1161,16 @@
                         <Tag :severity="isNotificationEffective(data) ? 'success' : 'secondary'">
                           {{ isNotificationEffective(data) ? '生效中' : '未生效' }}
                         </Tag>
-                        <div class="admin-actor-time admin-actor-time--mobile">
+                        <div class="notification-mobile-update">
+                          <span class="notification-mobile-update__label">最近更新</span>
                           <span
-                            class="admin-actor-time__name"
+                            v-if="hasNotificationUpdater(data)"
+                            class="notification-mobile-update__actor"
                             :title="getNotificationUpdaterLabel(data)"
+                            >{{ getNotificationUpdaterLabel(data) }}・</span
                           >
-                            {{ getNotificationUpdaterLabel(data) }}
-                          </span>
                           <time
-                            class="admin-actor-time__time"
+                            class="notification-mobile-update__time"
                             :datetime="data.updated_at || data.created_at"
                           >
                             {{ formatAdminActorTime(data.updated_at || data.created_at) }}
@@ -1288,17 +1289,17 @@
                     </div>
                   </header>
                   <section class="admin-tablet-metadata">
-                    <div class="admin-tablet-metadata-item">
+                    <div class="admin-tablet-metadata-item admin-tablet-metadata-item--wide">
                       <span class="admin-tablet-metadata-label">最近更新</span>
-                      <div class="admin-actor-time admin-actor-time--mobile">
+                      <div class="notification-mobile-update__value">
                         <span
-                          class="admin-actor-time__name"
+                          v-if="hasNotificationUpdater(notification)"
+                          class="notification-mobile-update__actor"
                           :title="getNotificationUpdaterLabel(notification)"
+                          >{{ getNotificationUpdaterLabel(notification) }}・</span
                         >
-                          {{ getNotificationUpdaterLabel(notification) }}
-                        </span>
                         <time
-                          class="admin-actor-time__time"
+                          class="notification-mobile-update__time"
                           :datetime="notification.updated_at || notification.created_at"
                         >
                           {{
@@ -1724,23 +1725,16 @@
                             <span class="review-mobile-info-value">{{ data.professor }}</span>
                           </div>
                           <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">審核</span>
-                            <div class="admin-actor-time admin-actor-time--mobile">
-                              <span
-                                class="admin-actor-time__name"
-                                :title="getReviewReviewerDisplay(data)"
-                              >
-                                {{ getReviewReviewerDisplay(data) }}
-                              </span>
-                              <time
-                                v-if="getReviewReviewedAt(data)"
-                                class="admin-actor-time__time"
-                                :datetime="getReviewReviewedAt(data)"
-                              >
-                                {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
-                              </time>
-                              <span v-else class="admin-actor-time__time">—</span>
-                            </div>
+                            <span class="review-mobile-info-label">審核人</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewer(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">審核時間</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewedTime(data)
+                            }}</span>
                           </div>
                         </div>
                       </div>
@@ -2066,23 +2060,16 @@
                             <span class="review-mobile-info-value">{{ data.professor }}</span>
                           </div>
                           <div class="review-mobile-info-item">
-                            <span class="review-mobile-info-label">審核</span>
-                            <div class="admin-actor-time admin-actor-time--mobile">
-                              <span
-                                class="admin-actor-time__name"
-                                :title="getReviewReviewerDisplay(data)"
-                              >
-                                {{ getReviewReviewerDisplay(data) }}
-                              </span>
-                              <time
-                                v-if="getReviewReviewedAt(data)"
-                                class="admin-actor-time__time"
-                                :datetime="getReviewReviewedAt(data)"
-                              >
-                                {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
-                              </time>
-                              <span v-else class="admin-actor-time__time">—</span>
-                            </div>
+                            <span class="review-mobile-info-label">審核人</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewer(data)
+                            }}</span>
+                          </div>
+                          <div class="review-mobile-info-item">
+                            <span class="review-mobile-info-label">審核時間</span>
+                            <span class="review-mobile-info-value">{{
+                              formatReviewReviewedTime(data)
+                            }}</span>
                           </div>
                         </div>
                       </div>
@@ -2614,15 +2601,16 @@
                       <span class="trash-mobile-info-value">{{ getTrashSemesterValue(data) }}</span>
                     </div>
                     <div class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">刪除</span>
-                      <div class="admin-actor-time admin-actor-time--mobile">
-                        <span class="admin-actor-time__name" :title="getTrashDeletedByLabel(data)">
-                          {{ getTrashDeletedByLabel(data) }}
-                        </span>
-                        <time class="admin-actor-time__time" :datetime="data.deleted_at">
-                          {{ formatAdminActorTime(data.deleted_at) }}
-                        </time>
-                      </div>
+                      <span class="trash-mobile-info-label">刪除者</span>
+                      <span class="trash-mobile-info-value">{{
+                        getTrashDeletedByLabel(data)
+                      }}</span>
+                    </div>
+                    <div class="trash-mobile-info-item">
+                      <span class="trash-mobile-info-label">刪除時間</span>
+                      <span class="trash-mobile-info-value">{{
+                        formatTrashDeletedAt(data.deleted_at)
+                      }}</span>
                     </div>
                     <div
                       v-if="getTrashContextLine(data)"
@@ -4512,6 +4500,10 @@ const getReviewReviewerDisplay = (item) => {
   if (!getReviewReviewedAt(item)) return '尚未審核'
   return formatReviewReviewer(item)
 }
+const formatReviewReviewedTime = (item) => {
+  const value = getReviewReviewedAt(item)
+  return value ? formatRelativeTime(value) : '—'
+}
 const getReviewMobileCourseName = (item) => {
   return item?.requested_course_name || item?.requestedCourseName || item?.subject || '—'
 }
@@ -5592,6 +5584,10 @@ const getNotificationUpdaterLabel = (notification) => {
   )
 }
 
+const hasNotificationUpdater = (notification) => {
+  return getNotificationUpdaterLabel(notification) !== '—'
+}
+
 const getSubmissionLabel = (status) => {
   const labels = {
     pending: '待審核',
@@ -6332,6 +6328,10 @@ const loadTrashItems = async () => {
   } finally {
     trashLoading.value = false
   }
+}
+
+const formatTrashDeletedAt = (value) => {
+  return value ? formatRelativeTime(value) : '—'
 }
 
 const getTrashSemesterText = (item) => {
@@ -9550,15 +9550,46 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.admin-actor-time--mobile {
-  width: fit-content;
-  max-width: 100%;
-}
-
 :deep(.review-request-table .admin-actor-time),
 :deep(.trash-table .admin-actor-time),
 :deep(.notification-management-table .admin-actor-time) {
   min-width: 0;
+}
+
+.notification-mobile-update,
+.notification-mobile-update__value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.12rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.notification-mobile-update {
+  gap: 0.12rem 0.35rem;
+}
+
+.notification-mobile-update__label,
+.notification-mobile-update__actor,
+.notification-mobile-update__time {
+  white-space: nowrap;
+}
+
+.notification-mobile-update__label,
+.notification-mobile-update__time {
+  color: var(--text-secondary);
+}
+
+.notification-mobile-update__actor {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+}
+
+.notification-mobile-update__time {
+  font-size: var(--app-font-size-xs);
 }
 
 .trash-name-cell {
@@ -11585,11 +11616,17 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-mobile-info-item) {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
     min-width: 0;
   }
 
   :deep(.review-mobile-info-label) {
-    display: block;
+    display: inline;
+    flex: 0 0 auto;
     color: var(--text-secondary);
     font-size: 0.72rem;
     font-weight: 650;
@@ -11597,8 +11634,9 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-mobile-info-value) {
-    display: block;
-    margin-top: 0.08rem;
+    display: inline;
+    flex: 1 1 auto;
+    min-width: 0;
     color: var(--text-primary);
     font-size: 0.84rem;
     line-height: 1.3;
@@ -12045,6 +12083,11 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-item {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
     min-width: 0;
   }
 
@@ -12053,7 +12096,8 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-label {
-    display: block;
+    display: inline;
+    flex: 0 0 auto;
     color: var(--text-secondary);
     font-size: 0.72rem;
     font-weight: 700;
@@ -12061,8 +12105,9 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-value {
-    display: block;
-    margin-top: 0.08rem;
+    display: inline;
+    flex: 1 1 auto;
+    min-width: 0;
     color: var(--text-primary);
     font-size: 0.85rem;
     line-height: 1.35;

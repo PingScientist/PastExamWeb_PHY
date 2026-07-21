@@ -363,7 +363,7 @@ describe('AdminView', () => {
     wrapper.unmount()
   })
 
-  it('consolidates admin actor and time columns without adding mobile submitter identities', async () => {
+  it('keeps desktop actor-time columns while restoring compact mobile metadata', async () => {
     const wrapper = createWrapper()
     await flushPromises()
 
@@ -377,6 +377,14 @@ describe('AdminView', () => {
     expect(adminViewSource).not.toContain("toggleTrashSort('deleted_by')")
     expect(adminViewSource).not.toContain('<span class="review-mobile-info-label">申請人</span>')
     expect(adminViewSource).not.toContain('<span class="review-mobile-info-label">投稿人</span>')
+    expect(adminViewSource.match(/review-mobile-info-label">審核人/g)).toHaveLength(2)
+    expect(adminViewSource.match(/review-mobile-info-label">審核時間/g)).toHaveLength(2)
+    expect(adminViewSource.match(/trash-mobile-info-label">刪除者/g)).toHaveLength(1)
+    expect(adminViewSource.match(/trash-mobile-info-label">刪除時間/g)).toHaveLength(1)
+    expect(adminViewSource).not.toContain('admin-actor-time--mobile')
+    expect(adminViewSource).toContain('admin-actor-time--notification')
+    expect(adminViewSource).toContain('notification-mobile-update__value')
+    expect(adminViewSource).toContain('v-if="hasNotificationUpdater(notification)"')
 
     expect(wrapper.vm.getReviewRequesterLabel({ requester_name: '申請者' })).toBe('申請者')
     expect(wrapper.vm.getReviewRequesterLabel({})).toBe('—')
@@ -388,6 +396,8 @@ describe('AdminView', () => {
       })
     ).toBe('管理員')
     expect(wrapper.vm.getNotificationUpdaterLabel({})).toBe('—')
+    expect(wrapper.vm.hasNotificationUpdater({})).toBe(false)
+    expect(wrapper.vm.hasNotificationUpdater({ updated_by_name: 'admin' })).toBe(true)
     const actorTime = wrapper.vm.formatAdminActorTime('2026-07-20T05:32:00Z')
     expect(actorTime).toMatch(/2026\/07\/20.*\d{2}:32/)
     expect(actorTime).not.toMatch(/上午|下午/)
