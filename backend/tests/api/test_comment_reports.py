@@ -187,13 +187,12 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
             )
         ).status_code == 422
 
-        still_pending = await client.patch(
-            f"/reports/admin/comments/{report_ids[0]}",
-            json={"status": "pending", "admin_response": "   "},
-        )
-        assert still_pending.status_code == 200
-        assert still_pending.json()["status"] == "pending"
-        assert still_pending.json()["admin_response"] is None
+        assert (
+            await client.patch(
+                f"/reports/admin/comments/{report_ids[0]}",
+                json={"status": "pending", "admin_response": "   "},
+            )
+        ).status_code == 422
 
         original_enqueue = reports_service.enqueue_personal_notification
 
@@ -234,27 +233,31 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
         assert (
             await client.patch(
                 f"/reports/admin/comments/{report_ids[0]}",
-                json={"status": "upheld", "admin_response": "   "},
+                json={"status": "upheld", "admin_response": "修改答覆"},
             )
-        ).status_code == 200
+        ).status_code == 409
         assert (
             await client.patch(
                 f"/reports/admin/comments/{report_ids[0]}",
                 json={"status": "dismissed", "admin_response": None},
             )
-        ).status_code == 200
+        ).status_code == 409
         assert (
             await client.patch(
                 f"/reports/admin/comments/{report_ids[0]}",
-                json={"status": "upheld", "admin_response": "修正為成立"},
+                json={
+                    "status": "upheld",
+                    "admin_response": None,
+                    "delete_comment": True,
+                },
             )
-        ).status_code == 200
+        ).status_code == 409
         assert (
             await client.patch(
                 f"/reports/admin/comments/{report_ids[0]}",
                 json={"status": "pending", "admin_response": None},
             )
-        ).status_code == 422
+        ).status_code == 409
 
         missing_result = await client.patch(
             f"/reports/admin/comments/{report_ids[1]}",
@@ -275,6 +278,10 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
         assert deleted_result.json()["comment_deleted"] is True
 
         async with session_maker() as session:
+            locked_report = await session.get(CommentReport, report_ids[0])
+            assert locked_report.status == "upheld"
+            assert locked_report.admin_response is None
+            assert locked_report.comment_deleted is False
             result_count = int(
                 await session.scalar(
                     select(func.count(PersonalNotification.id)).where(
@@ -284,7 +291,7 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
                 )
                 or 0
             )
-            assert result_count == 5
+            assert result_count == 3
             result_notifications = list(
                 (
                     await session.execute(
@@ -299,8 +306,10 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
                 .scalars()
                 .all()
             )
-            assert len(result_notifications) == 3
-            assert len({item.dedupe_key for item in result_notifications}) == 3
+            assert len(result_notifications) == 1
+            assert result_notifications[0].dedupe_key == (
+                f"comment_report_result:{report_ids[0]}"
+            )
             assert any(
                 "管理員答覆：未提供答覆" in item.message
                 for item in result_notifications

@@ -316,7 +316,7 @@
           ><template #body="{ data }"
             ><div class="report-row-actions">
               <Button
-                label="檢視／審核"
+                :label="isFinal(data.status) ? '檢視' : '檢視／審核'"
                 icon="pi pi-search"
                 aria-label="檢視或審核留言回報"
                 title="檢視或審核留言回報"
@@ -415,7 +415,10 @@
         <p v-if="isFinal(selectedReport.status)" class="report-review__response">
           <strong>管理員答覆：</strong>{{ selectedReport.admin_response || '未提供答覆' }}
         </p>
-        <div class="report-review__field">
+        <Message v-if="isFinal(selectedReport.status)" severity="info" :closable="false">
+          審核結果已送出，無法修改。
+        </Message>
+        <div v-if="!isFinal(selectedReport.status)" class="report-review__field">
           <label for="report-review-status">審核結果</label>
           <Select
             inputId="report-review-status"
@@ -426,7 +429,7 @@
             :disabled="reviewSaving"
           />
         </div>
-        <div class="report-review__field">
+        <div v-if="!isFinal(selectedReport.status)" class="report-review__field">
           <label for="report-admin-response">給回報者的答覆</label>
           <Textarea
             id="report-admin-response"
@@ -437,7 +440,10 @@
           />
           <small>{{ reviewForm.admin_response.length }}/1000</small>
         </div>
-        <label v-if="reviewForm.status === 'upheld'" class="report-review__delete-option">
+        <label
+          v-if="!isFinal(selectedReport.status) && reviewForm.status === 'upheld'"
+          class="report-review__delete-option"
+        >
           <Checkbox
             v-model="reviewForm.delete_comment"
             binary
@@ -457,6 +463,7 @@
           <span class="report-review__spacer" />
           <Button label="關閉" severity="secondary" outlined @click="reviewVisible = false" />
           <Button
+            v-if="!isFinal(selectedReport.status)"
             label="儲存審核"
             icon="pi pi-check"
             :loading="reviewSaving"
@@ -539,7 +546,7 @@ const reviewStatusOptions = computed(() =>
     : statusOptions
 )
 const canSaveReview = computed(() => {
-  if (!reviewForm.value.status) return false
+  if (!['upheld', 'dismissed'].includes(reviewForm.value.status)) return false
   return reviewForm.value.admin_response.length <= 1000
 })
 
@@ -723,17 +730,37 @@ async function openCommentReport(id) {
   }
 }
 function confirmSaveReview() {
+  if (
+    reviewSaving.value ||
+    !selectedReport.value ||
+    isFinal(selectedReport.value.status) ||
+    !canSaveReview.value
+  )
+    return
+  const deletesComment = reviewForm.value.status === 'upheld' && reviewForm.value.delete_comment
+  const message = ['送出後將通知回報者。', '審核結果與管理員答覆送出後將無法修改。']
+  if (deletesComment) {
+    message.push('被回報留言將永久刪除，無法復原，也不會進入垃圾桶。')
+  }
   confirm.require({
     header: '確認送出審核結果',
-    message: reviewForm.value.delete_comment
-      ? '此操作會刪除來源留言並送出最終通知，確定繼續？'
-      : '確定送出此審核結果？',
-    icon: reviewForm.value.delete_comment ? 'pi pi-exclamation-triangle' : 'pi pi-question-circle',
+    message: message.join('\n'),
+    icon: deletesComment ? 'pi pi-exclamation-triangle' : 'pi pi-question-circle',
+    rejectLabel: '取消',
+    acceptLabel: '確認送出',
+    acceptClass: deletesComment ? 'p-button-danger' : 'p-button-primary',
+    defaultFocus: 'reject',
     accept: saveReview,
   })
 }
 async function saveReview() {
-  if (!selectedReport.value || !canSaveReview.value) return
+  if (
+    reviewSaving.value ||
+    !selectedReport.value ||
+    isFinal(selectedReport.value.status) ||
+    !canSaveReview.value
+  )
+    return
   reviewSaving.value = true
   try {
     const { data } = await reportService.reviewCommentReport(selectedReport.value.id, {

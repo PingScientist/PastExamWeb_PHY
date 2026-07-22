@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   reviewComment: vi.fn(),
   deleteSystem: vi.fn(),
   deleteComment: vi.fn(),
+  confirm: vi.fn((options) => options.accept?.()),
   toast: vi.fn(),
   push: vi.fn(),
 }))
@@ -27,7 +28,7 @@ vi.mock('@/api', () => ({
 vi.mock('@/utils/auth', () => ({ getCurrentUser: () => ({ id: 1, is_admin: true }) }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: mocks.toast }) }))
 vi.mock('primevue/useconfirm', () => ({
-  useConfirm: () => ({ require: ({ accept }) => accept() }),
+  useConfirm: () => ({ require: mocks.confirm }),
 }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: mocks.push }) }))
 
@@ -64,6 +65,7 @@ describe('ReportManagementPanel', () => {
     mocks.listComments.mockResolvedValue({ data: { items: [], total: 0 } })
     mocks.deleteSystem.mockResolvedValue({ data: { success: true } })
     mocks.deleteComment.mockResolvedValue({ data: { success: true } })
+    mocks.confirm.mockImplementation((options) => options.accept?.())
   })
 
   it('keeps the three report sources separated and rejects untrusted GitHub links', async () => {
@@ -248,5 +250,96 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.vm.statusSeverity('dismissed')).toBe('danger')
     expect(reportManagementSource).not.toContain('in_review')
     expect(reportManagementSource).toContain("selectedReport.admin_response || '未提供答覆'")
+  })
+
+  it('uses a localized final-review confirmation and sends at most one request', async () => {
+    const report = {
+      id: 18,
+      status: 'pending',
+      admin_response: null,
+      source_exists: true,
+      reporter_name: 'Reporter',
+      comment_author_name: 'Author',
+      reason: 'misinformation',
+      course_name: 'Course',
+      archive_name: 'Exam',
+      comment_content_snapshot: 'content',
+    }
+    mocks.getComment.mockResolvedValue({ data: report })
+    mocks.reviewComment.mockResolvedValue({ data: { ...report, status: 'upheld' } })
+    mocks.confirm.mockImplementation((options) => {
+      options.accept?.()
+      options.accept?.()
+    })
+    const wrapper = mountPanel()
+    await flushPromises()
+    await wrapper.vm.openCommentReport(report.id)
+    wrapper.vm.reviewForm.status = 'upheld'
+
+    wrapper.vm.confirmSaveReview()
+    await flushPromises()
+
+    expect(mocks.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: '確認送出審核結果',
+        message: expect.stringContaining('送出後將通知回報者。'),
+        rejectLabel: '取消',
+        acceptLabel: '確認送出',
+        defaultFocus: 'reject',
+      })
+    )
+    expect(mocks.confirm.mock.calls[0][0].message).toContain(
+      '審核結果與管理員答覆送出後將無法修改。'
+    )
+    expect(mocks.reviewComment).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels without an API call and warns when the source comment will be deleted', async () => {
+    const report = {
+      id: 28,
+      status: 'pending',
+      admin_response: null,
+      source_exists: true,
+      reporter_name: 'Reporter',
+      comment_author_name: 'Author',
+      reason: 'misinformation',
+      course_name: 'Course',
+      archive_name: 'Exam',
+      comment_content_snapshot: 'content',
+    }
+    mocks.getComment.mockResolvedValue({ data: report })
+    mocks.confirm.mockImplementation(() => {})
+    const wrapper = mountPanel()
+    await flushPromises()
+    await wrapper.vm.openCommentReport(report.id)
+    wrapper.vm.reviewForm.status = 'upheld'
+    wrapper.vm.reviewForm.delete_comment = true
+
+    wrapper.vm.confirmSaveReview()
+
+    const options = mocks.confirm.mock.calls[0][0]
+    expect(options.message).toContain('被回報留言將永久刪除，無法復原，也不會進入垃圾桶。')
+    expect(options.acceptClass).toBe('p-button-danger')
+    expect(mocks.reviewComment).not.toHaveBeenCalled()
+  })
+
+  it('keeps finalized reports read-only in the dialog and API handler', async () => {
+    const finalized = {
+      id: 38,
+      status: 'dismissed',
+      admin_response: '審核完成',
+      source_exists: true,
+    }
+    mocks.getComment.mockResolvedValue({ data: finalized })
+    const wrapper = mountPanel()
+    await flushPromises()
+    await wrapper.vm.openCommentReport(finalized.id)
+
+    await wrapper.vm.saveReview()
+
+    expect(mocks.reviewComment).not.toHaveBeenCalled()
+    expect(reportManagementSource).toContain('審核結果已送出，無法修改。')
+    expect(reportManagementSource).toContain("isFinal(data.status) ? '檢視' : '檢視／審核'")
+    expect(reportManagementSource).toContain('v-if="!isFinal(selectedReport.status)"')
   })
 })
