@@ -412,6 +412,9 @@
         <p v-if="selectedReport.custom_message">
           <strong>回報者補充：</strong>{{ selectedReport.custom_message }}
         </p>
+        <p v-if="isFinal(selectedReport.status)" class="report-review__response">
+          <strong>管理員答覆：</strong>{{ selectedReport.admin_response || '未提供答覆' }}
+        </p>
         <div class="report-review__field">
           <label for="report-review-status">審核結果</label>
           <Select
@@ -420,7 +423,7 @@
             :options="reviewStatusOptions"
             optionLabel="label"
             optionValue="value"
-            :disabled="isFinal(selectedReport.status)"
+            :disabled="reviewSaving"
           />
         </div>
         <div class="report-review__field">
@@ -430,7 +433,7 @@
             v-model="reviewForm.admin_response"
             rows="4"
             maxlength="1000"
-            :disabled="isFinal(selectedReport.status)"
+            :disabled="reviewSaving"
           />
           <small>{{ reviewForm.admin_response.length }}/1000</small>
         </div>
@@ -457,7 +460,7 @@
             label="儲存審核"
             icon="pi pi-check"
             :loading="reviewSaving"
-            :disabled="isFinal(selectedReport.status) || !canSaveReview"
+            :disabled="!canSaveReview"
             @click="confirmSaveReview"
           />
         </div>
@@ -506,7 +509,7 @@ const archiveListState = ref({
   loading: false,
   error: '',
 })
-const reviewForm = ref({ status: 'in_review', admin_response: '', delete_comment: false })
+const reviewForm = ref({ status: 'pending', admin_response: '', delete_comment: false })
 const loading = computed(() => loadingSystem.value || loadingComments.value)
 
 const reasonOptions = [
@@ -526,18 +529,18 @@ const systemTypeOptions = [
 ]
 const systemStatusOptions = [{ label: '本地摘要', value: 'local_only' }]
 const statusOptions = [
-  { label: '待處理', value: 'pending' },
-  { label: '審核中', value: 'in_review' },
-  { label: '回報成立／已處理', value: 'upheld' },
+  { label: '待審核', value: 'pending' },
+  { label: '回報成立', value: 'upheld' },
   { label: '回報不成立', value: 'dismissed' },
 ]
-const reviewStatusOptions = statusOptions.filter((item) => item.value !== 'pending')
+const reviewStatusOptions = computed(() =>
+  isFinal(selectedReport.value?.status)
+    ? statusOptions.filter((item) => item.value !== 'pending')
+    : statusOptions
+)
 const canSaveReview = computed(() => {
   if (!reviewForm.value.status) return false
-  if (['upheld', 'dismissed'].includes(reviewForm.value.status)) {
-    return Boolean(reviewForm.value.admin_response.trim())
-  }
-  return true
+  return reviewForm.value.admin_response.length <= 1000
 })
 
 function ensureAdmin() {
@@ -709,7 +712,7 @@ async function openCommentReport(id) {
     const { data } = await reportService.getCommentReport(id)
     selectedReport.value = data
     reviewForm.value = {
-      status: data.status === 'pending' ? 'in_review' : data.status,
+      status: data.status,
       admin_response: data.admin_response || '',
       delete_comment: false,
     }
@@ -720,14 +723,11 @@ async function openCommentReport(id) {
   }
 }
 function confirmSaveReview() {
-  const finalResult = ['upheld', 'dismissed'].includes(reviewForm.value.status)
   confirm.require({
-    header: finalResult ? '確認送出最終審核結果' : '確認更新審核狀態',
+    header: '確認送出審核結果',
     message: reviewForm.value.delete_comment
       ? '此操作會刪除來源留言並送出最終通知，確定繼續？'
-      : finalResult
-        ? '最終結果送出後不可變更，確定繼續？'
-        : '確定將此回報標記為審核中？',
+      : '確定送出此審核結果？',
     icon: reviewForm.value.delete_comment ? 'pi pi-exclamation-triangle' : 'pi pi-question-circle',
     accept: saveReview,
   })
@@ -777,10 +777,7 @@ function statusLabel(value) {
   return statusOptions.find((item) => item.value === value)?.label || value
 }
 function statusSeverity(value) {
-  return (
-    { pending: 'warn', in_review: 'info', upheld: 'success', dismissed: 'secondary' }[value] ||
-    'secondary'
-  )
+  return { pending: 'warn', upheld: 'success', dismissed: 'danger' }[value] || 'secondary'
 }
 function issueTypeLabel(value) {
   return (

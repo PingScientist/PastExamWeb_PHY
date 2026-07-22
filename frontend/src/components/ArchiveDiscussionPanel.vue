@@ -664,7 +664,7 @@ async function handleReportSubmit(payload) {
     const isDuplicate = error?.response?.status === 409
     toast?.add?.({
       severity: isDuplicate ? 'warn' : 'error',
-      summary: isDuplicate ? '已有待處理回報' : '回報送出失敗',
+      summary: isDuplicate ? '已有待審核回報' : '回報送出失敗',
       detail: isDuplicate ? '相同原因的回報仍在處理中' : '請稍後再試',
       life: 3500,
     })

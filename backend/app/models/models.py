@@ -5,6 +5,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -63,7 +64,6 @@ class CommentReportReason(str, PyEnum):
 
 class CommentReportStatus(str, PyEnum):
     PENDING = "pending"
-    IN_REVIEW = "in_review"
     UPHELD = "upheld"
     DISMISSED = "dismissed"
 
@@ -585,13 +585,17 @@ class PersonalNotification(SQLModel, table=True):
 class CommentReport(SQLModel, table=True):
     __tablename__ = "comment_reports"
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'upheld', 'dismissed')",
+            name="ck_comment_reports_status",
+        ),
         Index(
             "uq_comment_reports_active_reporter_comment_reason",
             "reporter_user_id",
             "comment_id",
             "reason",
             unique=True,
-            postgresql_where=text("status IN ('pending', 'in_review')"),
+            postgresql_where=text("status = 'pending'"),
         ),
         Index("ix_comment_reports_status_created", "status", "created_at"),
     )

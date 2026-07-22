@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import delete, func
 from sqlmodel import select
 
+from app.api.services import reports as reports_service
 from app.main import app
 from app.models.models import (
     Archive,
@@ -130,7 +131,7 @@ async def test_comment_report_creation_validates_auth_reason_scope_and_duplicate
 
 @pytest.mark.asyncio
 async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
-    client, session_maker, make_user
+    client, session_maker, make_user, monkeypatch
 ):
     reporter = await make_user(name="review-reporter")
     author = await make_user(name="review-author")
@@ -174,22 +175,86 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
             )
         ).status_code == 422
 
-        in_review = await client.patch(
-            f"/reports/admin/comments/{report_ids[0]}",
-            json={"status": "in_review", "admin_response": "正在確認"},
-        )
-        assert in_review.status_code == 200
-        finalized = await client.patch(
-            f"/reports/admin/comments/{report_ids[0]}",
-            json={"status": "upheld", "admin_response": "已完成審核"},
-        )
-        assert finalized.status_code == 200
+        assert (
+            await client.get(
+                "/reports/admin/comments", params={"status": "in_review"}
+            )
+        ).status_code == 422
         assert (
             await client.patch(
                 f"/reports/admin/comments/{report_ids[0]}",
-                json={"status": "upheld", "admin_response": "重送"},
+                json={"status": "in_review", "admin_response": "正在確認"},
+            )
+        ).status_code == 422
+
+        still_pending = await client.patch(
+            f"/reports/admin/comments/{report_ids[0]}",
+            json={"status": "pending", "admin_response": "   "},
+        )
+        assert still_pending.status_code == 200
+        assert still_pending.json()["status"] == "pending"
+        assert still_pending.json()["admin_response"] is None
+
+        original_enqueue = reports_service.enqueue_personal_notification
+
+        async def fail_notification(*args, **kwargs):
+            raise RuntimeError("notification insert failed")
+
+        monkeypatch.setattr(
+            reports_service, "enqueue_personal_notification", fail_notification
+        )
+        with pytest.raises(RuntimeError, match="notification insert failed"):
+            await client.patch(
+                f"/reports/admin/comments/{report_ids[0]}",
+                json={"status": "upheld", "admin_response": None},
+            )
+        monkeypatch.setattr(
+            reports_service, "enqueue_personal_notification", original_enqueue
+        )
+        async with session_maker() as session:
+            rolled_back_report = await session.get(CommentReport, report_ids[0])
+            assert rolled_back_report.status == "pending"
+            assert int(
+                await session.scalar(
+                    select(func.count(PersonalNotification.id)).where(
+                        PersonalNotification.user_id == reporter.id,
+                        PersonalNotification.notification_type
+                        == "comment_report_result",
+                    )
+                )
+                or 0
+            ) == 0
+
+        finalized = await client.patch(
+            f"/reports/admin/comments/{report_ids[0]}",
+            json={"status": "upheld", "admin_response": "   "},
+        )
+        assert finalized.status_code == 200
+        assert finalized.json()["admin_response"] is None
+        assert (
+            await client.patch(
+                f"/reports/admin/comments/{report_ids[0]}",
+                json={"status": "upheld", "admin_response": "   "},
             )
         ).status_code == 200
+        assert (
+            await client.patch(
+                f"/reports/admin/comments/{report_ids[0]}",
+                json={"status": "dismissed", "admin_response": None},
+            )
+        ).status_code == 200
+        assert (
+            await client.patch(
+                f"/reports/admin/comments/{report_ids[0]}",
+                json={"status": "upheld", "admin_response": "修正為成立"},
+            )
+        ).status_code == 200
+        assert (
+            await client.patch(
+                f"/reports/admin/comments/{report_ids[0]}",
+                json={"status": "pending", "admin_response": None},
+            )
+        ).status_code == 422
 
         missing_result = await client.patch(
             f"/reports/admin/comments/{report_ids[1]}",
@@ -219,7 +284,27 @@ async def test_comment_report_admin_review_is_authorized_atomic_and_idempotent(
                 )
                 or 0
             )
-            assert result_count == 3
+            assert result_count == 5
+            result_notifications = list(
+                (
+                    await session.execute(
+                        select(PersonalNotification).where(
+                            PersonalNotification.user_id == reporter.id,
+                            PersonalNotification.notification_type
+                            == "comment_report_result",
+                            PersonalNotification.source_id == report_ids[0],
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert len(result_notifications) == 3
+            assert len({item.dedupe_key for item in result_notifications}) == 3
+            assert any(
+                "管理員答覆：未提供答覆" in item.message
+                for item in result_notifications
+            )
             result_notification = await session.scalar(
                 select(PersonalNotification).where(
                     PersonalNotification.user_id == reporter.id,

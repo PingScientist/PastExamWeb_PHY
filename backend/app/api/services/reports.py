@@ -364,9 +364,7 @@ async def create_comment_report(
             CommentReport.comment_id == comment_id,
             CommentReport.reason == reason,
             CommentReport.deleted_at.is_(None),
-            CommentReport.status.in_(
-                [CommentReportStatus.PENDING.value, CommentReportStatus.IN_REVIEW.value]
-            ),
+            CommentReport.status == CommentReportStatus.PENDING.value,
         )
     )
     if duplicate is not None:
@@ -549,14 +547,11 @@ async def review_comment_report(
         )
 
     new_status = payload.status.value
-    if report.status in FINAL_REPORT_STATUSES:
-        if report.status == new_status:
-            return await _read_report(db, report.id)
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A finalized report cannot be changed",
-        )
-    if new_status == CommentReportStatus.PENDING.value:
+    previous_status = report.status
+    if (
+        previous_status in FINAL_REPORT_STATUSES
+        and new_status == CommentReportStatus.PENDING.value
+    ):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="A report cannot return to pending",
@@ -564,11 +559,6 @@ async def review_comment_report(
 
     response = (payload.admin_response or "").strip()
     is_final = new_status in FINAL_REPORT_STATUSES
-    if is_final and not response:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Admin response is required for a final result",
-        )
     if payload.delete_comment and new_status != CommentReportStatus.UPHELD.value:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -578,8 +568,12 @@ async def review_comment_report(
     now = datetime.now(timezone.utc)
     report.status = new_status
     report.admin_response = response or None
-    report.reviewed_by = current_user.user_id
-    report.reviewed_at = now
+    if is_final:
+        report.reviewed_by = current_user.user_id
+        report.reviewed_at = now
+    else:
+        report.reviewed_by = None
+        report.reviewed_at = None
     report.updated_at = now
     if payload.delete_comment and report.comment_id is not None:
         source = (
@@ -596,15 +590,20 @@ async def review_comment_report(
             report.comment_deleted = True
 
     db.add(report)
-    if is_final:
-        result_label = "回報成立／已處理" if new_status == CommentReportStatus.UPHELD.value else "回報不成立"
+    if is_final and previous_status != new_status:
+        result_label = (
+            "回報成立"
+            if new_status == CommentReportStatus.UPHELD.value
+            else "回報不成立"
+        )
+        response_label = response or "未提供答覆"
         await enqueue_personal_notification(
             db,
             user_id=report.reporter_user_id,
             notification_type=PersonalNotificationType.COMMENT_REPORT_RESULT,
             title="留言回報審核完成",
             message=(
-                f"審核結果：{result_label}。管理員答覆：{response}。"
+                f"審核結果：{result_label}。管理員答覆：{response_label}。"
                 f"處置：{'留言已刪除' if report.comment_deleted else '未刪除留言'}。"
             ),
             source_type="comment_report",
@@ -615,7 +614,10 @@ async def review_comment_report(
                 "comment_deleted": report.comment_deleted,
                 "reviewed_at": now.isoformat(),
             },
-            dedupe_key=f"comment_report_result:{report.id}:{new_status}",
+            dedupe_key=(
+                f"comment_report_result:{report.id}:{new_status}:"
+                f"{int(now.timestamp() * 1_000_000)}"
+            ),
         )
     await db.commit()
     return await _read_report(db, report.id)

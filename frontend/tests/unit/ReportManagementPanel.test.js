@@ -121,8 +121,6 @@ describe('ReportManagementPanel', () => {
   })
 
   it('uses compact columns and independently clamps each summary body to three lines', () => {
-    const unwantedPdfText = ['本輪不要處理', '行動版 PDF 預覽'].join('')
-
     expect(reportManagementSource).toContain('system-report-summary__title')
     expect(reportManagementSource).toMatch(
       /\.system-report-summary__title\s*\{[\s\S]*?white-space:\s*nowrap;/
@@ -146,7 +144,6 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toContain(
       '<span v-else class="report-person-time__time">—</span>'
     )
-    expect(reportManagementSource).not.toContain(unwantedPdfText)
   })
 
   it('keeps pagination and server sorting independent for each report list', async () => {
@@ -228,19 +225,28 @@ describe('ReportManagementPanel', () => {
       thread_id: 3,
     }
     mocks.getComment.mockResolvedValue({ data: report })
-    mocks.reviewComment.mockResolvedValue({ data: { ...report, status: 'in_review' } })
+    mocks.reviewComment.mockResolvedValue({ data: { ...report, status: 'upheld' } })
     const wrapper = mountPanel()
     await flushPromises()
 
     await wrapper.vm.openCommentReport(8)
-    wrapper.vm.reviewForm.admin_response = '正在確認'
+    wrapper.vm.reviewForm.status = 'upheld'
+    wrapper.vm.reviewForm.admin_response = '   '
     await wrapper.vm.saveReview()
 
     expect(mocks.reviewComment).toHaveBeenCalledWith(8, {
-      status: 'in_review',
-      admin_response: '正在確認',
+      status: 'upheld',
+      admin_response: null,
       delete_comment: false,
     })
     expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ summary: '審核已更新' }))
+    expect(wrapper.vm.statusLabel('pending')).toBe('待審核')
+    expect(wrapper.vm.statusLabel('upheld')).toBe('回報成立')
+    expect(wrapper.vm.statusLabel('dismissed')).toBe('回報不成立')
+    expect(wrapper.vm.statusSeverity('pending')).toBe('warn')
+    expect(wrapper.vm.statusSeverity('upheld')).toBe('success')
+    expect(wrapper.vm.statusSeverity('dismissed')).toBe('danger')
+    expect(reportManagementSource).not.toContain('in_review')
+    expect(reportManagementSource).toContain("selectedReport.admin_response || '未提供答覆'")
   })
 })

@@ -2572,15 +2572,15 @@
                           'admin-desktop-status-tag',
                           getSubmissionStatusClass(data.status),
                         ]"
-                        :severity="getTrashStatusSeverity(data.status)"
+                        :severity="getTrashStatusSeverity(data.status, data.item_type)"
                       >
                         <span
                           class="admin-desktop-status-label"
-                          :aria-label="getTrashStatusLabel(data.status)"
+                          :aria-label="getTrashStatusLabel(data.status, data.item_type)"
                         >
                           <span
                             v-for="(character, index) in Array.from(
-                              getTrashStatusLabel(data.status)
+                              getTrashStatusLabel(data.status, data.item_type)
                             )"
                             :key="`${character}-${index}`"
                             aria-hidden="true"
@@ -2687,9 +2687,9 @@
                           'trash-mobile-status',
                           getSubmissionStatusClass(data.status),
                         ]"
-                        :severity="getTrashStatusSeverity(data.status)"
+                        :severity="getTrashStatusSeverity(data.status, data.item_type)"
                       >
-                        {{ getTrashStatusLabel(data.status) }}
+                        {{ getTrashStatusLabel(data.status, data.item_type) }}
                       </Tag>
                     </div>
                   </header>
@@ -6483,7 +6483,16 @@ const getTrashSemesterValue = (item) => {
   return item?.academic_term || '—'
 }
 
-const getTrashStatusLabel = (statusValue) => {
+const getTrashStatusLabel = (statusValue, itemType = null) => {
+  if (itemType === 'comment_report') {
+    return (
+      {
+        pending: '待審核',
+        upheld: '回報成立',
+        dismissed: '回報不成立',
+      }[statusValue] || '待審核'
+    )
+  }
   const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
   const labels = {
     pending: '待審核',
@@ -6495,7 +6504,10 @@ const getTrashStatusLabel = (statusValue) => {
   return labels[normalized] || '已刪除'
 }
 
-const getTrashStatusSeverity = (statusValue) => {
+const getTrashStatusSeverity = (statusValue, itemType = null) => {
+  if (itemType === 'comment_report') {
+    return { pending: 'warn', upheld: 'success', dismissed: 'danger' }[statusValue] || 'warn'
+  }
   const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
   if (normalized === 'approved') return 'success'
   if (normalized === 'pending') return 'warning'
