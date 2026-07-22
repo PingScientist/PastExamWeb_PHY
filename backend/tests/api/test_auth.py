@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import select
 
 from fastapi import HTTPException
 
