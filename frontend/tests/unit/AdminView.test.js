@@ -381,8 +381,8 @@ describe('AdminView', () => {
     expect(adminViewSource).not.toContain('<span class="review-mobile-info-label">投稿人</span>')
     expect(adminViewSource.match(/review-mobile-info-label">審核人/g)).toHaveLength(2)
     expect(adminViewSource.match(/review-mobile-info-label">審核時間/g)).toHaveLength(2)
-    expect(adminViewSource.match(/trash-mobile-info-label">刪除者/g)).toHaveLength(1)
-    expect(adminViewSource.match(/trash-mobile-info-label">刪除時間/g)).toHaveLength(1)
+    expect(adminViewSource.match(/label: '刪除者'/g)).toHaveLength(1)
+    expect(adminViewSource.match(/label: '刪除時間'/g)).toHaveLength(1)
     expect(adminViewSource).not.toContain('admin-actor-time--mobile')
     expect(adminViewSource).toContain('admin-actor-time--notification')
     expect(adminViewSource).toContain('notification-mobile-update__value')
@@ -507,31 +507,50 @@ describe('AdminView', () => {
     expect(adminTemplateSource).toMatch(
       /trash-mobile-card-footer[\s\S]*?trash-mobile-dependencies[\s\S]*?trash-mobile-card-actions/
     )
-    expect(adminTemplateSource.match(/class="trash-mobile-primary-metadata"/g)).toHaveLength(1)
-    expect(adminTemplateSource.match(/class="trash-mobile-deletion-metadata"/g)).toHaveLength(1)
+    expect(adminTemplateSource).not.toContain('trash-mobile-primary-metadata')
+    expect(adminTemplateSource).not.toContain('trash-mobile-deletion-metadata')
     expect(adminTemplateSource).toMatch(
-      /class="trash-mobile-primary-metadata"[\s\S]*?getTrashReportDetails\(data\)[\s\S]*?class="trash-mobile-deletion-metadata"[\s\S]*?trash-mobile-info-label">刪除者[\s\S]*?trash-mobile-info-label">刪除時間/
-    )
-    expect(adminTemplateSource).toMatch(
-      /class="trash-mobile-deletion-metadata">\s*<div class="trash-mobile-info-item">[\s\S]*?刪除者[\s\S]*?<\/div>\s*<div class="trash-mobile-info-item">[\s\S]*?刪除時間/
+      /class="trash-mobile-info-grid"[\s\S]*?v-for="metadata in getTrashMobileMetadata\(data\)"[\s\S]*?trash-mobile-info-item--row-start/
     )
     expect(adminViewSource).toMatch(
-      /\.trash-mobile-info-grid\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/
+      /\.trash-mobile-info-grid\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*width:\s*100%;[^}]*min-width:\s*0;/
     )
     expect(adminViewSource).toMatch(
-      /\.trash-mobile-primary-metadata,[\s\S]*?\.trash-mobile-deletion-metadata\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*width:\s*100%;[^}]*min-width:\s*0;/
+      /@media \(min-width: 900px\) and \(max-width: 1399px\)[\s\S]*?\.trash-mobile-info-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/
     )
     expect(adminViewSource).toMatch(
-      /@media \(min-width: 900px\) and \(max-width: 1399px\)[\s\S]*?\.trash-mobile-primary-metadata\s*\{[^}]*repeat\(3,[\s\S]*?\.trash-mobile-deletion-metadata\s*\{[^}]*repeat\(2,/
+      /@media \(min-width: 900px\) and \(max-width: 1399px\)[\s\S]*?\.trash-mobile-info-item--row-start\s*\{[^}]*grid-column:\s*1;/
     )
     expect(adminViewSource).toMatch(
-      /@media \(max-width: 360px\)[\s\S]*?\.trash-mobile-primary-metadata,[\s\S]*?\.trash-mobile-deletion-metadata\s*\{[^}]*grid-template-columns:\s*1fr;/
+      /@media \(max-width: 360px\)[\s\S]*?\.trash-mobile-info-grid\s*\{[^}]*grid-template-columns:\s*1fr;/
     )
-    const deletionMetadataRules = adminViewSource.match(
-      /\.trash-mobile-deletion-metadata\s*\{[^}]*\}/g
-    )
-    expect(deletionMetadataRules).not.toBeNull()
-    expect(deletionMetadataRules.join('\n')).not.toMatch(/grid-(?:column|row):/)
+    expect(adminTemplateSource).not.toMatch(/trash-mobile-info-(?:item|placeholder)[^>]*hidden/)
+    const archiveSubmissionMetadata = wrapper.vm.getTrashMobileMetadata({
+      item_type: 'archive_submission',
+      id: 64,
+      academic_term: '114上學期',
+      course_name: '毀滅交大',
+      deleted_by_name: 'admin',
+      deleted_at: '2026-07-04T08:07:00Z',
+    })
+    expect(archiveSubmissionMetadata.map((item) => item.label)).toEqual([
+      '投稿編號',
+      '學期',
+      '課程',
+      '刪除者',
+      '刪除時間',
+    ])
+    expect(archiveSubmissionMetadata[2]).toMatchObject({
+      label: '課程',
+      startNewRow: true,
+    })
+    const registeredTrashTypes = wrapper.vm.trashFilterOptions.map((option) => option.value)
+    for (const itemType of registeredTrashTypes) {
+      const labels = wrapper.vm
+        .getTrashMobileMetadata({ item_type: itemType })
+        .map((item) => item.label)
+      expect(labels.slice(-2)).toEqual(['刪除者', '刪除時間'])
+    }
     expect(adminViewSource).toMatch(
       /\.trash-mobile-card-footer\s*\{[\s\S]*?border-top:\s*1px solid color-mix/
     )

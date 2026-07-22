@@ -2721,52 +2721,16 @@
                   </header>
 
                   <div class="trash-mobile-info-grid">
-                    <div class="trash-mobile-primary-metadata">
-                      <div v-if="getTrashSubmissionLabel(data)" class="trash-mobile-info-item">
-                        <span class="trash-mobile-info-label">投稿編號</span>
-                        <span class="trash-mobile-info-value">{{
-                          getTrashSubmissionValue(data)
-                        }}</span>
-                      </div>
-                      <div v-if="getTrashSemesterValue(data)" class="trash-mobile-info-item">
-                        <span class="trash-mobile-info-label">學期</span>
-                        <span class="trash-mobile-info-value">{{
-                          getTrashSemesterValue(data)
-                        }}</span>
-                      </div>
-                      <div
-                        v-if="getTrashContextLine(data)"
-                        class="trash-mobile-info-item trash-mobile-info-item--wide"
-                      >
-                        <span class="trash-mobile-info-label">{{
-                          getTrashContextLabel(data)
-                        }}</span>
-                        <span class="trash-mobile-info-value">{{
-                          getTrashContextValue(data)
-                        }}</span>
-                      </div>
-                      <div
-                        v-for="detail in getTrashReportDetails(data)"
-                        :key="detail.label"
-                        class="trash-mobile-info-item"
-                      >
-                        <span class="trash-mobile-info-label">{{ detail.label }}</span>
-                        <span class="trash-mobile-info-value">{{ detail.value }}</span>
-                      </div>
-                    </div>
-                    <div class="trash-mobile-deletion-metadata">
-                      <div class="trash-mobile-info-item">
-                        <span class="trash-mobile-info-label">刪除者</span>
-                        <span class="trash-mobile-info-value">{{
-                          getTrashDeletedByLabel(data)
-                        }}</span>
-                      </div>
-                      <div class="trash-mobile-info-item">
-                        <span class="trash-mobile-info-label">刪除時間</span>
-                        <span class="trash-mobile-info-value">{{
-                          formatTrashDeletedAt(data.deleted_at)
-                        }}</span>
-                      </div>
+                    <div
+                      v-for="metadata in getTrashMobileMetadata(data)"
+                      :key="metadata.key"
+                      :class="[
+                        'trash-mobile-info-item',
+                        { 'trash-mobile-info-item--row-start': metadata.startNewRow },
+                      ]"
+                    >
+                      <span class="trash-mobile-info-label">{{ metadata.label }}</span>
+                      <span class="trash-mobile-info-value">{{ metadata.value }}</span>
                     </div>
                   </div>
 
@@ -6656,6 +6620,37 @@ const getTrashContextValue = (item) => {
   if (!line) return ''
   const separatorIndex = line.indexOf('：')
   return separatorIndex > 0 ? line.slice(separatorIndex + 1) : line
+}
+
+const getTrashMobileMetadata = (item) => {
+  const metadata = []
+  const submissionLabel = getTrashSubmissionLabel(item)
+  const semesterValue = getTrashSemesterValue(item)
+  const contextLine = getTrashContextLine(item)
+
+  if (submissionLabel) {
+    metadata.push({ key: 'submission', label: '投稿編號', value: getTrashSubmissionValue(item) })
+  }
+  if (semesterValue) {
+    metadata.push({ key: 'semester', label: '學期', value: semesterValue })
+  }
+  if (contextLine) {
+    metadata.push({
+      key: 'context',
+      label: getTrashContextLabel(item),
+      value: getTrashContextValue(item),
+      startNewRow: Boolean(submissionLabel && semesterValue),
+    })
+  }
+  getTrashReportDetails(item).forEach((detail, index) => {
+    metadata.push({ key: `report-${index}-${detail.label}`, ...detail })
+  })
+  metadata.push(
+    { key: 'deleted-by', label: '刪除者', value: getTrashDeletedByLabel(item) },
+    { key: 'deleted-at', label: '刪除時間', value: formatTrashDeletedAt(item?.deleted_at) }
+  )
+
+  return metadata
 }
 
 const applyDependencyCount = (label, count) => {
@@ -12430,15 +12425,6 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .trash-mobile-primary-metadata,
-  .trash-mobile-deletion-metadata {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.38rem 0.65rem;
@@ -12453,10 +12439,6 @@ onBeforeUnmount(() => {
     align-content: flex-start;
     gap: 0.12rem 0.35rem;
     min-width: 0;
-  }
-
-  .trash-mobile-info-item--wide {
-    grid-column: auto;
   }
 
   .trash-mobile-info-label {
@@ -12646,18 +12628,13 @@ onBeforeUnmount(() => {
     padding: 1rem;
   }
 
-  .trash-mobile-primary-metadata {
+  .trash-mobile-info-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.5rem 1rem;
   }
 
-  .trash-mobile-deletion-metadata {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem 1rem;
-  }
-
-  .trash-mobile-info-item--wide {
-    grid-column: span 2;
+  .trash-mobile-info-item--row-start {
+    grid-column: 1;
   }
 
   .trash-mobile-card-actions {
@@ -12709,9 +12686,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 360px) {
-  .trash-mobile-primary-metadata,
-  .trash-mobile-deletion-metadata {
+  .trash-mobile-info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .trash-mobile-info-item--row-start {
+    grid-column: auto;
   }
 }
 
@@ -13169,8 +13149,7 @@ onBeforeUnmount(() => {
     padding: 0.9rem;
   }
 
-  .trash-mobile-primary-metadata,
-  .trash-mobile-deletion-metadata {
+  .trash-mobile-info-grid {
     gap: 0.4rem 0.85rem;
   }
 
