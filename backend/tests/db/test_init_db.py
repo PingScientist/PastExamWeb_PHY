@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import pytest
 from app.core.config import settings
 from app.db import init_db
-from app.models.models import Course, Meme, User, CourseCategory
+from app.models.models import Course, CourseCategory, CourseCategoryConfig, Meme, User
 
 
 class FakeScalarResult:
@@ -25,7 +25,13 @@ class FakeScalarResult:
 
 
 class FakeSession:
-    def __init__(self, admin_exists=False, courses=None, meme_count=0):
+    def __init__(
+        self,
+        admin_exists=False,
+        category_configs=None,
+        courses=None,
+        meme_count=0,
+    ):
         self.admin = (
             User(
                 name=settings.DEFAULT_ADMIN_NAME,
@@ -34,9 +40,11 @@ class FakeSession:
             if admin_exists
             else None
         )
+        self.category_configs = category_configs or []
         self.courses = courses or []
         self.meme_count = meme_count
         self.added_courses: list[Course] = []
+        self.added_category_configs: list[CourseCategoryConfig] = []
         self.added_memes: list[Meme] = []
         self.execute_step = 0
         self.commits = 0
@@ -53,8 +61,11 @@ class FakeSession:
             return FakeScalarResult(self.admin)
         if self.execute_step == 1:
             self.execute_step += 1
-            return FakeScalarResult(self.courses)
+            return FakeScalarResult(self.category_configs)
         if self.execute_step == 2:
+            self.execute_step += 1
+            return FakeScalarResult(self.courses)
+        if self.execute_step == 3:
             self.execute_step += 1
             return FakeScalarResult(self.meme_count)
         raise AssertionError("Unexpected execute call")
@@ -64,6 +75,8 @@ class FakeSession:
             self.admin = obj
         elif isinstance(obj, Course):
             self.added_courses.append(obj)
+        elif isinstance(obj, CourseCategoryConfig):
+            self.added_category_configs.append(obj)
 
     def add_all(self, objs):
         for obj in objs:
@@ -218,5 +231,5 @@ async def test_init_db_fallback_when_migration_fails(monkeypatch):
 
     await init_db.init_db()
 
-    assert tracker["create_all"] == 1
+    assert tracker["create_all"] == 2
     original_loader.cache_clear()

@@ -32,16 +32,28 @@ jobs:
       - name: Start core services
         run: docker compose -f docker/docker-compose.dev.yml up -d db redis minio
 
+      - name: Create test database
+        run: |
+          docker compose -f docker/docker-compose.dev.yml exec -T db \
+            sh -c 'createdb -U "$POSTGRES_USER" test_archive_db'
+
       - name: Run migrations
-        run: docker compose -f docker/docker-compose.dev.yml run --rm backend uv run alembic upgrade head
+        run: |
+          docker compose -f docker/docker-compose.dev.yml run --rm \
+            -e DB_NAME=test_archive_db \
+            backend uv run alembic upgrade head
 
       - name: Seed database
-        run: docker compose -f docker/docker-compose.dev.yml run --rm backend uv run python app/scripts/seed_db.py
+        run: |
+          docker compose -f docker/docker-compose.dev.yml run --rm \
+            -e DB_NAME=test_archive_db \
+            backend uv run python app/scripts/seed_db.py
 
       - name: Run backend tests with coverage
         run: |
           docker compose -f docker/docker-compose.dev.yml run --rm backend \
-            uv run pytest --cov=app --cov-report=term-missing --cov-report=html
+            sh -c 'TEST_DATABASE_URL="postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/test_archive_db" \
+              uv run pytest --cov=app --cov-report=term-missing --cov-report=html'
 
       - name: Upload backend coverage report
         if: always()

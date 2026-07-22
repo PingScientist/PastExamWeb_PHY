@@ -14,6 +14,7 @@ from app.models.models import (
     Course,
     CourseCategory,
     User,
+    UserPresenceSession,
 )
 
 
@@ -37,6 +38,7 @@ async def statistics_records(session_maker, statistics_now):
     earlier = statistics_now - timedelta(days=1)
     unique = uuid.uuid4().hex[:6]
     archive_ids: list[int] = []
+    presence_session_ids: list[int] = []
     user_ids: list[int] = []
     course_id = None
 
@@ -70,6 +72,17 @@ async def statistics_records(session_maker, statistics_now):
 
             user_ids = [online_user.id, offline_user.id]
             course_id = course.id
+
+            presence_session = UserPresenceSession(
+                user_id=online_user.id,
+                session_identifier=f"statistics-{unique}",
+                started_at=statistics_now,
+                last_seen_at=statistics_now,
+            )
+            session.add(presence_session)
+            await session.commit()
+            await session.refresh(presence_session)
+            presence_session_ids = [presence_session.id]
 
             active_archive = Archive(
                 name="Active Archive",
@@ -105,6 +118,12 @@ async def statistics_records(session_maker, statistics_now):
         async with session_maker() as session:
             if archive_ids:
                 await session.execute(delete(Archive).where(Archive.id.in_(archive_ids)))
+            if presence_session_ids:
+                await session.execute(
+                    delete(UserPresenceSession).where(
+                        UserPresenceSession.id.in_(presence_session_ids)
+                    )
+                )
             if course_id is not None:
                 await session.execute(delete(Course).where(Course.id == course_id))
             if user_ids:
