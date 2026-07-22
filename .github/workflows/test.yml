@@ -30,12 +30,50 @@ jobs:
         run: cp docker/.env.example docker/.env
 
       - name: Start core services
-        run: docker compose -f docker/docker-compose.dev.yml up -d db redis minio
+        run: |
+          docker compose -f docker/docker-compose.dev.yml up -d --wait --wait-timeout 60 \
+            db redis minio
 
       - name: Create test database
         run: |
+          set -euo pipefail
+
           docker compose -f docker/docker-compose.dev.yml exec -T db \
-            sh -c 'createdb -U "$POSTGRES_USER" test_archive_db'
+            sh -eu -c '
+              echo "PostgreSQL user: $POSTGRES_USER"
+              echo "PostgreSQL database: $POSTGRES_DB"
+              echo "Waiting for PostgreSQL..."
+
+              attempt=0
+              until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+                attempt=$((attempt + 1))
+                if [ "$attempt" -ge 30 ]; then
+                  echo "PostgreSQL did not become ready within 60 seconds" >&2
+                  exit 1
+                fi
+                sleep 2
+              done
+
+              echo "Recreating isolated test database..."
+              dropdb --if-exists -U "$POSTGRES_USER" test_archive_db
+              createdb -U "$POSTGRES_USER" test_archive_db
+
+              database_name="$(
+                psql -U "$POSTGRES_USER" -d test_archive_db -tAc \
+                  "SELECT current_database()"
+              )"
+              if [ "$database_name" != "test_archive_db" ]; then
+                echo "Failed to verify test_archive_db" >&2
+                exit 1
+              fi
+              echo "Test database is ready: $database_name"
+            '
+
+      - name: Show database diagnostics
+        if: failure()
+        run: |
+          docker compose -f docker/docker-compose.dev.yml ps
+          docker compose -f docker/docker-compose.dev.yml logs db
 
       - name: Run migrations
         run: |
