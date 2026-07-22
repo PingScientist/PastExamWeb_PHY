@@ -106,9 +106,16 @@ describe('NotificationCenterModal', () => {
     expect(wrapper.get('.notification-announcement-groups .notification-card').text()).toContain(
       '最近更新'
     )
+    expect(wrapper.get('.notification-announcement-groups .notification-card').text()).toContain(
+      '2026/01/01 08:00'
+    )
     expect(wrapper.get('.notification-personal-groups .notification-card').text()).toContain(
       '回覆通知'
     )
+    expect(wrapper.get('.notification-personal-groups .notification-card').text()).toContain(
+      '2026/01/02 08:00'
+    )
+    expect(wrapper.text()).not.toMatch(/上午|下午|凌晨|晚上|AM|PM|剛剛|分鐘前/)
     const viewButtons = wrapper.findAll('.notification-view-button')
     expect(viewButtons).toHaveLength(2)
     expect(viewButtons.every((button) => button.text() === '檢視')).toBe(true)

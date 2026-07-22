@@ -1,4 +1,14 @@
-export function formatRelativeTime(value) {
+import { formatProductDateTime } from './productTimezone'
+
+export function formatExactDateTime24h(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return formatProductDateTime(date)
+}
+
+export function formatRelativeOrAbsoluteDateTime(value) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
@@ -24,12 +34,9 @@ export function formatRelativeTime(value) {
     return `${diffInDays} 天前`
   }
 
-  return date.toLocaleString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  return formatExactDateTime24h(date)
+}
+
+export function formatRelativeTime(value) {
+  return formatRelativeOrAbsoluteDateTime(value)
 }

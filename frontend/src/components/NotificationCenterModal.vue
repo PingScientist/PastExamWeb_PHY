@@ -72,7 +72,9 @@
                       }}</Tag>
                     </div>
                     <div class="notification-card__footer">
-                      <small class="text-500">最近更新：{{ formatDate(item.updated_at) }}</small>
+                      <small class="text-500"
+                        >最近更新：{{ formatTimestamp(item.updated_at) }}</small
+                      >
                       <Button
                         label="檢視"
                         size="small"
@@ -209,6 +211,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { renderMarkdown } from '@/utils/markdown'
+import { formatExactDateTime24h } from '@/utils/time'
 
 const props = defineProps({
   visible: Boolean,
@@ -332,18 +335,7 @@ watch(
     detailVisible.value = true
   }
 )
-const formatDate = (value) => formatTimestamp(value, false)
-function formatTimestamp(value, withTime = true) {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString(
-    'zh-TW',
-    withTime
-      ? { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
-      : { year: 'numeric', month: '2-digit', day: '2-digit' }
-  )
-}
+const formatTimestamp = (value) => formatExactDateTime24h(value)
 </script>
 
 <style scoped>

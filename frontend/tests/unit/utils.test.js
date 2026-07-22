@@ -61,8 +61,37 @@ describe('utils/svgBg', () => {
 })
 
 describe('utils/time', () => {
-  it('formats future dates as 剛剛', async () => {
-    const { formatRelativeTime } = await import('@/utils/time.js')
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-23T06:08:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('keeps the existing relative-time threshold and uses an exact 24-hour fallback', async () => {
+    const { formatRelativeOrAbsoluteDateTime } = await import('@/utils/time.js')
+
+    expect(formatRelativeOrAbsoluteDateTime('2026-07-23T06:07:30Z')).toBe('剛剛')
+    expect(formatRelativeOrAbsoluteDateTime('2026-07-23T06:03:00Z')).toBe('5 分鐘前')
+    expect(formatRelativeOrAbsoluteDateTime('2026-07-23T04:08:00Z')).toBe('2 小時前')
+    expect(formatRelativeOrAbsoluteDateTime('2026-07-22T06:08:00Z')).toBe('昨天')
+    expect(formatRelativeOrAbsoluteDateTime('2026-07-20T06:08:00Z')).toBe('3 天前')
+    expect(formatRelativeOrAbsoluteDateTime('2026-07-10T16:33:00Z')).toBe('2026/07/11 00:33')
+  })
+
+  it('always formats exact timestamps with the product timezone and 24-hour clock', async () => {
+    const { formatExactDateTime24h, formatRelativeTime } = await import('@/utils/time.js')
+
+    expect(formatExactDateTime24h('2026-07-23T13:45:00Z')).toBe('2026/07/23 21:45')
+    expect(formatExactDateTime24h('2026-07-23T06:07:00Z')).toBe('2026/07/23 14:07')
+    expect(formatExactDateTime24h(null)).toBe('—')
+    expect(formatExactDateTime24h('invalid')).toBe('—')
+    expect(formatExactDateTime24h('2026-07-23T13:45:00Z')).not.toMatch(
+      /上午|下午|凌晨|晚上|AM|PM|剛剛|分鐘前|天前/
+    )
+
     const future = new Date(Date.now() + 5 * 60 * 1000).toISOString()
     expect(formatRelativeTime(future)).toBe('剛剛')
   })

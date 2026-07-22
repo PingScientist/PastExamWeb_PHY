@@ -1164,7 +1164,6 @@
                         <div class="notification-mobile-update">
                           <span class="notification-mobile-update__label">最近更新</span>
                           <span
-                            v-if="hasNotificationUpdater(data)"
                             class="notification-mobile-update__actor"
                             :title="getNotificationUpdaterLabel(data)"
                             >{{ getNotificationUpdaterLabel(data) }}・</span
@@ -1293,7 +1292,6 @@
                       <span class="admin-tablet-metadata-label">最近更新</span>
                       <div class="notification-mobile-update__value">
                         <span
-                          v-if="hasNotificationUpdater(notification)"
                           class="notification-mobile-update__actor"
                           :title="getNotificationUpdaterLabel(notification)"
                           >{{ getNotificationUpdaterLabel(notification) }}・</span
@@ -4167,7 +4165,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { getCurrentUser } from '../utils/auth'
 import { isUnauthorizedError } from '../utils/http'
-import { formatRelativeTime } from '../utils/time'
+import { formatRelativeOrAbsoluteDateTime } from '../utils/time'
 import {
   PRODUCT_TIME_ZONE,
   PRODUCT_TIME_ZONE_LABEL,
@@ -4601,7 +4599,7 @@ const formatReviewSubmissionTime = (item) => {
   if (typeof value === 'object') {
     return value.display || value.label || '—'
   }
-  return formatRelativeTime(value)
+  return formatRelativeOrAbsoluteDateTime(value)
 }
 const getReviewRequesterLabel = (item) => {
   return item?.requester_name || item?.requester_email || '—'
@@ -4620,7 +4618,7 @@ const getReviewReviewerDisplay = (item) => {
 }
 const formatReviewReviewedTime = (item) => {
   const value = getReviewReviewedAt(item)
-  return value ? formatRelativeTime(value) : '—'
+  return formatRelativeOrAbsoluteDateTime(value)
 }
 const getReviewMobileCourseName = (item) => {
   return item?.requested_course_name || item?.requestedCourseName || item?.subject || '—'
@@ -5712,27 +5710,11 @@ const isNotificationEffective = (notification) => {
   return true
 }
 
-const formatAdminActorTime = (value) => {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  })
-}
+const formatAdminActorTime = (value) => formatRelativeOrAbsoluteDateTime(value)
 
 const getNotificationUpdaterLabel = (notification) => {
   const label = String(notification?.updated_by_username || '').trim()
   return label || '—'
-}
-
-const hasNotificationUpdater = (notification) => {
-  return getNotificationUpdaterLabel(notification) !== '—'
 }
 
 const getSubmissionLabel = (status) => {
@@ -6478,7 +6460,7 @@ const loadTrashItems = async () => {
 }
 
 const formatTrashDeletedAt = (value) => {
-  return value ? formatRelativeTime(value) : '—'
+  return formatRelativeOrAbsoluteDateTime(value)
 }
 
 const getTrashSemesterText = (item) => {
@@ -8063,7 +8045,7 @@ const deleteNotificationAction = async (notification) => {
 
 const formatDateTime = (dateString) => {
   if (!dateString) return '從未登入'
-  return formatRelativeTime(dateString)
+  return formatRelativeOrAbsoluteDateTime(dateString)
 }
 
 // Persist the current tab in localStorage

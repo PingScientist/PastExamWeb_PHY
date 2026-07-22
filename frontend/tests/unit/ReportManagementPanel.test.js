@@ -148,8 +148,11 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.text()).not.toContain('回報編號')
     expect(wrapper.vm.activeTab).toBeUndefined()
     expect(wrapper.vm.archiveListState).toMatchObject({ first: 0, total: 0, loading: false })
-    expect(wrapper.vm.formatDateTime('2026-07-20T13:37:00Z', true)).toMatch(/\d{2}:\d{2}/)
-    expect(wrapper.vm.formatDateTime('2026-07-20T13:37:00Z', true)).not.toMatch(/上午|下午/)
+    expect(wrapper.vm.formatDateTime('2020-07-20T13:37:00Z', true)).toBe('2020/07/20 21:37')
+    expect(wrapper.vm.formatDateTime('2020-07-20T13:37:00Z', true)).not.toMatch(/上午|下午/)
+    expect(wrapper.vm.formatDateTime(new Date(Date.now() - 5 * 60_000).toISOString())).toBe(
+      '5 分鐘前'
+    )
     expect(reportManagementSource).not.toContain('header="GitHub Issue"')
     expect(reportManagementSource).not.toContain('label="前往 GitHub"')
     expect(reportManagementSource).toContain('label="前往專案 Issues"')

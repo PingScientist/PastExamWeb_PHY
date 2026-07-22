@@ -386,7 +386,10 @@ describe('AdminView', () => {
     expect(adminViewSource).not.toContain('admin-actor-time--mobile')
     expect(adminViewSource).toContain('admin-actor-time--notification')
     expect(adminViewSource).toContain('notification-mobile-update__value')
-    expect(adminViewSource).toContain('v-if="hasNotificationUpdater(notification)"')
+    expect(adminViewSource).not.toContain('hasNotificationUpdater')
+    expect(
+      adminTemplateSource.match(/getNotificationUpdaterLabel\((?:data|notification)\)/g)
+    ).toHaveLength(6)
     expect(adminViewSource.match(/review-desktop-course-cell/g).length).toBeGreaterThanOrEqual(2)
     expect(
       adminTemplateSource.match(
@@ -567,16 +570,17 @@ describe('AdminView', () => {
       })
     ).toBe('管理員')
     expect(wrapper.vm.getNotificationUpdaterLabel({})).toBe('—')
-    expect(wrapper.vm.hasNotificationUpdater({})).toBe(false)
-    expect(wrapper.vm.hasNotificationUpdater({ updated_by_username: 'admin' })).toBe(true)
     expect(wrapper.vm.getNotificationUpdaterLabel({ updated_by_username: 'editor' })).toBe('editor')
     expect(wrapper.vm.getTrashDeletedByLabel({ deleted_by_name: '刪除管理員 A' })).toBe(
       '刪除管理員 A'
     )
     expect(wrapper.vm.getTrashDeletedByLabel({})).toBe('—')
-    const actorTime = wrapper.vm.formatAdminActorTime('2026-07-20T05:32:00Z')
-    expect(actorTime).toMatch(/2026\/07\/20.*\d{2}:32/)
+    const actorTime = wrapper.vm.formatAdminActorTime('2020-07-20T05:32:00Z')
+    expect(actorTime).toBe('2020/07/20 13:32')
     expect(actorTime).not.toMatch(/上午|下午/)
+    expect(
+      wrapper.vm.formatAdminActorTime(new Date(now.getTime() - 5 * 60_000).toISOString())
+    ).toBe('5 分鐘前')
 
     const reviewRows = [
       {

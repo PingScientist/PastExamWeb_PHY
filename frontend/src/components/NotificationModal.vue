@@ -60,6 +60,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatExactDateTime24h } from '@/utils/time'
 const props = defineProps({ visible: Boolean, summary: { type: Object, required: true } })
 defineEmits([
   'update:visible',
@@ -74,13 +75,7 @@ const excerpt = (value) =>
     .replace(/[#*_`>\n]/g, ' ')
     .trim()
     .slice(0, 120)
-function formatTimestamp(value) {
-  if (!value) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleString('zh-TW', { dateStyle: 'medium', timeStyle: 'short' })
-}
+const formatTimestamp = (value) => formatExactDateTime24h(value)
 </script>
 
 <style scoped>

@@ -756,6 +756,7 @@ import { useRouter } from 'vue-router'
 import { reportService } from '@/api'
 import { ADMIN_PAGE_SIZE_OPTIONS } from '@/constants/pagination'
 import { getCurrentUser } from '@/utils/auth'
+import { formatRelativeOrAbsoluteDateTime } from '@/utils/time'
 
 const confirm = useConfirm()
 const toast = useToast()
@@ -1149,18 +1150,7 @@ function issueTypeLabel(value) {
 function isFinal(value) {
   return ['upheld', 'dismissed'].includes(value)
 }
-function formatDateTime(value, force24Hour = false) {
-  if (!value) return '—'
-  const options = {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }
-  if (force24Hour) options.hour12 = false
-  return new Date(value).toLocaleString('zh-TW', options)
-}
+const formatDateTime = (value) => formatRelativeOrAbsoluteDateTime(value)
 
 function syncCardLayout(event) {
   isCardLayout.value = event.matches
