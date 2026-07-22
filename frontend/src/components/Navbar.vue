@@ -104,6 +104,7 @@
 
           <Button
             :icon="isDarkTheme ? 'pi pi-sun' : 'pi pi-moon'"
+            :aria-label="isDarkTheme ? '切換至淺色模式' : '切換至深色模式'"
             severity="secondary"
             size="small"
             text
