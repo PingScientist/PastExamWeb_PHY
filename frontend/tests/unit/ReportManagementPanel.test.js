@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { Fragment, h } from 'vue'
 import ReportManagementPanel from '@/components/admin/ReportManagementPanel.vue'
 import reportManagementSource from '@/components/admin/ReportManagementPanel.vue?raw'
+import { ADMIN_PAGE_SIZE_OPTIONS } from '@/constants/pagination'
 
 const mocks = vi.hoisted(() => ({
   listSystem: vi.fn(),
@@ -318,6 +319,34 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.vm.commentPage.first).toBe(0)
     expect(reportManagementSource).toMatch(
       /field="read_state"[\s\S]*?sortField="read_state"[\s\S]*?header="狀態"[\s\S]*?sortable/
+    )
+  })
+
+  it('shares admin page-size options while keeping report pagination state independent', async () => {
+    const wrapper = mountPanel()
+    await flushPromises()
+    mocks.listSystem.mockClear()
+    mocks.listComments.mockClear()
+
+    expect(ADMIN_PAGE_SIZE_OPTIONS).toEqual([5, 10, 15, 25, 50])
+    expect(
+      reportManagementSource.match(/:rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"/g)
+    ).toHaveLength(2)
+    expect(wrapper.vm.systemPage).toMatchObject({ first: 0, rows: 10 })
+    expect(wrapper.vm.commentPage).toMatchObject({ first: 0, rows: 10 })
+
+    await wrapper.vm.onSystemPage({ first: 20, rows: 5 })
+    expect(wrapper.vm.systemPage).toMatchObject({ first: 0, rows: 5 })
+    expect(wrapper.vm.commentPage).toMatchObject({ first: 0, rows: 10 })
+    expect(mocks.listSystem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0, limit: 5 })
+    )
+
+    await wrapper.vm.onCommentPage({ first: 25, rows: 25 })
+    expect(wrapper.vm.commentPage).toMatchObject({ first: 0, rows: 25 })
+    expect(wrapper.vm.systemPage).toMatchObject({ first: 0, rows: 5 })
+    expect(mocks.listComments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0, limit: 25 })
     )
   })
 

@@ -2721,42 +2721,52 @@
                   </header>
 
                   <div class="trash-mobile-info-grid">
-                    <div v-if="getTrashSubmissionLabel(data)" class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">投稿編號</span>
-                      <span class="trash-mobile-info-value">{{
-                        getTrashSubmissionValue(data)
-                      }}</span>
+                    <div class="trash-mobile-primary-metadata">
+                      <div v-if="getTrashSubmissionLabel(data)" class="trash-mobile-info-item">
+                        <span class="trash-mobile-info-label">投稿編號</span>
+                        <span class="trash-mobile-info-value">{{
+                          getTrashSubmissionValue(data)
+                        }}</span>
+                      </div>
+                      <div v-if="getTrashSemesterValue(data)" class="trash-mobile-info-item">
+                        <span class="trash-mobile-info-label">學期</span>
+                        <span class="trash-mobile-info-value">{{
+                          getTrashSemesterValue(data)
+                        }}</span>
+                      </div>
+                      <div
+                        v-if="getTrashContextLine(data)"
+                        class="trash-mobile-info-item trash-mobile-info-item--wide"
+                      >
+                        <span class="trash-mobile-info-label">{{
+                          getTrashContextLabel(data)
+                        }}</span>
+                        <span class="trash-mobile-info-value">{{
+                          getTrashContextValue(data)
+                        }}</span>
+                      </div>
+                      <div
+                        v-for="detail in getTrashReportDetails(data)"
+                        :key="detail.label"
+                        class="trash-mobile-info-item"
+                      >
+                        <span class="trash-mobile-info-label">{{ detail.label }}</span>
+                        <span class="trash-mobile-info-value">{{ detail.value }}</span>
+                      </div>
                     </div>
-                    <div v-if="getTrashSemesterValue(data)" class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">學期</span>
-                      <span class="trash-mobile-info-value">{{ getTrashSemesterValue(data) }}</span>
-                    </div>
-                    <div
-                      v-if="getTrashContextLine(data)"
-                      class="trash-mobile-info-item trash-mobile-info-item--wide"
-                    >
-                      <span class="trash-mobile-info-label">{{ getTrashContextLabel(data) }}</span>
-                      <span class="trash-mobile-info-value">{{ getTrashContextValue(data) }}</span>
-                    </div>
-                    <div
-                      v-for="detail in getTrashReportDetails(data)"
-                      :key="detail.label"
-                      class="trash-mobile-info-item"
-                    >
-                      <span class="trash-mobile-info-label">{{ detail.label }}</span>
-                      <span class="trash-mobile-info-value">{{ detail.value }}</span>
-                    </div>
-                    <div class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">刪除者</span>
-                      <span class="trash-mobile-info-value">{{
-                        getTrashDeletedByLabel(data)
-                      }}</span>
-                    </div>
-                    <div class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">刪除時間</span>
-                      <span class="trash-mobile-info-value">{{
-                        formatTrashDeletedAt(data.deleted_at)
-                      }}</span>
+                    <div class="trash-mobile-deletion-metadata">
+                      <div class="trash-mobile-info-item">
+                        <span class="trash-mobile-info-label">刪除者</span>
+                        <span class="trash-mobile-info-value">{{
+                          getTrashDeletedByLabel(data)
+                        }}</span>
+                      </div>
+                      <div class="trash-mobile-info-item">
+                        <span class="trash-mobile-info-label">刪除時間</span>
+                        <span class="trash-mobile-info-value">{{
+                          formatTrashDeletedAt(data.deleted_at)
+                        }}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -2820,7 +2830,7 @@
                 :first="trashFirst"
                 :rows="trashRowsPerPage"
                 :totalRecords="sortedTrashItems.length"
-                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                 template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 class="trash-paginator"
@@ -4220,6 +4230,7 @@ import {
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
+import { ADMIN_PAGE_SIZE_OPTIONS } from '../constants/pagination'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
 import UserOnlineDurationChart from '../components/UserOnlineDurationChart.vue'
@@ -4243,7 +4254,6 @@ const courseLoadError = ref('')
 const searchQuery = ref('')
 const filterCategory = ref(null)
 const courseOrderLoading = ref(false)
-const ADMIN_PAGE_SIZE_OPTIONS = [5, 10, 15, 25, 50]
 const courseFirst = ref(0)
 const courseRows = ref(10)
 
@@ -12420,10 +12430,20 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .trash-mobile-primary-metadata,
+  .trash-mobile-deletion-metadata {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.38rem 0.65rem;
     width: 100%;
+    min-width: 0;
   }
 
   .trash-mobile-info-item {
@@ -12626,8 +12646,13 @@ onBeforeUnmount(() => {
     padding: 1rem;
   }
 
-  .trash-mobile-info-grid {
+  .trash-mobile-primary-metadata {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+  }
+
+  .trash-mobile-deletion-metadata {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem 1rem;
   }
 
@@ -12684,7 +12709,8 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 360px) {
-  .trash-mobile-info-grid {
+  .trash-mobile-primary-metadata,
+  .trash-mobile-deletion-metadata {
     grid-template-columns: 1fr;
   }
 }
@@ -13143,7 +13169,8 @@ onBeforeUnmount(() => {
     padding: 0.9rem;
   }
 
-  .trash-mobile-info-grid {
+  .trash-mobile-primary-metadata,
+  .trash-mobile-deletion-metadata {
     gap: 0.4rem 0.85rem;
   }
 

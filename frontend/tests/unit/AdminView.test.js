@@ -507,9 +507,31 @@ describe('AdminView', () => {
     expect(adminTemplateSource).toMatch(
       /trash-mobile-card-footer[\s\S]*?trash-mobile-dependencies[\s\S]*?trash-mobile-card-actions/
     )
+    expect(adminTemplateSource.match(/class="trash-mobile-primary-metadata"/g)).toHaveLength(1)
+    expect(adminTemplateSource.match(/class="trash-mobile-deletion-metadata"/g)).toHaveLength(1)
     expect(adminTemplateSource).toMatch(
-      /getTrashReportDetails\(data\)[\s\S]*?trash-mobile-info-label">刪除者/
+      /class="trash-mobile-primary-metadata"[\s\S]*?getTrashReportDetails\(data\)[\s\S]*?class="trash-mobile-deletion-metadata"[\s\S]*?trash-mobile-info-label">刪除者[\s\S]*?trash-mobile-info-label">刪除時間/
     )
+    expect(adminTemplateSource).toMatch(
+      /class="trash-mobile-deletion-metadata">\s*<div class="trash-mobile-info-item">[\s\S]*?刪除者[\s\S]*?<\/div>\s*<div class="trash-mobile-info-item">[\s\S]*?刪除時間/
+    )
+    expect(adminViewSource).toMatch(
+      /\.trash-mobile-info-grid\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/
+    )
+    expect(adminViewSource).toMatch(
+      /\.trash-mobile-primary-metadata,[\s\S]*?\.trash-mobile-deletion-metadata\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*width:\s*100%;[^}]*min-width:\s*0;/
+    )
+    expect(adminViewSource).toMatch(
+      /@media \(min-width: 900px\) and \(max-width: 1399px\)[\s\S]*?\.trash-mobile-primary-metadata\s*\{[^}]*repeat\(3,[\s\S]*?\.trash-mobile-deletion-metadata\s*\{[^}]*repeat\(2,/
+    )
+    expect(adminViewSource).toMatch(
+      /@media \(max-width: 360px\)[\s\S]*?\.trash-mobile-primary-metadata,[\s\S]*?\.trash-mobile-deletion-metadata\s*\{[^}]*grid-template-columns:\s*1fr;/
+    )
+    const deletionMetadataRules = adminViewSource.match(
+      /\.trash-mobile-deletion-metadata\s*\{[^}]*\}/g
+    )
+    expect(deletionMetadataRules).not.toBeNull()
+    expect(deletionMetadataRules.join('\n')).not.toMatch(/grid-(?:column|row):/)
     expect(adminViewSource).toMatch(
       /\.trash-mobile-card-footer\s*\{[\s\S]*?border-top:\s*1px solid color-mix/
     )

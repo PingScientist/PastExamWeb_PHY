@@ -70,7 +70,7 @@
         :first="systemPage.first"
         :rows="systemPage.rows"
         :totalRecords="systemTotal"
-        :rowsPerPageOptions="PAGE_SIZE_OPTIONS"
+        :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
         currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
         :sortField="systemPage.sortField"
@@ -373,7 +373,7 @@
         :first="commentPage.first"
         :rows="commentPage.rows"
         :totalRecords="commentTotal"
-        :rowsPerPageOptions="PAGE_SIZE_OPTIONS"
+        :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
         currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
         :sortField="commentPage.sortField"
@@ -754,12 +754,12 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
 import { reportService } from '@/api'
+import { ADMIN_PAGE_SIZE_OPTIONS } from '@/constants/pagination'
 import { getCurrentUser } from '@/utils/auth'
 
 const confirm = useConfirm()
 const toast = useToast()
 const router = useRouter()
-const PAGE_SIZE_OPTIONS = [10, 20, 50]
 const REPORT_CARD_MEDIA_QUERY = '(max-width: 1399px)'
 const reportCardMediaQuery =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -902,12 +902,14 @@ function applyCommentFilters() {
   return loadCommentReports()
 }
 function onSystemPage(event) {
-  systemPage.value.first = event.first
+  const pageSizeChanged = systemPage.value.rows !== event.rows
+  systemPage.value.first = pageSizeChanged ? 0 : event.first
   systemPage.value.rows = event.rows
   return loadSystemIssues()
 }
 function onCommentPage(event) {
-  commentPage.value.first = event.first
+  const pageSizeChanged = commentPage.value.rows !== event.rows
+  commentPage.value.first = pageSizeChanged ? 0 : event.first
   commentPage.value.rows = event.rows
   return loadCommentReports()
 }
