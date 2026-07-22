@@ -598,7 +598,9 @@ describe('ReportManagementPanel', () => {
     expect(
       reportManagementSource.match(/class="report-mobile-card report-mobile-card-content"/g)
     ).toHaveLength(2)
-    expect(reportManagementSource.match(/class="report-mobile-card-header"/g)).toHaveLength(2)
+    expect(
+      reportManagementSource.match(/class="report-mobile-card__header report-mobile-card-header"/g)
+    ).toHaveLength(2)
     expect(reportManagementSource).toContain('class="report-mobile-card-badges"')
     expect(
       reportManagementSource.match(
@@ -615,7 +617,10 @@ describe('ReportManagementPanel', () => {
       /\.report-mobile-summary-preview__text\s*\{[\s\S]*?max-height:\s*calc\(1\.4em \* 3\);[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?-webkit-line-clamp:\s*3;/
     )
     expect(reportManagementSource).toMatch(
-      /\.report-mobile-card\s*\{[^}]*container-name:\s*report-card;[^}]*container-type:\s*inline-size;/
+      /\.report-mobile-card\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*justify-items:\s*stretch;[^}]*width:\s*100%;[^}]*container-name:\s*report-card;[^}]*container-type:\s*inline-size;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card-content,[\s\S]*?\.report-mobile-card__header,[\s\S]*?\.report-mobile-card__body,[\s\S]*?\.report-mobile-card__footer\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*max-width:\s*none;[^}]*justify-self:\s*stretch;/
     )
     expect(reportManagementSource).toMatch(
       /\.report-mobile-card__body\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*width:\s*100%;[^}]*min-width:\s*0;/
@@ -624,7 +629,10 @@ describe('ReportManagementPanel', () => {
       /\.report-mobile-card__summary,[\s\S]*?\.report-mobile-card__metadata\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/
     )
     expect(reportManagementSource).toMatch(
-      /@container report-card \(min-width: 46rem\)\s*\{[\s\S]*?grid-template-columns:\s*minmax\(18rem, 0\.85fr\) minmax\(0, 1\.15fr\);/
+      /@container report-card \(min-width: 42rem\)\s*\{[\s\S]*?grid-template-columns:\s*minmax\(18rem, 0\.9fr\) minmax\(0, 1\.1fr\);/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-management__system-table \.p-datatable-tbody > tr > td:nth-child\(2\)[\s\S]*?width:\s*100% !important;[\s\S]*?max-width:\s*none !important;/
     )
     expect(reportManagementSource).toContain('@container report-card (max-width: 25rem)')
     expect(reportManagementSource).not.toMatch(

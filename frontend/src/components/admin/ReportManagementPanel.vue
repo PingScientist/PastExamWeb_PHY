@@ -118,17 +118,15 @@
               <span class="system-report-summary__body">{{ data.description || '—' }}</span>
             </div>
             <article v-else class="report-mobile-card report-mobile-card-content">
-              <header class="report-mobile-card__header">
-                <div class="report-mobile-card-header">
-                  <strong class="report-mobile-card-title" :title="data.title || '未命名回報'">
-                    {{ data.title || '未命名回報' }}
-                  </strong>
-                  <Tag
-                    class="system-read-state-tag report-mobile-card-status"
-                    :severity="data.is_read ? 'secondary' : 'warn'"
-                    :value="data.is_read ? '已讀' : '未讀'"
-                  />
-                </div>
+              <header class="report-mobile-card__header report-mobile-card-header">
+                <strong class="report-mobile-card-title" :title="data.title || '未命名回報'">
+                  {{ data.title || '未命名回報' }}
+                </strong>
+                <Tag
+                  class="system-read-state-tag report-mobile-card-status"
+                  :severity="data.is_read ? 'secondary' : 'warn'"
+                  :value="data.is_read ? '已讀' : '未讀'"
+                />
                 <div class="report-mobile-card-badges">
                   <Tag :value="issueTypeLabel(data.report_type)" />
                   <Tag severity="secondary" value="本地摘要" />
@@ -429,17 +427,15 @@
               }}</span>
             </div>
             <article v-else class="report-mobile-card report-mobile-card-content">
-              <header class="report-mobile-card__header">
-                <div class="report-mobile-card-header">
-                  <strong class="report-mobile-card-title" :title="reasonLabel(data.reason)">
-                    {{ reasonLabel(data.reason) }}
-                  </strong>
-                  <Tag
-                    class="report-mobile-card-status"
-                    :severity="statusSeverity(data.status)"
-                    :value="statusLabel(data.status)"
-                  />
-                </div>
+              <header class="report-mobile-card__header report-mobile-card-header">
+                <strong class="report-mobile-card-title" :title="reasonLabel(data.reason)">
+                  {{ reasonLabel(data.reason) }}
+                </strong>
+                <Tag
+                  class="report-mobile-card-status"
+                  :severity="statusSeverity(data.status)"
+                  :value="statusLabel(data.status)"
+                />
               </header>
               <div class="report-mobile-card__body">
                 <section
@@ -1349,16 +1345,25 @@ onBeforeUnmount(teardownCardLayout)
   width: 100%;
 }
 .report-mobile-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch;
   width: 100%;
   min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
   container-name: report-card;
   container-type: inline-size;
 }
-.report-mobile-card-content {
+.report-mobile-card-content,
+.report-mobile-card__header,
+.report-mobile-card__body,
+.report-mobile-card__footer {
   width: 100%;
   min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  justify-self: stretch;
 }
 .report-mobile-card__footer {
   display: flex;
@@ -1762,6 +1767,10 @@ onBeforeUnmount(teardownCardLayout)
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    box-sizing: border-box;
   }
   :deep(.report-management__system-table .p-datatable-tbody > tr > td:nth-child(2)),
   :deep(.report-management__comment-table .p-datatable-tbody > tr > td:nth-child(2)) {
@@ -1779,7 +1788,7 @@ onBeforeUnmount(teardownCardLayout)
     margin-top: 0.75rem;
   }
   .report-mobile-card-content {
-    display: flex;
+    display: grid;
   }
   .report-mobile-card__header {
     width: 100%;
@@ -1814,6 +1823,7 @@ onBeforeUnmount(teardownCardLayout)
     white-space: nowrap;
   }
   .report-mobile-card-badges {
+    grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1832,6 +1842,14 @@ onBeforeUnmount(teardownCardLayout)
   .report-mobile-card__metadata {
     width: 100%;
     min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+  }
+  .report-mobile-card__summary {
+    justify-self: stretch;
+  }
+  .report-mobile-card__metadata {
+    align-self: start;
   }
   .report-mobile-summary-preview {
     width: 100%;
@@ -1910,9 +1928,9 @@ onBeforeUnmount(teardownCardLayout)
     gap: 0.45rem;
   }
 }
-@container report-card (min-width: 46rem) {
+@container report-card (min-width: 42rem) {
   .report-mobile-card__body {
-    grid-template-columns: minmax(18rem, 0.85fr) minmax(0, 1.15fr);
+    grid-template-columns: minmax(18rem, 0.9fr) minmax(0, 1.1fr);
     gap: 1rem;
   }
 }
