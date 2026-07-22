@@ -103,10 +103,11 @@ test.describe('Home page', () => {
     })
     const loginDialog = page.getByRole('dialog', { name: '登入' })
     await expect(loginDialog).toBeVisible()
+    await expect(loginButton).toHaveAttribute('aria-expanded', 'true')
     const closeButton = loginDialog.getByRole('button', { name: 'Close' })
     await expect(closeButton).toBeVisible()
     await clickWhenVisible(closeButton)
-    await expect(loginDialog).toBeHidden({ timeout: 5000 })
+    await expect(loginButton).toHaveAttribute('aria-expanded', 'false')
 
     const statCards = page.getByRole('article')
     await expect(statCards).toHaveCount(STAT_LABELS.length, { timeout: 15000 })

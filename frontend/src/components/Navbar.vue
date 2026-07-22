@@ -68,6 +68,8 @@
               size="small"
               text
               aria-label="Login"
+              aria-haspopup="dialog"
+              :aria-expanded="loginVisible"
             />
           </div>
 
@@ -99,6 +101,8 @@
               size="small"
               text
               aria-label="Login"
+              aria-haspopup="dialog"
+              :aria-expanded="loginVisible"
             />
           </div>
 

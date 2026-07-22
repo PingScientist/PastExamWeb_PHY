@@ -46,13 +46,29 @@ test.describe('Admin Dashboard › Users', () => {
     const createDialog = page.getByRole('dialog', { name: '新增使用者' })
     await expect(createDialog).toBeVisible()
 
-    await createDialog.getByPlaceholder('輸入使用者名稱').fill('新用戶')
-    await createDialog.getByPlaceholder('輸入電子郵件').fill('newuser@example.com')
-    await createDialog.getByPlaceholder('輸入密碼').fill('Passw0rd!')
+    const nameInput = createDialog.getByPlaceholder('輸入使用者名稱')
+    const emailInput = createDialog.getByPlaceholder('輸入電子郵件')
+    const passwordInput = createDialog.getByPlaceholder('輸入密碼')
+    await nameInput.pressSequentially('新用戶')
+    await emailInput.fill('newuser@example.com')
+    await passwordInput.fill('Passw0rd!')
+    await expect(nameInput).toHaveValue('新用戶')
+    await expect(emailInput).toHaveValue('newuser@example.com')
+    await expect(passwordInput).toHaveValue('Passw0rd!')
     await clickWhenVisible(createDialog.getByLabel('管理員權限'))
 
     const previousCreateCount = createPayloads.length
+    const createRequestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === 'POST' && new URL(request.url()).pathname === '/api/users/admin/users'
+    )
     await clickWhenVisible(createDialog.getByRole('button', { name: '新增' }))
+    const createRequest = await createRequestPromise
+    expect(createRequest.postDataJSON()).toMatchObject({
+      name: '新用戶',
+      email: 'newuser@example.com',
+      is_admin: true,
+    })
     await expect
       .poll(() => createPayloads.length, { message: '等待建立 API 完成' })
       .toBe(previousCreateCount + 1)
