@@ -2522,8 +2522,22 @@
                         >
                           {{ getTrashTreePrefix(data) }}
                         </span>
-                        <span class="trash-name-title__text">{{ data.display_name }}</span>
+                        <span
+                          :class="[
+                            'trash-name-title__text',
+                            { 'trash-user-name': data.item_type === 'user' },
+                          ]"
+                        >
+                          {{ data.display_name }}
+                        </span>
                       </strong>
+                      <small
+                        v-if="data.item_type === 'user' && data.user_email"
+                        class="trash-user-email"
+                        :title="data.user_email"
+                      >
+                        {{ data.user_email }}
+                      </small>
                       <small v-if="getTrashSubmissionLabel(data)">{{
                         getTrashSubmissionLabel(data)
                       }}</small>
@@ -2662,7 +2676,12 @@
                 >
                   <header class="trash-mobile-card-header">
                     <div class="trash-mobile-card-title-block">
-                      <strong class="trash-mobile-card-title">
+                      <strong
+                        :class="[
+                          'trash-mobile-card-title',
+                          { 'trash-user-name': data.item_type === 'user' },
+                        ]"
+                      >
                         <span
                           v-if="isTrashRelationHierarchyEnabled && (data?.trash_depth || 0) > 0"
                           class="trash-tree-prefix"
@@ -2672,6 +2691,13 @@
                         </span>
                         {{ data.display_name }}
                       </strong>
+                      <small
+                        v-if="data.item_type === 'user' && data.user_email"
+                        class="trash-user-email"
+                        :title="data.user_email"
+                      >
+                        {{ data.user_email }}
+                      </small>
                     </div>
                     <div class="trash-mobile-card-badges">
                       <Tag
@@ -9872,6 +9898,24 @@ onBeforeUnmount(() => {
 .trash-name-title__text {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.trash-user-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.trash-user-email {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  font-weight: 400;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .trash-tree-prefix {

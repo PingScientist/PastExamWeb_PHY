@@ -69,6 +69,7 @@ def _to_trash_item(
     deleted_at,
     deleted_by_id: Optional[int],
     deleted_by_name: Optional[str] = None,
+    user_email: Optional[str] = None,
     status: Optional[str] = None,
     academic_year: Optional[int] = None,
     academic_term: Optional[str] = None,
@@ -101,6 +102,7 @@ def _to_trash_item(
         deleted_at=deleted_at,
         deleted_by_id=deleted_by_id,
         deleted_by_name=deleted_by_name,
+        user_email=user_email,
         status=status,
         parent_type=parent_type,
         parent_id=parent_id,
@@ -1392,10 +1394,11 @@ async def list_trash_items(
                     _to_trash_item(
                         item_type=TrashEntityType.USER,
                         item_id=user.id,
-                        display_name=f"{user.name} ({user.email})",
+                        display_name=user.name,
+                        user_email=user.email,
                         deleted_at=user.deleted_at,
-                        deleted_by_id=None,
-                        deleted_by_name=None,
+                        deleted_by_id=user.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(users_by_id, user.deleted_by_id),
                         status="deleted",
                         dependencies=await _get_user_dependency_messages(db, user),
                     )
@@ -1782,6 +1785,7 @@ async def restore_trash_item(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         user.deleted_at = None
+        user.deleted_by_id = None
         await db.commit()
         return {"message": "User restored"}
 

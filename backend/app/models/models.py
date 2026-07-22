@@ -103,6 +103,15 @@ class User(SQLModel, table=True):
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
     last_login: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
     )
@@ -1283,6 +1292,7 @@ class TrashItem(BaseModel):
     deleted_at: datetime
     deleted_by_id: Optional[int] = None
     deleted_by_name: Optional[str] = None
+    user_email: Optional[str] = None
     status: Optional[str] = None
     parent_type: Optional[str] = None
     parent_id: Optional[int] = None

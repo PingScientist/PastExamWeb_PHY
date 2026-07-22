@@ -665,6 +665,7 @@ async def delete_user(
         )
 
     user.deleted_at = datetime.now(timezone.utc)
+    user.deleted_by_id = current_user.user_id
     await db.commit()
 
     return {"detail": "User deleted successfully"}

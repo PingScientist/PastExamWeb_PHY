@@ -417,7 +417,19 @@ describe('AdminView', () => {
     expect(adminTemplateSource.match(/trash-name-column/g)).toHaveLength(2)
     expect(adminViewSource).toContain('width: clamp(14rem, 18vw, 18rem)')
     expect(adminViewSource).toContain('overflow-wrap: anywhere')
-    expect(adminTemplateSource).toContain('class="trash-name-title__text"')
+    expect(adminTemplateSource).toContain("'trash-name-title__text'")
+    expect(adminTemplateSource.match(/class="trash-user-email"/g)).toHaveLength(2)
+    expect(
+      adminTemplateSource.match(/data\.item_type === 'user' && data\.user_email/g)
+    ).toHaveLength(2)
+    expect(adminTemplateSource).toContain(':title="data.user_email"')
+    expect(adminTemplateSource).not.toContain('{{ data.display_name }} ({{ data.user_email }})')
+    expect(adminViewSource).toMatch(
+      /\.trash-user-email[\s\S]*?color: var\(--text-secondary\)[\s\S]*?font-size: var\(--app-font-size-sm\)[\s\S]*?overflow-wrap: anywhere/
+    )
+    expect(adminTemplateSource).toMatch(
+      /trash-mobile-card-title-block[\s\S]*?trash-user-email[\s\S]*?trash-mobile-card-badges/
+    )
     expect(adminTemplateSource).not.toContain('trash-mobile-card trash-name-column')
     expect(adminTemplateSource.match(/class="trash-tree-prefix"/g)).toHaveLength(2)
     expect(adminTemplateSource).toContain('getTrashNameIndent(data)')
@@ -505,6 +517,10 @@ describe('AdminView', () => {
     expect(wrapper.vm.hasNotificationUpdater({})).toBe(false)
     expect(wrapper.vm.hasNotificationUpdater({ updated_by_username: 'admin' })).toBe(true)
     expect(wrapper.vm.getNotificationUpdaterLabel({ updated_by_username: 'editor' })).toBe('editor')
+    expect(wrapper.vm.getTrashDeletedByLabel({ deleted_by_name: '刪除管理員 A' })).toBe(
+      '刪除管理員 A'
+    )
+    expect(wrapper.vm.getTrashDeletedByLabel({})).toBe('—')
     const actorTime = wrapper.vm.formatAdminActorTime('2026-07-20T05:32:00Z')
     expect(actorTime).toMatch(/2026\/07\/20.*\d{2}:32/)
     expect(actorTime).not.toMatch(/上午|下午/)

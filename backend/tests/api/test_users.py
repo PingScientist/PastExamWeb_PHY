@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -18,7 +19,8 @@ ADMIN_PATH = "/users/admin/users"
 
 
 @pytest.mark.asyncio
-async def test_admin_can_create_and_delete_user(client):
+async def test_admin_can_create_and_delete_user(client, make_user):
+    admin = await make_user(is_admin=True)
     unique_suffix = uuid.uuid4().hex[:8]
     payload = {
         "name": f"test-user-{unique_suffix}",
@@ -27,7 +29,7 @@ async def test_admin_can_create_and_delete_user(client):
         "is_admin": False,
     }
     app.dependency_overrides[get_current_user] = lambda: UserRoles(
-        user_id=1,
+        user_id=admin.id,
         is_admin=True,
     )
 
@@ -64,6 +66,9 @@ async def test_non_admin_cannot_access_admin_user_routes(client):
         }
         create_response = await client.post(ADMIN_PATH, json=payload)
         assert create_response.status_code == 403
+
+        delete_response = await client.delete(f"{ADMIN_PATH}/999999")
+        assert delete_response.status_code == 403
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 
@@ -499,23 +504,113 @@ async def test_delete_user_direct_not_found(session_maker):
 async def test_delete_user_direct_success(session_maker):
     async with session_maker() as session:
         unique = uuid.uuid4().hex[:8]
+        admin = User(
+            name=f"delete-admin-{unique}",
+            email=f"delete-admin-{unique}@example.com",
+            is_admin=True,
+            is_local=True,
+        )
         user = User(
             name=f"delete-direct-{unique}",
             email=f"delete-direct-{unique}@example.com",
             is_admin=False,
             is_local=True,
         )
-        session.add(user)
+        session.add_all([admin, user])
         await session.commit()
+        await session.refresh(admin)
         await session.refresh(user)
 
         response = await delete_user(
             user_id=user.id,
-            current_user=UserRoles(user_id=1, is_admin=True),
+            current_user=UserRoles(user_id=admin.id, is_admin=True),
             db=session,
         )
         assert response["detail"] == "User deleted successfully"
 
         remaining = await session.get(User, user.id)
         assert remaining is not None
+        assert remaining.deleted_by_id == admin.id
         assert remaining.deleted_at is not None
+
+
+@pytest.mark.asyncio
+async def test_user_trash_records_authenticated_deleter(
+    client,
+    session_maker,
+    make_user,
+):
+    admin_a = await make_user(
+        name=f"deleter-a-{uuid.uuid4().hex[:8]}",
+        nickname="刪除管理員 A",
+        is_admin=True,
+    )
+    admin_b = await make_user(is_admin=True)
+    target = await make_user()
+    legacy = await make_user()
+
+    async with session_maker() as session:
+        legacy_record = await session.get(User, legacy.id)
+        legacy_record.deleted_at = datetime.now(timezone.utc)
+        session.add(legacy_record)
+        await session.commit()
+
+    app.dependency_overrides[get_current_user] = lambda: UserRoles(
+        user_id=admin_a.id,
+        is_admin=True,
+    )
+
+    try:
+        delete_response = await client.request(
+            "DELETE",
+            f"{ADMIN_PATH}/{target.id}",
+            json={"deleted_by_id": admin_b.id},
+        )
+        assert delete_response.status_code == 200
+
+        async with session_maker() as session:
+            deleted_target = await session.get(User, target.id)
+            assert deleted_target is not None
+            assert deleted_target.deleted_by_id == admin_a.id
+
+        app.dependency_overrides[get_current_user] = lambda: UserRoles(
+            user_id=admin_b.id,
+            is_admin=True,
+        )
+        trash_response = await client.get("/trash", params={"item_type": "user"})
+        assert trash_response.status_code == 200
+        trashed_users = trash_response.json()
+        target_item = next(item for item in trashed_users if item["id"] == target.id)
+        assert target_item["display_name"] == target.name
+        assert target_item["user_email"] == target.email
+        assert target_item["deleted_by_id"] == admin_a.id
+        assert target_item["deleted_by_name"] == "刪除管理員 A"
+
+        legacy_item = next(item for item in trashed_users if item["id"] == legacy.id)
+        assert legacy_item["deleted_by_id"] is None
+        assert legacy_item["deleted_by_name"] is None
+
+        restore_response = await client.post(
+            "/trash/restore",
+            json={"item_type": "user", "item_id": target.id},
+        )
+        assert restore_response.status_code == 200
+        async with session_maker() as session:
+            restored_target = await session.get(User, target.id)
+            assert restored_target is not None
+            assert restored_target.deleted_at is None
+            assert restored_target.deleted_by_id is None
+
+        app.dependency_overrides[get_current_user] = lambda: UserRoles(
+            user_id=admin_a.id,
+            is_admin=True,
+        )
+        second_delete_response = await client.delete(f"{ADMIN_PATH}/{target.id}")
+        assert second_delete_response.status_code == 200
+
+        permanent_delete_response = await client.delete(f"/trash/user/{target.id}")
+        assert permanent_delete_response.status_code == 200
+        async with session_maker() as session:
+            assert await session.get(User, target.id) is None
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
