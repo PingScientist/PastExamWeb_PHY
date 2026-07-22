@@ -30,18 +30,68 @@ jobs:
         run: cp docker/.env.example docker/.env
 
       - name: Start core services
-        run: docker compose -f docker/docker-compose.dev.yml up -d db redis minio
+        run: |
+          docker compose -f docker/docker-compose.dev.yml up -d --wait --wait-timeout 60 \
+            db redis minio
+
+      - name: Create test database
+        run: |
+          set -euo pipefail
+
+          docker compose -f docker/docker-compose.dev.yml exec -T db \
+            sh -eu -c '
+              echo "PostgreSQL user: $POSTGRES_USER"
+              echo "PostgreSQL database: $POSTGRES_DB"
+              echo "Waiting for PostgreSQL..."
+
+              attempt=0
+              until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+                attempt=$((attempt + 1))
+                if [ "$attempt" -ge 30 ]; then
+                  echo "PostgreSQL did not become ready within 60 seconds" >&2
+                  exit 1
+                fi
+                sleep 2
+              done
+
+              echo "Recreating isolated test database..."
+              dropdb --if-exists -U "$POSTGRES_USER" test_archive_db
+              createdb -U "$POSTGRES_USER" test_archive_db
+
+              database_name="$(
+                psql -U "$POSTGRES_USER" -d test_archive_db -tAc \
+                  "SELECT current_database()"
+              )"
+              if [ "$database_name" != "test_archive_db" ]; then
+                echo "Failed to verify test_archive_db" >&2
+                exit 1
+              fi
+              echo "Test database is ready: $database_name"
+            '
+
+      - name: Show database diagnostics
+        if: failure()
+        run: |
+          docker compose -f docker/docker-compose.dev.yml ps
+          docker compose -f docker/docker-compose.dev.yml logs db
 
       - name: Run migrations
-        run: docker compose -f docker/docker-compose.dev.yml run --rm backend uv run alembic upgrade head
+        run: |
+          docker compose -f docker/docker-compose.dev.yml run --rm \
+            -e DB_NAME=test_archive_db \
+            backend uv run alembic upgrade head
 
       - name: Seed database
-        run: docker compose -f docker/docker-compose.dev.yml run --rm backend uv run python app/scripts/seed_db.py
+        run: |
+          docker compose -f docker/docker-compose.dev.yml run --rm \
+            -e DB_NAME=test_archive_db \
+            backend uv run python app/scripts/seed_db.py
 
       - name: Run backend tests with coverage
         run: |
           docker compose -f docker/docker-compose.dev.yml run --rm backend \
-            uv run pytest --cov=app --cov-report=term-missing --cov-report=html
+            sh -c 'TEST_DATABASE_URL="postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/test_archive_db" \
+              uv run pytest --cov=app --cov-report=term-missing --cov-report=html'
 
       - name: Upload backend coverage report
         if: always()

@@ -68,6 +68,8 @@
               size="small"
               text
               aria-label="Login"
+              aria-haspopup="dialog"
+              :aria-expanded="loginVisible"
             />
           </div>
 
@@ -99,11 +101,14 @@
               size="small"
               text
               aria-label="Login"
+              aria-haspopup="dialog"
+              :aria-expanded="loginVisible"
             />
           </div>
 
           <Button
             :icon="isDarkTheme ? 'pi pi-sun' : 'pi pi-moon'"
+            :aria-label="isDarkTheme ? '切換至淺色模式' : '切換至深色模式'"
             severity="secondary"
             size="small"
             text

@@ -482,6 +482,11 @@ async def test_upload_archive_function_covers_creation_and_reuse(
     if first_id and second_id and course_id:
         async with session_maker() as session:
             await session.execute(
+                delete(ArchiveSubmission).where(
+                    ArchiveSubmission.created_archive_id.in_([first_id, second_id])
+                )
+            )
+            await session.execute(
                 delete(Archive).where(
                     Archive.id.in_([first_id, second_id])
                 )

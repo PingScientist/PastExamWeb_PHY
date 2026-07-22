@@ -100,6 +100,8 @@ const sampleCourses = {
   interdisciplinary: [],
 }
 
+const courseCategories = [{ id: 1, key: 'freshman', name: '基礎必修', order_index: 0 }]
+
 const stubComponent = { template: '<div><slot /></div>' }
 
 const componentStubs = {
@@ -126,6 +128,7 @@ function mountDialog() {
     props: {
       modelValue: true,
       coursesList: sampleCourses,
+      courseCategories,
     },
     global: {
       stubs: componentStubs,
@@ -168,20 +171,24 @@ describe('UploadArchiveDialog', () => {
     const vm = wrapper.vm
 
     vm.form.category = 'freshman'
-    vm.form.subject = 'Calculus I'
-    vm.form.professor = 'Prof. Lin'
+    await flushPromises()
+    vm.form.subject = { name: 'Calculus I', code: 'c1' }
     vm.form.filename = 'midterm1'
     vm.form.type = 'midterm'
+    vm.form.examNumber = 1
     vm.form.academicYear = new Date('2023-01-01')
 
     vm.validateFilename()
     expect(vm.isFilenameValid).toBe(true)
 
-    vm.searchSubject({ query: 'calc' })
-    expect(vm.availableSubjects.length).toBe(1)
+    expect(vm.subjectOptions).toEqual([
+      { name: 'Calculus I', code: 'c1' },
+      { name: 'Physics', code: 'c2' },
+    ])
 
-    vm.onSubjectSelect({ value: { name: 'Calculus I', code: 'c1' } })
+    await flushPromises()
     expect(vm.form.subjectId).toBe('c1')
+    vm.form.professor = 'Prof. Lin'
 
     await vm.fetchProfessorsForSubject('c1')
     expect(courseServiceMock.getCourseArchives).toHaveBeenCalledWith('c1')
@@ -210,7 +217,7 @@ describe('UploadArchiveDialog', () => {
     expect(pdfLoadMock).toHaveBeenCalled()
     expect(archiveServiceMock.uploadArchive).toHaveBeenCalled()
     expect(toastAddMock).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success', summary: '上傳成功' })
+      expect.objectContaining({ severity: 'success', summary: '已送出審核' })
     )
     expect(wrapper.emitted('upload-success')).toBeTruthy()
 
@@ -291,6 +298,7 @@ describe('UploadArchiveDialog', () => {
       professor: 'Prof. Lin',
       filename: 'midterm1',
       type: 'midterm',
+      examNumber: 1,
       hasAnswers: true,
       academicYear: new Date('2024-01-01'),
     })
@@ -328,13 +336,13 @@ describe('UploadArchiveDialog', () => {
     vm.validateFilename()
     expect(vm.isFilenameValid).toBe(false)
 
-    vm.form.filename = 'validname1'
+    vm.form.type = 'other'
+    vm.form.otherName = 'validname1'
     vm.validateFilename()
     expect(vm.isFilenameValid).toBe(true)
 
     vm.form.category = null
-    vm.searchSubject({ query: 'calc' })
-    expect(vm.availableSubjects).toEqual([])
+    expect(vm.subjectOptions).toEqual([])
 
     vm.form.file = { name: 'archive.pdf', size: 512 }
     globalThis.URL.createObjectURL.mockImplementationOnce(() => {

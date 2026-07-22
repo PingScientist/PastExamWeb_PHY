@@ -53,7 +53,7 @@ describe('utils/svgBg', () => {
     }))
 
     const module = await import('@/utils/svgBg.js')
-    const result = module.getCodeBgSvg()
+    const result = module.getFieldBgSvg()
 
     expect(result).toContain('data:image/svg+xml')
     expect(result).toContain(encodeURIComponent('rgba(10, 20, 30, 0.5)'))

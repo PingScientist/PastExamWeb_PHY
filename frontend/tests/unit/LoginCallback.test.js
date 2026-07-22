@@ -9,8 +9,16 @@ const routerMock = {
 
 let consoleErrorSpy
 
+const apiPostMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@/utils/svgBg', () => ({
-  getCodeBgSvg: vi.fn(() => 'mocked-bg'),
+  getFieldBgSvg: vi.fn(() => 'mocked-bg'),
+}))
+
+vi.mock('@/api/services/client', () => ({
+  api: {
+    post: apiPostMock,
+  },
 }))
 
 const originalURLSearchParams = window.URLSearchParams
@@ -35,6 +43,8 @@ describe('LoginCallback view', () => {
     localStorage.clear()
     document.body.innerHTML = '<div class="code-background"></div>'
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    apiPostMock.mockReset()
+    apiPostMock.mockResolvedValue({})
   })
 
   afterEach(() => {

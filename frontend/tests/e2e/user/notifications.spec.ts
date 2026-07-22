@@ -34,6 +34,12 @@ const SUMMARY = {
 }
 
 test.describe('User › Notifications', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
+  })
+
   test('shows the unread summary once per login session without marking it read', async ({
     page,
   }) => {
@@ -44,6 +50,9 @@ test.describe('User › Notifications', () => {
         body: JSON.stringify(COURSES_FIXTURE),
       })
     })
+    await page.route('**/api/courses/categories', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify([]) })
+    )
 
     await page.route('**/api/notifications/unread-summary**', async (route) => {
       await route.fulfill({
@@ -88,6 +97,9 @@ test.describe('User › Notifications', () => {
         body: JSON.stringify(COURSES_FIXTURE),
       })
     })
+    await page.route('**/api/courses/categories', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify([]) })
+    )
 
     await page.route('**/api/notifications/unread-summary**', async (route) => {
       await route.fulfill({
@@ -123,13 +135,16 @@ test.describe('User › Notifications', () => {
 
     await clickWhenVisible(modal.getByRole('button', { name: '查看全部' }))
 
-    const centerDialog = page.getByRole('dialog', { name: '公告與通知' })
+    const centerDialog = page.getByRole('dialog', { name: '公告與通知', exact: true })
     await expect(centerDialog).toBeVisible({ timeout: 10000 })
 
     await expect(centerDialog.getByText('系統維護公告')).toBeVisible()
     await expect(centerDialog.getByText('版本更新通知')).toBeVisible()
 
-    await clickWhenVisible(centerDialog.getByRole('button', { name: '檢視' }).first())
+    const maintenanceAnnouncement = centerDialog
+      .getByRole('article')
+      .filter({ hasText: '系統維護公告' })
+    await clickWhenVisible(maintenanceAnnouncement.getByRole('button', { name: '檢視' }))
 
     const detailDialog = page.getByRole('dialog', { name: '公告內容' })
     await expect(detailDialog).toBeVisible({ timeout: 5000 })

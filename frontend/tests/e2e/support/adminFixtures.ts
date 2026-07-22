@@ -2,6 +2,16 @@ import type { Page } from '@playwright/test'
 import { JSON_HEADERS } from './constants'
 
 export type Course = { id: number; name: string; category: string }
+export type CourseCategory = {
+  id: number
+  key: string
+  name: string
+  label: string
+  icon: string
+  badge_color: string
+  order_index: number
+  is_active: boolean
+}
 export type User = {
   id: number
   name: string
@@ -52,6 +62,29 @@ export const defaultCourses: Course[] = [
   { id: 2, name: '電磁學(一)', category: 'sophomore' },
 ]
 
+export const defaultCourseCategories: CourseCategory[] = [
+  {
+    id: 5,
+    key: 'graduate',
+    name: '研究所',
+    label: '研究所',
+    icon: 'pi pi-fw pi-graduation-cap',
+    badge_color: 'purple',
+    order_index: 4,
+    is_active: true,
+  },
+  {
+    id: 6,
+    key: 'math-department',
+    name: '戳戳數學系',
+    label: '數學',
+    icon: 'pi pi-fw pi-calculator',
+    badge_color: 'slate',
+    order_index: 5,
+    is_active: true,
+  },
+]
+
 export const defaultUsers: User[] = [
   {
     id: 1,
@@ -87,6 +120,7 @@ export const defaultNotifications: Notification[] = [
 
 export type CourseMocks = {
   getCourses: () => Course[]
+  getCategoryRequestCount: () => number
   createPayloads: Array<Record<string, unknown>>
   updatePayloads: Array<{ id: number; payload: Record<string, unknown> }>
   deleteIds: number[]
@@ -101,6 +135,30 @@ export const mockAdminCourseEndpoints = async (
   const updatePayloads: Array<{ id: number; payload: Record<string, unknown> }> = []
   const deleteIds: number[] = []
   let createdCourseId = 100
+  let categoryRequestCount = 0
+
+  await page.route('**/api/courses/admin/categories**', (route) => {
+    categoryRequestCount += 1
+    return route.fulfill({
+      status: 200,
+      headers: JSON_HEADERS,
+      body: JSON.stringify(defaultCourseCategories),
+    })
+  })
+  await page.route('**/api/reports/admin/system-issues**', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ items: [], total: 0 }),
+    })
+  )
+  await page.route('**/api/reports/admin/comments**', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ items: [], total: 0 }),
+    })
+  )
 
   await page.route('**/api/courses', async (route) => {
     await route.fulfill({
@@ -170,7 +228,13 @@ export const mockAdminCourseEndpoints = async (
     await route.continue()
   })
 
-  return { getCourses: () => courses, createPayloads, updatePayloads, deleteIds }
+  return {
+    getCourses: () => courses,
+    getCategoryRequestCount: () => categoryRequestCount,
+    createPayloads,
+    updatePayloads,
+    deleteIds,
+  }
 }
 
 export type UserMocks = {

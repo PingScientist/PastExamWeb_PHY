@@ -10,6 +10,7 @@
     :dismissableMask="true"
     :maximizable="true"
     :autoFocus="false"
+    :pt="{ root: { 'aria-label': title || 'PDF 預覽', 'aria-labelledby': null } }"
     @maximize="handleMaximize"
     @unmaximize="handleUnmaximize"
     @hide="onHide"

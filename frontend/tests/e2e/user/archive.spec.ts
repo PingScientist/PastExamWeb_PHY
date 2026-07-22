@@ -18,6 +18,17 @@ test.describe('User › Archive browsing', () => {
     }
 
     let archiveDownloadCount = 3
+    let previewRouteCallCount = 0
+    const consoleErrors: string[] = []
+    const pageErrors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text())
+    })
+    page.on('pageerror', (error) => pageErrors.push(error.message))
+
+    const pdfBody = fromBase64ToBinaryString(
+      'JVBERi0xLjUKJcTl8uXrPgoxIDAgb2JqPDwvVHlwZS9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHMgWzMgMCBSXS9Db3VudCAxPj4KZW5kb2JqCjMgMCBvYmo8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA1OTUgODQyXS9Db250ZW50cyA0IDAgUi9SZXNvdXJjZXMgPDwvUHJvY1Nl0dDU2V0Wy9QREZdPj4+Pj4KZW5kb2JqCjQgMCBvYmo8PC9MZW5ndGggNTI+PnN0cmVhbQpIL0YgMTIgVGYgMTIgVG0gMCBUZgoKZW5kc3RyZWFtCmVuZG9iagogNSAwIG9iag8+PnN0YXJ0eHJlZgoxNjYKJSVFT0YK'
+    )
     const archivesResponse = () => [
       {
         id: 201,
@@ -38,6 +49,21 @@ test.describe('User › Archive browsing', () => {
         body: JSON.stringify([]),
       })
     })
+    await page.route('**/api/notifications/unread-summary**', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          announcements: [],
+          personal_notifications: [],
+          counts: { announcements: 0, personal_notifications: 0, total: 0 },
+        }),
+      })
+    )
+
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
 
     await page.route('**/api/courses', async (route) => {
       await route.fulfill({
@@ -46,6 +72,9 @@ test.describe('User › Archive browsing', () => {
         body: JSON.stringify(coursesResponse),
       })
     })
+    await page.route('**/api/courses/categories', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify([]) })
+    )
 
     await page.route('**/api/courses/101/archives', async (route) => {
       await route.fulfill({
@@ -55,11 +84,12 @@ test.describe('User › Archive browsing', () => {
       })
     })
 
-    await page.route('**/api/courses/101/archives/201/preview', async (route) => {
+    await page.route('**/api/courses/101/archives/201/preview-file', async (route) => {
+      previewRouteCallCount += 1
       await route.fulfill({
         status: 200,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ url: 'https://example.com/preview.pdf' }),
+        headers: { 'content-type': 'application/pdf' },
+        body: pdfBody,
       })
     })
 
@@ -87,18 +117,6 @@ test.describe('User › Archive browsing', () => {
         status: 200,
         headers: { 'content-type': 'application/javascript' },
         body: '',
-      })
-    })
-
-    const pdfBody = fromBase64ToBinaryString(
-      'JVBERi0xLjUKJcTl8uXrPgoxIDAgb2JqPDwvVHlwZS9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHMgWzMgMCBSXS9Db3VudCAxPj4KZW5kb2JqCjMgMCBvYmo8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA1OTUgODQyXS9Db250ZW50cyA0IDAgUi9SZXNvdXJjZXMgPDwvUHJvY1Nl0dDU2V0Wy9QREZdPj4+Pj4KZW5kb2JqCjQgMCBvYmo8PC9MZW5ndGggNTI+PnN0cmVhbQpIL0YgMTIgVGYgMTIgVG0gMCBUZgoKZW5kc3RyZWFtCmVuZG9iagogNSAwIG9iag8+PnN0YXJ0eHJlZgoxNjYKJSVFT0YK'
-    )
-
-    await page.route('https://example.com/preview.pdf', async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/pdf' },
-        body: pdfBody,
       })
     })
 
@@ -189,20 +207,41 @@ test.describe('User › Archive browsing', () => {
     const searchInput = page.getByPlaceholder('搜尋課程')
     await searchInput.fill('普通物理')
 
-    await clickWhenVisible(page.getByRole('button', { name: '普通物理(一)' }).first())
+    await clickWhenVisible(page.getByRole('button', { name: '普通物理(一)', exact: true }))
 
-    await expect(page.locator('.p-datatable')).toBeVisible()
-    await expect(page.getByRole('row', { name: /期末考/ })).toBeVisible()
+    const archiveCard = page
+      .getByRole('article')
+      .filter({ has: page.getByRole('heading', { name: '期末考' }) })
+    await expect(archiveCard).toBeVisible()
+    await expect(archiveCard.getByRole('button', { name: '編輯' })).toHaveCount(0)
+    await expect(archiveCard.getByRole('button', { name: '刪除' })).toHaveCount(0)
 
-    const archiveRow = page.getByRole('row', { name: /期末考/ })
-    await expect(archiveRow.getByRole('button', { name: '編輯' })).toHaveCount(0)
-    await expect(archiveRow.getByRole('button', { name: '刪除' })).toHaveCount(0)
+    const previewRequestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === 'GET' &&
+        new URL(request.url()).pathname === '/api/courses/101/archives/201/preview-file'
+    )
+    const previewResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === '/api/courses/101/archives/201/preview-file'
+    )
+    await clickWhenVisible(archiveCard.getByRole('button', { name: '預覽' }))
+    const [previewRequest, previewResponse] = await Promise.all([
+      previewRequestPromise,
+      previewResponsePromise,
+    ])
 
-    await clickWhenVisible(archiveRow.getByRole('button', { name: '預覽' }))
+    expect(previewRequest.method()).toBe('GET')
+    expect(previewResponse.status()).toBe(200)
+    expect(previewResponse.headers()['content-type']).toContain('application/pdf')
+    expect(previewRouteCallCount).toBe(1)
 
-    const previewDialog = page.getByRole('dialog').first()
+    const previewDialog = page.getByRole('dialog', { name: /期末考/ })
     await expect(previewDialog).toBeVisible()
     await expect(previewDialog).toContainText('期末考')
+    expect(consoleErrors).toEqual([])
+    expect(pageErrors).toEqual([])
     await clickWhenVisible(previewDialog.getByRole('button', { name: '下載' }))
 
     await expect.poll(() => downloadEndpointCalled).toBeTruthy()
@@ -210,7 +249,6 @@ test.describe('User › Archive browsing', () => {
     await clickWhenVisible(previewDialog.getByRole('button', { name: 'Close' }))
     await expect(previewDialog).toBeHidden()
 
-    const downloadCell = archiveRow.locator('td').nth(4)
-    await expect(downloadCell).toHaveText(/\b4\b/)
+    await expect(archiveCard).toContainText('4 次下載')
   })
 })

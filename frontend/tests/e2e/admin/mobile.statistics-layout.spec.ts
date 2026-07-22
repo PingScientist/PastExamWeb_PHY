@@ -60,7 +60,6 @@ test.use({
   viewport: { width: 393, height: 852 },
   deviceScaleFactor: 3,
   hasTouch: true,
-  isMobile: true,
 })
 
 test('keeps mobile statistics tabs and duration summaries aligned', async ({ page }) => {

@@ -5,6 +5,10 @@ import { clickWhenVisible } from '../support/ui'
 
 test.describe('Admin Dashboard › Notifications', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
+
     await page.route('**/api/notifications/active', async (route) => {
       await route.fulfill({
         status: 200,
@@ -12,6 +16,17 @@ test.describe('Admin Dashboard › Notifications', () => {
         body: JSON.stringify([]),
       })
     })
+    await page.route('**/api/notifications/unread-summary**', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          announcements: [],
+          personal_notifications: [],
+          counts: { announcements: 0, personal_notifications: 0, total: 0 },
+        }),
+      })
+    )
   })
 
   test('allows managing notifications end-to-end', async ({ page }) => {
@@ -21,13 +36,11 @@ test.describe('Admin Dashboard › Notifications', () => {
     await page.goto('/admin', { waitUntil: 'networkidle' })
     await expect(page).toHaveURL(/\/admin$/)
 
-    const tabs = page.getByRole('tab')
-    await expect(tabs).toHaveCount(3)
-    await clickWhenVisible(tabs.nth(2))
+    await clickWhenVisible(page.getByRole('tab', { name: '公告管理' }))
 
-    const maintenanceRow = page.getByRole('row', { name: /系統維護公告/ })
-    await expect(maintenanceRow).toBeVisible()
-    await expect(maintenanceRow).toContainText('啟用中')
+    const maintenanceCard = page.getByRole('article').filter({ hasText: '系統維護公告' })
+    await expect(maintenanceCard).toBeVisible()
+    await expect(maintenanceCard).toContainText('啟用中')
 
     await clickWhenVisible(page.getByRole('button', { name: '新增公告' }))
 
@@ -51,16 +64,16 @@ test.describe('Admin Dashboard › Notifications', () => {
       .poll(() => createPayloads.length, { message: '等待新增 API 完成' })
       .toBe(previousCreateCount + 1)
 
-    const newNotificationRow = page.getByRole('row', { name: /版本更新公告/ })
-    await expect(newNotificationRow).toBeVisible()
-    await expect(newNotificationRow).toContainText('已停用')
+    const newNotificationCard = page.getByRole('article').filter({ hasText: '版本更新公告' })
+    await expect(newNotificationCard).toBeVisible()
+    await expect(newNotificationCard).toContainText('已停用')
     expect(createPayloads.at(-1)).toMatchObject({
       title: '版本更新公告',
       severity: 'danger',
       is_active: false,
     })
 
-    await clickWhenVisible(maintenanceRow.getByRole('button', { name: '編輯' }))
+    await clickWhenVisible(maintenanceCard.getByRole('button', { name: '編輯公告' }))
 
     const editDialog = page.getByRole('dialog', { name: '編輯公告' })
     await expect(editDialog).toBeVisible()
@@ -90,11 +103,13 @@ test.describe('Admin Dashboard › Notifications', () => {
         is_active: false,
       },
     })
-    const updatedMaintenanceRow = page.getByRole('row', { name: /系統維護公告/ })
-    await expect(updatedMaintenanceRow).toContainText('一般')
-    await expect(updatedMaintenanceRow).toContainText('未生效')
+    const updatedMaintenanceCard = page.getByRole('article').filter({
+      hasText: '系統維護公告',
+    })
+    await expect(updatedMaintenanceCard).toContainText('一般')
+    await expect(updatedMaintenanceCard).toContainText('未生效')
 
-    await clickWhenVisible(newNotificationRow.getByRole('button', { name: '刪除' }))
+    await clickWhenVisible(newNotificationCard.getByRole('button', { name: '刪除公告' }))
 
     const dialog = page.getByRole('alertdialog', { name: '刪除確認' })
     await expect(dialog).toBeVisible()
@@ -106,6 +121,6 @@ test.describe('Admin Dashboard › Notifications', () => {
       .toBe(previousDeleteCount + 1)
 
     expect(deleteIds.length).toBeGreaterThan(0)
-    await expect(page.getByRole('row', { name: /版本更新公告/ })).toHaveCount(0)
+    await expect(page.getByRole('article').filter({ hasText: '版本更新公告' })).toHaveCount(0)
   })
 })

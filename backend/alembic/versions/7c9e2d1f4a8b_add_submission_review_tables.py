@@ -10,6 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 import sqlmodel.sql.sqltypes
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "7c9e2d1f4a8b"
@@ -20,8 +21,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     inspector = sa.inspect(op.get_bind())
-    submissionstatus = sa.Enum(
-        "PENDING", "APPROVED", "REJECTED", name="submissionstatus"
+    submissionstatus = postgresql.ENUM(
+        "PENDING",
+        "APPROVED",
+        "REJECTED",
+        name="submissionstatus",
+        create_type=False,
     )
     submissionstatus.create(op.get_bind(), checkfirst=True)
 
