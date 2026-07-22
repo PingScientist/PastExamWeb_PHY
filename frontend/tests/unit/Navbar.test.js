@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
 import { shallowMount } from '@vue/test-utils'
 import Navbar from '@/components/Navbar.vue'
+import navbarSource from '@/components/Navbar.vue?raw'
 
 const localLoginMock = vi.hoisted(() => vi.fn())
 const logoutMock = vi.hoisted(() => vi.fn())
@@ -612,6 +613,9 @@ describe('Navbar methods', () => {
       expect.objectContaining({ severity: 'success', summary: '回報摘要已保存' })
     )
     expect(openSpy).toHaveBeenCalled()
+    expect(navbarSource).toContain('請先在目前瀏覽器登入 GitHub')
+    expect(navbarSource).toContain('GitHub Issue 仍需由您在 GitHub 頁面確認送出後才會正式建立')
+    expect(navbarSource).toContain('label="建立回報並前往 GitHub"')
     openSpy.mockRestore()
   })
 

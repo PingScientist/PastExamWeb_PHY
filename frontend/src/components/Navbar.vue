@@ -291,10 +291,12 @@
           />
         </div>
 
-        <div class="mt-3 p-3 bg-blue-50 border-round text-sm flex align-items-center">
-          <i class="pi pi-info-circle text-blue-600 mr-2"></i>
-          <span class="text-blue-800">
-            系統會先保存本地回報摘要，再開啟 GitHub 預填頁面；仍需由您在 GitHub 完成送出。
+        <div class="mt-3 p-3 bg-blue-50 border-round text-sm flex align-items-start">
+          <i class="pi pi-info-circle text-blue-600 mr-2 mt-1"></i>
+          <span class="text-blue-800 line-height-3" style="overflow-wrap: anywhere">
+            系統會先保存本地回報摘要，再開啟 GitHub 預填 Issue 頁面。<br />
+            請先在目前瀏覽器登入 GitHub，否則登入後可能無法正確返回預填頁面。<br />
+            GitHub Issue 仍需由您在 GitHub 頁面確認送出後才會正式建立。
           </span>
         </div>
       </div>

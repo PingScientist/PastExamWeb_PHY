@@ -68,7 +68,7 @@ describe('ReportManagementPanel', () => {
     mocks.confirm.mockImplementation((options) => options.accept?.())
   })
 
-  it('keeps the three report sources separated and rejects untrusted GitHub links', async () => {
+  it('keeps the three report sources separated without per-row GitHub presentation', async () => {
     const wrapper = mountPanel()
     await flushPromises()
 
@@ -84,7 +84,7 @@ describe('ReportManagementPanel', () => {
       .find('.report-management__system-table')
       .findAll('.column-header')
       .map((header) => header.text())
-    expect(systemHeaders).toEqual(['回報', '標題與內容', '類型', 'GitHub Issue', '狀態', '操作'])
+    expect(systemHeaders).toEqual(['回報', '標題與內容', '類型', '說明', '操作'])
     expect(systemHeaders).not.toContain('回報時間')
     expect(systemHeaders).not.toContain('回報者')
     const commentHeaders = wrapper
@@ -108,18 +108,36 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.vm.archiveListState).toMatchObject({ first: 0, total: 0, loading: false })
     expect(wrapper.vm.formatDateTime('2026-07-20T13:37:00Z', true)).toMatch(/\d{2}:\d{2}/)
     expect(wrapper.vm.formatDateTime('2026-07-20T13:37:00Z', true)).not.toMatch(/上午|下午/)
-    expect(
-      wrapper.vm.safeGithubIssueUrl({
-        github_issue_number: 12,
-        github_issue_url: 'https://evil.example/issues/12',
-      })
-    ).toBeNull()
-    expect(
-      wrapper.vm.safeGithubIssueUrl({
-        github_issue_number: 12,
-        github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/12',
-      })
-    ).toBe('https://github.com/PingScientist/PastExamWeb_PHY/issues/12')
+    expect(reportManagementSource).not.toContain('header="GitHub Issue"')
+    expect(reportManagementSource).not.toContain('label="前往 GitHub"')
+    expect(reportManagementSource).toContain('label="前往專案 Issues"')
+    expect(reportManagementSource).toContain('rel="noopener noreferrer"')
+  })
+
+  it('opens a full local-summary detail without unsafe HTML', async () => {
+    const wrapper = mountPanel()
+    await flushPromises()
+    const report = {
+      id: 12,
+      reporter_name: '回報者',
+      created_at: '2026-07-22T10:00:00Z',
+      report_type: 'bug',
+      title: '完整標題',
+      description: '第一行\n第二行很長的完整內容',
+      contact: null,
+    }
+
+    wrapper.vm.openSystemReport(report)
+    await flushPromises()
+
+    expect(wrapper.vm.systemDetailVisible).toBe(true)
+    expect(wrapper.vm.selectedSystemReport).toEqual(report)
+    expect(wrapper.text()).toContain('完整標題')
+    expect(wrapper.text()).toContain('第一行\n第二行很長的完整內容')
+    expect(wrapper.text()).toContain('未提供')
+    expect(wrapper.text()).toContain('無法確認使用者是否已在 GitHub 正式建立 Issue')
+    expect(reportManagementSource).not.toContain('v-html')
+    expect(reportManagementSource).toContain('aria-label="檢視系統問題回報"')
   })
 
   it('uses compact columns and independently clamps each summary body to three lines', () => {

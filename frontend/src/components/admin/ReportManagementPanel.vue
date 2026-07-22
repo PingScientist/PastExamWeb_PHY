@@ -4,7 +4,7 @@
       <div class="report-section__header">
         <div>
           <h4 id="system-report-heading">系統問題回報</h4>
-          <p>檢視使用者提交的系統問題摘要與 GitHub Issue 連結狀態。</p>
+          <p>檢視使用者提交至本站的系統問題摘要。</p>
         </div>
         <div class="report-section__actions">
           <Button
@@ -26,7 +26,7 @@
           />
         </div>
       </div>
-      <div class="report-management__filters">
+      <div class="report-management__filters report-management__filters--system">
         <InputText
           v-model="systemFilters.search"
           placeholder="搜尋標題、回報者或內容摘要"
@@ -38,15 +38,6 @@
           optionLabel="label"
           optionValue="value"
           placeholder="全部類型"
-          showClear
-          @change="applySystemFilters"
-        />
-        <Select
-          v-model="systemFilters.status"
-          :options="systemStatusOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="全部狀態"
           showClear
           @change="applySystemFilters"
         />
@@ -70,7 +61,7 @@
         responsiveLayout="stack"
         breakpoint="1023px"
         class="report-management__table report-management__system-table admin-data-table"
-        tableStyle="table-layout: fixed; min-width: 60rem"
+        tableStyle="table-layout: fixed; min-width: 52rem"
         @page="onSystemPage"
         @sort="onSystemSort"
       >
@@ -119,29 +110,20 @@
           style="width: 8rem"
           ><template #body="{ data }"><Tag :value="issueTypeLabel(data.report_type)" /></template
         ></Column>
-        <Column header="GitHub Issue" style="width: 9rem"
-          ><template #body="{ data }">{{
-            data.github_issue_number ? `#${data.github_issue_number}` : '尚未連結'
-          }}</template></Column
-        >
-        <Column field="status" sortField="status" header="狀態" sortable style="width: 8rem"
+        <Column header="說明" style="width: 8rem"
           ><template #body><Tag severity="secondary" value="本地摘要" /></template
         ></Column>
-        <Column header="操作" style="width: 17rem"
+        <Column header="操作" style="width: 12rem"
           ><template #body="{ data }"
             ><div class="report-row-actions">
               <Button
-                as="a"
-                :href="safeGithubIssueUrl(data) || undefined"
-                target="_blank"
-                rel="noopener noreferrer"
-                label="前往 GitHub"
-                icon="pi pi-external-link"
-                aria-label="前往 GitHub"
-                title="前往 GitHub"
+                label="檢視"
+                icon="pi pi-search"
+                aria-label="檢視系統問題回報"
+                title="檢視系統問題回報"
                 size="small"
                 outlined
-                :disabled="!safeGithubIssueUrl(data)"
+                @click="openSystemReport(data)"
               />
               <Button
                 label="刪除"
@@ -157,6 +139,57 @@
               /></div></template
         ></Column>
       </DataTable>
+
+      <Dialog
+        v-model:visible="systemDetailVisible"
+        modal
+        header="系統問題回報詳情"
+        :style="{ width: '680px', maxWidth: '94vw' }"
+        :contentStyle="{ maxHeight: '70vh', overflowY: 'auto' }"
+        :draggable="false"
+      >
+        <div v-if="selectedSystemReport" class="system-report-detail">
+          <dl class="report-review__meta">
+            <div>
+              <dt>回報者</dt>
+              <dd>{{ selectedSystemReport.reporter_name }}</dd>
+            </div>
+            <div>
+              <dt>回報時間</dt>
+              <dd>{{ formatDateTime(selectedSystemReport.created_at, true) }}</dd>
+            </div>
+            <div>
+              <dt>問題類型</dt>
+              <dd>{{ issueTypeLabel(selectedSystemReport.report_type) }}</dd>
+            </div>
+            <div>
+              <dt>聯絡方式</dt>
+              <dd>{{ selectedSystemReport.contact || '未提供' }}</dd>
+            </div>
+          </dl>
+          <section class="system-report-detail__content">
+            <strong>問題標題</strong>
+            <p>{{ selectedSystemReport.title || '未命名回報' }}</p>
+          </section>
+          <section class="system-report-detail__content">
+            <strong>完整詳細描述</strong>
+            <p>{{ selectedSystemReport.description || '—' }}</p>
+          </section>
+          <section class="system-report-detail__note">
+            <Tag severity="secondary" value="本地摘要" />
+            <p>此紀錄保存在本站，無法確認使用者是否已在 GitHub 正式建立 Issue。</p>
+          </section>
+          <div class="report-review__actions">
+            <span class="report-review__spacer" />
+            <Button
+              label="關閉"
+              severity="secondary"
+              outlined
+              @click="systemDetailVisible = false"
+            />
+          </div>
+        </div>
+      </Dialog>
     </section>
 
     <section class="report-section" aria-labelledby="comment-report-heading">
@@ -497,11 +530,13 @@ const commentReports = ref([])
 const commentTotal = ref(0)
 const commentError = ref('')
 const reviewVisible = ref(false)
+const systemDetailVisible = ref(false)
 const reviewSaving = ref(false)
 const deletingSystemId = ref(null)
 const deletingCommentId = ref(null)
 const selectedReport = ref(null)
-const systemFilters = ref({ search: '', type: null, status: null })
+const selectedSystemReport = ref(null)
+const systemFilters = ref({ search: '', type: null })
 const commentFilters = ref({ search: '', status: null, reason: null })
 const systemPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
 const commentPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
@@ -534,7 +569,6 @@ const systemTypeOptions = [
   { label: 'UI/UX', value: 'ui-ux' },
   { label: '其他', value: 'question' },
 ]
-const systemStatusOptions = [{ label: '本地摘要', value: 'local_only' }]
 const statusOptions = [
   { label: '待審核', value: 'pending' },
   { label: '回報成立', value: 'upheld' },
@@ -561,7 +595,6 @@ async function loadSystemIssues() {
     const { data } = await reportService.listSystemIssues({
       search: systemFilters.value.search.trim() || undefined,
       report_type: systemFilters.value.type || undefined,
-      status: systemFilters.value.status || undefined,
       sort_by: systemPage.value.sortField,
       sort_order: systemPage.value.sortOrder === 1 ? 'asc' : 'desc',
       limit: systemPage.value.rows,
@@ -658,6 +691,11 @@ function confirmDeleteSystemIssue(item) {
     acceptClass: 'p-button-danger',
     accept: () => deleteSystemIssue(item),
   })
+}
+function openSystemReport(item) {
+  if (!item?.id) return
+  selectedSystemReport.value = item
+  systemDetailVisible.value = true
 }
 async function deleteSystemIssue(item) {
   if (!item?.id || deletingSystemId.value !== null) return
@@ -820,13 +858,6 @@ function issueTypeLabel(value) {
 function isFinal(value) {
   return ['upheld', 'dismissed'].includes(value)
 }
-function safeGithubIssueUrl(item) {
-  const url = String(item?.github_issue_url || '')
-  const match = url.match(
-    /^https:\/\/github\.com\/PingScientist\/PastExamWeb_PHY\/issues\/([1-9][0-9]*)$/
-  )
-  return match && Number(match[1]) === Number(item.github_issue_number) ? url : null
-}
 function formatDateTime(value, force24Hour = false) {
   if (!value) return '—'
   const options = {
@@ -893,6 +924,9 @@ onMounted(refreshAll)
   grid-template-columns: minmax(12rem, 1fr) repeat(2, minmax(10rem, auto)) auto;
   gap: 0.6rem;
   margin-block: 1rem;
+}
+.report-management__filters--system {
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) auto;
 }
 .report-management__table {
   width: 100%;
@@ -1125,6 +1159,27 @@ onMounted(refreshAll)
 }
 .report-review__spacer {
   flex: 1;
+}
+.system-report-detail {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+.system-report-detail__content,
+.system-report-detail__note {
+  min-width: 0;
+  padding: 0.75rem;
+  border-radius: var(--content-border-radius);
+  background: var(--surface-50);
+}
+.system-report-detail__content p,
+.system-report-detail__note p {
+  margin: 0.45rem 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.system-report-detail__note {
+  border: 1px solid var(--surface-border);
 }
 @media (max-width: 1023px) {
   .report-section__header {
