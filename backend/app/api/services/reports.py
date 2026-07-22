@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 from sqlmodel import select
@@ -293,6 +293,7 @@ async def list_system_issue_reports(
         "reporter": func.coalesce(reporter.nickname, reporter.name, ""),
         "title": SystemIssueReport.title,
         "report_type": SystemIssueReport.report_type,
+        "read_state": case((SystemIssueReport.read_at.is_(None), 0), else_=1),
     }
     sort_column = sort_fields.get(sort_by)
     if sort_column is None:
@@ -304,9 +305,14 @@ async def list_system_issue_reports(
         await db.scalar(select(func.count()).select_from(statement.subquery())) or 0
     )
     ordering = sort_column.asc() if sort_order == "asc" else sort_column.desc()
+    secondary_ordering = (
+        (SystemIssueReport.created_at.desc(), SystemIssueReport.id.desc())
+        if sort_by == "read_state"
+        else (SystemIssueReport.id.desc(),)
+    )
     rows = (
         await db.execute(
-            statement.order_by(ordering, SystemIssueReport.id.desc())
+            statement.order_by(ordering, *secondary_ordering)
             .offset(offset)
             .limit(limit)
         )

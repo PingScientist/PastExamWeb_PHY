@@ -239,7 +239,7 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toContain('style="width: 12rem; min-width: 12rem"')
     expect(reportManagementSource).toContain('style="width: 17rem; min-width: 17rem"')
     expect(reportManagementSource).toMatch(
-      /\.report-row-actions\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?align-items:\s*center;[\s\S]*?justify-content:\s*flex-end;[\s\S]*?flex-wrap:\s*nowrap;/
+      /\.report-row-actions\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?align-items:\s*center;[\s\S]*?justify-content:\s*flex-start;[\s\S]*?flex-wrap:\s*nowrap;/
     )
     expect(reportManagementSource).toMatch(
       /\.report-row-actions :deep\(\.p-button\)\s*\{[\s\S]*?white-space:\s*nowrap;/
@@ -247,9 +247,9 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toContain(
       ':deep(.report-actions-column:not(.report-actions-column--system))'
     )
-    expect(reportManagementSource).toMatch(
-      /@media \(max-width: 1199px\)[\s\S]*?\.report-row-actions\s*\{\s*justify-content:\s*flex-start;\s*padding-inline-end:\s*0;\s*\}/
-    )
+    expect(reportManagementSource).not.toContain('justify-content: flex-end;\n  flex-wrap: nowrap')
+    expect(reportManagementSource).toContain('breakpoint="1023px"')
+    expect(reportManagementSource).toContain('breakpoint="1199px"')
   })
 
   it('keeps pagination and server sorting independent for each report list', async () => {
@@ -261,7 +261,7 @@ describe('ReportManagementPanel', () => {
     await wrapper.vm.onSystemPage({ first: 10, rows: 10 })
     wrapper.vm.systemFilters.readState = 'unread'
     await wrapper.vm.applySystemFilters()
-    await wrapper.vm.onSystemSort({ sortField: 'created_at', sortOrder: 1 })
+    await wrapper.vm.onSystemSort({ sortField: 'read_state', sortOrder: 1 })
     await wrapper.vm.onCommentSort({ sortField: 'reviewed_at', sortOrder: -1 })
 
     expect(mocks.listSystem).toHaveBeenLastCalledWith(
@@ -269,7 +269,7 @@ describe('ReportManagementPanel', () => {
         offset: 0,
         limit: 10,
         read_state: 'unread',
-        sort_by: 'created_at',
+        sort_by: 'read_state',
         sort_order: 'asc',
       })
     )
@@ -278,6 +278,9 @@ describe('ReportManagementPanel', () => {
     )
     expect(wrapper.vm.systemPage.first).toBe(0)
     expect(wrapper.vm.commentPage.first).toBe(0)
+    expect(reportManagementSource).toMatch(
+      /field="read_state"[\s\S]*?sortField="read_state"[\s\S]*?header="狀態"[\s\S]*?sortable/
+    )
   })
 
   it('moves each report type to trash once and clamps an emptied last page', async () => {
@@ -329,14 +332,14 @@ describe('ReportManagementPanel', () => {
       id: 8,
       status: 'pending',
       admin_response: null,
-      source_exists: true,
+      source_exists: false,
       reporter_name: 'Reporter',
       comment_author_name: 'Author',
       reason: 'misinformation',
       course_name: 'Course',
       archive_name: 'Exam',
       comment_content_snapshot: 'content',
-      thread_id: 3,
+      thread_id: 31,
     }
     mocks.getComment.mockResolvedValue({ data: report })
     mocks.reviewComment.mockResolvedValue({ data: { ...report, status: 'upheld' } })
@@ -344,6 +347,17 @@ describe('ReportManagementPanel', () => {
     await flushPromises()
 
     await wrapper.vm.openCommentReport(8)
+    expect(wrapper.text()).toContain('討論串起始留言')
+    expect(wrapper.text()).toContain('留言 #31')
+    expect(wrapper.text()).toContain('此識別碼代表該回覆串的第一則留言，用於定位討論串。')
+    expect(wrapper.text()).toContain('來源留言已不存在')
+    expect(reportManagementSource).not.toContain('<dt>Thread</dt>')
+    expect(reportManagementSource).toContain('threadId: item.thread_id')
+    expect(reportManagementSource).toContain('messageId: item.comment_id')
+    expect(wrapper.get('textarea-stub').attributes('placeholder')).toBe(
+      '可留空；若未提供答覆，通知中將顯示「未提供答覆」。'
+    )
+    expect(wrapper.vm.reviewForm.admin_response).toBe('')
     wrapper.vm.reviewForm.status = 'upheld'
     wrapper.vm.reviewForm.admin_response = '   '
     await wrapper.vm.saveReview()

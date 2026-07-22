@@ -121,7 +121,7 @@
         <Column header="說明" style="width: 8rem"
           ><template #body><Tag severity="secondary" value="本地摘要" /></template
         ></Column>
-        <Column header="狀態" style="width: 7rem"
+        <Column field="read_state" sortField="read_state" header="狀態" sortable style="width: 7rem"
           ><template #body="{ data }"
             ><Tag
               class="system-read-state-tag"
@@ -478,8 +478,13 @@
             <dd>{{ selectedReport.course_name }} · {{ selectedReport.archive_name }}</dd>
           </div>
           <div>
-            <dt>Thread</dt>
-            <dd>{{ selectedReport.thread_id || '—' }}</dd>
+            <dt>討論串起始留言</dt>
+            <dd>
+              <span>{{
+                selectedReport.thread_id ? `留言 #${selectedReport.thread_id}` : '—'
+              }}</span>
+              <small>此識別碼代表該回覆串的第一則留言，用於定位討論串。</small>
+            </dd>
           </div>
         </dl>
         <section class="report-review__quote">
@@ -517,6 +522,7 @@
             v-model="reviewForm.admin_response"
             rows="4"
             maxlength="1000"
+            placeholder="可留空；若未提供答覆，通知中將顯示「未提供答覆」。"
             :disabled="reviewSaving"
           />
           <small>{{ reviewForm.admin_response.length }}/1000</small>
@@ -1008,10 +1014,9 @@ onMounted(refreshAll)
   display: inline-flex;
   width: 100%;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: nowrap;
   gap: 0.5rem;
-  padding-inline-end: 0.35rem;
 }
 .report-row-actions :deep(.p-button) {
   flex: 0 0 auto;
@@ -1239,8 +1244,15 @@ onMounted(refreshAll)
   font-size: 0.78rem;
 }
 .report-review__meta dd {
+  display: grid;
+  gap: 0.18rem;
   margin: 0.15rem 0 0;
   overflow-wrap: anywhere;
+}
+.report-review__meta dd small {
+  color: var(--text-color-secondary);
+  font-size: 0.75rem;
+  line-height: 1.35;
 }
 .report-review__quote {
   padding: 0.7rem;
@@ -1339,10 +1351,6 @@ onMounted(refreshAll)
     min-width: 0;
     max-width: none;
     padding-inline: var(--p-datatable-body-cell-padding, 0.75rem);
-  }
-  .report-row-actions {
-    justify-content: flex-start;
-    padding-inline-end: 0;
   }
 }
 @media (max-width: 760px) {

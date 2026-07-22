@@ -545,6 +545,119 @@ async def test_system_issue_read_state_is_explicit_global_and_survives_restore(
 
 
 @pytest.mark.asyncio
+async def test_system_issue_read_state_sorting_is_grouped_stable_and_paginated(
+    client, session_maker, make_user
+):
+    reporter = await make_user(name="system-sort-reporter")
+    admin = await make_user(name="system-sort-admin", is_admin=True)
+    base_time = datetime(2026, 7, 22, tzinfo=timezone.utc)
+    try:
+        async with session_maker() as session:
+            reports = [
+                SystemIssueReport(
+                    reporter_user_id=reporter.id,
+                    report_type="bug",
+                    title="Unread old",
+                    description="Unread old",
+                    created_at=base_time.replace(hour=10),
+                    updated_at=base_time.replace(hour=10),
+                ),
+                SystemIssueReport(
+                    reporter_user_id=reporter.id,
+                    report_type="bug",
+                    title="Unread tie A",
+                    description="Unread tie A",
+                    created_at=base_time.replace(hour=12),
+                    updated_at=base_time.replace(hour=12),
+                ),
+                SystemIssueReport(
+                    reporter_user_id=reporter.id,
+                    report_type="bug",
+                    title="Unread tie B",
+                    description="Unread tie B",
+                    created_at=base_time.replace(hour=12),
+                    updated_at=base_time.replace(hour=12),
+                ),
+                SystemIssueReport(
+                    reporter_user_id=reporter.id,
+                    report_type="bug",
+                    title="Read old",
+                    description="Read old",
+                    read_at=base_time.replace(hour=13),
+                    read_by_user_id=admin.id,
+                    created_at=base_time.replace(hour=9),
+                    updated_at=base_time.replace(hour=13),
+                ),
+                SystemIssueReport(
+                    reporter_user_id=reporter.id,
+                    report_type="bug",
+                    title="Read new",
+                    description="Read new",
+                    read_at=base_time.replace(hour=13),
+                    read_by_user_id=admin.id,
+                    created_at=base_time.replace(hour=11),
+                    updated_at=base_time.replace(hour=13),
+                ),
+            ]
+            session.add_all(reports)
+            await session.commit()
+            for report in reports:
+                await session.refresh(report)
+
+        app.dependency_overrides[get_current_user] = _override_user(
+            admin.id, is_admin=True
+        )
+        ascending = await client.get(
+            "/reports/admin/system-issues",
+            params={"sort_by": "read_state", "sort_order": "asc", "limit": 100},
+        )
+        descending = await client.get(
+            "/reports/admin/system-issues",
+            params={"sort_by": "read_state", "sort_order": "desc", "limit": 100},
+        )
+        page = await client.get(
+            "/reports/admin/system-issues",
+            params={
+                "sort_by": "read_state",
+                "sort_order": "asc",
+                "limit": 2,
+                "offset": 1,
+            },
+        )
+
+        assert ascending.status_code == 200
+        assert descending.status_code == 200
+        assert page.status_code == 200
+        assert [item["title"] for item in ascending.json()["items"]] == [
+            "Unread tie B",
+            "Unread tie A",
+            "Unread old",
+            "Read new",
+            "Read old",
+        ]
+        assert [item["title"] for item in descending.json()["items"]] == [
+            "Read new",
+            "Read old",
+            "Unread tie B",
+            "Unread tie A",
+            "Unread old",
+        ]
+        assert [item["title"] for item in page.json()["items"]] == [
+            "Unread tie A",
+            "Unread old",
+        ]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(SystemIssueReport).where(
+                    SystemIssueReport.reporter_user_id == reporter.id
+                )
+            )
+            await session.commit()
+
+
+@pytest.mark.asyncio
 async def test_admin_moves_report_records_to_independent_trash_and_restores_them(
     client, session_maker, make_user
 ):
