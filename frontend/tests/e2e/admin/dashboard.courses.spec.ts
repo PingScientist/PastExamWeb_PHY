@@ -1,5 +1,6 @@
 import { adminTest as test, expect } from '../support/adminTest'
 import {
+  defaultCourseCategories,
   mockAdminCourseEndpoints,
   mockAdminNotificationEndpoints,
   mockAdminUserEndpoints,
@@ -37,12 +38,22 @@ test.describe('Admin Dashboard › Courses', () => {
   })
 
   test('allows creating, editing, and deleting courses', async ({ page }) => {
-    const { createPayloads, updatePayloads, deleteIds } = await mockAdminCourseEndpoints(page)
+    const { createPayloads, updatePayloads, deleteIds, getCategoryRequestCount } =
+      await mockAdminCourseEndpoints(page)
+    const mathCategory = defaultCourseCategories.find(
+      (category) => category.key === 'math-department'
+    )!
+    const graduateCategory = defaultCourseCategories.find(
+      (category) => category.key === 'graduate'
+    )!
 
     await page.goto('/admin', { waitUntil: 'networkidle' })
     await expect(page).toHaveURL(/\/admin$/)
 
     await clickWhenVisible(page.getByRole('tab', { name: '課程管理' }))
+    await expect
+      .poll(getCategoryRequestCount, { message: '等待課程分類 API 完成' })
+      .toBeGreaterThan(0)
     await expect(page.getByRole('article').filter({ hasText: '普通物理(一)' })).toBeVisible()
     await expect(page.getByRole('article').filter({ hasText: '電磁學(一)' })).toBeVisible()
 
@@ -58,7 +69,7 @@ test.describe('Admin Dashboard › Courses', () => {
       .locator('label', { hasText: '分類' })
       .locator('xpath=following-sibling::*[1]')
     await clickWhenVisible(categoryTrigger)
-    await clickWhenVisible(page.getByRole('option', { name: '戳戳數學系' }))
+    await clickWhenVisible(page.getByRole('option', { name: mathCategory.name, exact: true }))
 
     await Promise.all([
       page.waitForResponse(
@@ -77,7 +88,7 @@ test.describe('Admin Dashboard › Courses', () => {
     await expect(page.getByRole('article').filter({ hasText: '線性代數(一)' })).toBeVisible()
     expect(createPayloads.at(-1)).toMatchObject({
       name: '線性代數(一)',
-      category: 'interdisciplinary',
+      category: mathCategory.key,
     })
 
     const editCard = page.getByRole('article').filter({ hasText: '普通物理(一)' })
@@ -93,7 +104,7 @@ test.describe('Admin Dashboard › Courses', () => {
       .locator('label', { hasText: '分類' })
       .locator('xpath=following-sibling::*[1]')
     await clickWhenVisible(editCategoryTrigger)
-    await clickWhenVisible(page.getByRole('option', { name: '研究所' }))
+    await clickWhenVisible(page.getByRole('option', { name: graduateCategory.name, exact: true }))
 
     await Promise.all([
       page.waitForResponse(
@@ -110,11 +121,11 @@ test.describe('Admin Dashboard › Courses', () => {
     ])
 
     expect(updatePayloads.at(-1)).toMatchObject({
-      payload: { name: '普通物理(一) (更新)', category: 'graduate' },
+      payload: { name: '普通物理(一) (更新)', category: graduateCategory.key },
     })
     const updatedCourseCard = page.getByRole('article').filter({ hasText: '普通物理(一) (更新)' })
     await expect(updatedCourseCard).toBeVisible()
-    await expect(updatedCourseCard).toContainText('graduate')
+    await expect(updatedCourseCard).toContainText(graduateCategory.name)
 
     const deleteCard = page.getByRole('article').filter({ hasText: '線性代數(一)' })
     await clickWhenVisible(deleteCard.getByRole('button', { name: '刪除課程' }))
