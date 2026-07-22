@@ -4495,11 +4495,11 @@ const trashFilterOptions = [
   { label: '考古題投稿', value: 'archive_submission' },
   { label: '課程分類', value: 'course_category' },
   { label: '課程', value: 'course' },
+  { label: '公告', value: 'notification' },
+  { label: '使用者', value: 'user' },
   { label: '系統問題回報', value: 'system_issue_report' },
   { label: '留言回報', value: 'comment_report' },
   { label: '考古題回報', value: 'archive_report' },
-  { label: '公告', value: 'notification' },
-  { label: '使用者', value: 'user' },
 ]
 const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
   if (option.value) acc[option.value] = option.label

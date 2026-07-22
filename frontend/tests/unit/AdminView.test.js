@@ -426,6 +426,17 @@ describe('AdminView', () => {
     expect(adminViewSource).toContain("{ label: '系統問題回報', value: 'system_issue_report' }")
     expect(adminViewSource).toContain("{ label: '留言回報', value: 'comment_report' }")
     expect(adminViewSource).toContain("{ label: '考古題回報', value: 'archive_report' }")
+    expect(wrapper.vm.trashFilterOptions.map((option) => option.value)).toEqual([
+      'archive',
+      'archive_submission',
+      'course_category',
+      'course',
+      'notification',
+      'user',
+      'system_issue_report',
+      'comment_report',
+      'archive_report',
+    ])
     expect(adminViewSource).toContain('永久刪除後無法復原。')
     expect(adminTemplateSource).toContain('getTrashReportDetails(data)')
     expect(wrapper.vm.getTrashStatusLabel('pending', 'comment_report')).toBe('待審核')
