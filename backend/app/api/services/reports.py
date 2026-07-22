@@ -26,6 +26,7 @@ from app.models.models import (
     SystemIssueReportCreate,
     SystemIssueReportListRead,
     SystemIssueReportRead,
+    SystemIssueReportReadStateUpdate,
     User,
     UserRoles,
 )
@@ -152,7 +153,13 @@ def _safe_github_issue_url(report: SystemIssueReport) -> str | None:
     return report.github_issue_url
 
 
-def _serialize_system_issue(report: SystemIssueReport, nickname, name) -> SystemIssueReportRead:
+def _serialize_system_issue(
+    report: SystemIssueReport,
+    nickname,
+    name,
+    read_by_nickname=None,
+    read_by_name=None,
+) -> SystemIssueReportRead:
     return SystemIssueReportRead(
         id=report.id,
         reporter_user_id=report.reporter_user_id,
@@ -164,9 +171,37 @@ def _serialize_system_issue(report: SystemIssueReport, nickname, name) -> System
         status=report.status,
         github_issue_number=report.github_issue_number,
         github_issue_url=_safe_github_issue_url(report),
+        is_read=report.read_at is not None,
+        read_at=report.read_at,
+        read_by_username=(
+            _display_name(report.read_by_user_id, read_by_nickname, read_by_name)
+            if report.read_by_user_id is not None
+            else None
+        ),
         created_at=report.created_at,
         updated_at=report.updated_at,
     )
+
+
+def _system_issue_select():
+    reporter = aliased(User)
+    reader = aliased(User)
+    statement = (
+        select(
+            SystemIssueReport,
+            reporter.nickname,
+            reporter.name,
+            reader.nickname,
+            reader.name,
+        )
+        .outerjoin(reporter, reporter.id == SystemIssueReport.reporter_user_id)
+        .outerjoin(reader, reader.id == SystemIssueReport.read_by_user_id)
+    )
+    return statement, reporter, reader
+
+
+def _serialize_system_issue_row(row) -> SystemIssueReportRead:
+    return _serialize_system_issue(row[0], row[1], row[2], row[3], row[4])
 
 
 @router.post(
@@ -216,7 +251,7 @@ async def create_system_issue_report(
 async def list_system_issue_reports(
     search: str | None = Query(default=None, max_length=100),
     report_type: str | None = Query(default=None, max_length=40),
-    report_status: str | None = Query(default=None, alias="status", max_length=30),
+    read_state: str = Query(default="all", pattern="^(all|unread|read)$"),
     sort_by: str = Query(default="created_at"),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     limit: int = Query(default=50, ge=1, le=100),
@@ -225,12 +260,8 @@ async def list_system_issue_reports(
     db: AsyncSession = Depends(get_session),
 ):
     _require_admin(current_user)
-    reporter = aliased(User)
-    statement = (
-        select(SystemIssueReport, reporter.nickname, reporter.name)
-        .outerjoin(reporter, reporter.id == SystemIssueReport.reporter_user_id)
-        .where(SystemIssueReport.deleted_at.is_(None))
-    )
+    statement, reporter, _ = _system_issue_select()
+    statement = statement.where(SystemIssueReport.deleted_at.is_(None))
     filters = []
     normalized_search = (search or "").strip()
     if normalized_search:
@@ -250,8 +281,10 @@ async def list_system_issue_reports(
                 detail="Invalid system issue report type",
             )
         filters.append(SystemIssueReport.report_type == report_type)
-    if report_status:
-        filters.append(SystemIssueReport.status == report_status)
+    if read_state == "read":
+        filters.append(SystemIssueReport.read_at.is_not(None))
+    elif read_state == "unread":
+        filters.append(SystemIssueReport.read_at.is_(None))
     if filters:
         statement = statement.where(*filters)
 
@@ -260,7 +293,6 @@ async def list_system_issue_reports(
         "reporter": func.coalesce(reporter.nickname, reporter.name, ""),
         "title": SystemIssueReport.title,
         "report_type": SystemIssueReport.report_type,
-        "status": SystemIssueReport.status,
     }
     sort_column = sort_fields.get(sort_by)
     if sort_column is None:
@@ -280,9 +312,70 @@ async def list_system_issue_reports(
         )
     ).all()
     return SystemIssueReportListRead(
-        items=[_serialize_system_issue(row[0], row[1], row[2]) for row in rows],
+        items=[_serialize_system_issue_row(row) for row in rows],
         total=total,
     )
+
+
+@router.get("/admin/system-issues/{report_id}", response_model=SystemIssueReportRead)
+async def get_system_issue_report(
+    report_id: int,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    _require_admin(current_user)
+    statement, _, _ = _system_issue_select()
+    row = (
+        await db.execute(
+            statement.where(
+                SystemIssueReport.id == report_id,
+                SystemIssueReport.deleted_at.is_(None),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="System issue report not found",
+        )
+    return _serialize_system_issue_row(row)
+
+
+@router.patch(
+    "/admin/system-issues/{report_id}/read-state",
+    response_model=SystemIssueReportRead,
+)
+async def update_system_issue_read_state(
+    report_id: int,
+    payload: SystemIssueReportReadStateUpdate,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    _require_admin(current_user)
+    report = (
+        await db.execute(
+            select(SystemIssueReport)
+            .where(
+                SystemIssueReport.id == report_id,
+                SystemIssueReport.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="System issue report not found",
+        )
+    now = datetime.now(timezone.utc)
+    report.read_at = now if payload.is_read else None
+    report.read_by_user_id = current_user.user_id if payload.is_read else None
+    report.updated_at = now
+    db.add(report)
+    await db.commit()
+    statement, _, _ = _system_issue_select()
+    row = (await db.execute(statement.where(SystemIssueReport.id == report_id))).one()
+    return _serialize_system_issue_row(row)
 
 
 @router.delete("/admin/system-issues/{report_id}")

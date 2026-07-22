@@ -41,6 +41,14 @@
           showClear
           @change="applySystemFilters"
         />
+        <Select
+          v-model="systemFilters.readState"
+          :options="systemReadStateOptions"
+          optionLabel="label"
+          optionValue="value"
+          aria-label="系統問題回報閱讀狀態"
+          @change="applySystemFilters"
+        />
         <Button label="搜尋" icon="pi pi-search" outlined @click="applySystemFilters" />
       </div>
       <Message v-if="systemError" severity="error" :closable="false">{{ systemError }}</Message>
@@ -61,7 +69,7 @@
         responsiveLayout="stack"
         breakpoint="1023px"
         class="report-management__table report-management__system-table admin-data-table"
-        tableStyle="table-layout: fixed; min-width: 52rem"
+        tableStyle="table-layout: fixed; min-width: 60rem"
         @page="onSystemPage"
         @sort="onSystemSort"
       >
@@ -113,6 +121,13 @@
         <Column header="說明" style="width: 8rem"
           ><template #body><Tag severity="secondary" value="本地摘要" /></template
         ></Column>
+        <Column header="狀態" style="width: 7rem"
+          ><template #body="{ data }"
+            ><Tag
+              class="system-read-state-tag"
+              :severity="data.is_read ? 'secondary' : 'warn'"
+              :value="data.is_read ? '已讀' : '未讀'" /></template
+        ></Column>
         <Column header="操作" style="width: 12rem"
           ><template #body="{ data }"
             ><div class="report-row-actions">
@@ -123,6 +138,8 @@
                 title="檢視系統問題回報"
                 size="small"
                 outlined
+                :loading="loadingSystemDetailId === data.id"
+                :disabled="loadingSystemDetailId !== null"
                 @click="openSystemReport(data)"
               />
               <Button
@@ -179,6 +196,26 @@
             <Tag severity="secondary" value="本地摘要" />
             <p>此紀錄保存在本站，無法確認使用者是否已在 GitHub 正式建立 Issue。</p>
           </section>
+          <section class="system-report-detail__read-state">
+            <div class="system-report-detail__read-heading">
+              <strong>已讀狀態</strong>
+              <Tag
+                class="system-read-state-tag"
+                :severity="selectedSystemReport.is_read ? 'secondary' : 'warn'"
+                :value="selectedSystemReport.is_read ? '已讀' : '未讀'"
+              />
+            </div>
+            <label class="system-report-detail__read-option">
+              <Checkbox v-model="systemReadForm" binary :disabled="systemReadSaving" />
+              標記為已讀
+            </label>
+            <small>閱讀狀態由管理員手動維護，開啟此視窗不會自動標記已讀。</small>
+            <small v-if="selectedSystemReport.read_at">
+              最後標記：{{ selectedSystemReport.read_by_username || '管理員' }}，{{
+                formatDateTime(selectedSystemReport.read_at, true)
+              }}
+            </small>
+          </section>
           <div class="report-review__actions">
             <span class="report-review__spacer" />
             <Button
@@ -186,6 +223,13 @@
               severity="secondary"
               outlined
               @click="systemDetailVisible = false"
+            />
+            <Button
+              label="儲存"
+              icon="pi pi-save"
+              :loading="systemReadSaving"
+              :disabled="systemReadSaving"
+              @click="saveSystemReadState"
             />
           </div>
         </div>
@@ -531,12 +575,15 @@ const commentTotal = ref(0)
 const commentError = ref('')
 const reviewVisible = ref(false)
 const systemDetailVisible = ref(false)
+const loadingSystemDetailId = ref(null)
+const systemReadSaving = ref(false)
+const systemReadForm = ref(false)
 const reviewSaving = ref(false)
 const deletingSystemId = ref(null)
 const deletingCommentId = ref(null)
 const selectedReport = ref(null)
 const selectedSystemReport = ref(null)
-const systemFilters = ref({ search: '', type: null })
+const systemFilters = ref({ search: '', type: null, readState: 'all' })
 const commentFilters = ref({ search: '', status: null, reason: null })
 const systemPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
 const commentPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
@@ -569,6 +616,11 @@ const systemTypeOptions = [
   { label: 'UI/UX', value: 'ui-ux' },
   { label: '其他', value: 'question' },
 ]
+const systemReadStateOptions = [
+  { label: '全部狀態', value: 'all' },
+  { label: '未讀', value: 'unread' },
+  { label: '已讀', value: 'read' },
+]
 const statusOptions = [
   { label: '待審核', value: 'pending' },
   { label: '回報成立', value: 'upheld' },
@@ -595,6 +647,7 @@ async function loadSystemIssues() {
     const { data } = await reportService.listSystemIssues({
       search: systemFilters.value.search.trim() || undefined,
       report_type: systemFilters.value.type || undefined,
+      read_state: systemFilters.value.readState,
       sort_by: systemPage.value.sortField,
       sort_order: systemPage.value.sortOrder === 1 ? 'asc' : 'desc',
       limit: systemPage.value.rows,
@@ -692,10 +745,45 @@ function confirmDeleteSystemIssue(item) {
     accept: () => deleteSystemIssue(item),
   })
 }
-function openSystemReport(item) {
-  if (!item?.id) return
-  selectedSystemReport.value = item
-  systemDetailVisible.value = true
+async function openSystemReport(item) {
+  if (!item?.id || loadingSystemDetailId.value !== null) return
+  loadingSystemDetailId.value = item.id
+  try {
+    const { data } = await reportService.getSystemIssue(item.id)
+    selectedSystemReport.value = data
+    systemReadForm.value = Boolean(data.is_read)
+    systemDetailVisible.value = true
+  } catch (error) {
+    console.error('Load system issue report detail error:', error)
+    toast.add({ severity: 'error', summary: '載入失敗', detail: '無法載入回報詳情', life: 3000 })
+  } finally {
+    loadingSystemDetailId.value = null
+  }
+}
+async function saveSystemReadState() {
+  if (!selectedSystemReport.value?.id || systemReadSaving.value) return
+  systemReadSaving.value = true
+  try {
+    const { data } = await reportService.updateSystemIssueReadState(
+      selectedSystemReport.value.id,
+      systemReadForm.value
+    )
+    selectedSystemReport.value = data
+    systemReadForm.value = Boolean(data.is_read)
+    systemIssues.value = systemIssues.value.map((item) => (item.id === data.id ? data : item))
+    toast.add({
+      severity: 'success',
+      summary: '閱讀狀態已更新',
+      detail: data.is_read ? '已標記為已讀' : '已標記為未讀',
+      life: 3000,
+    })
+  } catch (error) {
+    console.error('Update system issue report read state error:', error)
+    systemReadForm.value = Boolean(selectedSystemReport.value.is_read)
+    toast.add({ severity: 'error', summary: '更新失敗', detail: '閱讀狀態未變更', life: 3000 })
+  } finally {
+    systemReadSaving.value = false
+  }
 }
 async function deleteSystemIssue(item) {
   if (!item?.id || deletingSystemId.value !== null) return
@@ -926,7 +1014,7 @@ onMounted(refreshAll)
   margin-block: 1rem;
 }
 .report-management__filters--system {
-  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) auto;
+  grid-template-columns: minmax(12rem, 1fr) repeat(2, minmax(10rem, auto)) auto;
 }
 .report-management__table {
   width: 100%;
@@ -1180,6 +1268,29 @@ onMounted(refreshAll)
 }
 .system-report-detail__note {
   border: 1px solid var(--surface-border);
+}
+.system-report-detail__read-state {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--content-border-radius);
+}
+.system-report-detail__read-heading,
+.system-report-detail__read-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.system-report-detail__read-heading {
+  justify-content: space-between;
+}
+.system-report-detail__read-state small {
+  color: var(--text-color-secondary);
+  overflow-wrap: anywhere;
+}
+.system-read-state-tag {
+  white-space: nowrap;
 }
 @media (max-width: 1023px) {
   .report-section__header {

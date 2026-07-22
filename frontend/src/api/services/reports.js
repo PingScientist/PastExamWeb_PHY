@@ -7,6 +7,12 @@ export const reportService = {
   listSystemIssues(params) {
     return api.get('/reports/admin/system-issues', { params })
   },
+  getSystemIssue(id) {
+    return api.get(`/reports/admin/system-issues/${id}`)
+  },
+  updateSystemIssueReadState(id, isRead) {
+    return api.patch(`/reports/admin/system-issues/${id}/read-state`, { is_read: isRead })
+  },
   deleteSystemIssue(id) {
     return api.delete(`/reports/admin/system-issues/${id}`)
   },

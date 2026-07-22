@@ -404,6 +404,147 @@ async def test_system_issue_reports_are_local_admin_only_and_filter_unsafe_githu
 
 
 @pytest.mark.asyncio
+async def test_system_issue_read_state_is_explicit_global_and_survives_restore(
+    client, session_maker, make_user
+):
+    reporter = await make_user(name="system-read-reporter")
+    admin = await make_user(name="system-read-admin", nickname="閱讀管理員", is_admin=True)
+    payload = {
+        "report_type": "bug",
+        "title": "Unread system issue",
+        "description": "Read state must be explicit",
+        "metadata": {},
+    }
+    try:
+        app.dependency_overrides[get_current_user] = _override_user(reporter.id)
+        created = await client.post("/reports/system-issues", json=payload)
+        assert created.status_code == 201
+        report_id = created.json()["id"]
+        assert created.json()["is_read"] is False
+        assert created.json()["read_at"] is None
+        assert (
+            await client.get(f"/reports/admin/system-issues/{report_id}")
+        ).status_code == 403
+        assert (
+            await client.patch(
+                f"/reports/admin/system-issues/{report_id}/read-state",
+                json={"is_read": True, "read_by_user_id": reporter.id},
+            )
+        ).status_code == 403
+
+        async with session_maker() as session:
+            report = await session.get(SystemIssueReport, report_id)
+            report.github_issue_number = 123
+            report.github_issue_url = (
+                "https://github.com/PingScientist/PastExamWeb_PHY/issues/123"
+            )
+            session.add(report)
+            await session.commit()
+
+        app.dependency_overrides[get_current_user] = _override_user(admin.id, is_admin=True)
+        detail = await client.get(f"/reports/admin/system-issues/{report_id}")
+        assert detail.status_code == 200
+        assert detail.json()["is_read"] is False
+        async with session_maker() as session:
+            unchanged = await session.get(SystemIssueReport, report_id)
+            assert unchanged.read_at is None
+            assert unchanged.read_by_user_id is None
+            notifications_before = int(
+                await session.scalar(
+                    select(func.count(PersonalNotification.id)).where(
+                        PersonalNotification.user_id == reporter.id
+                    )
+                )
+                or 0
+            )
+
+        unread = await client.get(
+            "/reports/admin/system-issues", params={"read_state": "unread"}
+        )
+        read = await client.get(
+            "/reports/admin/system-issues", params={"read_state": "read"}
+        )
+        assert any(item["id"] == report_id for item in unread.json()["items"])
+        assert all(item["id"] != report_id for item in read.json()["items"])
+
+        marked = await client.patch(
+            f"/reports/admin/system-issues/{report_id}/read-state",
+            json={"is_read": True, "read_by_user_id": reporter.id},
+        )
+        assert marked.status_code == 200
+        assert marked.json()["is_read"] is True
+        assert marked.json()["read_at"] is not None
+        assert marked.json()["read_by_username"] == "閱讀管理員"
+        async with session_maker() as session:
+            report = await session.get(SystemIssueReport, report_id)
+            assert report.read_by_user_id == admin.id
+            assert report.github_issue_number == 123
+            assert report.github_issue_url.endswith("/issues/123")
+
+        unread = await client.get(
+            "/reports/admin/system-issues", params={"read_state": "unread"}
+        )
+        read = await client.get(
+            "/reports/admin/system-issues", params={"read_state": "read"}
+        )
+        assert all(item["id"] != report_id for item in unread.json()["items"])
+        assert any(item["id"] == report_id for item in read.json()["items"])
+
+        unmarked = await client.patch(
+            f"/reports/admin/system-issues/{report_id}/read-state",
+            json={"is_read": False},
+        )
+        assert unmarked.status_code == 200
+        assert unmarked.json()["is_read"] is False
+        assert unmarked.json()["read_at"] is None
+        assert unmarked.json()["read_by_username"] is None
+
+        await client.patch(
+            f"/reports/admin/system-issues/{report_id}/read-state",
+            json={"is_read": True},
+        )
+        assert (
+            await client.delete(f"/reports/admin/system-issues/{report_id}")
+        ).status_code == 200
+        assert (
+            await client.patch(
+                f"/reports/admin/system-issues/{report_id}/read-state",
+                json={"is_read": False},
+            )
+        ).status_code == 404
+        assert (
+            await client.post(
+                "/trash/restore",
+                json={"item_type": "system_issue_report", "item_id": report_id},
+            )
+        ).status_code == 200
+        restored = await client.get(f"/reports/admin/system-issues/{report_id}")
+        assert restored.status_code == 200
+        assert restored.json()["is_read"] is True
+        assert restored.json()["read_by_username"] == "閱讀管理員"
+
+        async with session_maker() as session:
+            notifications_after = int(
+                await session.scalar(
+                    select(func.count(PersonalNotification.id)).where(
+                        PersonalNotification.user_id == reporter.id
+                    )
+                )
+                or 0
+            )
+            assert notifications_after == notifications_before
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(SystemIssueReport).where(
+                    SystemIssueReport.reporter_user_id == reporter.id
+                )
+            )
+            await session.commit()
+
+
+@pytest.mark.asyncio
 async def test_admin_moves_report_records_to_independent_trash_and_restores_them(
     client, session_maker, make_user
 ):

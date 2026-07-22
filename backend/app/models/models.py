@@ -696,6 +696,7 @@ class SystemIssueReport(SQLModel, table=True):
     __tablename__ = "system_issue_reports"
     __table_args__ = (
         Index("ix_system_issue_reports_status_created", "status", "created_at"),
+        Index("ix_system_issue_reports_read_at_created", "read_at", "created_at"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -716,6 +717,17 @@ class SystemIssueReport(SQLModel, table=True):
     github_issue_number: Optional[int] = Field(default=None, index=True)
     github_issue_url: Optional[str] = Field(
         default=None, sa_column=Column(String(500), nullable=True)
+    )
+    read_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    read_by_user_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
     )
     metadata_json: dict[str, Any] = Field(
         default_factory=dict,
@@ -1023,8 +1035,15 @@ class SystemIssueReportRead(BaseModel):
     status: str
     github_issue_number: Optional[int]
     github_issue_url: Optional[str]
+    is_read: bool = False
+    read_at: Optional[datetime]
+    read_by_username: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+
+class SystemIssueReportReadStateUpdate(BaseModel):
+    is_read: bool
 
 
 class SystemIssueReportListRead(BaseModel):

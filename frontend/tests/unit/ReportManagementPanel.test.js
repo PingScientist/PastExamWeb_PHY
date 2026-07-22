@@ -5,6 +5,8 @@ import reportManagementSource from '@/components/admin/ReportManagementPanel.vue
 
 const mocks = vi.hoisted(() => ({
   listSystem: vi.fn(),
+  getSystem: vi.fn(),
+  updateSystemReadState: vi.fn(),
   listComments: vi.fn(),
   getComment: vi.fn(),
   reviewComment: vi.fn(),
@@ -18,6 +20,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/api', () => ({
   reportService: {
     listSystemIssues: mocks.listSystem,
+    getSystemIssue: mocks.getSystem,
+    updateSystemIssueReadState: mocks.updateSystemReadState,
     listCommentReports: mocks.listComments,
     getCommentReport: mocks.getComment,
     reviewCommentReport: mocks.reviewComment,
@@ -62,6 +66,8 @@ describe('ReportManagementPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.listSystem.mockResolvedValue({ data: { items: [], total: 0 } })
+    mocks.getSystem.mockResolvedValue({ data: { id: 1, is_read: false } })
+    mocks.updateSystemReadState.mockResolvedValue({ data: { id: 1, is_read: true } })
     mocks.listComments.mockResolvedValue({ data: { items: [], total: 0 } })
     mocks.deleteSystem.mockResolvedValue({ data: { success: true } })
     mocks.deleteComment.mockResolvedValue({ data: { success: true } })
@@ -84,7 +90,7 @@ describe('ReportManagementPanel', () => {
       .find('.report-management__system-table')
       .findAll('.column-header')
       .map((header) => header.text())
-    expect(systemHeaders).toEqual(['回報', '標題與內容', '類型', '說明', '操作'])
+    expect(systemHeaders).toEqual(['回報', '標題與內容', '類型', '說明', '狀態', '操作'])
     expect(systemHeaders).not.toContain('回報時間')
     expect(systemHeaders).not.toContain('回報者')
     const commentHeaders = wrapper
@@ -127,7 +133,8 @@ describe('ReportManagementPanel', () => {
       contact: null,
     }
 
-    wrapper.vm.openSystemReport(report)
+    mocks.getSystem.mockResolvedValue({ data: report })
+    await wrapper.vm.openSystemReport(report)
     await flushPromises()
 
     expect(wrapper.vm.systemDetailVisible).toBe(true)
@@ -138,6 +145,64 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.text()).toContain('無法確認使用者是否已在 GitHub 正式建立 Issue')
     expect(reportManagementSource).not.toContain('v-html')
     expect(reportManagementSource).toContain('aria-label="檢視系統問題回報"')
+    expect(mocks.getSystem).toHaveBeenCalledWith(report.id)
+    expect(mocks.updateSystemReadState).not.toHaveBeenCalled()
+  })
+
+  it('updates read state only after explicit save and supports marking unread again', async () => {
+    const report = {
+      id: 42,
+      reporter_name: '回報者',
+      report_type: 'bug',
+      title: '問題',
+      description: '內容',
+      is_read: false,
+      read_at: null,
+      read_by_username: null,
+    }
+    mocks.getSystem.mockResolvedValue({ data: report })
+    mocks.updateSystemReadState
+      .mockResolvedValueOnce({
+        data: {
+          ...report,
+          is_read: true,
+          read_at: '2026-07-22T12:00:00Z',
+          read_by_username: '管理員',
+        },
+      })
+      .mockResolvedValueOnce({ data: { ...report, is_read: false } })
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    await wrapper.vm.openSystemReport(report)
+    expect(mocks.updateSystemReadState).not.toHaveBeenCalled()
+
+    wrapper.vm.systemReadForm = true
+    await wrapper.vm.saveSystemReadState()
+    expect(mocks.updateSystemReadState).toHaveBeenNthCalledWith(1, report.id, true)
+    expect(wrapper.vm.selectedSystemReport.is_read).toBe(true)
+
+    wrapper.vm.systemReadForm = false
+    await wrapper.vm.saveSystemReadState()
+    expect(mocks.updateSystemReadState).toHaveBeenNthCalledWith(2, report.id, false)
+    expect(wrapper.vm.selectedSystemReport.is_read).toBe(false)
+    expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ summary: '閱讀狀態已更新' }))
+  })
+
+  it('keeps the previous read state when saving fails', async () => {
+    const report = { id: 52, is_read: false }
+    mocks.getSystem.mockResolvedValue({ data: report })
+    mocks.updateSystemReadState.mockRejectedValueOnce(new Error('unavailable'))
+    const wrapper = mountPanel()
+    await flushPromises()
+    await wrapper.vm.openSystemReport(report)
+
+    wrapper.vm.systemReadForm = true
+    await wrapper.vm.saveSystemReadState()
+
+    expect(wrapper.vm.selectedSystemReport.is_read).toBe(false)
+    expect(wrapper.vm.systemReadForm).toBe(false)
+    expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ summary: '更新失敗' }))
   })
 
   it('uses compact columns and independently clamps each summary body to three lines', () => {
@@ -173,11 +238,19 @@ describe('ReportManagementPanel', () => {
     mocks.listComments.mockClear()
 
     await wrapper.vm.onSystemPage({ first: 10, rows: 10 })
+    wrapper.vm.systemFilters.readState = 'unread'
+    await wrapper.vm.applySystemFilters()
     await wrapper.vm.onSystemSort({ sortField: 'created_at', sortOrder: 1 })
     await wrapper.vm.onCommentSort({ sortField: 'reviewed_at', sortOrder: -1 })
 
     expect(mocks.listSystem).toHaveBeenLastCalledWith(
-      expect.objectContaining({ offset: 0, limit: 10, sort_by: 'created_at', sort_order: 'asc' })
+      expect.objectContaining({
+        offset: 0,
+        limit: 10,
+        read_state: 'unread',
+        sort_by: 'created_at',
+        sort_order: 'asc',
+      })
     )
     expect(mocks.listComments).toHaveBeenLastCalledWith(
       expect.objectContaining({ offset: 0, sort_by: 'reviewed_at', sort_order: 'desc' })
