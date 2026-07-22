@@ -629,6 +629,30 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).not.toMatch(/font-size:\s*(?:0\.\d+|1\.05|2)rem/)
   })
 
+  it('keeps system report header actions inline until its section is narrow', () => {
+    expect(reportManagementSource).toContain(
+      'class="report-section__header report-section__header--system"'
+    )
+    expect(reportManagementSource).toContain('class="report-section__copy"')
+    expect(reportManagementSource).toMatch(
+      /\.report-section__header--system\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;[^}]*align-items:\s*center;[^}]*width:\s*100%;[^}]*min-width:\s*0;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-section__header--system \.report-section__actions\s*\{[^}]*justify-self:\s*end;[^}]*width:\s*auto;[^}]*min-width:\s*max-content;[^}]*flex-wrap:\s*nowrap;/
+    )
+    expect(reportManagementSource).toMatch(
+      /@container report-section \(max-width: 42rem\)\s*\{[\s\S]*?\.report-section__header--system\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*align-items:\s*start;/
+    )
+    expect(reportManagementSource).toMatch(
+      /@container report-section \(max-width: 42rem\)\s*\{[\s\S]*?\.report-section__header--system \.report-section__actions\s*\{[^}]*justify-self:\s*start;/
+    )
+    expect(reportManagementSource).toContain('@container report-section (max-width: 25rem)')
+    expect(reportManagementSource).toContain('@click="refreshAll"')
+    expect(reportManagementSource).toContain(
+      'href="https://github.com/PingScientist/PastExamWeb_PHY/issues"'
+    )
+  })
+
   it('scales source and finalized review messages through their PrimeVue text nodes', () => {
     expect(reportManagementSource.match(/class="report-review__message"/g)).toHaveLength(2)
     expect(reportManagementSource).toMatch(

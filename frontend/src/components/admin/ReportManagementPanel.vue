@@ -1,8 +1,8 @@
 <template>
   <section class="report-management" aria-label="回報管理">
     <section class="report-section" aria-labelledby="system-report-heading">
-      <div class="report-section__header">
-        <div>
+      <div class="report-section__header report-section__header--system">
+        <div class="report-section__copy">
           <h4 id="system-report-heading">系統問題回報</h4>
           <p>檢視使用者提交至本站的系統問題摘要。</p>
         </div>
@@ -1231,6 +1231,17 @@ onBeforeUnmount(teardownCardLayout)
   justify-content: space-between;
   gap: 0.75rem;
 }
+.report-section__header--system {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+.report-section__copy {
+  min-width: 0;
+}
 .report-section {
   container-name: report-section;
   container-type: inline-size;
@@ -1259,6 +1270,12 @@ onBeforeUnmount(teardownCardLayout)
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+.report-section__header--system .report-section__actions {
+  justify-self: end;
+  width: auto;
+  min-width: max-content;
+  flex-wrap: nowrap;
 }
 .report-section__actions :deep(.p-button) {
   flex: 0 0 auto;
@@ -1343,6 +1360,21 @@ onBeforeUnmount(teardownCardLayout)
       'secondary'
       'submit';
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container report-section (max-width: 42rem) {
+  .report-section__header--system {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .report-section__header--system .report-section__actions {
+    justify-self: start;
+  }
+}
+@container report-section (max-width: 25rem) {
+  .report-section__header--system .report-section__actions {
+    min-width: 0;
+    flex-wrap: wrap;
   }
 }
 .report-management__table {
@@ -1735,7 +1767,7 @@ onBeforeUnmount(teardownCardLayout)
   line-height: 1.4;
 }
 @media (max-width: 1399px) {
-  .report-section__header {
+  .report-section__header:not(.report-section__header--system) {
     align-items: flex-start;
     flex-direction: column;
   }
