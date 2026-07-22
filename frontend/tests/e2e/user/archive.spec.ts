@@ -18,6 +18,17 @@ test.describe('User › Archive browsing', () => {
     }
 
     let archiveDownloadCount = 3
+    let previewRouteCallCount = 0
+    const consoleErrors: string[] = []
+    const pageErrors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text())
+    })
+    page.on('pageerror', (error) => pageErrors.push(error.message))
+
+    const pdfBody = fromBase64ToBinaryString(
+      'JVBERi0xLjUKJcTl8uXrPgoxIDAgb2JqPDwvVHlwZS9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHMgWzMgMCBSXS9Db3VudCAxPj4KZW5kb2JqCjMgMCBvYmo8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA1OTUgODQyXS9Db250ZW50cyA0IDAgUi9SZXNvdXJjZXMgPDwvUHJvY1Nl0dDU2V0Wy9QREZdPj4+Pj4KZW5kb2JqCjQgMCBvYmo8PC9MZW5ndGggNTI+PnN0cmVhbQpIL0YgMTIgVGYgMTIgVG0gMCBUZgoKZW5kc3RyZWFtCmVuZG9iagogNSAwIG9iag8+PnN0YXJ0eHJlZgoxNjYKJSVFT0YK'
+    )
     const archivesResponse = () => [
       {
         id: 201,
@@ -74,6 +85,7 @@ test.describe('User › Archive browsing', () => {
     })
 
     await page.route('**/api/courses/101/archives/201/preview-file', async (route) => {
+      previewRouteCallCount += 1
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/pdf' },
@@ -107,10 +119,6 @@ test.describe('User › Archive browsing', () => {
         body: '',
       })
     })
-
-    const pdfBody = fromBase64ToBinaryString(
-      'JVBERi0xLjUKJcTl8uXrPgoxIDAgb2JqPDwvVHlwZS9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHMgWzMgMCBSXS9Db3VudCAxPj4KZW5kb2JqCjMgMCBvYmo8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA1OTUgODQyXS9Db250ZW50cyA0IDAgUi9SZXNvdXJjZXMgPDwvUHJvY1Nl0dDU2V0Wy9QREZdPj4+Pj4KZW5kb2JqCjQgMCBvYmo8PC9MZW5ndGggNTI+PnN0cmVhbQpIL0YgMTIgVGYgMTIgVG0gMCBUZgoKZW5kc3RyZWFtCmVuZG9iagogNSAwIG9iag8+PnN0YXJ0eHJlZgoxNjYKJSVFT0YK'
-    )
 
     await page.route('https://example.com/download.pdf', async (route) => {
       await route.fulfill({
@@ -208,11 +216,32 @@ test.describe('User › Archive browsing', () => {
     await expect(archiveCard.getByRole('button', { name: '編輯' })).toHaveCount(0)
     await expect(archiveCard.getByRole('button', { name: '刪除' })).toHaveCount(0)
 
+    const previewRequestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === 'GET' &&
+        new URL(request.url()).pathname === '/api/courses/101/archives/201/preview-file'
+    )
+    const previewResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === '/api/courses/101/archives/201/preview-file'
+    )
     await clickWhenVisible(archiveCard.getByRole('button', { name: '預覽' }))
+    const [previewRequest, previewResponse] = await Promise.all([
+      previewRequestPromise,
+      previewResponsePromise,
+    ])
+
+    expect(previewRequest.method()).toBe('GET')
+    expect(previewResponse.status()).toBe(200)
+    expect(previewResponse.headers()['content-type']).toContain('application/pdf')
+    expect(previewRouteCallCount).toBe(1)
 
     const previewDialog = page.getByRole('dialog', { name: /期末考/ })
     await expect(previewDialog).toBeVisible()
     await expect(previewDialog).toContainText('期末考')
+    expect(consoleErrors).toEqual([])
+    expect(pageErrors).toEqual([])
     await clickWhenVisible(previewDialog.getByRole('button', { name: '下載' }))
 
     await expect.poll(() => downloadEndpointCalled).toBeTruthy()
