@@ -426,6 +426,7 @@ describe('AdminView', () => {
     expect(adminViewSource).toContain("{ label: '系統問題回報', value: 'system_issue_report' }")
     expect(adminViewSource).toContain("{ label: '留言回報', value: 'comment_report' }")
     expect(adminViewSource).toContain("{ label: '考古題回報', value: 'archive_report' }")
+    expect(adminViewSource).toContain('永久刪除後無法復原。')
     expect(adminTemplateSource).toContain('getTrashReportDetails(data)')
     expect(
       wrapper.vm.getTrashReportDetails({

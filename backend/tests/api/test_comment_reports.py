@@ -451,6 +451,60 @@ async def test_admin_moves_report_records_to_independent_trash_and_restores_them
             assert comment_report.reviewed_by == admin.id
             assert comment_report.admin_response == "不成立"
             assert notification_count_after_restore == notification_count_before
+
+        assert (
+            await client.delete(f"/reports/admin/system-issues/{system_id}")
+        ).status_code == 200
+        assert (
+            await client.delete(f"/reports/admin/comments/{comment_id}")
+        ).status_code == 200
+        assert (
+            await client.delete(f"/trash/system_issue_report/{system_id}")
+        ).status_code == 200
+        assert (
+            await client.delete(f"/trash/comment_report/{comment_id}")
+        ).status_code == 200
+
+        async with session_maker() as session:
+            assert await session.get(SystemIssueReport, system_id) is None
+            assert await session.get(CommentReport, comment_id) is None
+            source = await session.get(ArchiveDiscussionMessage, messages[0].id)
+            assert source is not None and source.deleted_at is None
+            assert int(
+                await session.scalar(
+                    select(func.count(PersonalNotification.id)).where(
+                        PersonalNotification.user_id == reporter.id
+                    )
+                )
+                or 0
+            ) == notification_count_before
+
+        assert not any(
+            item["id"] == system_id
+            for item in (
+                await client.get(
+                    "/trash", params={"item_type": "system_issue_report"}
+                )
+            ).json()
+        )
+        assert not any(
+            item["id"] == comment_id
+            for item in (
+                await client.get("/trash", params={"item_type": "comment_report"})
+            ).json()
+        )
+
+        app.dependency_overrides[get_current_user] = _override_user(
+            reporter.id, is_admin=False
+        )
+        center = (await client.get("/notifications/center")).json()
+        result_notification = next(
+            item
+            for item in center["personal_notifications"]
+            if item["source_type"] == "comment_report"
+            and item["source_id"] == comment_id
+        )
+        assert result_notification["source_available"] is False
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         async with session_maker() as session:

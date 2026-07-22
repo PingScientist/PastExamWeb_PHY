@@ -406,6 +406,9 @@ async def test_personal_notifications_can_be_permanently_deleted_by_owner_only(
         )
         assert deleted.status_code == 200
         assert deleted.json() == {"success": True}
+        assert (
+            await client.delete(f"/notifications/personal/{owner_items[0].id}")
+        ).status_code == 404
         assert (await client.get("/notifications/counts")).json()[
             "personal_notifications"
         ] == 1

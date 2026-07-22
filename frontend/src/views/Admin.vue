@@ -6932,7 +6932,7 @@ const restoreTrashItem = async (item) => {
 
 const confirmPermanentDeleteTrashItem = (item) => {
   confirm.require({
-    message: `確定要永久刪除「${item.display_name}」嗎？此動作無法復原。`,
+    message: `確定要永久刪除「${item.display_name}」嗎？永久刪除後無法復原。`,
     header: '確認永久刪除',
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',

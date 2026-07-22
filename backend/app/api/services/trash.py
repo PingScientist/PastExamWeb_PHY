@@ -1842,6 +1842,8 @@ async def bulk_permanently_delete_trash_items(
         TrashEntityType.COURSE_CATEGORY: 3,
         TrashEntityType.NOTIFICATION: 4,
         TrashEntityType.USER: 5,
+        TrashEntityType.SYSTEM_ISSUE_REPORT: 6,
+        TrashEntityType.COMMENT_REPORT: 7,
     }
     sorted_items = sorted(
         items,
@@ -1919,6 +1921,40 @@ async def _permanently_delete_trash_item(
     db: SQLModelAsyncSession,
     warnings: list[str],
 ):
+    if item_type == TrashEntityType.SYSTEM_ISSUE_REPORT:
+        report = await db.get(SystemIssueReport, item_id)
+        if not report or report.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="System issue report not found",
+            )
+
+        await db.delete(report)
+        return _delete_result(
+            item_type=item_type,
+            item_id=item_id,
+            name=report.title,
+            deleted=1,
+            warnings=warnings,
+        )
+
+    if item_type == TrashEntityType.COMMENT_REPORT:
+        report = await db.get(CommentReport, item_id)
+        if not report or report.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comment report not found",
+            )
+
+        await db.delete(report)
+        return _delete_result(
+            item_type=item_type,
+            item_id=item_id,
+            name=COMMENT_REPORT_REASON_LABELS.get(report.reason, report.reason),
+            deleted=1,
+            warnings=warnings,
+        )
+
     if item_type == TrashEntityType.COURSE_CATEGORY:
         category = await db.get(CourseCategoryConfig, item_id)
         if not category or category.deleted_at is None:

@@ -21,6 +21,7 @@ from app.models.models import (
     PersonalNotification,
     PersonalNotificationRead,
     ArchiveDiscussionMessage,
+    CommentReport,
     User,
     UserRoles,
 )
@@ -125,6 +126,38 @@ async def _list_personal_notifications(
             .scalars()
             .all()
         )
+    comment_report_source_ids = {
+        item.source_id
+        for item in items
+        if item.source_type == "comment_report" and item.source_id is not None
+    }
+    available_comment_report_ids: set[int] = set()
+    if comment_report_source_ids:
+        available_comment_report_ids = set(
+            (
+                await db.execute(
+                    select(CommentReport.id).where(
+                        CommentReport.id.in_(comment_report_source_ids)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    def source_is_available(item: PersonalNotification) -> bool:
+        if item.source_type == "comment_report":
+            return bool(
+                item.source_id in available_comment_report_ids
+                and (
+                    item.source_message_id is None
+                    or item.source_message_id in available_source_ids
+                )
+            )
+        if item.source_message_id is not None:
+            return item.source_message_id in available_source_ids
+        return item.source_type in {None, "archive_submission"}
+
     return [
         PersonalNotificationRead(
             id=item.id,
@@ -135,11 +168,7 @@ async def _list_personal_notifications(
             source_id=item.source_id,
             source_message_id=item.source_message_id,
             metadata=dict(item.metadata_json or {}),
-            source_available=(
-                item.source_message_id in available_source_ids
-                if item.source_message_id is not None
-                else item.source_type in {None, "archive_submission", "comment_report"}
-            ),
+            source_available=source_is_available(item),
             read_at=item.read_at,
             created_at=item.created_at,
         )
