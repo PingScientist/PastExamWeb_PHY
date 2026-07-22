@@ -92,7 +92,7 @@
           bodyClass="report-person-time-column"
           style="width: 10rem; min-width: 10rem"
           ><template #body="{ data }"
-            ><div class="report-person-time">
+            ><div v-if="!isCardLayout" class="report-person-time">
               <span class="report-person-time__name" :title="data.reporter_name">
                 {{ data.reporter_name }}
               </span>
@@ -111,13 +111,13 @@
           bodyClass="system-report-column"
           style="width: clamp(15rem, 22vw, 21.25rem)"
           ><template #body="{ data }"
-            ><div class="system-report-summary report-desktop-content">
+            ><div v-if="!isCardLayout" class="system-report-summary">
               <strong class="system-report-summary__title" :title="data.title || '未命名回報'">
                 {{ data.title || '未命名回報' }}
               </strong>
               <span class="system-report-summary__body">{{ data.description || '—' }}</span>
             </div>
-            <article class="report-mobile-card-content">
+            <article v-else class="report-mobile-card report-mobile-card-content">
               <header class="report-mobile-card-header">
                 <strong class="report-mobile-card-title" :title="data.title || '未命名回報'">
                   {{ data.title || '未命名回報' }}
@@ -161,14 +161,17 @@
           header="類型"
           sortable
           style="width: 8rem"
-          ><template #body="{ data }"><Tag :value="issueTypeLabel(data.report_type)" /></template
+          ><template #body="{ data }"
+            ><Tag v-if="!isCardLayout" :value="issueTypeLabel(data.report_type)" /></template
         ></Column>
         <Column header="說明" style="width: 8rem"
-          ><template #body><Tag severity="secondary" value="本地摘要" /></template
+          ><template #body
+            ><Tag v-if="!isCardLayout" severity="secondary" value="本地摘要" /></template
         ></Column>
         <Column field="read_state" sortField="read_state" header="狀態" sortable style="width: 7rem"
           ><template #body="{ data }"
             ><Tag
+              v-if="!isCardLayout"
               class="system-read-state-tag"
               :severity="data.is_read ? 'secondary' : 'warn'"
               :value="data.is_read ? '已讀' : '未讀'" /></template
@@ -179,30 +182,32 @@
           bodyClass="report-actions-column report-actions-column--system"
           style="width: 12rem; min-width: 12rem"
           ><template #body="{ data }"
-            ><div class="report-row-actions">
-              <Button
-                label="檢視"
-                icon="pi pi-search"
-                aria-label="檢視系統問題回報"
-                title="檢視系統問題回報"
-                size="small"
-                outlined
-                :loading="loadingSystemDetailId === data.id"
-                :disabled="loadingSystemDetailId !== null"
-                @click="openSystemReport(data)"
-              />
-              <Button
-                label="刪除"
-                icon="pi pi-trash"
-                severity="danger"
-                aria-label="刪除系統問題回報"
-                title="刪除系統問題回報"
-                size="small"
-                outlined
-                :loading="deletingSystemId === data.id"
-                :disabled="deletingSystemId !== null"
-                @click="confirmDeleteSystemIssue(data)"
-              /></div></template
+            ><footer class="report-mobile-card__footer">
+              <div class="report-row-actions">
+                <Button
+                  label="檢視"
+                  icon="pi pi-search"
+                  aria-label="檢視系統問題回報"
+                  title="檢視系統問題回報"
+                  size="small"
+                  outlined
+                  :loading="loadingSystemDetailId === data.id"
+                  :disabled="loadingSystemDetailId !== null"
+                  @click="openSystemReport(data)"
+                />
+                <Button
+                  label="刪除"
+                  icon="pi pi-trash"
+                  severity="danger"
+                  aria-label="刪除系統問題回報"
+                  title="刪除系統問題回報"
+                  size="small"
+                  outlined
+                  :loading="deletingSystemId === data.id"
+                  :disabled="deletingSystemId !== null"
+                  @click="confirmDeleteSystemIssue(data)"
+                />
+              </div></footer></template
         ></Column>
       </DataTable>
 
@@ -360,7 +365,7 @@
           bodyClass="report-person-time-column"
           style="width: 9.5rem; min-width: 9.5rem"
           ><template #body="{ data }"
-            ><div class="report-person-time">
+            ><div v-if="!isCardLayout" class="report-person-time">
               <span class="report-person-time__name" :title="data.reporter_name">
                 {{ data.reporter_name }}
               </span>
@@ -380,7 +385,8 @@
           style="width: clamp(16rem, 24vw, 20rem)"
           ><template #body="{ data }"
             ><div
-              class="comment-report-content report-desktop-content"
+              v-if="!isCardLayout"
+              class="comment-report-content"
               :title="data.comment_content_snapshot"
             >
               <strong class="comment-report-content__reason" :title="reasonLabel(data.reason)">
@@ -390,7 +396,7 @@
                 data.comment_content_snapshot || '—'
               }}</span>
             </div>
-            <article class="report-mobile-card-content">
+            <article v-else class="report-mobile-card report-mobile-card-content">
               <header class="report-mobile-card-header">
                 <strong class="report-mobile-card-title" :title="reasonLabel(data.reason)">
                   {{ reasonLabel(data.reason) }}
@@ -449,14 +455,17 @@
           bodyClass="report-user-column"
           style="width: 7rem; min-width: 7rem"
           ><template #body="{ data }"
-            ><span class="report-user-cell__text" :title="data.comment_author_name">{{
-              data.comment_author_name
-            }}</span></template
+            ><span
+              v-if="!isCardLayout"
+              class="report-user-cell__text"
+              :title="data.comment_author_name"
+              >{{ data.comment_author_name }}</span
+            ></template
           ></Column
         >
         <Column sortField="course_archive" header="課程／考古題" sortable style="width: 11rem"
           ><template #body="{ data }"
-            ><div class="report-management__summary">
+            ><div v-if="!isCardLayout" class="report-management__summary">
               <span>{{ data.course_name }}</span
               ><small>{{ data.archive_name }}</small>
             </div></template
@@ -464,7 +473,10 @@
         >
         <Column field="status" sortField="status" header="狀態" sortable style="width: 8rem"
           ><template #body="{ data }"
-            ><Tag :severity="statusSeverity(data.status)" :value="statusLabel(data.status)"
+            ><Tag
+              v-if="!isCardLayout"
+              :severity="statusSeverity(data.status)"
+              :value="statusLabel(data.status)"
           /></template>
         </Column>
         <Column
@@ -476,7 +488,7 @@
           bodyClass="report-review-column"
           style="width: 10rem; min-width: 10rem"
           ><template #body="{ data }"
-            ><div class="report-person-time">
+            ><div v-if="!isCardLayout" class="report-person-time">
               <span
                 class="report-person-time__name"
                 :class="{ 'report-person-time__name--empty': !data.reviewer_name }"
@@ -501,28 +513,30 @@
           bodyClass="report-actions-column"
           style="width: 17rem; min-width: 17rem"
           ><template #body="{ data }"
-            ><div class="report-row-actions">
-              <Button
-                :label="isFinal(data.status) ? '檢視' : '檢視／審核'"
-                icon="pi pi-search"
-                aria-label="檢視或審核留言回報"
-                title="檢視或審核留言回報"
-                size="small"
-                outlined
-                @click="openCommentReport(data.id)"
-              />
-              <Button
-                label="刪除"
-                icon="pi pi-trash"
-                severity="danger"
-                aria-label="刪除留言回報"
-                title="刪除留言回報"
-                size="small"
-                outlined
-                :loading="deletingCommentId === data.id"
-                :disabled="deletingCommentId !== null"
-                @click="confirmDeleteCommentReport(data)"
-              /></div></template
+            ><footer class="report-mobile-card__footer">
+              <div class="report-row-actions">
+                <Button
+                  :label="isFinal(data.status) ? '檢視' : '檢視／審核'"
+                  icon="pi pi-search"
+                  aria-label="檢視或審核留言回報"
+                  title="檢視或審核留言回報"
+                  size="small"
+                  outlined
+                  @click="openCommentReport(data.id)"
+                />
+                <Button
+                  label="刪除"
+                  icon="pi pi-trash"
+                  severity="danger"
+                  aria-label="刪除留言回報"
+                  title="刪除留言回報"
+                  size="small"
+                  outlined
+                  :loading="deletingCommentId === data.id"
+                  :disabled="deletingCommentId !== null"
+                  @click="confirmDeleteCommentReport(data)"
+                />
+              </div></footer></template
         ></Column>
       </DataTable>
     </section>
@@ -673,7 +687,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
@@ -684,6 +698,12 @@ const confirm = useConfirm()
 const toast = useToast()
 const router = useRouter()
 const PAGE_SIZE_OPTIONS = [10, 20, 50]
+const REPORT_CARD_MEDIA_QUERY = '(max-width: 1399px)'
+const reportCardMediaQuery =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia(REPORT_CARD_MEDIA_QUERY)
+    : null
+const isCardLayout = ref(reportCardMediaQuery?.matches ?? false)
 const loadingSystem = ref(false)
 const loadingComments = ref(false)
 const systemIssues = ref([])
@@ -1078,7 +1098,25 @@ function formatDateTime(value, force24Hour = false) {
   return new Date(value).toLocaleString('zh-TW', options)
 }
 
-onMounted(refreshAll)
+function syncCardLayout(event) {
+  isCardLayout.value = event.matches
+}
+
+function setupCardLayout() {
+  if (!reportCardMediaQuery) return
+  isCardLayout.value = reportCardMediaQuery.matches
+  reportCardMediaQuery.addEventListener?.('change', syncCardLayout)
+}
+
+function teardownCardLayout() {
+  reportCardMediaQuery?.removeEventListener?.('change', syncCardLayout)
+}
+
+onMounted(() => {
+  setupCardLayout()
+  refreshAll()
+})
+onBeforeUnmount(teardownCardLayout)
 </script>
 
 <style scoped>
@@ -1244,8 +1282,21 @@ onMounted(refreshAll)
 .report-management__table {
   width: 100%;
 }
+.report-mobile-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
 .report-mobile-card-content {
-  display: none;
+  width: 100%;
+  min-width: 0;
+}
+.report-mobile-card__footer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
 }
 .report-management__summary {
   display: flex;
@@ -1662,18 +1713,13 @@ onMounted(refreshAll)
   :deep(.report-management__table .p-datatable-tbody > tr + tr) {
     margin-top: 0.75rem;
   }
-  .report-desktop-content {
-    display: none;
-  }
   .report-mobile-card-content {
-    display: block;
-    width: 100%;
-    min-width: 0;
+    display: flex;
   }
   .report-mobile-card-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: flex-start;
-    justify-content: space-between;
     gap: 0.8rem;
     width: 100%;
     min-width: 0;
@@ -1706,6 +1752,7 @@ onMounted(refreshAll)
     margin-top: 0.55rem;
   }
   .report-mobile-summary-preview {
+    grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;

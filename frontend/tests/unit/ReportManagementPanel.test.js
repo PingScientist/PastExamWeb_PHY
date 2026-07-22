@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { Fragment, h } from 'vue'
 import ReportManagementPanel from '@/components/admin/ReportManagementPanel.vue'
 import reportManagementSource from '@/components/admin/ReportManagementPanel.vue?raw'
 
@@ -38,7 +39,41 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: mocks.push }) }))
 
 const slotStub = { template: '<div><slot /></div>' }
 
-function mountPanel() {
+function flattenVNodes(nodes = []) {
+  return nodes.flatMap((node) => (node.type === Fragment ? flattenVNodes(node.children) : node))
+}
+
+const rowDataTableStub = {
+  inheritAttrs: false,
+  props: ['value'],
+  setup(props, { attrs, slots }) {
+    return () => {
+      const columns = flattenVNodes(slots.default?.()).filter(
+        (node) => typeof node.children?.body === 'function'
+      )
+      return h(
+        'div',
+        { class: attrs.class },
+        (props.value || []).map((data) =>
+          h(
+            'div',
+            { class: 'test-report-row', 'data-report-id': data.id },
+            columns.map((column) => h('div', {}, column.children.body({ data })))
+          )
+        )
+      )
+    }
+  },
+}
+
+function mountPanel({ renderRows = false, cardLayout = false } = {}) {
+  if (renderRows) {
+    window.matchMedia = vi.fn(() => ({
+      matches: cardLayout,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+  }
   return mount(ReportManagementPanel, {
     global: {
       stubs: {
@@ -47,13 +82,13 @@ function mountPanel() {
         Tab: slotStub,
         TabPanels: slotStub,
         TabPanel: slotStub,
-        DataTable: slotStub,
+        DataTable: renderRows ? rowDataTableStub : slotStub,
         Column: { props: ['header'], template: '<div class="column-header">{{ header }}</div>' },
         Dialog: slotStub,
-        Button: true,
+        Button: { props: ['label'], template: '<button>{{ label }}</button>' },
         InputText: true,
         Select: true,
-        Tag: true,
+        Tag: { props: ['value'], template: '<span class="tag-stub">{{ value }}</span>' },
         Message: slotStub,
         Textarea: true,
         Checkbox: true,
@@ -556,7 +591,9 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toMatch(
       /\.report-filter-submit\.p-button\)[\s\S]*?justify-self:\s*end;[\s\S]*?width:\s*auto;/
     )
-    expect(reportManagementSource.match(/class="report-mobile-card-content"/g)).toHaveLength(2)
+    expect(
+      reportManagementSource.match(/class="report-mobile-card report-mobile-card-content"/g)
+    ).toHaveLength(2)
     expect(reportManagementSource.match(/class="report-mobile-card-header"/g)).toHaveLength(2)
     expect(reportManagementSource).toContain('class="report-mobile-card-badges"')
     expect(reportManagementSource.match(/class="report-mobile-summary-preview"/g)).toHaveLength(2)
@@ -585,5 +622,78 @@ describe('ReportManagementPanel', () => {
       /\.report-row-actions\s*\{[\s\S]*?justify-content:\s*flex-end;/
     )
     expect(reportManagementSource).not.toContain('GitHub Issue</')
+  })
+
+  it('renders each system and comment report field exactly once in card layout', async () => {
+    mocks.listSystem.mockResolvedValueOnce({
+      data: {
+        total: 1,
+        items: [
+          {
+            id: 101,
+            reporter_name: '系統回報者甲',
+            created_at: '2026-07-22T13:23:00Z',
+            report_type: 'bug',
+            title: '唯一系統問題標題',
+            description: '唯一系統問題摘要',
+            is_read: false,
+          },
+        ],
+      },
+    })
+    mocks.listComments.mockResolvedValueOnce({
+      data: {
+        total: 1,
+        items: [
+          {
+            id: 202,
+            reporter_name: '留言回報者乙',
+            created_at: '2026-07-20T05:36:00Z',
+            reason: 'harassment_or_hostility',
+            comment_content_snapshot: '唯一留言摘要',
+            comment_author_name: '留言作者丙',
+            course_name: '普通物理甲',
+            archive_name: '期末考乙',
+            status: 'pending',
+            reviewer_name: null,
+            reviewed_at: null,
+          },
+        ],
+      },
+    })
+
+    const wrapper = mountPanel({ renderRows: true, cardLayout: true })
+    await flushPromises()
+
+    const systemRow = wrapper.get('.report-management__system-table .test-report-row')
+    expect(systemRow.findAll('.report-mobile-card')).toHaveLength(1)
+    expect(systemRow.findAll('.report-mobile-card-title')).toHaveLength(1)
+    expect(systemRow.findAll('.report-mobile-summary-preview')).toHaveLength(1)
+    expect(systemRow.findAll('.report-mobile-card__footer')).toHaveLength(1)
+    expect(systemRow.findAll('.report-person-time')).toHaveLength(0)
+    expect(systemRow.text().match(/唯一系統問題標題/g)).toHaveLength(1)
+    expect(systemRow.text().match(/未讀/g)).toHaveLength(1)
+    expect(systemRow.text().match(/程式錯誤/g)).toHaveLength(1)
+    expect(systemRow.text().match(/本地摘要/g)).toHaveLength(1)
+    expect(systemRow.text().match(/系統回報者甲/g)).toHaveLength(1)
+    expect(systemRow.findAll('dt').filter((item) => item.text() === '回報時間')).toHaveLength(1)
+    expect(systemRow.findAll('button').map((item) => item.text())).toEqual(['檢視', '刪除'])
+
+    const commentRow = wrapper.get('.report-management__comment-table .test-report-row')
+    expect(commentRow.findAll('.report-mobile-card')).toHaveLength(1)
+    expect(commentRow.findAll('.report-mobile-card-title')).toHaveLength(1)
+    expect(commentRow.findAll('.report-mobile-summary-preview')).toHaveLength(1)
+    expect(commentRow.findAll('.report-mobile-card__footer')).toHaveLength(1)
+    expect(commentRow.findAll('.report-person-time')).toHaveLength(0)
+    expect(commentRow.findAll('.comment-report-content')).toHaveLength(0)
+    expect(commentRow.findAll('.report-user-cell__text')).toHaveLength(0)
+    expect(commentRow.text().match(/攻擊、騷擾或不友善內容/g)).toHaveLength(1)
+    expect(commentRow.text().match(/待審核/g)).toHaveLength(1)
+    expect(commentRow.text().match(/留言回報者乙/g)).toHaveLength(1)
+    expect(commentRow.text().match(/留言作者丙/g)).toHaveLength(1)
+    expect(commentRow.text().match(/普通物理甲/g)).toHaveLength(1)
+    expect(commentRow.text().match(/期末考乙/g)).toHaveLength(1)
+    expect(commentRow.findAll('dt').filter((item) => item.text() === '審核')).toHaveLength(1)
+    expect(commentRow.findAll('button').map((item) => item.text())).toEqual(['檢視／審核', '刪除'])
   })
 })
