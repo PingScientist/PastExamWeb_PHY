@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   reviewComment: vi.fn(),
   deleteSystem: vi.fn(),
   deleteComment: vi.fn(),
+  linkSystem: vi.fn(),
   confirm: vi.fn((options) => options.accept?.()),
   toast: vi.fn(),
   push: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('@/api', () => ({
     getCommentReport: mocks.getComment,
     reviewCommentReport: mocks.reviewComment,
     deleteSystemIssue: mocks.deleteSystem,
+    createSystemIssueGithubLink: mocks.linkSystem,
     deleteCommentReport: mocks.deleteComment,
   },
 }))
@@ -65,6 +67,14 @@ describe('ReportManagementPanel', () => {
     mocks.listComments.mockResolvedValue({ data: { items: [], total: 0 } })
     mocks.deleteSystem.mockResolvedValue({ data: { success: true } })
     mocks.deleteComment.mockResolvedValue({ data: { success: true } })
+    mocks.linkSystem.mockResolvedValue({
+      data: {
+        id: 1,
+        github_issue_number: 123,
+        github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/123',
+        github_issue_state: 'open',
+      },
+    })
     mocks.confirm.mockImplementation((options) => options.accept?.())
   })
 
@@ -120,6 +130,16 @@ describe('ReportManagementPanel', () => {
         github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/12',
       })
     ).toBe('https://github.com/PingScientist/PastExamWeb_PHY/issues/12')
+    expect(
+      wrapper.vm.githubIssueLabel({
+        github_issue_number: 12,
+        github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/12',
+        github_issue_state: 'closed',
+      })
+    ).toBe('#12 · Closed')
+    expect(wrapper.vm.githubIssueLabel({ github_issue_number: null })).toBe('尚未連結')
+    expect(reportManagementSource).toContain('rel="noopener noreferrer"')
+    expect(reportManagementSource).toContain('label="建立 GitHub Issue"')
   })
 
   it('uses compact columns and independently clamps each summary body to three lines', () => {
@@ -210,6 +230,43 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.vm.systemError).toContain('無法載入系統問題回報')
     expect(wrapper.vm.commentError).toBe('')
     expect(wrapper.vm.commentReports).toEqual([{ id: 9 }])
+  })
+
+  it('links an unlinked system report and ignores already-linked rows', async () => {
+    mocks.listSystem.mockResolvedValueOnce({
+      data: { items: [{ id: 1, github_issue_number: null, github_issue_url: null }], total: 1 },
+    })
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    await wrapper.vm.linkSystemIssueToGithub(wrapper.vm.systemIssues[0])
+    await wrapper.vm.linkSystemIssueToGithub({
+      id: 1,
+      github_issue_number: 123,
+      github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/123',
+    })
+
+    expect(mocks.linkSystem).toHaveBeenCalledTimes(1)
+    expect(mocks.linkSystem).toHaveBeenCalledWith(1)
+    expect(wrapper.vm.systemIssues[0].github_issue_number).toBe(123)
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: 'GitHub Issue 已建立' })
+    )
+  })
+
+  it('keeps an unlinked row when the GitHub retry fails', async () => {
+    const report = { id: 2, github_issue_number: null, github_issue_url: null }
+    mocks.listSystem.mockResolvedValueOnce({ data: { items: [report], total: 1 } })
+    mocks.linkSystem.mockRejectedValueOnce(new Error('GitHub unavailable'))
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    await wrapper.vm.linkSystemIssueToGithub(report)
+
+    expect(wrapper.vm.systemIssues[0]).toEqual(report)
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: 'GitHub Issue 建立失敗' })
+    )
   })
 
   it('loads and saves a comment review through the admin API', async () => {

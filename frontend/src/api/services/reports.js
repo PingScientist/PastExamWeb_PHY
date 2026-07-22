@@ -10,6 +10,9 @@ export const reportService = {
   deleteSystemIssue(id) {
     return api.delete(`/reports/admin/system-issues/${id}`)
   },
+  createSystemIssueGithubLink(id) {
+    return api.post(`/reports/admin/system-issues/${id}/github-issue`)
+  },
   listCommentReports(params) {
     return api.get('/reports/admin/comments', { params })
   },

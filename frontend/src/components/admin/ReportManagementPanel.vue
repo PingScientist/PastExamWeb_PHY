@@ -119,10 +119,12 @@
           style="width: 8rem"
           ><template #body="{ data }"><Tag :value="issueTypeLabel(data.report_type)" /></template
         ></Column>
-        <Column header="GitHub Issue" style="width: 9rem"
-          ><template #body="{ data }">{{
-            data.github_issue_number ? `#${data.github_issue_number}` : '尚未連結'
-          }}</template></Column
+        <Column header="GitHub Issue" style="width: 11rem"
+          ><template #body="{ data }"
+            ><span :title="data.github_sync_error || undefined">
+              {{ githubIssueLabel(data) }}
+            </span></template
+          ></Column
         >
         <Column field="status" sortField="status" header="狀態" sortable style="width: 8rem"
           ><template #body><Tag severity="secondary" value="本地摘要" /></template
@@ -131,8 +133,9 @@
           ><template #body="{ data }"
             ><div class="report-row-actions">
               <Button
+                v-if="safeGithubIssueUrl(data)"
                 as="a"
-                :href="safeGithubIssueUrl(data) || undefined"
+                :href="safeGithubIssueUrl(data)"
                 target="_blank"
                 rel="noopener noreferrer"
                 label="前往 GitHub"
@@ -141,7 +144,18 @@
                 title="前往 GitHub"
                 size="small"
                 outlined
-                :disabled="!safeGithubIssueUrl(data)"
+              />
+              <Button
+                v-else
+                label="建立 GitHub Issue"
+                icon="pi pi-github"
+                aria-label="建立 GitHub Issue"
+                title="建立 GitHub Issue"
+                size="small"
+                outlined
+                :loading="linkingSystemId === data.id"
+                :disabled="linkingSystemId !== null"
+                @click="linkSystemIssueToGithub(data)"
               />
               <Button
                 label="刪除"
@@ -500,6 +514,7 @@ const reviewVisible = ref(false)
 const reviewSaving = ref(false)
 const deletingSystemId = ref(null)
 const deletingCommentId = ref(null)
+const linkingSystemId = ref(null)
 const selectedReport = ref(null)
 const systemFilters = ref({ search: '', type: null, status: null })
 const commentFilters = ref({ search: '', status: null, reason: null })
@@ -680,6 +695,32 @@ async function deleteSystemIssue(item) {
     deletingSystemId.value = null
   }
 }
+async function linkSystemIssueToGithub(item) {
+  if (!item?.id || linkingSystemId.value !== null || safeGithubIssueUrl(item)) return
+  linkingSystemId.value = item.id
+  try {
+    const { data } = await reportService.createSystemIssueGithubLink(item.id)
+    systemIssues.value = systemIssues.value.map((candidate) =>
+      candidate.id === item.id ? data : candidate
+    )
+    toast.add({
+      severity: 'success',
+      summary: 'GitHub Issue 已建立',
+      detail: `已連結 GitHub Issue #${data.github_issue_number}`,
+      life: 4000,
+    })
+  } catch (error) {
+    console.error('Link system issue report to GitHub error:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'GitHub Issue 建立失敗',
+      detail: '本地回報已保留，可稍後再次嘗試',
+      life: 4000,
+    })
+  } finally {
+    linkingSystemId.value = null
+  }
+}
 function confirmDeleteCommentReport(item) {
   if (!item?.id || deletingCommentId.value !== null) return
   confirm.require({
@@ -826,6 +867,11 @@ function safeGithubIssueUrl(item) {
     /^https:\/\/github\.com\/PingScientist\/PastExamWeb_PHY\/issues\/([1-9][0-9]*)$/
   )
   return match && Number(match[1]) === Number(item.github_issue_number) ? url : null
+}
+function githubIssueLabel(item) {
+  if (!safeGithubIssueUrl(item)) return '尚未連結'
+  const state = item.github_issue_state === 'closed' ? 'Closed' : 'Open'
+  return `#${item.github_issue_number} · ${state}`
 }
 function formatDateTime(value, force24Hour = false) {
   if (!value) return '—'

@@ -282,8 +282,8 @@
             class="flex-1"
           />
           <Button
-            label="建立回報並前往 GitHub"
-            icon="pi pi-external-link"
+            label="建立系統問題回報"
+            icon="pi pi-send"
             @click="submitIssueReport"
             :disabled="!canSubmitIssue"
             :loading="issueSubmitting"
@@ -294,7 +294,8 @@
         <div class="mt-3 p-3 bg-blue-50 border-round text-sm flex align-items-center">
           <i class="pi pi-info-circle text-blue-600 mr-2"></i>
           <span class="text-blue-800">
-            系統會先保存本地回報摘要，再開啟 GitHub 預填頁面；仍需由您在 GitHub 完成送出。
+            系統會先保存本地回報，再由伺服器嘗試建立 GitHub Issue；即使 GitHub
+            暫時無法使用，本地回報仍會保留。
           </span>
         </div>
       </div>
@@ -825,31 +826,39 @@ export default {
       this.issueSubmitting = true
       try {
         const systemInfo = this.getSystemInfo()
-        await reportService.createSystemIssue({
+        const { data: report } = await reportService.createSystemIssue({
           report_type: type,
           title: title.trim(),
           description: description.trim(),
           contact: contact.trim() || null,
           metadata: systemInfo,
         })
-        const issueBody = this.formatIssueBody(description, contact, systemInfo, type)
-        const githubUrl =
-          'https://github.com/PingScientist/PastExamWeb_PHY/issues/new?' +
-          `title=${encodeURIComponent(title)}&body=${encodeURIComponent(issueBody)}`
-        window.open(githubUrl, '_blank', 'noopener,noreferrer')
+        const githubUrl = this.getSafeGithubIssueUrl(report)
+        if (report?.github_linked && githubUrl) {
+          window.open(githubUrl, '_blank', 'noopener,noreferrer')
+        }
         this.closeIssueReportDialog()
-        this.toast.add({
-          severity: 'success',
-          summary: '回報摘要已保存',
-          detail: '已開啟 GitHub 預填頁面，請在 GitHub 完成送出',
-          life: 4000,
-        })
+        if (report?.github_linked && githubUrl) {
+          this.toast.add({
+            severity: 'success',
+            summary: '回報已建立',
+            detail: `已成功連結 GitHub Issue #${report.github_issue_number}`,
+            life: 4000,
+          })
+        } else {
+          this.toast.add({
+            severity: 'warn',
+            summary: '回報已保存',
+            detail: '系統問題回報已保存，但 GitHub Issue 尚未建立，管理員可稍後重試。',
+            life: 5000,
+          })
+        }
       } catch (error) {
         console.error('Submit system issue report error:', error)
         this.toast.add({
           severity: 'error',
           summary: '回報建立失敗',
-          detail: '尚未開啟 GitHub，請稍後再試',
+          detail: '系統問題回報尚未保存，請稍後再試',
           life: 3500,
         })
       } finally {
@@ -872,6 +881,14 @@ export default {
         pageContext: this.getIssuePageContext?.() ?? null,
         timestamp: new Date().toISOString(),
       }
+    },
+
+    getSafeGithubIssueUrl(report) {
+      const url = String(report?.github_issue_url || '')
+      const match = url.match(
+        /^https:\/\/github\.com\/PingScientist\/PastExamWeb_PHY\/issues\/([1-9][0-9]*)$/
+      )
+      return match && Number(match[1]) === Number(report?.github_issue_number) ? url : null
     },
 
     getIssuePageContext() {
@@ -900,135 +917,6 @@ export default {
       }
 
       return context
-    },
-
-    getBrowserInfo(userAgent) {
-      if (userAgent.includes('Chrome') && !userAgent.includes('Edge')) {
-        const chromeMatch = userAgent.match(/Chrome\/(\d+\.\d+)/)
-        return chromeMatch ? `Chrome ${chromeMatch[1]}` : 'Chrome'
-      } else if (userAgent.includes('Firefox')) {
-        const firefoxMatch = userAgent.match(/Firefox\/(\d+\.\d+)/)
-        return firefoxMatch ? `Firefox ${firefoxMatch[1]}` : 'Firefox'
-      } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
-        const safariMatch = userAgent.match(/Safari\/(\d+\.\d+)/)
-        return safariMatch ? `Safari ${safariMatch[1]}` : 'Safari'
-      } else if (userAgent.includes('Edge')) {
-        const edgeMatch = userAgent.match(/Edge\/(\d+\.\d+)/)
-        return edgeMatch ? `Edge ${edgeMatch[1]}` : 'Edge'
-      }
-      return 'Unknown Browser'
-    },
-
-    getOSInfo(platform, userAgent) {
-      if (userAgent.includes('Mac OS X')) {
-        const macMatch = userAgent.match(/Mac OS X (\d+_\d+)/)
-        if (macMatch) {
-          const version = macMatch[1].replace('_', '.')
-          return `macOS ${version}`
-        }
-        return 'macOS'
-      } else if (userAgent.includes('Windows')) {
-        if (userAgent.includes('Windows NT 10.0')) return 'Windows 10/11'
-        if (userAgent.includes('Windows NT 6.3')) return 'Windows 8.1'
-        if (userAgent.includes('Windows NT 6.1')) return 'Windows 7'
-        return 'Windows'
-      } else if (userAgent.includes('Linux')) {
-        return 'Linux'
-      } else if (userAgent.includes('Android')) {
-        const androidMatch = userAgent.match(/Android (\d+\.\d+)/)
-        return androidMatch ? `Android ${androidMatch[1]}` : 'Android'
-      } else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
-        const iosMatch = userAgent.match(/OS (\d+_\d+)/)
-        if (iosMatch) {
-          const version = iosMatch[1].replace('_', '.')
-          return `iOS ${version}`
-        }
-        return 'iOS'
-      }
-      return platform || 'Unknown System'
-    },
-
-    formatTimestamp(timestamp) {
-      const date = new Date(timestamp)
-      const options = {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZone: 'Asia/Taipei',
-        hour12: false,
-      }
-      return date.toLocaleString('zh-TW', options) + ' (UTC+8)'
-    },
-
-    formatIssueBody(description, contact, systemInfo, type) {
-      let body = ''
-
-      body += `<!-- type: ${type || 'question'} -->\n\n`
-
-      body += '## 問題描述\n\n' + description + '\n\n'
-
-      if (contact) {
-        body += '## 聯絡方式\n\n' + contact + '\n\n'
-      }
-
-      const browserInfo = this.getBrowserInfo(systemInfo.userAgent)
-      const osInfo = this.getOSInfo(systemInfo.platform, systemInfo.userAgent)
-      const formattedTime = this.formatTimestamp(systemInfo.timestamp)
-
-      const ctx = systemInfo.pageContext || {}
-      const archiveCtx = ctx.archiveContext || {}
-      const course = archiveCtx.course || {}
-      const preview = archiveCtx.preview || {}
-      const filters = archiveCtx.filters || {}
-
-      body += '## 頁面資訊\n\n'
-      body += `| 項目 | 資訊 |\n`
-      body += `|------|------|\n`
-      body += `| 目前頁面 | ${systemInfo.route?.fullPath || systemInfo.url} |\n`
-      if (course?.name || ctx.selectedSubject?.label) {
-        body += `| 課程 | ${(course?.name || ctx.selectedSubject?.label || '').trim()} |\n`
-      }
-      if (course?.id || ctx.selectedSubject?.id) {
-        body += `| 課程 ID | ${course?.id ?? ctx.selectedSubject?.id} |\n`
-      }
-      if (filters?.year || filters?.professor || filters?.type || filters?.hasAnswers) {
-        body += `| 篩選 | year=${filters?.year || '-'}, professor=${filters?.professor || '-'}, type=${filters?.type || '-'}, hasAnswers=${filters?.hasAnswers ? 'Y' : 'N'} |\n`
-      }
-      if (filters?.searchQuery) {
-        body += `| 搜尋 | ${filters.searchQuery} |\n`
-      }
-      if (preview?.open) {
-        body += `| 預覽 | open=true, archiveId=${preview.archiveId || '-'}, name=${preview.name || '-'} |\n`
-      }
-      if (systemInfo.route?.path === '/admin' && ctx.adminCurrentTab !== null) {
-        body += `| 管理頁籤 | ${ctx.adminCurrentTab} |\n`
-      }
-      body += '\n'
-
-      body += '## 環境資訊\n\n'
-      body += `| 項目 | 資訊 |\n`
-      body += `|------|------|\n`
-      body += `| 瀏覽器 | ${browserInfo} |\n`
-      body += `| 作業系統 | ${osInfo} |\n`
-      body += `| 語言設定 | ${systemInfo.language} |\n`
-      body += `| 回報時間 | ${formattedTime} |\n\n`
-
-      body += '<details>\n<summary>詳細系統資訊</summary>\n\n'
-      body += '```\n'
-      body += `User Agent: ${systemInfo.userAgent}\n`
-      body += `Platform: ${systemInfo.platform}\n`
-      body += `Timestamp: ${systemInfo.timestamp}\n`
-      body += `Route: ${JSON.stringify(systemInfo.route || {})}\n`
-      body += `Page Context: ${JSON.stringify(systemInfo.pageContext || {})}\n`
-      body += '```\n'
-      body += '</details>\n\n'
-
-      body += '---\n*此問題由物理系考古題系統自動產生*'
-
-      return body
     },
   },
 

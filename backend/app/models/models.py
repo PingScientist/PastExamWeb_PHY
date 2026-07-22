@@ -717,6 +717,21 @@ class SystemIssueReport(SQLModel, table=True):
     github_issue_url: Optional[str] = Field(
         default=None, sa_column=Column(String(500), nullable=True)
     )
+    github_issue_state: Optional[str] = Field(
+        default=None, sa_column=Column(String(20), nullable=True)
+    )
+    github_linked_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    github_sync_status: str = Field(
+        default="pending",
+        sa_column=Column(
+            String(20), nullable=False, server_default="pending", index=True
+        ),
+    )
+    github_sync_error: Optional[str] = Field(
+        default=None, sa_column=Column(String(300), nullable=True)
+    )
     metadata_json: dict[str, Any] = Field(
         default_factory=dict,
         sa_column=Column("metadata", JSONB, nullable=False),
@@ -1023,6 +1038,11 @@ class SystemIssueReportRead(BaseModel):
     status: str
     github_issue_number: Optional[int]
     github_issue_url: Optional[str]
+    github_issue_state: Optional[str]
+    github_linked_at: Optional[datetime]
+    github_sync_status: str
+    github_sync_error: Optional[str]
+    github_linked: bool = False
     created_at: datetime
     updated_at: datetime
 
