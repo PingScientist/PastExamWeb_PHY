@@ -1,7 +1,7 @@
 """add system report read state
 
 Revision ID: d1e6c8a4f2b9
-Revises: a5c7e9f2d4b6
+Revises: b8d1f3a6c9e2
 Create Date: 2026-07-22 21:50:00.000000
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 
 revision: str = "d1e6c8a4f2b9"
-down_revision: Union[str, Sequence[str], None] = "a5c7e9f2d4b6"
+down_revision: Union[str, Sequence[str], None] = "b8d1f3a6c9e2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
