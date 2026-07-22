@@ -73,11 +73,11 @@ test.describe('User › Archive browsing', () => {
       })
     })
 
-    await page.route('**/api/courses/101/archives/201/preview', async (route) => {
+    await page.route('**/api/courses/101/archives/201/preview-file', async (route) => {
       await route.fulfill({
         status: 200,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ url: 'https://example.com/preview.pdf' }),
+        headers: { 'content-type': 'application/pdf' },
+        body: pdfBody,
       })
     })
 
@@ -111,14 +111,6 @@ test.describe('User › Archive browsing', () => {
     const pdfBody = fromBase64ToBinaryString(
       'JVBERi0xLjUKJcTl8uXrPgoxIDAgb2JqPDwvVHlwZS9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHMgWzMgMCBSXS9Db3VudCAxPj4KZW5kb2JqCjMgMCBvYmo8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA1OTUgODQyXS9Db250ZW50cyA0IDAgUi9SZXNvdXJjZXMgPDwvUHJvY1Nl0dDU2V0Wy9QREZdPj4+Pj4KZW5kb2JqCjQgMCBvYmo8PC9MZW5ndGggNTI+PnN0cmVhbQpIL0YgMTIgVGYgMTIgVG0gMCBUZgoKZW5kc3RyZWFtCmVuZG9iagogNSAwIG9iag8+PnN0YXJ0eHJlZgoxNjYKJSVFT0YK'
     )
-
-    await page.route('https://example.com/preview.pdf', async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/pdf' },
-        body: pdfBody,
-      })
-    })
 
     await page.route('https://example.com/download.pdf', async (route) => {
       await route.fulfill({

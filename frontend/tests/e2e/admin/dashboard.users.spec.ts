@@ -38,8 +38,8 @@ test.describe('Admin Dashboard › Users', () => {
 
     await clickWhenVisible(page.getByRole('tab', { name: '使用者管理' }))
 
-    await expect(page.getByRole('row', { name: /Admin/ })).toBeVisible()
-    await expect(page.getByRole('row', { name: /一般使用者/ })).toBeVisible()
+    await expect(page.getByRole('article').filter({ hasText: 'Admin' })).toBeVisible()
+    await expect(page.getByRole('article').filter({ hasText: '一般使用者' })).toBeVisible()
 
     await clickWhenVisible(page.getByRole('button', { name: '新增使用者' }))
 
@@ -62,10 +62,10 @@ test.describe('Admin Dashboard › Users', () => {
       email: 'newuser@example.com',
       is_admin: true,
     })
-    await expect(page.getByRole('row', { name: /新用戶/ })).toBeVisible()
+    await expect(page.getByRole('article').filter({ hasText: '新用戶' })).toBeVisible()
 
-    const targetRow = page.getByRole('row', { name: /一般使用者/ })
-    await clickWhenVisible(targetRow.getByRole('button', { name: '編輯' }))
+    const targetCard = page.getByRole('article').filter({ hasText: '一般使用者' })
+    await clickWhenVisible(targetCard.getByRole('button', { name: '編輯使用者' }))
 
     const editDialog = page.getByRole('dialog', { name: '編輯使用者' })
     await expect(editDialog).toBeVisible()
@@ -86,12 +86,12 @@ test.describe('Admin Dashboard › Users', () => {
         is_admin: true,
       },
     })
-    const updatedUserRow = page.getByRole('row', { name: /一般使用者 \(更新\)/ })
-    await expect(updatedUserRow).toBeVisible()
-    await expect(updatedUserRow).toContainText('是')
+    const updatedUserCard = page.getByRole('article').filter({ hasText: '一般使用者 (更新)' })
+    await expect(updatedUserCard).toBeVisible()
+    await expect(updatedUserCard).toContainText('管理員')
 
-    const deleteRow = page.getByRole('row', { name: /新用戶/ })
-    await clickWhenVisible(deleteRow.getByRole('button', { name: '刪除' }))
+    const deleteCard = page.getByRole('article').filter({ hasText: '新用戶' })
+    await clickWhenVisible(deleteCard.getByRole('button', { name: '刪除使用者' }))
 
     const dialog = page.getByRole('alertdialog', { name: '刪除確認' })
     await expect(dialog).toBeVisible()
@@ -103,6 +103,6 @@ test.describe('Admin Dashboard › Users', () => {
       .toBe(previousDeleteCount + 1)
 
     expect(deleteIds.length).toBeGreaterThan(0)
-    await expect(page.getByRole('row', { name: /新用戶/ })).toHaveCount(0)
+    await expect(page.getByRole('article').filter({ hasText: '新用戶' })).toHaveCount(0)
   })
 })

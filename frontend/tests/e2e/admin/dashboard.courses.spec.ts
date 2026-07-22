@@ -43,8 +43,8 @@ test.describe('Admin Dashboard › Courses', () => {
     await expect(page).toHaveURL(/\/admin$/)
 
     await clickWhenVisible(page.getByRole('tab', { name: '課程管理' }))
-    await expect(page.getByRole('row', { name: /普通物理\(一\)/ })).toBeVisible()
-    await expect(page.getByRole('row', { name: /電磁學\(一\)/ })).toBeVisible()
+    await expect(page.getByRole('article').filter({ hasText: '普通物理(一)' })).toBeVisible()
+    await expect(page.getByRole('article').filter({ hasText: '電磁學(一)' })).toBeVisible()
 
     const createButton = page.getByRole('button', { name: '新增課程' })
     await clickWhenVisible(createButton)
@@ -74,14 +74,14 @@ test.describe('Admin Dashboard › Courses', () => {
       clickWhenVisible(createDialog.getByRole('button', { name: '新增' })),
     ])
 
-    await expect(page.getByRole('row', { name: /線性代數\(一\)/ })).toBeVisible()
+    await expect(page.getByRole('article').filter({ hasText: '線性代數(一)' })).toBeVisible()
     expect(createPayloads.at(-1)).toMatchObject({
       name: '線性代數(一)',
       category: 'interdisciplinary',
     })
 
-    const editRow = page.getByRole('row', { name: /普通物理\(一\)/ })
-    await clickWhenVisible(editRow.getByRole('button', { name: '編輯' }))
+    const editCard = page.getByRole('article').filter({ hasText: '普通物理(一)' })
+    await clickWhenVisible(editCard.getByRole('button', { name: '編輯課程' }))
 
     const editDialog = page.getByRole('dialog', { name: '編輯課程' })
     await expect(editDialog).toBeVisible()
@@ -112,11 +112,12 @@ test.describe('Admin Dashboard › Courses', () => {
     expect(updatePayloads.at(-1)).toMatchObject({
       payload: { name: '普通物理(一) (更新)', category: 'graduate' },
     })
-    await expect(page.getByRole('row', { name: /普通物理\(一\) \(更新\)/ })).toBeVisible()
-    await expect(page.getByRole('row', { name: /研究所/ })).toBeVisible()
+    const updatedCourseCard = page.getByRole('article').filter({ hasText: '普通物理(一) (更新)' })
+    await expect(updatedCourseCard).toBeVisible()
+    await expect(updatedCourseCard).toContainText('graduate')
 
-    const deleteRow = page.getByRole('row', { name: /線性代數\(一\)/ })
-    await clickWhenVisible(deleteRow.getByRole('button', { name: '刪除' }))
+    const deleteCard = page.getByRole('article').filter({ hasText: '線性代數(一)' })
+    await clickWhenVisible(deleteCard.getByRole('button', { name: '刪除課程' }))
 
     const dialog = page.getByRole('alertdialog', { name: '刪除確認' })
     await expect(dialog).toBeVisible()
@@ -136,7 +137,7 @@ test.describe('Admin Dashboard › Courses', () => {
     ])
 
     expect(deleteIds.length).toBeGreaterThan(0)
-    await expect(page.getByRole('row', { name: /線性代數\(一\)/ })).toHaveCount(0)
+    await expect(page.getByRole('article').filter({ hasText: '線性代數(一)' })).toHaveCount(0)
   })
 
   test('keeps mobile pagination operational and synchronized with desktop', async ({ page }) => {
