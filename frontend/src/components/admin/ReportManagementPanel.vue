@@ -483,9 +483,9 @@
               <span class="report-review__thread-id">{{
                 selectedReport.thread_id ? `#${selectedReport.thread_id}` : '—'
               }}</span>
-              <small class="report-review__thread-hint"
-                >此識別碼代表該回覆串的第一則留言，用於定位討論串。</small
-              >
+              <div class="report-review__thread-hint">
+                此識別碼代表該回覆串的第一則留言，用於定位討論串。
+              </div>
             </dd>
           </div>
         </dl>
@@ -1264,13 +1264,13 @@ onMounted(refreshAll)
   font-size: var(--app-font-size-base);
   line-height: 1.4;
 }
-.report-review__thread .report-review__thread-hint {
+.report-review__thread-content > .report-review__thread-hint {
   display: block;
   margin-top: 0.1rem;
   color: var(--text-secondary);
-  font-size: var(--app-font-size-xs);
+  font-size: 0.75em;
   font-weight: 400;
-  line-height: 1.35;
+  line-height: 1.3;
 }
 .report-review__quote {
   padding: 0.7rem;

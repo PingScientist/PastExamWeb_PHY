@@ -411,16 +411,18 @@ describe('ReportManagementPanel', () => {
       expect(thread.get('dt').text()).toBe('Thread')
       expect(threadId.text()).toBe('#31')
       expect(hint.text()).toBe('此識別碼代表該回覆串的第一則留言，用於定位討論串。')
+      expect(hint.element.tagName).toBe('DIV')
       expect(threadId.classes()).not.toContain('report-review__thread-hint')
       expect(hint.classes()).not.toContain('report-review__thread-id')
     }
 
     expect(reportManagementSource.match(/class="report-review__thread-hint"/g)).toHaveLength(1)
     expect(reportManagementSource).toMatch(
-      /\.report-review__thread \.report-review__thread-hint\s*\{[^}]*color:\s*var\(--text-secondary\);[^}]*font-size:\s*var\(--app-font-size-xs\);[^}]*font-weight:\s*400;[^}]*line-height:\s*1\.35;/
+      /\.report-review__thread-content > \.report-review__thread-hint\s*\{[^}]*color:\s*var\(--text-secondary\);[^}]*font-size:\s*0\.75em;[^}]*font-weight:\s*400;[^}]*line-height:\s*1\.3;/
     )
+    expect(reportManagementSource).not.toContain('<small class="report-review__thread-hint"')
     expect(reportManagementSource).not.toMatch(
-      /\.report-review__thread \.report-review__thread-hint\s*\{[^}]*var\(--text-color-secondary\)/
+      /\.report-review__thread-content > \.report-review__thread-hint\s*\{[^}]*font-size:\s*var\(--app-font-size-xs\)/
     )
     expect(reportManagementSource).not.toContain('討論串起始留言')
   })
