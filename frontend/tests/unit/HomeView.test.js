@@ -1,11 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import HomeView from '@/views/Home.vue'
-
-const memeResponse = vi.hoisted(() => ({
-  content: "console.log('Hello Vitest!')",
-  language: 'javascript',
-}))
 
 const statisticsPayload = vi.hoisted(() => ({
   totalUsers: 120,
@@ -16,30 +11,34 @@ const statisticsPayload = vi.hoisted(() => ({
   activeToday: 3,
 }))
 
-const memeServiceMock = vi.hoisted(() => ({
-  getRandomMeme: vi.fn(() => Promise.resolve({ data: memeResponse })),
-}))
-
 const statisticsServiceMock = vi.hoisted(() => ({
-  getSystemStatistics: vi.fn(() => Promise.resolve({ data: { data: statisticsPayload } })),
+  getSystemStatistics: vi.fn(),
 }))
 
 vi.mock('@/api', () => ({
-  memeService: memeServiceMock,
   statisticsService: statisticsServiceMock,
 }))
 
-vi.mock('highlight.js', () => ({
-  default: {
-    highlight: vi.fn(() => ({ value: memeResponse.content })),
-  },
+const matchMediaMock = vi.fn((query) => ({
+  matches: false,
+  media: query,
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
 }))
+
+class ResizeObserverMock {
+  observe() {}
+  disconnect() {}
+}
+
+const originalMatchMedia = window.matchMedia
+const originalResizeObserver = globalThis.ResizeObserver
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
 
 describe('HomeView', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
-    memeServiceMock.getRandomMeme.mockReset()
-    memeServiceMock.getRandomMeme.mockResolvedValue({ data: memeResponse })
+    window.matchMedia = matchMediaMock
+    globalThis.ResizeObserver = ResizeObserverMock
     statisticsServiceMock.getSystemStatistics.mockReset()
     statisticsServiceMock.getSystemStatistics.mockResolvedValue({
       data: { data: statisticsPayload },
@@ -48,70 +47,62 @@ describe('HomeView', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
-    vi.useRealTimers()
+    delete window.__pastexam
+    window.matchMedia = originalMatchMedia
+    globalThis.ResizeObserver = originalResizeObserver
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
   })
 
-  it('renders fetched meme text and statistics', async () => {
+  it('renders the physics landing page and fetched statistics', async () => {
     const wrapper = mount(HomeView)
-
-    await flushPromises()
-    vi.runAllTimers()
     await flushPromises()
 
-    const languageBadge = wrapper.get('.language-badge')
-    expect(languageBadge.text()).toBe(memeResponse.language)
-
-    const codeBlock = wrapper.get('code')
-    expect(codeBlock.html()).toContain('console.log')
+    expect(wrapper.text()).toContain('清大物理')
+    expect(wrapper.findAll('.theory-card')).toHaveLength(22)
 
     const statCards = wrapper.findAll('.stat-card')
-    expect(statCards.length).toBe(6)
-    expect(statCards[0].text()).toContain('總用戶數')
-    expect(statCards[0].text()).toContain(String(statisticsPayload.totalUsers))
+    expect(statCards).toHaveLength(6)
+    expect(statCards[0].text()).toContain('考古題')
+    expect(statCards[0].text()).toContain(String(statisticsPayload.totalArchives))
+    expect(statCards[3].text()).toContain('使用者')
+    expect(statCards[3].text()).toContain(String(statisticsPayload.totalUsers))
+
+    wrapper.unmount()
   })
 
-  it('falls back to default meme when API returns invalid payload', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    memeServiceMock.getRandomMeme.mockResolvedValueOnce({ data: { content: null } })
-
+  it('opens the shared login modal from the primary action', async () => {
+    const openLoginModal = vi.fn()
+    window.__pastexam = { openLoginModal }
     const wrapper = mount(HomeView)
     await flushPromises()
-    vi.runAllTimers()
-    await flushPromises()
 
-    expect(wrapper.vm.selectedMeme.code).toContain('API connection failed')
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Invalid API response format:', { content: null })
+    await wrapper.get('button[aria-label="登入開始使用"]').trigger('click')
+    expect(openLoginModal).toHaveBeenCalledOnce()
 
-    consoleErrorSpy.mockRestore()
+    wrapper.unmount()
   })
 
-  it('handles meme fetch failures gracefully', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    memeServiceMock.getRandomMeme.mockRejectedValueOnce(new Error('network'))
-
+  it('scrolls the statistics strip into view', async () => {
+    const scrollIntoView = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
     const wrapper = mount(HomeView)
     await flushPromises()
-    vi.runAllTimers()
-    await flushPromises()
 
-    expect(wrapper.vm.selectedMeme.code).toContain('API connection failed')
-    expect(wrapper.vm.selectedMeme.language).toBe('javascript')
-    expect(consoleErrorSpy).toHaveBeenLastCalledWith('Error fetching meme:', expect.any(Error))
+    await wrapper.get('button[aria-label="查看資料庫狀態"]').trigger('click')
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
 
-    consoleErrorSpy.mockRestore()
+    wrapper.unmount()
   })
 
-  it('uses NaN placeholders when statistics fetching fails', async () => {
+  it('uses readable placeholders when statistics fetching fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     statisticsServiceMock.getSystemStatistics.mockRejectedValueOnce(new Error('stats'))
 
     const wrapper = mount(HomeView)
     await flushPromises()
-    vi.runAllTimers()
-    await flushPromises()
 
-    expect(wrapper.vm.animatedValues.totalUsers).toBe('NaN')
-    expect(wrapper.vm.statisticsData.totalDownloads).toBeNaN()
+    expect(wrapper.vm.animatedValues.totalUsers).toBe('--')
+    expect(wrapper.vm.animatedValues.totalDownloads).toBe('--')
     expect(wrapper.vm.statsLoaded).toBe(true)
     expect(consoleErrorSpy).toHaveBeenLastCalledWith(
       'Error fetching statistics:',
@@ -119,5 +110,6 @@ describe('HomeView', () => {
     )
 
     consoleErrorSpy.mockRestore()
+    wrapper.unmount()
   })
 })

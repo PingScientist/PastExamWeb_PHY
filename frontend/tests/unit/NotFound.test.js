@@ -7,12 +7,12 @@ const routerMock = {
   push: vi.fn(),
 }
 
-const { getCodeBgSvgMock } = vi.hoisted(() => ({
-  getCodeBgSvgMock: vi.fn(() => 'mocked-bg'),
+const { getFieldBgSvgMock } = vi.hoisted(() => ({
+  getFieldBgSvgMock: vi.fn(() => 'mocked-bg'),
 }))
 
 vi.mock('@/utils/svgBg', () => ({
-  getCodeBgSvg: getCodeBgSvgMock,
+  getFieldBgSvg: getFieldBgSvgMock,
 }))
 
 vi.mock('@/utils/useTheme', () => ({
@@ -39,7 +39,7 @@ function mountView() {
 describe('NotFound view', () => {
   beforeEach(() => {
     routerMock.push.mockReset()
-    getCodeBgSvgMock.mockClear()
+    getFieldBgSvgMock.mockClear()
     document.body.innerHTML = ''
   })
 
@@ -70,7 +70,7 @@ describe('NotFound view', () => {
     }
     const querySpy = vi.spyOn(document, 'querySelector').mockReturnValue(backgroundElement)
     const wrapper = mountView()
-    expect(getCodeBgSvgMock).toHaveBeenCalled()
+    expect(getFieldBgSvgMock).toHaveBeenCalled()
     expect(backgroundElement.style.setProperty).toHaveBeenCalledWith(
       'background-image',
       'mocked-bg'

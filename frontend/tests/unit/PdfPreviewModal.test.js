@@ -1,14 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { ref, nextTick } from 'vue'
+import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 
 const unauthorizedCallbacks = vi.hoisted(() => [])
 let consoleErrorSpy
 let PdfPreviewModal
-const pdfState = {
-  pdfRef: ref(null),
-  pagesRef: ref([]),
-}
 
 const ensureDomMatrix = vi.hoisted(() => () => {
   if (typeof globalThis.DOMMatrix === 'undefined') {
@@ -45,18 +41,6 @@ vi.mock('@/utils/useUnauthorizedEvent.js', () => ({
   },
 }))
 
-vi.mock('@tato30/vue-pdf', () => {
-  const { pdfRef, pagesRef } = pdfState
-  return {
-    __esModule: true,
-    VuePDF: { template: '<div class="vue-pdf"></div>' },
-    usePDF: vi.fn(() => ({
-      pdf: pdfRef,
-      pages: pagesRef,
-    })),
-  }
-})
-
 const stubComponent = { template: '<div><slot /></div>' }
 
 describe('PdfPreviewModal', () => {
@@ -68,8 +52,6 @@ describe('PdfPreviewModal', () => {
   beforeEach(() => {
     unauthorizedCallbacks.length = 0
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    pdfState.pdfRef.value = null
-    pdfState.pagesRef.value = [1, 2]
   })
 
   afterEach(() => {
@@ -137,25 +119,14 @@ describe('PdfPreviewModal', () => {
     // trigger load with url and expect loading
     await wrapper.setProps({ previewUrl: 'https://example.com/file.pdf' })
 
-    // simulate pdf loading task success
-    let resolveTask
-    const resolvePromise = new Promise((res) => {
-      resolveTask = res
-    })
-    pdfState.pdfRef.value = { promise: resolvePromise }
-    await nextTick()
+    // simulate the native iframe load event
     expect(wrapper.vm.pdfLoading).toBe(true)
-    resolveTask()
-    await flushPromises()
+    wrapper.vm.handlePdfLoaded()
     expect(wrapper.vm.pdfLoading).toBe(false)
     expect(wrapper.vm.pdfError).toBe(false)
 
-    // simulate a new task that fails after swapping preview URL
-    const rejectPromise = Promise.reject(new Error('load failed'))
-    pdfState.pdfRef.value = { promise: rejectPromise }
-    await Promise.resolve() // allow watch to run
-    await rejectPromise.catch(() => {})
-    await flushPromises()
+    // simulate the native iframe error event
+    wrapper.vm.handlePdfError(new Error('load failed'))
     expect(wrapper.vm.pdfError).toBe(true)
     expect(wrapper.emitted('error')).toBeTruthy()
 
