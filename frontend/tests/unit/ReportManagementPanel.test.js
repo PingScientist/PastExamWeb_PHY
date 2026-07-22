@@ -617,20 +617,33 @@ describe('ReportManagementPanel', () => {
       /\.report-mobile-summary-preview__text\s*\{[\s\S]*?max-height:\s*calc\(1\.4em \* 3\);[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?-webkit-line-clamp:\s*3;/
     )
     expect(reportManagementSource).toMatch(
-      /\.report-mobile-card\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*justify-items:\s*stretch;[^}]*width:\s*100%;[^}]*container-name:\s*report-card;[^}]*container-type:\s*inline-size;/
+      /\.report-mobile-card\s*\{[^}]*display:\s*grid;[^}]*grid-template-areas:[^}]*'header'[^}]*'body'[^}]*'footer';[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*grid-template-rows:\s*auto auto auto;[^}]*align-content:\s*start;[^}]*justify-items:\s*stretch;[^}]*width:\s*100%;[^}]*min-height:\s*0;[^}]*height:\s*auto;[^}]*container-name:\s*report-card;[^}]*container-type:\s*inline-size;/
     )
     expect(reportManagementSource).toMatch(
       /\.report-mobile-card-content,[\s\S]*?\.report-mobile-card__header,[\s\S]*?\.report-mobile-card__body,[\s\S]*?\.report-mobile-card__footer\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*max-width:\s*none;[^}]*justify-self:\s*stretch;/
     )
     expect(reportManagementSource).toMatch(
-      /\.report-mobile-card__body\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*width:\s*100%;[^}]*min-width:\s*0;/
+      /\.report-mobile-card__body\s*\{[^}]*grid-area:\s*body;[^}]*grid-template-areas:[^}]*'summary'[^}]*'metadata';[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*grid-template-rows:\s*auto auto;[^}]*align-content:\s*start;[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*min-height:\s*0;/
     )
     expect(reportManagementSource).toMatch(
       /\.report-mobile-card__summary,[\s\S]*?\.report-mobile-card__metadata\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/
     )
     expect(reportManagementSource).toMatch(
-      /@container report-card \(min-width: 42rem\)\s*\{[\s\S]*?grid-template-columns:\s*minmax\(18rem, 0\.9fr\) minmax\(0, 1\.1fr\);/
+      /@container report-card \(min-width: 42rem\)\s*\{[\s\S]*?grid-template-areas:\s*'summary metadata';[\s\S]*?grid-template-columns:\s*minmax\(18rem, 0\.9fr\) minmax\(0, 1\.1fr\);[\s\S]*?grid-template-rows:\s*auto;/
     )
+    expect(reportManagementSource).toMatch(
+      /\.report-management__table \.p-datatable-tbody > tr > td\)\s*\{[^}]*display:\s*none !important;[^}]*min-height:\s*0;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-management__comment-table \.p-datatable-tbody > tr > td:nth-child\(2\)\)\s*\{[^}]*display:\s*flex !important;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card__header\s*\{[^}]*grid-area:\s*header;[^}]*min-height:\s*0;[^}]*margin-top:\s*0;[^}]*align-self:\s*start;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card__footer\s*\{[^}]*grid-area:\s*footer;/
+    )
+    expect(reportManagementSource).not.toMatch(/grid-template-rows:\s*1fr/)
     expect(reportManagementSource).toMatch(
       /\.report-management__system-table \.p-datatable-tbody > tr > td:nth-child\(2\)[\s\S]*?width:\s*100% !important;[\s\S]*?max-width:\s*none !important;/
     )

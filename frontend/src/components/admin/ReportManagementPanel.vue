@@ -1346,10 +1346,19 @@ onBeforeUnmount(teardownCardLayout)
 }
 .report-mobile-card {
   display: grid;
+  grid-template-areas:
+    'header'
+    'body'
+    'footer';
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  justify-content: stretch;
   justify-items: stretch;
   width: 100%;
   min-width: 0;
+  min-height: 0;
+  height: auto;
   max-width: none;
   box-sizing: border-box;
   container-name: report-card;
@@ -1366,6 +1375,7 @@ onBeforeUnmount(teardownCardLayout)
   justify-self: stretch;
 }
 .report-mobile-card__footer {
+  grid-area: footer;
   display: flex;
   width: 100%;
   align-items: center;
@@ -1752,9 +1762,10 @@ onBeforeUnmount(teardownCardLayout)
     background: color-mix(in srgb, var(--bg-primary) 94%, var(--bg-secondary) 6%);
   }
   :deep(.report-management__table .p-datatable-tbody > tr > td) {
-    display: none;
+    display: none !important;
     width: 100%;
     min-width: 0;
+    min-height: 0;
     padding: 0 !important;
     border: 0 !important;
     white-space: normal !important;
@@ -1764,7 +1775,7 @@ onBeforeUnmount(teardownCardLayout)
   }
   :deep(.report-management__system-table .p-datatable-tbody > tr > td:nth-child(2)),
   :deep(.report-management__comment-table .p-datatable-tbody > tr > td:nth-child(2)) {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     align-items: stretch;
     width: 100% !important;
@@ -1791,8 +1802,12 @@ onBeforeUnmount(teardownCardLayout)
     display: grid;
   }
   .report-mobile-card__header {
+    grid-area: header;
     width: 100%;
     min-width: 0;
+    min-height: 0;
+    margin-top: 0;
+    align-self: start;
   }
   .report-mobile-card-header {
     display: grid;
@@ -1831,11 +1846,18 @@ onBeforeUnmount(teardownCardLayout)
     margin-top: 0.55rem;
   }
   .report-mobile-card__body {
+    grid-area: body;
     display: grid;
+    grid-template-areas:
+      'summary'
+      'metadata';
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
     gap: 0.65rem;
     width: 100%;
     min-width: 0;
+    min-height: 0;
     margin-top: 0.65rem;
   }
   .report-mobile-card__summary,
@@ -1846,9 +1868,11 @@ onBeforeUnmount(teardownCardLayout)
     box-sizing: border-box;
   }
   .report-mobile-card__summary {
+    grid-area: summary;
     justify-self: stretch;
   }
   .report-mobile-card__metadata {
+    grid-area: metadata;
     align-self: start;
   }
   .report-mobile-summary-preview {
@@ -1930,7 +1954,9 @@ onBeforeUnmount(teardownCardLayout)
 }
 @container report-card (min-width: 42rem) {
   .report-mobile-card__body {
+    grid-template-areas: 'summary metadata';
     grid-template-columns: minmax(18rem, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: auto;
     gap: 1rem;
   }
 }
