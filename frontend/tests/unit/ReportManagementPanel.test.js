@@ -441,6 +441,9 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.text()).toContain('#31')
     expect(wrapper.text()).toContain('此識別碼代表該回覆串的第一則留言，用於定位討論串。')
     expect(wrapper.text()).toContain('來源留言已不存在')
+    expect(wrapper.get('.report-review__message').text()).toContain(
+      '來源留言已不存在；仍可根據快照完成審核。'
+    )
     expect(reportManagementSource).not.toContain('討論串起始留言')
     expect(reportManagementSource).not.toContain('留言 #${selectedReport.thread_id}')
     expect(reportManagementSource).toContain('class="report-review__thread-hint"')
@@ -603,6 +606,7 @@ describe('ReportManagementPanel', () => {
     await wrapper.vm.saveReview()
 
     expect(mocks.reviewComment).not.toHaveBeenCalled()
+    expect(wrapper.get('.report-review__message').text()).toContain('審核結果已送出，無法修改。')
     expect(reportManagementSource).toContain('審核結果已送出，無法修改。')
     expect(reportManagementSource).toContain("isFinal(data.status) ? '檢視' : '檢視／審核'")
     expect(reportManagementSource).toContain('v-if="!isFinal(selectedReport.status)"')
@@ -623,6 +627,19 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toContain('font-size: var(--app-control-font-size) !important;')
     expect(reportManagementSource).toContain('font-size: var(--app-font-size-xs) !important;')
     expect(reportManagementSource).not.toMatch(/font-size:\s*(?:0\.\d+|1\.05|2)rem/)
+  })
+
+  it('scales source and finalized review messages through their PrimeVue text nodes', () => {
+    expect(reportManagementSource.match(/class="report-review__message"/g)).toHaveLength(2)
+    expect(reportManagementSource).toMatch(
+      /:global\(\.report-management-dialog \.report-review__message \.p-message-text\)\s*\{[^}]*font-size:\s*var\(--app-font-size-sm\) !important;[^}]*line-height:\s*1\.4;/
+    )
+    expect(reportManagementSource).not.toMatch(
+      /:global\(\.report-management-dialog \.report-review__message \.p-message-text\)\s*\{[^}]*font-size:\s*(?:\d+(?:\.\d+)?px|1rem)/
+    )
+    expect(reportManagementSource).not.toMatch(
+      /:global\(\.report-management-dialog \.report-review__message \.p-message-text\)\s*\{[^}]*(?:^|[;{]\s*)(?:height|min-height):/
+    )
   })
 
   it('uses responsive filter grids and dedicated full-width mobile summaries', () => {

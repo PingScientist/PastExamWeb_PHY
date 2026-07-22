@@ -677,7 +677,12 @@
           <p>{{ selectedReport.comment_content_snapshot }}</p>
           <small>{{ formatDateTime(selectedReport.comment_created_at_snapshot) }}</small>
         </section>
-        <Message v-if="!selectedReport.source_exists" severity="warn" :closable="false">
+        <Message
+          v-if="!selectedReport.source_exists"
+          class="report-review__message"
+          severity="warn"
+          :closable="false"
+        >
           來源留言已不存在；仍可根據快照完成審核。
         </Message>
         <p v-if="selectedReport.custom_message">
@@ -686,7 +691,12 @@
         <p v-if="isFinal(selectedReport.status)" class="report-review__response">
           <strong>管理員答覆：</strong>{{ selectedReport.admin_response || '未提供答覆' }}
         </p>
-        <Message v-if="isFinal(selectedReport.status)" severity="info" :closable="false">
+        <Message
+          v-if="isFinal(selectedReport.status)"
+          class="report-review__message"
+          severity="info"
+          :closable="false"
+        >
           審核結果已送出，無法修改。
         </Message>
         <div v-if="!isFinal(selectedReport.status)" class="report-review__field">
@@ -1719,6 +1729,10 @@ onBeforeUnmount(teardownCardLayout)
 :global(.report-management-dialog .report-review__quote small) {
   font-size: var(--app-font-size-sm) !important;
   line-height: 1.35;
+}
+:global(.report-management-dialog .report-review__message .p-message-text) {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.4;
 }
 @media (max-width: 1399px) {
   .report-section__header {
