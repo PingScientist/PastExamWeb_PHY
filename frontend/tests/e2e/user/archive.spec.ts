@@ -38,6 +38,21 @@ test.describe('User › Archive browsing', () => {
         body: JSON.stringify([]),
       })
     })
+    await page.route('**/api/notifications/unread-summary**', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          announcements: [],
+          personal_notifications: [],
+          counts: { announcements: 0, personal_notifications: 0, total: 0 },
+        }),
+      })
+    )
+
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
 
     await page.route('**/api/courses', async (route) => {
       await route.fulfill({
@@ -46,6 +61,9 @@ test.describe('User › Archive browsing', () => {
         body: JSON.stringify(coursesResponse),
       })
     })
+    await page.route('**/api/courses/categories', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify([]) })
+    )
 
     await page.route('**/api/courses/101/archives', async (route) => {
       await route.fulfill({
@@ -189,18 +207,18 @@ test.describe('User › Archive browsing', () => {
     const searchInput = page.getByPlaceholder('搜尋課程')
     await searchInput.fill('普通物理')
 
-    await clickWhenVisible(page.getByRole('button', { name: '普通物理(一)' }).first())
+    await clickWhenVisible(page.getByRole('button', { name: '普通物理(一)', exact: true }))
 
-    await expect(page.locator('.p-datatable')).toBeVisible()
-    await expect(page.getByRole('row', { name: /期末考/ })).toBeVisible()
+    const archiveCard = page
+      .getByRole('article')
+      .filter({ has: page.getByRole('heading', { name: '期末考' }) })
+    await expect(archiveCard).toBeVisible()
+    await expect(archiveCard.getByRole('button', { name: '編輯' })).toHaveCount(0)
+    await expect(archiveCard.getByRole('button', { name: '刪除' })).toHaveCount(0)
 
-    const archiveRow = page.getByRole('row', { name: /期末考/ })
-    await expect(archiveRow.getByRole('button', { name: '編輯' })).toHaveCount(0)
-    await expect(archiveRow.getByRole('button', { name: '刪除' })).toHaveCount(0)
+    await clickWhenVisible(archiveCard.getByRole('button', { name: '預覽' }))
 
-    await clickWhenVisible(archiveRow.getByRole('button', { name: '預覽' }))
-
-    const previewDialog = page.getByRole('dialog').first()
+    const previewDialog = page.getByRole('dialog', { name: /期末考/ })
     await expect(previewDialog).toBeVisible()
     await expect(previewDialog).toContainText('期末考')
     await clickWhenVisible(previewDialog.getByRole('button', { name: '下載' }))
@@ -210,7 +228,6 @@ test.describe('User › Archive browsing', () => {
     await clickWhenVisible(previewDialog.getByRole('button', { name: 'Close' }))
     await expect(previewDialog).toBeHidden()
 
-    const downloadCell = archiveRow.locator('td').nth(4)
-    await expect(downloadCell).toHaveText(/\b4\b/)
+    await expect(archiveCard).toContainText('4 次下載')
   })
 })

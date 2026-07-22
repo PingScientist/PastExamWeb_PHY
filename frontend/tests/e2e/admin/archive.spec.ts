@@ -43,6 +43,10 @@ const ARCHIVES_FIXTURE: Record<number, Array<Record<string, unknown>>> = {
 
 test.describe('Admin › Archive management', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
+
     await page.route('**/api/notifications/active', async (route) => {
       await route.fulfill({
         status: 200,
@@ -50,6 +54,17 @@ test.describe('Admin › Archive management', () => {
         body: JSON.stringify([]),
       })
     })
+    await page.route('**/api/notifications/unread-summary**', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          announcements: [],
+          personal_notifications: [],
+          counts: { announcements: 0, personal_notifications: 0, total: 0 },
+        }),
+      })
+    )
 
     await page.route('**/api/courses', async (route) => {
       if (route.request().method() !== 'GET') {
@@ -63,6 +78,9 @@ test.describe('Admin › Archive management', () => {
         body: JSON.stringify(COURSES_FIXTURE),
       })
     })
+    await page.route('**/api/courses/categories', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify([]) })
+    )
 
     await page.route('**/api/courses/*/archives', async (route) => {
       if (route.request().method() !== 'GET') {
@@ -96,7 +114,7 @@ test.describe('Admin › Archive management', () => {
     await expect(searchInput).toBeVisible({ timeout: 15000 })
     await searchInput.fill('普通物理')
 
-    const courseButton = page.getByRole('button', { name: '普通物理(一)' }).first()
+    const courseButton = page.getByRole('button', { name: '普通物理(一)', exact: true })
     await expect(courseButton).toBeVisible({ timeout: 15000 })
     await Promise.all([
       page.waitForResponse((response) => {
@@ -109,10 +127,10 @@ test.describe('Admin › Archive management', () => {
       clickWhenVisible(courseButton),
     ])
 
-    const selectedSubject = page.locator('span.font-medium', {
-      hasText: '普通物理(一)',
+    const archiveToolbar = page.getByRole('toolbar')
+    await expect(archiveToolbar).toContainText('目前顯示：普通物理(一) · 共 1 份考古題', {
+      timeout: 15000,
     })
-    await expect(selectedSubject).toBeVisible({ timeout: 15000 })
 
     await clickWhenVisible(uploadButton)
 
@@ -128,7 +146,7 @@ test.describe('Admin › Archive management', () => {
     const searchInput = page.getByPlaceholder('搜尋課程')
     await searchInput.fill('電磁學')
 
-    const courseButton = page.getByRole('button', { name: '電磁學(一)' }).first()
+    const courseButton = page.getByRole('button', { name: '電磁學(一)', exact: true })
     await Promise.all([
       page.waitForResponse((response) => {
         return (
@@ -140,12 +158,16 @@ test.describe('Admin › Archive management', () => {
       clickWhenVisible(courseButton),
     ])
 
-    const selectionTag = page.locator('span.font-medium', { hasText: '電磁學(一)' })
-    await expect(selectionTag).toBeVisible({ timeout: 15000 })
+    const archiveToolbar = page.getByRole('toolbar')
+    await expect(archiveToolbar).toContainText('目前顯示：電磁學(一) · 共 1 份考古題', {
+      timeout: 15000,
+    })
 
     await page.reload()
 
     await expect(page).toHaveURL(/\/archive$/)
-    await expect(selectionTag).toBeVisible({ timeout: 15000 })
+    await expect(archiveToolbar).toContainText('目前顯示：電磁學(一) · 共 1 份考古題', {
+      timeout: 15000,
+    })
   })
 })
