@@ -1805,7 +1805,7 @@ onBeforeUnmount(teardownCardLayout)
   }
   .report-mobile-card-header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) max-content;
     align-items: flex-start;
     gap: 0.8rem;
     width: 100%;
@@ -1827,8 +1827,19 @@ onBeforeUnmount(teardownCardLayout)
     -webkit-line-clamp: 2;
   }
   .report-mobile-card-status {
+    display: inline-flex;
     flex: 0 0 auto;
-    max-width: 42%;
+    align-items: center;
+    justify-content: center;
+    justify-self: end;
+    width: auto;
+    min-width: max-content;
+    max-width: none;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+  .report-mobile-card-status :deep(.p-tag-label) {
+    overflow: visible;
     white-space: nowrap;
   }
   .report-mobile-card-badges {

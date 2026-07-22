@@ -771,6 +771,7 @@ describe('ReportManagementPanel', () => {
     const systemFooter = systemCard.get('.report-mobile-card__footer')
     expect(systemRow.findAll('.report-mobile-card')).toHaveLength(1)
     expect(systemRow.findAll('.report-mobile-card-title')).toHaveLength(1)
+    expect(systemRow.findAll('.report-mobile-card-status')).toHaveLength(1)
     expect(systemRow.findAll('.report-mobile-summary-preview')).toHaveLength(1)
     expect(systemRow.findAll('.report-mobile-card__footer')).toHaveLength(1)
     expect(systemHeader.element.parentElement).toBe(systemCard.element)
@@ -800,6 +801,7 @@ describe('ReportManagementPanel', () => {
     const commentFooter = commentCard.get('.report-mobile-card__footer')
     expect(commentRow.findAll('.report-mobile-card')).toHaveLength(1)
     expect(commentRow.findAll('.report-mobile-card-title')).toHaveLength(1)
+    expect(commentRow.findAll('.report-mobile-card-status')).toHaveLength(1)
     expect(commentRow.findAll('.report-mobile-summary-preview')).toHaveLength(1)
     expect(commentRow.findAll('.report-mobile-card__footer')).toHaveLength(1)
     expect(commentHeader.element.parentElement).toBe(commentCard.element)
@@ -822,5 +824,16 @@ describe('ReportManagementPanel', () => {
     expect(commentRow.text().match(/期末考乙/g)).toHaveLength(1)
     expect(commentRow.findAll('dt').filter((item) => item.text() === '審核')).toHaveLength(1)
     expect(commentRow.findAll('button').map((item) => item.text())).toEqual(['檢視／審核', '刪除'])
+
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card-header\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) max-content;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card-status\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?flex:\s*0 0 auto;[\s\S]*?justify-self:\s*end;[\s\S]*?width:\s*auto;[\s\S]*?min-width:\s*max-content;[\s\S]*?max-width:\s*none;[\s\S]*?white-space:\s*nowrap;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card-status :deep\(\.p-tag-label\)\s*\{[\s\S]*?overflow:\s*visible;[\s\S]*?white-space:\s*nowrap;/
+    )
+    expect(reportManagementSource).not.toContain('max-width: 42%')
   })
 })
