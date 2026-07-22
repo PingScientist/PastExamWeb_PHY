@@ -37,4 +37,63 @@ describe('NotificationModal', () => {
     await wrapper.findAll('button')[0].trigger('click')
     expect(wrapper.emitted('view-announcement')[0]).toEqual([1])
   })
+
+  it('adds dividers to complete summary item wrappers after the first message', () => {
+    const announcements = [
+      summary.announcements[0],
+      { ...summary.announcements[0], id: 3, title: '第二則公告' },
+      { ...summary.announcements[0], id: 4, title: '第三則公告' },
+    ]
+    const wrapper = mount(NotificationModal, {
+      props: {
+        visible: true,
+        summary: { announcements, personal_notifications: [], counts: { total: 3 } },
+      },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Button: {
+            template: '<button @click="$emit(\'click\')"><slot />{{ $attrs.label }}</button>',
+          },
+          Badge: true,
+        },
+      },
+    })
+
+    const items = wrapper.findAll('.summary-item')
+    const dividedItems = wrapper.findAll('.summary-item--divided')
+    expect(items).toHaveLength(3)
+    expect(dividedItems).toHaveLength(2)
+    expect(items[0].classes()).not.toContain('summary-item--divided')
+    expect(items[1].classes()).toContain('summary-item--divided')
+    expect(items[2].classes()).toContain('summary-item--divided')
+    for (const item of dividedItems) {
+      expect(item.find('.summary-item__body').exists()).toBe(true)
+      expect(item.get('button').text()).toBe('檢視')
+    }
+    expect(wrapper.get('.summary-actions').findAll('button')).toHaveLength(3)
+  })
+
+  it('does not render a divider for a single summary message', () => {
+    const wrapper = mount(NotificationModal, {
+      props: {
+        visible: true,
+        summary: {
+          announcements: [],
+          personal_notifications: summary.personal_notifications,
+          counts: { total: 1 },
+        },
+      },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Button: true,
+          Badge: true,
+        },
+      },
+    })
+
+    expect(wrapper.findAll('.summary-item')).toHaveLength(1)
+    expect(wrapper.find('.summary-item--divided').exists()).toBe(false)
+  })
 })

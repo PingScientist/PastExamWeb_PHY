@@ -18,7 +18,12 @@
     <div class="summary-list">
       <section v-if="summary.announcements?.length">
         <h3><i class="pi pi-megaphone mr-2" />公告</h3>
-        <article v-for="item in summary.announcements" :key="`a-${item.id}`" class="summary-item">
+        <article
+          v-for="(item, itemIndex) in summary.announcements"
+          :key="`a-${item.id}`"
+          class="summary-item"
+          :class="{ 'summary-item--divided': itemIndex > 0 }"
+        >
           <div class="summary-item__body">
             <strong>{{ item.title }}</strong>
             <small>{{ formatTimestamp(item.updated_at || item.created_at) }}</small>
@@ -30,9 +35,10 @@
       <section v-if="summary.personal_notifications?.length">
         <h3><i class="pi pi-bell mr-2" />個人通知</h3>
         <article
-          v-for="item in summary.personal_notifications"
+          v-for="(item, itemIndex) in summary.personal_notifications"
           :key="`p-${item.id}`"
           class="summary-item"
+          :class="{ 'summary-item--divided': itemIndex > 0 }"
         >
           <div class="summary-item__body">
             <strong>{{ item.title }}</strong>
@@ -99,6 +105,10 @@ const formatTimestamp = (value) => formatExactDateTime24h(value)
   border-inline-start: 3px solid var(--primary-color);
   background: var(--surface-ground);
   border-radius: var(--content-border-radius);
+}
+.summary-item--divided {
+  margin-top: 0.6rem;
+  border-top: 1px solid var(--border-color);
 }
 .summary-item__body {
   min-width: 0;
