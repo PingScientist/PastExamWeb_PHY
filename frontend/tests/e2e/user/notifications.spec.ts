@@ -22,10 +22,21 @@ const ACTIVE_NOTIFICATION = {
   created_at: '2025-10-30T15:00:00Z',
   updated_at: '2025-10-30T15:05:00Z',
   is_active: true,
+  is_read: false,
+  read_at: null,
+}
+
+const COUNTS = { announcements: 1, personal_notifications: 0, total: 1 }
+const SUMMARY = {
+  announcements: [ACTIVE_NOTIFICATION],
+  personal_notifications: [],
+  counts: COUNTS,
 }
 
 test.describe('User › Notifications', () => {
-  test('shows notification modal and persists dismissal state', async ({ page }) => {
+  test('shows the unread summary once per login session without marking it read', async ({
+    page,
+  }) => {
     await page.route('**/api/courses', async (route) => {
       await route.fulfill({
         status: 200,
@@ -34,32 +45,26 @@ test.describe('User › Notifications', () => {
       })
     })
 
-    await page.route('**/api/notifications/active', async (route) => {
+    await page.route('**/api/notifications/unread-summary**', async (route) => {
       await route.fulfill({
         status: 200,
         headers: JSON_HEADERS,
-        body: JSON.stringify([ACTIVE_NOTIFICATION]),
+        body: JSON.stringify(SUMMARY),
       })
     })
 
     await page.goto('/archive')
 
-    const modal = page.getByRole('dialog', { name: '系統公告' })
+    const modal = page.getByRole('dialog', { name: '系統公告與通知' })
     await expect(modal).toBeVisible({ timeout: 15000 })
 
     await expect(modal.getByText('系統維護公告')).toBeVisible()
-    await expect(modal.getByText('重要')).toBeVisible()
-
-    await clickWhenVisible(modal.getByRole('button', { name: '不再顯示' }))
+    await clickWhenVisible(modal.getByRole('button', { name: '稍後再看' }))
 
     await expect(modal).toBeHidden({ timeout: 5000 })
 
-    const expectedTimestamp = new Date(ACTIVE_NOTIFICATION.updated_at).getTime()
-    await expect
-      .poll(async () => {
-        return page.evaluate(() => window.localStorage.getItem('notification-last-seen'))
-      })
-      .toBe(String(expectedTimestamp))
+    await page.reload()
+    await expect(modal).toBeHidden()
   })
 
   test('opens notification center and shows detail content', async ({ page }) => {
@@ -84,30 +89,41 @@ test.describe('User › Notifications', () => {
       })
     })
 
-    await page.route('**/api/notifications/active', async (route) => {
+    await page.route('**/api/notifications/unread-summary**', async (route) => {
       await route.fulfill({
         status: 200,
         headers: JSON_HEADERS,
-        body: JSON.stringify([ACTIVE_NOTIFICATION]),
+        body: JSON.stringify(SUMMARY),
       })
     })
 
-    await page.route('**/api/notifications', async (route) => {
+    await page.route('**/api/notifications/center**', async (route) => {
       await route.fulfill({
         status: 200,
         headers: JSON_HEADERS,
-        body: JSON.stringify(ALL_NOTIFICATIONS),
+        body: JSON.stringify({
+          announcements: ALL_NOTIFICATIONS,
+          personal_notifications: [],
+          counts: COUNTS,
+        }),
+      })
+    })
+    await page.route('**/api/notifications/announcements/*/read', async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ success: true }),
       })
     })
 
     await page.goto('/archive', { waitUntil: 'networkidle' })
 
-    const modal = page.getByRole('dialog', { name: '系統公告' })
+    const modal = page.getByRole('dialog', { name: '系統公告與通知' })
     await expect(modal).toBeVisible()
 
-    await clickWhenVisible(modal.getByRole('button', { name: '顯示全部' }))
+    await clickWhenVisible(modal.getByRole('button', { name: '查看全部' }))
 
-    const centerDialog = page.getByRole('dialog', { name: '公告中心' })
+    const centerDialog = page.getByRole('dialog', { name: '公告與通知' })
     await expect(centerDialog).toBeVisible({ timeout: 10000 })
 
     await expect(centerDialog.getByText('系統維護公告')).toBeVisible()
@@ -119,12 +135,5 @@ test.describe('User › Notifications', () => {
     await expect(detailDialog).toBeVisible({ timeout: 5000 })
     await expect(detailDialog.getByText('系統維護公告')).toBeVisible()
     await expect(detailDialog.getByText('23:00-23:30')).toBeVisible()
-
-    const expectedTimestamp = new Date(ACTIVE_NOTIFICATION.updated_at).getTime()
-    await expect
-      .poll(async () => {
-        return page.evaluate(() => window.localStorage.getItem('notification-last-seen'))
-      })
-      .toBe(String(expectedTimestamp))
   })
 })

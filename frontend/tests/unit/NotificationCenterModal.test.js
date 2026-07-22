@@ -1,157 +1,312 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import NotificationCenterModal from '@/components/NotificationCenterModal.vue'
 
-vi.mock('@/utils/markdown', () => ({
-  renderMarkdown: vi.fn((text) => `<p>${text}</p>`),
-}))
-
-const notifications = [
+const slotStub = { template: '<div><slot /><slot name="header" /></div>' }
+const tabsStub = { template: '<div><slot /></div>' }
+const buttonStub = {
+  inheritAttrs: false,
+  props: ['label'],
+  template: '<button v-bind="$attrs">{{ label }}</button>',
+}
+const announcements = [
   {
     id: 1,
     title: '公告一',
-    body: '內容一',
+    body: '內容',
     severity: 'info',
-    created_at: '2025-01-01T00:00:00Z',
+    is_read: false,
+    updated_at: '2026-01-01T00:00:00Z',
   },
+]
+const personal = [
   {
     id: 2,
-    title: 'Markdown 公告',
-    body: '這是 **粗體** 和 [連結](https://example.com)',
-    severity: 'danger',
-    created_at: '2025-01-02T00:00:00Z',
-    updated_at: '2025-01-03T00:00:00Z',
+    title: '回覆通知',
+    message: '內容',
+    read_at: null,
+    source_available: true,
+    created_at: '2026-01-02T00:00:00Z',
   },
 ]
 
-const stubComponent = { template: '<div><slot /></div>' }
-
 describe('NotificationCenterModal', () => {
-  it('handles detail modal and formatting helpers', async () => {
+  it('uses the report warning severity for unread tags and keeps read tags secondary', () => {
     const wrapper = mount(NotificationCenterModal, {
       props: {
         visible: true,
-        notifications,
-        loading: false,
+        announcements: [
+          announcements[0],
+          { ...announcements[0], id: 3, title: '已讀公告', is_read: true },
+        ],
+        personalNotifications: [
+          personal[0],
+          { ...personal[0], id: 4, title: '已讀通知', read_at: '2026-01-03T00:00:00Z' },
+        ],
       },
       global: {
         stubs: {
-          Dialog: stubComponent,
-          DataTable: stubComponent,
-          Column: { template: '<template />' },
-          Tag: stubComponent,
-          Button: stubComponent,
-          ProgressSpinner: stubComponent,
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
         },
       },
     })
 
-    const vm = wrapper.vm
+    const assertionGroups = [
+      ['.notification-announcement-groups', '公告一', '已讀公告'],
+      ['.notification-personal-groups', '回覆通知', '已讀通知'],
+    ]
+    for (const [selector, unreadTitle, readTitle] of assertionGroups) {
+      const cards = wrapper.find(selector).findAll('.notification-card')
+      const unreadCard = cards.find((card) => card.text().includes(unreadTitle))
+      const readCard = cards.find((card) => card.text().includes(readTitle))
 
-    expect(vm.resolveSeverity('danger')).toBe('danger')
-    expect(vm.resolveSeverityLabel('danger')).toBe('重要')
-    expect(vm.formatDate('2024-01-01')).toContain('01')
-    expect(vm.formatTimestamp('2024-01-01T00:00:00Z')).toContain('00')
-
-    vm.openDetail(notifications[0])
-    expect(vm.detailVisible).toBe(true)
-    expect(wrapper.emitted('mark-seen')).toBeTruthy()
-
-    await wrapper.setProps({ visible: false })
-    expect(vm.detailVisible).toBe(false)
-    expect(vm.selectedNotification).toBeNull()
-
-    vm.handleDetailVisibility(true)
-    expect(vm.detailVisible).toBe(true)
-    vm.handleDetailVisibility(false)
-    expect(vm.detailVisible).toBe(false)
-
-    vm.handleVisibility(false)
-    expect(wrapper.emitted('update:visible')).toBeTruthy()
-
-    wrapper.unmount()
+      expect(unreadCard.get('tag-stub').attributes('severity')).toBe('warn')
+      expect(readCard.get('tag-stub').attributes('severity')).toBe('secondary')
+    }
   })
 
-  it('renders markdown content in notification body', async () => {
-    const { renderMarkdown } = await import('@/utils/markdown')
-
+  it('separates announcements and personal notifications and marks detail read', async () => {
     const wrapper = mount(NotificationCenterModal, {
       props: {
         visible: true,
-        notifications,
-        loading: false,
+        announcements,
+        personalNotifications: personal,
+        counts: { total: 2, personal_notifications: 1 },
       },
       global: {
         stubs: {
-          Dialog: stubComponent,
-          DataTable: stubComponent,
-          Column: { template: '<template />' },
-          Tag: stubComponent,
-          Button: stubComponent,
-          ProgressSpinner: stubComponent,
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('公告與通知')
+    expect(wrapper.text()).toContain('公告')
+    expect(wrapper.text()).toContain('個人通知')
+    expect(wrapper.findComponent({ name: 'DataTable' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'Paginator' }).exists()).toBe(false)
+    expect(wrapper.get('.notification-announcement-groups .notification-card').text()).toContain(
+      '公告一'
+    )
+    expect(wrapper.get('.notification-announcement-groups .notification-card').text()).toContain(
+      '最近更新'
+    )
+    expect(wrapper.get('.notification-announcement-groups .notification-card').text()).toContain(
+      '2026/01/01 08:00'
+    )
+    expect(wrapper.get('.notification-personal-groups .notification-card').text()).toContain(
+      '回覆通知'
+    )
+    expect(wrapper.get('.notification-personal-groups .notification-card').text()).toContain(
+      '2026/01/02 08:00'
+    )
+    expect(wrapper.text()).not.toMatch(/上午|下午|凌晨|晚上|AM|PM|剛剛|分鐘前/)
+    const viewButtons = wrapper.findAll('.notification-view-button')
+    expect(viewButtons).toHaveLength(2)
+    expect(viewButtons.every((button) => button.text() === '檢視')).toBe(true)
+    expect(wrapper.findAll('.notification-delete-button')).toHaveLength(1)
+    expect(wrapper.get('.notification-delete-button').attributes('aria-label')).toBe('刪除通知')
+    expect(
+      wrapper.find('.notification-announcement-groups .notification-delete-button').exists()
+    ).toBe(false)
+    await wrapper.get('.notification-delete-button').trigger('click')
+    expect(wrapper.emitted('delete-personal')).toEqual([[personal[0]]])
+    await wrapper.get('.personal-delete-all-button').trigger('click')
+    expect(wrapper.emitted('delete-all-personal')).toHaveLength(1)
+    wrapper.vm.openAnnouncement(announcements[0])
+    expect(wrapper.emitted('mark-announcement-read')).toEqual([[1]])
+    wrapper.vm.openPersonal(personal[0])
+    expect(wrapper.emitted('mark-personal-read')).toEqual([[2]])
+  })
+
+  it('emits safe internal navigation for an available discussion source', () => {
+    const item = {
+      ...personal[0],
+      source_type: 'archive_discussion_thread',
+      metadata: { course_id: 1, archive_id: 2, thread_id: 3 },
+    }
+    const wrapper = mount(NotificationCenterModal, {
+      props: { visible: true, personalNotifications: [item] },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+        },
+      },
+    })
+    wrapper.vm.openPersonal(item)
+    expect(wrapper.emitted('open-personal-source')).toEqual([[item]])
+  })
+
+  it('groups each card list by month and sorts groups and items newest first', () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: {
+        visible: true,
+        announcements: [
+          { ...announcements[0], id: 1, title: '七月較早', updated_at: '2026-07-02T00:00:00Z' },
+          { ...announcements[0], id: 2, title: '六月公告', updated_at: '2026-06-30T00:00:00Z' },
+          { ...announcements[0], id: 3, title: '七月較新', updated_at: '2026-07-20T00:00:00Z' },
+        ],
+        personalNotifications: [
+          { ...personal[0], id: 4, title: '五月通知', created_at: '2026-05-01T00:00:00Z' },
+          { ...personal[0], id: 5, title: '七月通知', created_at: '2026-07-01T00:00:00Z' },
+          { ...personal[0], id: 6, title: '日期未明通知', created_at: 'invalid-date' },
+        ],
+      },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
         },
       },
     })
 
-    const vm = wrapper.vm
+    const announcementGroups = wrapper.findAll(
+      '.notification-announcement-groups .notification-month-group'
+    )
+    expect(announcementGroups).toHaveLength(2)
+    expect(announcementGroups[0].get('.notification-month-heading').text()).toBe('2026年7月')
+    expect(announcementGroups[1].get('.notification-month-heading').text()).toBe('2026年6月')
+    expect(
+      announcementGroups[0].findAll('.notification-card__title').map((title) => title.text())
+    ).toEqual(['七月較新', '七月較早'])
 
-    // Open detail with markdown content
-    vm.openDetail(notifications[1])
-    await wrapper.vm.$nextTick()
-
-    expect(vm.selectedNotification).toEqual(notifications[1])
-    expect(vm.renderedBody).toBeTruthy()
-    expect(renderMarkdown).toHaveBeenCalledWith(notifications[1].body)
-
-    // Test with empty body
-    const emptyNotification = { ...notifications[0], body: '' }
-    vm.openDetail(emptyNotification)
-    await wrapper.vm.$nextTick()
-
-    expect(renderMarkdown).toHaveBeenCalledWith('')
-
-    wrapper.unmount()
+    const personalGroups = wrapper.findAll(
+      '.notification-personal-groups .notification-month-group'
+    )
+    expect(personalGroups.map((group) => group.get('.notification-month-heading').text())).toEqual([
+      '2026年7月',
+      '2026年5月',
+      '日期未明',
+    ])
+    expect(wrapper.text()).not.toContain('2026年4月')
   })
 
-  it('renders list markdown correctly', async () => {
-    vi.resetModules()
-    vi.doUnmock('@/utils/markdown')
-    const { renderMarkdown } = await import('@/utils/markdown')
+  it('adds a full-card divider from the second message in each month', () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: {
+        visible: true,
+        announcements: [
+          { ...announcements[0], id: 1, updated_at: '2026-07-20T00:00:00Z' },
+          { ...announcements[0], id: 2, updated_at: '2026-07-10T00:00:00Z' },
+          { ...announcements[0], id: 5, updated_at: '2026-06-20T00:00:00Z' },
+        ],
+        personalNotifications: [
+          { ...personal[0], id: 3, created_at: '2026-07-20T00:00:00Z' },
+          { ...personal[0], id: 4, created_at: '2026-07-10T00:00:00Z' },
+          { ...personal[0], id: 6, created_at: '2026-06-20T00:00:00Z' },
+        ],
+      },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
+        },
+      },
+    })
 
-    const listNotification = {
-      id: 3,
-      title: '列表測試',
-      body: '- 項目一\n- 項目二\n- 項目三',
-      severity: 'info',
-      created_at: '2025-01-01T00:00:00Z',
+    for (const selector of ['.notification-announcement-groups', '.notification-personal-groups']) {
+      const groups = wrapper.find(selector).findAll('.notification-month-group')
+      const julyCards = groups[0].findAll('.notification-card')
+      const juneCards = groups[1].findAll('.notification-card')
+
+      expect(julyCards).toHaveLength(2)
+      expect(julyCards[0].classes()).not.toContain('notification-card--divided')
+      expect(julyCards[1].classes()).toContain('notification-card--divided')
+      expect(julyCards[1].find('.notification-card__footer').exists()).toBe(true)
+      expect(julyCards[1].find('.notification-view-button').exists()).toBe(true)
+      expect(juneCards).toHaveLength(1)
+      expect(juneCards[0].classes()).not.toContain('notification-card--divided')
     }
 
+    expect(
+      wrapper
+        .get('.notification-personal-groups .notification-card--divided')
+        .find('.notification-card__actions')
+        .exists()
+    ).toBe(true)
+  })
+
+  it('shows empty states without rendering month groups', () => {
     const wrapper = mount(NotificationCenterModal, {
-      props: {
-        visible: true,
-        notifications: [listNotification],
-        loading: false,
-      },
+      props: { visible: true, announcements: [], personalNotifications: [] },
       global: {
         stubs: {
-          Dialog: stubComponent,
-          DataTable: stubComponent,
-          Column: { template: '<template />' },
-          Tag: stubComponent,
-          Button: stubComponent,
-          ProgressSpinner: stubComponent,
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Badge: true,
         },
       },
     })
 
-    const vm = wrapper.vm
-    vm.openDetail(listNotification)
-    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('目前沒有公告')
+    expect(wrapper.text()).toContain('目前沒有個人通知')
+    expect(wrapper.find('.notification-month-group').exists()).toBe(false)
+    expect(wrapper.find('.notification-card').exists()).toBe(false)
+  })
 
-    const rendered = renderMarkdown(listNotification.body)
-    expect(rendered).toContain('<ul>')
-    expect(rendered).toContain('<li>')
+  it('removes an empty month group when the last notification is deleted', async () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: { visible: true, personalNotifications: personal },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
+        },
+      },
+    })
 
-    wrapper.unmount()
+    expect(wrapper.find('.notification-personal-groups .notification-month-group').exists()).toBe(
+      true
+    )
+    await wrapper.setProps({ personalNotifications: [] })
+    expect(wrapper.find('.notification-personal-groups').exists()).toBe(false)
+    expect(wrapper.text()).toContain('目前沒有個人通知')
   })
 })

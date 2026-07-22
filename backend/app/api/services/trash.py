@@ -14,11 +14,13 @@ from app.models.models import (
     Archive,
     ArchiveDiscussionMessage,
     ArchiveSubmission,
+    CommentReport,
     Course,
     CourseCategoryConfig,
     CourseSubmission,
     Notification,
     SubmissionStatus,
+    SystemIssueReport,
     TrashEntityType,
     TrashItem,
     User,
@@ -44,6 +46,15 @@ from app.utils.storage import get_minio_client
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+COMMENT_REPORT_REASON_LABELS = {
+    "spam_or_duplicate": "垃圾訊息或重複洗版",
+    "harassment_or_hostility": "攻擊、騷擾或不友善內容",
+    "inappropriate_or_illegal": "不當或違法內容",
+    "privacy_violation": "洩漏個人資料或隱私",
+    "misinformation": "錯誤或誤導資訊",
+    "other": "其他",
+}
+
 
 class TrashActionRequest(BaseModel):
     item_type: TrashEntityType
@@ -58,6 +69,7 @@ def _to_trash_item(
     deleted_at,
     deleted_by_id: Optional[int],
     deleted_by_name: Optional[str] = None,
+    user_email: Optional[str] = None,
     status: Optional[str] = None,
     academic_year: Optional[int] = None,
     academic_term: Optional[str] = None,
@@ -68,6 +80,15 @@ def _to_trash_item(
     source_submission_id: Optional[int] = None,
     course_id: Optional[int] = None,
     course_name: Optional[str] = None,
+    reason: Optional[str] = None,
+    created_at: Optional[datetime] = None,
+    reporter_name: Optional[str] = None,
+    report_type: Optional[str] = None,
+    github_issue_number: Optional[int] = None,
+    github_issue_url: Optional[str] = None,
+    comment_author_name: Optional[str] = None,
+    comment_snapshot: Optional[str] = None,
+    archive_name: Optional[str] = None,
     dependencies: Optional[list[str]] = None,
     can_restore: Optional[bool] = None,
     can_permanent_delete: Optional[bool] = None,
@@ -81,6 +102,7 @@ def _to_trash_item(
         deleted_at=deleted_at,
         deleted_by_id=deleted_by_id,
         deleted_by_name=deleted_by_name,
+        user_email=user_email,
         status=status,
         parent_type=parent_type,
         parent_id=parent_id,
@@ -89,7 +111,15 @@ def _to_trash_item(
         source_submission_id=source_submission_id,
         course_id=course_id,
         course_name=course_name,
-        reason=None,
+        reason=reason,
+        created_at=created_at,
+        reporter_name=reporter_name,
+        report_type=report_type,
+        github_issue_number=github_issue_number,
+        github_issue_url=github_issue_url,
+        comment_author_name=comment_author_name,
+        comment_snapshot=comment_snapshot,
+        archive_name=archive_name,
         canRestore=can_restore,
         canPermanentDelete=can_permanent_delete,
         dependencies=_build_dependencies(dependencies or []),
@@ -265,7 +295,7 @@ async def _get_course_dependency_messages(db: SQLModelAsyncSession, course: Cour
     )
 
     restore_blockers = [
-        f"阻擋還原：原分類仍在垃圾桶" if category_is_trashed else "",
+        "阻擋還原：原分類仍在垃圾桶" if category_is_trashed else "",
     ]
 
     return [
@@ -1071,6 +1101,68 @@ async def list_trash_items(
     }
     items: list[TrashItem] = []
 
+    if normalized_item_type in (None, TrashEntityType.SYSTEM_ISSUE_REPORT):
+        reports = (
+            await db.execute(
+                select(SystemIssueReport)
+                .where(SystemIssueReport.deleted_at.is_not(None))
+                .order_by(SystemIssueReport.deleted_at.desc())
+            )
+        ).scalars().all()
+        for report in reports:
+            reporter = users_by_id.get(report.reporter_user_id)
+            items.append(
+                _to_trash_item(
+                    item_type=TrashEntityType.SYSTEM_ISSUE_REPORT,
+                    item_id=report.id,
+                    display_name=report.title,
+                    deleted_at=report.deleted_at,
+                    deleted_by_id=report.deleted_by_id,
+                    deleted_by_name=_format_deleted_by(users_by_id, report.deleted_by_id),
+                    status=report.status,
+                    created_at=report.created_at,
+                    reporter_name=(
+                        _format_deleted_by(users_by_id, report.reporter_user_id)
+                        if reporter is not None
+                        else "已刪除使用者"
+                    ),
+                    report_type=report.report_type,
+                    github_issue_number=report.github_issue_number,
+                    github_issue_url=report.github_issue_url,
+                    dependencies=[],
+                )
+            )
+
+    if normalized_item_type in (None, TrashEntityType.COMMENT_REPORT):
+        reports = (
+            await db.execute(
+                select(CommentReport)
+                .where(CommentReport.deleted_at.is_not(None))
+                .order_by(CommentReport.deleted_at.desc())
+            )
+        ).scalars().all()
+        for report in reports:
+            items.append(
+                _to_trash_item(
+                    item_type=TrashEntityType.COMMENT_REPORT,
+                    item_id=report.id,
+                    display_name=COMMENT_REPORT_REASON_LABELS.get(report.reason, report.reason),
+                    deleted_at=report.deleted_at,
+                    deleted_by_id=report.deleted_by_id,
+                    deleted_by_name=_format_deleted_by(users_by_id, report.deleted_by_id),
+                    status=report.status,
+                    reason=report.reason,
+                    created_at=report.created_at,
+                    reporter_name=_format_deleted_by(users_by_id, report.reporter_user_id),
+                    comment_author_name=report.comment_author_name_snapshot,
+                    comment_snapshot=report.comment_content_snapshot,
+                    course_id=report.course_id,
+                    course_name=report.course_name_snapshot,
+                    archive_name=report.archive_name_snapshot,
+                    dependencies=[],
+                )
+            )
+
     if normalized_item_type in (None, TrashEntityType.COURSE_CATEGORY):
         categories = (
             await db.execute(
@@ -1275,8 +1367,10 @@ async def list_trash_items(
                         item_id=notification.id,
                         display_name=notification.title,
                         deleted_at=notification.deleted_at,
-                        deleted_by_id=None,
-                        deleted_by_name=None,
+                        deleted_by_id=notification.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(
+                            users_by_id, notification.deleted_by_id
+                        ),
                         status="deleted",
                         dependencies=[],
                     )
@@ -1300,10 +1394,11 @@ async def list_trash_items(
                     _to_trash_item(
                         item_type=TrashEntityType.USER,
                         item_id=user.id,
-                        display_name=f"{user.name} ({user.email})",
+                        display_name=user.name,
+                        user_email=user.email,
                         deleted_at=user.deleted_at,
-                        deleted_by_id=None,
-                        deleted_by_name=None,
+                        deleted_by_id=user.deleted_by_id,
+                        deleted_by_name=_format_deleted_by(users_by_id, user.deleted_by_id),
                         status="deleted",
                         dependencies=await _get_user_dependency_messages(db, user),
                     )
@@ -1457,6 +1552,30 @@ async def restore_trash_item(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     now = datetime.now(timezone.utc)
+
+    if payload.item_type == TrashEntityType.SYSTEM_ISSUE_REPORT:
+        report = await db.get(SystemIssueReport, payload.item_id)
+        if not report or report.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="System issue report not found",
+            )
+        report.deleted_at = None
+        report.deleted_by_id = None
+        await db.commit()
+        return {"message": "系統問題回報已還原"}
+
+    if payload.item_type == TrashEntityType.COMMENT_REPORT:
+        report = await db.get(CommentReport, payload.item_id)
+        if not report or report.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comment report not found",
+            )
+        report.deleted_at = None
+        report.deleted_by_id = None
+        await db.commit()
+        return {"message": "留言回報已還原"}
 
     if payload.item_type == TrashEntityType.COURSE_CATEGORY:
         category = await db.get(CourseCategoryConfig, payload.item_id)
@@ -1613,6 +1732,7 @@ async def restore_trash_item(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
         notification.deleted_at = None
+        notification.deleted_by_id = None
         await db.commit()
         return {"message": "Notification restored"}
 
@@ -1665,6 +1785,7 @@ async def restore_trash_item(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         user.deleted_at = None
+        user.deleted_by_id = None
         await db.commit()
         return {"message": "User restored"}
 
@@ -1725,6 +1846,8 @@ async def bulk_permanently_delete_trash_items(
         TrashEntityType.COURSE_CATEGORY: 3,
         TrashEntityType.NOTIFICATION: 4,
         TrashEntityType.USER: 5,
+        TrashEntityType.SYSTEM_ISSUE_REPORT: 6,
+        TrashEntityType.COMMENT_REPORT: 7,
     }
     sorted_items = sorted(
         items,
@@ -1763,7 +1886,7 @@ async def bulk_permanently_delete_trash_items(
                     "blockingDependencies": detail.get("blockingDependencies", []),
                 }
             )
-        except Exception as error:
+        except Exception:
             await db.rollback()
             failures.append(
                 {
@@ -1802,6 +1925,40 @@ async def _permanently_delete_trash_item(
     db: SQLModelAsyncSession,
     warnings: list[str],
 ):
+    if item_type == TrashEntityType.SYSTEM_ISSUE_REPORT:
+        report = await db.get(SystemIssueReport, item_id)
+        if not report or report.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="System issue report not found",
+            )
+
+        await db.delete(report)
+        return _delete_result(
+            item_type=item_type,
+            item_id=item_id,
+            name=report.title,
+            deleted=1,
+            warnings=warnings,
+        )
+
+    if item_type == TrashEntityType.COMMENT_REPORT:
+        report = await db.get(CommentReport, item_id)
+        if not report or report.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comment report not found",
+            )
+
+        await db.delete(report)
+        return _delete_result(
+            item_type=item_type,
+            item_id=item_id,
+            name=COMMENT_REPORT_REASON_LABELS.get(report.reason, report.reason),
+            deleted=1,
+            warnings=warnings,
+        )
+
     if item_type == TrashEntityType.COURSE_CATEGORY:
         category = await db.get(CourseCategoryConfig, item_id)
         if not category or category.deleted_at is None:

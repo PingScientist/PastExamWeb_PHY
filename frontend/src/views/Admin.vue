@@ -7,6 +7,7 @@
           <Tab value="0">課程管理</Tab>
           <Tab value="2">公告管理</Tab>
           <Tab value="1">使用者管理</Tab>
+          <Tab value="5">回報管理</Tab>
           <Tab value="4">垃圾桶</Tab>
         </TabList>
         <TabPanels>
@@ -1160,9 +1161,20 @@
                         <Tag :severity="isNotificationEffective(data) ? 'success' : 'secondary'">
                           {{ isNotificationEffective(data) ? '生效中' : '未生效' }}
                         </Tag>
-                        <span class="admin-card-meta-text">
-                          {{ formatNotificationDate(data.updated_at || data.created_at) }}
-                        </span>
+                        <div class="notification-mobile-update">
+                          <span class="notification-mobile-update__label">最近更新</span>
+                          <span
+                            class="notification-mobile-update__actor"
+                            :title="getNotificationUpdaterLabel(data)"
+                            >{{ getNotificationUpdaterLabel(data) }}・</span
+                          >
+                          <time
+                            class="notification-mobile-update__time"
+                            :datetime="data.updated_at || data.created_at"
+                          >
+                            {{ formatAdminActorTime(data.updated_at || data.created_at) }}
+                          </time>
+                        </div>
                       </div>
                     </div>
                   </template>
@@ -1199,12 +1211,23 @@
                   sortField="updated_at"
                   header="最近更新"
                   sortable
-                  style="width: 18%"
+                  style="width: 11rem; min-width: 11rem"
                 >
                   <template #body="{ data }">
-                    <span class="text-sm text-700">
-                      {{ formatNotificationDate(data.updated_at || data.created_at) }}
-                    </span>
+                    <div class="admin-actor-time admin-actor-time--notification">
+                      <span
+                        class="admin-actor-time__name"
+                        :title="getNotificationUpdaterLabel(data)"
+                      >
+                        {{ getNotificationUpdaterLabel(data) }}
+                      </span>
+                      <time
+                        class="admin-actor-time__time"
+                        :datetime="data.updated_at || data.created_at"
+                      >
+                        {{ formatAdminActorTime(data.updated_at || data.created_at) }}
+                      </time>
+                    </div>
                   </template>
                 </Column>
                 <Column header="操作" style="width: 20%">
@@ -1265,13 +1288,23 @@
                     </div>
                   </header>
                   <section class="admin-tablet-metadata">
-                    <div class="admin-tablet-metadata-item">
+                    <div class="admin-tablet-metadata-item admin-tablet-metadata-item--wide">
                       <span class="admin-tablet-metadata-label">最近更新</span>
-                      <span class="admin-tablet-metadata-value">
-                        {{
-                          formatNotificationDate(notification.updated_at || notification.created_at)
-                        }}
-                      </span>
+                      <div class="notification-mobile-update__value">
+                        <span
+                          class="notification-mobile-update__actor"
+                          :title="getNotificationUpdaterLabel(notification)"
+                          >{{ getNotificationUpdaterLabel(notification) }}・</span
+                        >
+                        <time
+                          class="notification-mobile-update__time"
+                          :datetime="notification.updated_at || notification.created_at"
+                        >
+                          {{
+                            formatAdminActorTime(notification.updated_at || notification.created_at)
+                          }}
+                        </time>
+                      </div>
                     </div>
                   </section>
                   <section
@@ -1584,16 +1617,32 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag
-                        :class="[
-                          'soft-badge',
-                          'review-card-chip',
-                          getArchiveSubmissionKindClass(data),
-                        ]"
-                        :severity="getArchiveSubmissionKindSeverity(data)"
-                      >
-                        {{ getArchiveSubmissionKind(data) }}
-                      </Tag>
+                      <div class="review-submission-type-cell">
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-desktop-submission-type-tag',
+                            getArchiveSubmissionKindClass(data),
+                          ]"
+                          :severity="getArchiveSubmissionKindSeverity(data)"
+                        >
+                          <span
+                            v-if="data.requested_category_key"
+                            class="submission-type-combined-label"
+                            aria-label="新分類＋新課程"
+                          >
+                            <span class="submission-type-combined-label__category">新分類</span>
+                            <span
+                              class="submission-type-combined-label__separator"
+                              aria-hidden="true"
+                              >＋</span
+                            >
+                            <span class="submission-type-combined-label__course">新課程</span>
+                          </span>
+                          <span v-else>{{ getArchiveSubmissionKind(data) }}</span>
+                        </Tag>
+                      </div>
                     </template>
                   </Column>
                   <Column field="subject">
@@ -1612,15 +1661,21 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <div class="mobile-primary-text review-card-title review-course-cell">
-                        <span>{{ data.subject }}</span>
-                        <Tag
+                      <div
+                        class="mobile-primary-text review-card-title review-course-cell review-desktop-course-cell"
+                      >
+                        <div class="review-desktop-course-cell__name">{{ data.subject }}</div>
+                        <div
                           v-if="data.is_admin_upload"
-                          class="soft-badge soft-badge--admin review-admin-upload-chip"
-                          severity="info"
+                          class="review-desktop-course-cell__admin-row"
                         >
-                          管理員投稿
-                        </Tag>
+                          <Tag
+                            class="soft-badge soft-badge--admin review-admin-upload-chip review-course-cell__admin-tag"
+                            severity="info"
+                          >
+                            管理員投稿
+                          </Tag>
+                        </div>
                       </div>
                       <div class="review-mobile-card-header">
                         <div class="review-mobile-card-title-block">
@@ -1771,14 +1826,14 @@
                       >
                     </template>
                   </Column>
-                  <Column>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
                     <template #header>
                       <button
                         type="button"
                         class="review-sort-header"
                         @click="toggleReviewSort('new', 'submitted_at')"
                       >
-                        申請時間
+                        申請
                         <i
                           class="review-sort-icon"
                           :class="getReviewSortHeaderIcon('new', 'submitted_at')"
@@ -1787,12 +1842,27 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewSubmissionTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span class="admin-actor-time__name" :title="getReviewRequesterLabel(data)">
+                          {{ getReviewRequesterLabel(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewSubmissionTimeValue(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewSubmissionTimeValue(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewSubmissionTimeValue(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
-                  <Column field="status">
+                  <Column
+                    field="status"
+                    headerClass="admin-desktop-status-column"
+                    bodyClass="admin-desktop-status-column"
+                    style="width: 6rem; min-width: 6rem"
+                  >
                     <template #header>
                       <button
                         type="button"
@@ -1808,29 +1878,66 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag
-                        :class="[
-                          'soft-badge',
-                          'review-card-chip',
-                          'review-status-chip',
-                          getSubmissionStatusClass(data.status),
-                        ]"
-                        :severity="getSubmissionSeverity(data.status)"
+                      <div class="admin-desktop-status-cell">
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-status-chip',
+                            'admin-desktop-status-tag',
+                            getSubmissionStatusClass(data.status),
+                          ]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          <span
+                            class="admin-desktop-status-label"
+                            :aria-label="getSubmissionLabel(data.status)"
+                          >
+                            <span
+                              v-for="(character, index) in Array.from(
+                                getSubmissionLabel(data.status)
+                              )"
+                              :key="`${character}-${index}`"
+                              aria-hidden="true"
+                              >{{ character }}</span
+                            >
+                          </span>
+                        </Tag>
+                      </div>
+                    </template>
+                  </Column>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('new', 'reviewed_at')"
                       >
-                        {{ getSubmissionLabel(data.status) }}
-                      </Tag>
+                        審核
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('new', 'reviewed_at')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
                     </template>
-                  </Column>
-                  <Column header="審核人">
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
-                    </template>
-                  </Column>
-                  <Column header="審核時間">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewReviewedTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span
+                          class="admin-actor-time__name"
+                          :title="getReviewReviewerDisplay(data)"
+                        >
+                          {{ getReviewReviewerDisplay(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewReviewedAt(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewReviewedAt(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -1927,15 +2034,21 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <div class="mobile-primary-text review-card-title review-course-cell">
-                        <span>{{ data.subject }}</span>
-                        <Tag
+                      <div
+                        class="mobile-primary-text review-card-title review-course-cell review-desktop-course-cell"
+                      >
+                        <div class="review-desktop-course-cell__name">{{ data.subject }}</div>
+                        <div
                           v-if="data.is_admin_upload"
-                          class="soft-badge soft-badge--admin review-admin-upload-chip"
-                          severity="info"
+                          class="review-desktop-course-cell__admin-row"
                         >
-                          管理員投稿
-                        </Tag>
+                          <Tag
+                            class="soft-badge soft-badge--admin review-admin-upload-chip review-course-cell__admin-tag"
+                            severity="info"
+                          >
+                            管理員投稿
+                          </Tag>
+                        </div>
                       </div>
                       <div class="review-mobile-card-header">
                         <div class="review-mobile-card-title-block">
@@ -2074,14 +2187,14 @@
                       >
                     </template>
                   </Column>
-                  <Column>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
                     <template #header>
                       <button
                         type="button"
                         class="review-sort-header"
                         @click="toggleReviewSort('existing', 'submitted_at')"
                       >
-                        投稿時間
+                        投稿
                         <i
                           class="review-sort-icon"
                           :class="getReviewSortHeaderIcon('existing', 'submitted_at')"
@@ -2090,12 +2203,27 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewSubmissionTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span class="admin-actor-time__name" :title="getReviewRequesterLabel(data)">
+                          {{ getReviewRequesterLabel(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewSubmissionTimeValue(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewSubmissionTimeValue(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewSubmissionTimeValue(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
-                  <Column field="status">
+                  <Column
+                    field="status"
+                    headerClass="admin-desktop-status-column"
+                    bodyClass="admin-desktop-status-column"
+                    style="width: 6rem; min-width: 6rem"
+                  >
                     <template #header>
                       <button
                         type="button"
@@ -2111,29 +2239,66 @@
                       </button>
                     </template>
                     <template #body="{ data }">
-                      <Tag
-                        :class="[
-                          'soft-badge',
-                          'review-card-chip',
-                          'review-status-chip',
-                          getSubmissionStatusClass(data.status),
-                        ]"
-                        :severity="getSubmissionSeverity(data.status)"
+                      <div class="admin-desktop-status-cell">
+                        <Tag
+                          :class="[
+                            'soft-badge',
+                            'review-card-chip',
+                            'review-status-chip',
+                            'admin-desktop-status-tag',
+                            getSubmissionStatusClass(data.status),
+                          ]"
+                          :severity="getSubmissionSeverity(data.status)"
+                        >
+                          <span
+                            class="admin-desktop-status-label"
+                            :aria-label="getSubmissionLabel(data.status)"
+                          >
+                            <span
+                              v-for="(character, index) in Array.from(
+                                getSubmissionLabel(data.status)
+                              )"
+                              :key="`${character}-${index}`"
+                              aria-hidden="true"
+                              >{{ character }}</span
+                            >
+                          </span>
+                        </Tag>
+                      </div>
+                    </template>
+                  </Column>
+                  <Column style="width: 10.5rem; min-width: 10.5rem">
+                    <template #header>
+                      <button
+                        type="button"
+                        class="review-sort-header"
+                        @click="toggleReviewSort('existing', 'reviewed_at')"
                       >
-                        {{ getSubmissionLabel(data.status) }}
-                      </Tag>
+                        審核
+                        <i
+                          class="review-sort-icon"
+                          :class="getReviewSortHeaderIcon('existing', 'reviewed_at')"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
                     </template>
-                  </Column>
-                  <Column header="審核人">
                     <template #body="{ data }">
-                      <span class="review-card-meta-text">{{ formatReviewReviewer(data) }}</span>
-                    </template>
-                  </Column>
-                  <Column header="審核時間">
-                    <template #body="{ data }">
-                      <span class="review-card-meta-text">{{
-                        formatReviewReviewedTime(data)
-                      }}</span>
+                      <div class="admin-actor-time">
+                        <span
+                          class="admin-actor-time__name"
+                          :title="getReviewReviewerDisplay(data)"
+                        >
+                          {{ getReviewReviewerDisplay(data) }}
+                        </span>
+                        <time
+                          v-if="getReviewReviewedAt(data)"
+                          class="admin-actor-time__time"
+                          :datetime="getReviewReviewedAt(data)"
+                        >
+                          {{ formatAdminActorTime(getReviewReviewedAt(data)) }}
+                        </time>
+                        <span v-else class="admin-actor-time__time">—</span>
+                      </div>
                     </template>
                   </Column>
                   <Column header="操作">
@@ -2191,6 +2356,12 @@
                   </Column>
                 </DataTable>
               </div>
+            </div>
+          </TabPanel>
+
+          <TabPanel value="5">
+            <div class="p-2 md:p-4">
+              <ReportManagementPanel />
             </div>
           </TabPanel>
 
@@ -2267,14 +2438,14 @@
                 breakpoint="1023px"
                 :rowClass="getTrashRowClass"
               >
-                <Column field="deleted_at">
+                <Column field="deleted_at" style="width: 10.5rem; min-width: 10.5rem">
                   <template #header>
                     <button
                       type="button"
                       class="review-sort-header"
                       @click="toggleTrashSort('deleted_at')"
                     >
-                      刪除時間
+                      刪除
                       <i
                         class="review-sort-icon"
                         :class="getTrashSortHeaderIcon('deleted_at')"
@@ -2283,7 +2454,14 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <span>{{ formatTrashDeletedAt(data.deleted_at) }}</span>
+                    <div class="admin-actor-time">
+                      <span class="admin-actor-time__name" :title="getTrashDeletedByLabel(data)">
+                        {{ getTrashDeletedByLabel(data) }}
+                      </span>
+                      <time class="admin-actor-time__time" :datetime="data.deleted_at">
+                        {{ formatAdminActorTime(data.deleted_at) }}
+                      </time>
+                    </div>
                   </template>
                 </Column>
                 <Column field="item_type">
@@ -2307,7 +2485,12 @@
                     </Tag>
                   </template>
                 </Column>
-                <Column field="display_name">
+                <Column
+                  field="display_name"
+                  headerClass="trash-name-column"
+                  bodyClass="trash-name-column"
+                  style="width: clamp(14rem, 18vw, 18rem); max-width: 18rem"
+                >
                   <template #header>
                     <button
                       type="button"
@@ -2337,8 +2520,22 @@
                         >
                           {{ getTrashTreePrefix(data) }}
                         </span>
-                        {{ data.display_name }}
+                        <span
+                          :class="[
+                            'trash-name-title__text',
+                            { 'trash-user-name': data.item_type === 'user' },
+                          ]"
+                        >
+                          {{ data.display_name }}
+                        </span>
                       </strong>
+                      <small
+                        v-if="data.item_type === 'user' && data.user_email"
+                        class="trash-user-email"
+                        :title="data.user_email"
+                      >
+                        {{ data.user_email }}
+                      </small>
                       <small v-if="getTrashSubmissionLabel(data)">{{
                         getTrashSubmissionLabel(data)
                       }}</small>
@@ -2348,10 +2545,22 @@
                       <small v-if="getTrashContextLine(data)" class="text-secondary">
                         {{ getTrashContextLine(data) }}
                       </small>
+                      <small
+                        v-for="detail in getTrashReportDetails(data)"
+                        :key="detail.label"
+                        class="text-secondary"
+                      >
+                        {{ detail.label }}：{{ detail.value }}
+                      </small>
                     </span>
                   </template>
                 </Column>
-                <Column field="status">
+                <Column
+                  field="status"
+                  headerClass="admin-desktop-status-column"
+                  bodyClass="admin-desktop-status-column"
+                  style="width: 6rem; min-width: 6rem"
+                >
                   <template #header>
                     <button
                       type="button"
@@ -2367,38 +2576,39 @@
                     </button>
                   </template>
                   <template #body="{ data }">
-                    <Tag
-                      :class="[
-                        'soft-badge',
-                        'review-status-chip',
-                        getSubmissionStatusClass(data.status),
-                      ]"
-                      :severity="getTrashStatusSeverity(data.status)"
-                    >
-                      {{ getTrashStatusLabel(data.status) }}
-                    </Tag>
+                    <div class="admin-desktop-status-cell">
+                      <Tag
+                        :class="[
+                          'soft-badge',
+                          'review-status-chip',
+                          'admin-desktop-status-tag',
+                          getTrashStatusClass(data.status, data.item_type),
+                        ]"
+                        :severity="getTrashStatusSeverity(data.status, data.item_type)"
+                      >
+                        <span
+                          class="admin-desktop-status-label"
+                          :aria-label="getTrashStatusLabel(data.status, data.item_type)"
+                        >
+                          <span
+                            v-for="(character, index) in Array.from(
+                              getTrashStatusLabel(data.status, data.item_type)
+                            )"
+                            :key="`${character}-${index}`"
+                            aria-hidden="true"
+                            >{{ character }}</span
+                          >
+                        </span>
+                      </Tag>
+                    </div>
                   </template>
                 </Column>
-                <Column field="deleted_by_name">
-                  <template #header>
-                    <button
-                      type="button"
-                      class="review-sort-header"
-                      @click="toggleTrashSort('deleted_by')"
-                    >
-                      刪除者
-                      <i
-                        class="review-sort-icon"
-                        :class="getTrashSortHeaderIcon('deleted_by')"
-                        aria-hidden="true"
-                      ></i>
-                    </button>
-                  </template>
-                  <template #body="{ data }">
-                    <span>{{ getTrashDeletedByLabel(data) }}</span>
-                  </template>
-                </Column>
-                <Column header="依賴與阻擋">
+                <Column
+                  header="依賴與阻擋"
+                  headerClass="trash-dependencies-column"
+                  bodyClass="trash-dependencies-column"
+                  style="width: clamp(17rem, 22vw, 23rem); max-width: 23rem"
+                >
                   <template #body="{ data }">
                     <div class="trash-dependencies">
                       <Tag
@@ -2464,7 +2674,12 @@
                 >
                   <header class="trash-mobile-card-header">
                     <div class="trash-mobile-card-title-block">
-                      <strong class="trash-mobile-card-title">
+                      <strong
+                        :class="[
+                          'trash-mobile-card-title',
+                          { 'trash-user-name': data.item_type === 'user' },
+                        ]"
+                      >
                         <span
                           v-if="isTrashRelationHierarchyEnabled && (data?.trash_depth || 0) > 0"
                           class="trash-tree-prefix"
@@ -2474,6 +2689,13 @@
                         </span>
                         {{ data.display_name }}
                       </strong>
+                      <small
+                        v-if="data.item_type === 'user' && data.user_email"
+                        class="trash-user-email"
+                        :title="data.user_email"
+                      >
+                        {{ data.user_email }}
+                      </small>
                     </div>
                     <div class="trash-mobile-card-badges">
                       <Tag
@@ -2487,98 +2709,82 @@
                           'soft-badge',
                           'review-status-chip',
                           'trash-mobile-status',
-                          getSubmissionStatusClass(data.status),
+                          getTrashStatusClass(data.status, data.item_type),
                         ]"
-                        :severity="getTrashStatusSeverity(data.status)"
+                        :severity="getTrashStatusSeverity(data.status, data.item_type)"
                       >
-                        {{ getTrashStatusLabel(data.status) }}
+                        {{ getTrashStatusLabel(data.status, data.item_type) }}
                       </Tag>
                     </div>
                   </header>
 
                   <div class="trash-mobile-info-grid">
-                    <div v-if="getTrashSubmissionLabel(data)" class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">投稿編號</span>
-                      <span class="trash-mobile-info-value">{{
-                        getTrashSubmissionValue(data)
-                      }}</span>
-                    </div>
-                    <div v-if="getTrashSemesterValue(data)" class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">學期</span>
-                      <span class="trash-mobile-info-value">{{ getTrashSemesterValue(data) }}</span>
-                    </div>
-                    <div class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">刪除者</span>
-                      <span class="trash-mobile-info-value">{{
-                        getTrashDeletedByLabel(data)
-                      }}</span>
-                    </div>
-                    <div class="trash-mobile-info-item">
-                      <span class="trash-mobile-info-label">刪除時間</span>
-                      <span class="trash-mobile-info-value">{{
-                        formatTrashDeletedAt(data.deleted_at)
-                      }}</span>
-                    </div>
                     <div
-                      v-if="getTrashContextLine(data)"
-                      class="trash-mobile-info-item trash-mobile-info-item--wide"
-                    >
-                      <span class="trash-mobile-info-label">{{ getTrashContextLabel(data) }}</span>
-                      <span class="trash-mobile-info-value">{{ getTrashContextValue(data) }}</span>
-                    </div>
-                  </div>
-
-                  <div class="trash-mobile-dependencies">
-                    <Tag
-                      v-for="dependency in getTrashDependencies(data)"
-                      :key="dependency.key"
-                      :severity="getTrashDependencySeverity(dependency)"
+                      v-for="metadata in getTrashMobileMetadata(data)"
+                      :key="metadata.key"
                       :class="[
-                        'soft-badge',
-                        'trash-dependency-chip',
-                        getTrashDependencyChipClass(dependency),
+                        'trash-mobile-info-item',
+                        { 'trash-mobile-info-item--row-start': metadata.startNewRow },
                       ]"
                     >
-                      {{ dependency.label }}
-                    </Tag>
-                    <span
-                      v-if="!getTrashDependencies(data).length"
-                      class="soft-badge trash-dependency-chip trash-dependency-chip--clear"
-                      >無阻擋</span
-                    >
+                      <span class="trash-mobile-info-label">{{ metadata.label }}</span>
+                      <span class="trash-mobile-info-value">{{ metadata.value }}</span>
+                    </div>
                   </div>
 
-                  <section class="trash-mobile-card-actions">
-                    <Button
-                      v-if="canRestoreTrashItem(data)"
-                      icon="pi pi-undo"
-                      label="還原"
-                      aria-label="還原"
-                      title="還原"
-                      size="small"
-                      severity="success"
-                      outlined
-                      @click="confirmRestoreTrashItem(data)"
-                    />
-                    <Button
-                      v-if="canPermanentDeleteTrashItem(data)"
-                      class="trash-action-button trash-action-button--delete trash-action-permanent-delete admin-danger-outline-button"
-                      icon="pi pi-trash"
-                      label="永久刪除"
-                      aria-label="永久刪除"
-                      title="永久刪除"
-                      size="small"
-                      severity="danger"
-                      outlined
-                      @click="confirmPermanentDeleteTrashItem(data)"
-                    />
-                    <span
-                      v-if="!canRestoreTrashItem(data) && !canPermanentDeleteTrashItem(data)"
-                      class="text-xs text-500"
-                    >
-                      目前無可用操作
-                    </span>
-                  </section>
+                  <footer class="trash-mobile-card-footer">
+                    <div class="trash-mobile-dependencies">
+                      <Tag
+                        v-for="dependency in getTrashDependencies(data)"
+                        :key="dependency.key"
+                        :severity="getTrashDependencySeverity(dependency)"
+                        :class="[
+                          'soft-badge',
+                          'trash-dependency-chip',
+                          getTrashDependencyChipClass(dependency),
+                        ]"
+                      >
+                        {{ dependency.label }}
+                      </Tag>
+                      <span
+                        v-if="!getTrashDependencies(data).length"
+                        class="soft-badge trash-dependency-chip trash-dependency-chip--clear"
+                        >無阻擋</span
+                      >
+                    </div>
+
+                    <section class="trash-mobile-card-actions">
+                      <Button
+                        v-if="canRestoreTrashItem(data)"
+                        icon="pi pi-undo"
+                        label="還原"
+                        aria-label="還原"
+                        title="還原"
+                        size="small"
+                        severity="success"
+                        outlined
+                        @click="confirmRestoreTrashItem(data)"
+                      />
+                      <Button
+                        v-if="canPermanentDeleteTrashItem(data)"
+                        class="trash-action-button trash-action-button--delete trash-action-permanent-delete admin-danger-outline-button"
+                        icon="pi pi-trash"
+                        label="永久刪除"
+                        aria-label="永久刪除"
+                        title="永久刪除"
+                        size="small"
+                        severity="danger"
+                        outlined
+                        @click="confirmPermanentDeleteTrashItem(data)"
+                      />
+                      <span
+                        v-if="!canRestoreTrashItem(data) && !canPermanentDeleteTrashItem(data)"
+                        class="text-xs text-500"
+                      >
+                        目前無可用操作
+                      </span>
+                    </section>
+                  </footer>
                 </article>
               </div>
               <Paginator
@@ -2586,7 +2792,7 @@
                 :first="trashFirst"
                 :rows="trashRowsPerPage"
                 :totalRecords="sortedTrashItems.length"
-                :rowsPerPageOptions="[5, 10, 15, 25, 50]"
+                :rowsPerPageOptions="ADMIN_PAGE_SIZE_OPTIONS"
                 template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 currentPageReportTemplate="第 {currentPage} / {totalPages} 頁，共 {totalRecords} 筆"
                 class="trash-paginator"
@@ -3959,7 +4165,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { getCurrentUser } from '../utils/auth'
 import { isUnauthorizedError } from '../utils/http'
-import { formatRelativeTime } from '../utils/time'
+import { formatRelativeOrAbsoluteDateTime } from '../utils/time'
 import {
   PRODUCT_TIME_ZONE,
   PRODUCT_TIME_ZONE_LABEL,
@@ -3986,9 +4192,11 @@ import {
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { STORAGE_KEYS, getLocalItem, setLocalItem } from '../utils/storage'
 import { formatCourseDisplayName, normalizeCourseSearchText } from '../utils/courseText'
+import { ADMIN_PAGE_SIZE_OPTIONS } from '../constants/pagination'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import ContributorLevelBadge from '../components/ContributorLevelBadge.vue'
 import UserOnlineDurationChart from '../components/UserOnlineDurationChart.vue'
+import ReportManagementPanel from '../components/admin/ReportManagementPanel.vue'
 import {
   SUBMISSION_LEVELS,
   getContributorLevelPalette,
@@ -4008,7 +4216,6 @@ const courseLoadError = ref('')
 const searchQuery = ref('')
 const filterCategory = ref(null)
 const courseOrderLoading = ref(false)
-const ADMIN_PAGE_SIZE_OPTIONS = [5, 10, 15, 25, 50]
 const courseFirst = ref(0)
 const courseRows = ref(10)
 
@@ -4290,6 +4497,9 @@ const trashFilterOptions = [
   { label: '課程', value: 'course' },
   { label: '公告', value: 'notification' },
   { label: '使用者', value: 'user' },
+  { label: '系統問題回報', value: 'system_issue_report' },
+  { label: '留言回報', value: 'comment_report' },
+  { label: '考古題回報', value: 'archive_report' },
 ]
 const trashTypeLabels = trashFilterOptions.reduce((acc, option) => {
   if (option.value) acc[option.value] = option.label
@@ -4389,16 +4599,26 @@ const formatReviewSubmissionTime = (item) => {
   if (typeof value === 'object') {
     return value.display || value.label || '—'
   }
-  return formatRelativeTime(value)
+  return formatRelativeOrAbsoluteDateTime(value)
+}
+const getReviewRequesterLabel = (item) => {
+  return item?.requester_name || item?.requester_email || '—'
 }
 const formatReviewReviewer = (item) => {
   return (
     item?.reviewer_name || item?.reviewerName || item?.reviewer_username || item?.reviewer_id || '—'
   )
 }
+const getReviewReviewedAt = (item) => {
+  return item?.reviewed_at || item?.reviewedAt || item?.status_changed_at || null
+}
+const getReviewReviewerDisplay = (item) => {
+  if (!getReviewReviewedAt(item)) return '尚未審核'
+  return formatReviewReviewer(item)
+}
 const formatReviewReviewedTime = (item) => {
-  const value = item?.reviewed_at || item?.reviewedAt || item?.status_changed_at
-  return value ? formatRelativeTime(value) : '—'
+  const value = getReviewReviewedAt(item)
+  return formatRelativeOrAbsoluteDateTime(value)
 }
 const getReviewMobileCourseName = (item) => {
   return item?.requested_course_name || item?.requestedCourseName || item?.subject || '—'
@@ -4406,6 +4626,12 @@ const getReviewMobileCourseName = (item) => {
 const getReviewSortValue = (item, key) => {
   if (key === 'status') return getReviewItemStatusPriority(item)
   if (key === 'submitted_at') return getReviewTimestamp(item)
+  if (key === 'reviewed_at') {
+    const value = getReviewReviewedAt(item)
+    if (!value) return null
+    const time = new Date(value).getTime()
+    return Number.isNaN(time) ? null : time
+  }
   if (key === 'academic_year') return Number(item.academic_year) || null
   if (key === 'kind') return getArchiveSubmissionKind(item)
   return String(item?.[key] || '').trim()
@@ -4432,9 +4658,15 @@ const sortArchiveReviewItems = (items, section) => {
   return [...items].sort((a, b) => {
     const primaryDiff = compareReviewSortValues(a, b, key, direction)
     if (primaryDiff !== 0) return primaryDiff
+    if (key === 'submitted_at' || key === 'reviewed_at') {
+      const idDiff = (Number(a?.id) || 0) - (Number(b?.id) || 0)
+      return direction === 'desc' ? -idDiff : idDiff
+    }
     const statusDiff = getReviewItemStatusPriority(a) - getReviewItemStatusPriority(b)
     if (statusDiff !== 0) return statusDiff
-    return getReviewTimestamp(b) - getReviewTimestamp(a)
+    const timeDiff = getReviewTimestamp(b) - getReviewTimestamp(a)
+    if (timeDiff !== 0) return timeDiff
+    return (Number(b?.id) || 0) - (Number(a?.id) || 0)
   })
 }
 
@@ -4570,7 +4802,6 @@ const getTrashSortValue = (item, key) => {
   if (key === 'type') return getTrashTypeLabel(item?.item_type)
   if (key === 'name') return String(item?.display_name || '')
   if (key === 'status') return getTrashStatusLabel(item?.status)
-  if (key === 'deleted_by') return item?.deleted_by_name || ''
   if (key === 'dependencies')
     return getTrashDependencies(item)
       .map((dependency) => dependency.label)
@@ -4601,7 +4832,8 @@ const sortTrashItems = (rows) => {
   return [...rows].sort((a, b) => {
     const primaryDiff = compareTrashSortValues(a, b)
     if (primaryDiff !== 0) return primaryDiff
-    return getTrashDeletedTimestamp(b) - getTrashDeletedTimestamp(a)
+    const idDiff = (Number(a?.id) || 0) - (Number(b?.id) || 0)
+    return trashSortState.value.direction === 'desc' ? -idDiff : idDiff
   })
 }
 const toggleTrashSort = (key) => {
@@ -4873,12 +5105,46 @@ const getTrashContextLine = (item) => {
   return ''
 }
 
+const getSystemIssueReportTypeLabel = (value) =>
+  ({
+    bug: '程式錯誤',
+    enhancement: '功能建議',
+    performance: '效能問題',
+    'ui-ux': 'UI/UX',
+    question: '其他',
+  })[value] ||
+  value ||
+  '—'
+
+const getTrashReportDetails = (item) => {
+  if (item?.item_type === 'system_issue_report') {
+    return [
+      { label: '問題類型', value: getSystemIssueReportTypeLabel(item.report_type) },
+      { label: '回報者', value: item.reporter_name || '—' },
+      { label: '回報時間', value: item.created_at ? formatAdminActorTime(item.created_at) : '—' },
+      { label: '說明', value: '本地摘要' },
+    ]
+  }
+  if (item?.item_type === 'comment_report') {
+    return [
+      { label: '回報者', value: item.reporter_name || '—' },
+      { label: '留言者', value: item.comment_author_name || '—' },
+      {
+        label: '課程／考古題',
+        value: [item.course_name, item.archive_name].filter(Boolean).join(' · ') || '—',
+      },
+      { label: '回報時間', value: item.created_at ? formatAdminActorTime(item.created_at) : '—' },
+    ]
+  }
+  return []
+}
+
 const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB
 
 const getInitialTab = () => {
   try {
     const savedTab = getLocalItem(TAB_STORAGE_KEY)
-    if (savedTab && ['0', '1', '2', '3', '4'].includes(savedTab)) {
+    if (savedTab && ['0', '1', '2', '3', '4', '5'].includes(savedTab)) {
       return savedTab
     }
   } catch (e) {
@@ -5444,8 +5710,11 @@ const isNotificationEffective = (notification) => {
   return true
 }
 
-const formatNotificationDate = (value) => {
-  return formatRelativeTime(value)
+const formatAdminActorTime = (value) => formatRelativeOrAbsoluteDateTime(value)
+
+const getNotificationUpdaterLabel = (notification) => {
+  const label = String(notification?.updated_by_username || '').trim()
+  return label || '—'
 }
 
 const getSubmissionLabel = (status) => {
@@ -6191,7 +6460,7 @@ const loadTrashItems = async () => {
 }
 
 const formatTrashDeletedAt = (value) => {
-  return value ? formatRelativeTime(value) : '—'
+  return formatRelativeOrAbsoluteDateTime(value)
 }
 
 const getTrashSemesterText = (item) => {
@@ -6205,7 +6474,10 @@ const getTrashSemesterValue = (item) => {
   return item?.academic_term || '—'
 }
 
-const getTrashStatusLabel = (statusValue) => {
+const getTrashStatusLabel = (statusValue, itemType = null) => {
+  if (['system_issue_report', 'comment_report', 'archive_report'].includes(itemType)) {
+    return '已刪除'
+  }
   const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
   const labels = {
     pending: '待審核',
@@ -6217,12 +6489,21 @@ const getTrashStatusLabel = (statusValue) => {
   return labels[normalized] || '已刪除'
 }
 
-const getTrashStatusSeverity = (statusValue) => {
+const getTrashStatusSeverity = (statusValue, itemType = null) => {
+  if (['system_issue_report', 'comment_report', 'archive_report'].includes(itemType))
+    return 'danger'
   const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
   if (normalized === 'approved') return 'success'
   if (normalized === 'pending') return 'warning'
   if (normalized === 'takedown') return 'secondary'
   return 'danger'
+}
+
+const getTrashStatusClass = (statusValue, itemType = null) => {
+  if (['system_issue_report', 'comment_report', 'archive_report'].includes(itemType)) {
+    return 'review-status-deleted'
+  }
+  return getSubmissionStatusClass(statusValue)
 }
 
 const getTrashDeletedByLabel = (item) => {
@@ -6321,6 +6602,37 @@ const getTrashContextValue = (item) => {
   if (!line) return ''
   const separatorIndex = line.indexOf('：')
   return separatorIndex > 0 ? line.slice(separatorIndex + 1) : line
+}
+
+const getTrashMobileMetadata = (item) => {
+  const metadata = []
+  const submissionLabel = getTrashSubmissionLabel(item)
+  const semesterValue = getTrashSemesterValue(item)
+  const contextLine = getTrashContextLine(item)
+
+  if (submissionLabel) {
+    metadata.push({ key: 'submission', label: '投稿編號', value: getTrashSubmissionValue(item) })
+  }
+  if (semesterValue) {
+    metadata.push({ key: 'semester', label: '學期', value: semesterValue })
+  }
+  if (contextLine) {
+    metadata.push({
+      key: 'context',
+      label: getTrashContextLabel(item),
+      value: getTrashContextValue(item),
+      startNewRow: Boolean(submissionLabel && semesterValue),
+    })
+  }
+  getTrashReportDetails(item).forEach((detail, index) => {
+    metadata.push({ key: `report-${index}-${detail.label}`, ...detail })
+  })
+  metadata.push(
+    { key: 'deleted-by', label: '刪除者', value: getTrashDeletedByLabel(item) },
+    { key: 'deleted-at', label: '刪除時間', value: formatTrashDeletedAt(item?.deleted_at) }
+  )
+
+  return metadata
 }
 
 const applyDependencyCount = (label, count) => {
@@ -6654,7 +6966,7 @@ const restoreTrashItem = async (item) => {
 
 const confirmPermanentDeleteTrashItem = (item) => {
   confirm.require({
-    message: `確定要永久刪除「${item.display_name}」嗎？此動作無法復原。`,
+    message: `確定要永久刪除「${item.display_name}」嗎？永久刪除後無法復原。`,
     header: '確認永久刪除',
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
@@ -7733,7 +8045,7 @@ const deleteNotificationAction = async (notification) => {
 
 const formatDateTime = (dateString) => {
   if (!dateString) return '從未登入'
-  return formatRelativeTime(dateString)
+  return formatRelativeOrAbsoluteDateTime(dateString)
 }
 
 // Persist the current tab in localStorage
@@ -7771,7 +8083,10 @@ const loadTabData = async (value) => {
 
   if (tab === '4') {
     await loadTrashItems()
+    return
   }
+
+  if (tab === '5') return
 }
 
 const handleTabChange = (value) => {
@@ -7785,6 +8100,7 @@ const handleTabChange = (value) => {
     2: 'notifications',
     3: 'reviews',
     4: 'trash',
+    5: 'reports',
   }
 
   trackEvent(EVENTS.SWITCH_TAB, {
@@ -9216,6 +9532,30 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
+:deep(.review-desktop-course-cell) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+:deep(.review-desktop-course-cell__name),
+:deep(.review-desktop-course-cell__admin-row) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+:deep(.review-desktop-course-cell__name) {
+  overflow-wrap: anywhere;
+}
+
+:deep(.review-desktop-course-cell__admin-row) {
+  line-height: 1;
+}
+
 .category-color-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
@@ -9380,18 +9720,202 @@ onBeforeUnmount(() => {
   color: #fecaca;
 }
 
+.admin-actor-time {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1.3;
+}
+
+.admin-actor-time__name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--app-font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-actor-time__time {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+:deep(.review-request-table .admin-actor-time),
+:deep(.trash-table .admin-actor-time),
+:deep(.notification-management-table .admin-actor-time) {
+  min-width: 0;
+}
+
+:deep(.admin-desktop-status-column) {
+  width: 6rem;
+  min-width: 6rem;
+  text-align: center;
+}
+
+.admin-desktop-status-cell {
+  container-name: admin-status-cell;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.admin-desktop-status-cell .admin-desktop-status-tag.soft-badge) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: fit-content;
+  min-inline-size: 0;
+  max-width: 100%;
+  padding-inline: 0.5rem !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+:deep(.admin-desktop-status-tag .p-tag-label) {
+  white-space: inherit;
+}
+
+:deep(.admin-desktop-status-label) {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+@container admin-status-cell (max-width: 3.75rem) {
+  :deep(.admin-desktop-status-cell .admin-desktop-status-tag.soft-badge) {
+    inline-size: fit-content;
+    min-inline-size: 0;
+    max-inline-size: 2.1rem;
+    padding: 0.4rem 0.32rem !important;
+    white-space: normal;
+  }
+
+  :deep(.admin-desktop-status-label) {
+    flex-direction: column;
+  }
+}
+
+:deep(.review-submission-type-cell) {
+  container-name: review-submission-type-cell;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.review-desktop-submission-type-tag.soft-badge) {
+  max-width: 100%;
+  justify-content: center;
+}
+
+:deep(.submission-type-combined-label) {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+@container review-submission-type-cell (max-width: 7.25rem) {
+  :deep(.submission-type-combined-label) {
+    flex-direction: column;
+  }
+
+  :deep(.submission-type-combined-label__separator) {
+    display: none;
+  }
+}
+
+.notification-mobile-update,
+.notification-mobile-update__value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.12rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.notification-mobile-update {
+  gap: 0.12rem 0.35rem;
+}
+
+.notification-mobile-update__label,
+.notification-mobile-update__actor,
+.notification-mobile-update__time {
+  white-space: nowrap;
+}
+
+.notification-mobile-update__label,
+.notification-mobile-update__time {
+  color: var(--text-secondary);
+}
+
+.notification-mobile-update__actor {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+}
+
+.notification-mobile-update__time {
+  font-size: var(--app-font-size-xs);
+}
+
 .trash-name-cell {
   display: inline-flex;
   flex-direction: column;
   gap: 0.2rem;
-  min-width: 16rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .trash-name-title {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.35rem;
-  white-space: nowrap;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trash-name-title__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trash-user-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.trash-user-email {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  font-weight: 400;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .trash-tree-prefix {
@@ -9410,6 +9934,25 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+:deep(.trash-table .trash-dependencies-column) {
+  width: clamp(17rem, 22vw, 23rem);
+  max-width: 23rem;
+}
+
+:deep(.trash-table .trash-name-column) {
+  width: clamp(14rem, 18vw, 18rem);
+  max-width: 18rem;
+}
+
+:deep(.trash-table .trash-dependencies .trash-dependency-chip) {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .trash-mobile-list {
@@ -11404,11 +11947,17 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-mobile-info-item) {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
     min-width: 0;
   }
 
   :deep(.review-mobile-info-label) {
-    display: block;
+    display: inline;
+    flex: 0 0 auto;
     color: var(--text-secondary);
     font-size: 0.72rem;
     font-weight: 650;
@@ -11416,8 +11965,9 @@ onBeforeUnmount(() => {
   }
 
   :deep(.review-mobile-info-value) {
-    display: block;
-    margin-top: 0.08rem;
+    display: inline;
+    flex: 1 1 auto;
+    min-width: 0;
     color: var(--text-primary);
     font-size: 0.84rem;
     line-height: 1.3;
@@ -11861,18 +12411,21 @@ onBeforeUnmount(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.38rem 0.65rem;
     width: 100%;
-  }
-
-  .trash-mobile-info-item {
     min-width: 0;
   }
 
-  .trash-mobile-info-item--wide {
-    grid-column: auto;
+  .trash-mobile-info-item {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 0.12rem 0.35rem;
+    min-width: 0;
   }
 
   .trash-mobile-info-label {
-    display: block;
+    display: inline;
+    flex: 0 0 auto;
     color: var(--text-secondary);
     font-size: 0.72rem;
     font-weight: 700;
@@ -11880,8 +12433,9 @@ onBeforeUnmount(() => {
   }
 
   .trash-mobile-info-value {
-    display: block;
-    margin-top: 0.08rem;
+    display: inline;
+    flex: 1 1 auto;
+    min-width: 0;
     color: var(--text-primary);
     font-size: 0.85rem;
     line-height: 1.35;
@@ -11894,6 +12448,23 @@ onBeforeUnmount(() => {
     gap: 0.35rem;
     width: 100%;
     min-width: 0;
+  }
+
+  .trash-mobile-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.55rem 0.75rem;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0.05rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  }
+
+  .trash-mobile-card-footer .trash-mobile-dependencies {
+    flex: 1 1 12rem;
   }
 
   :deep(.trash-mobile-dependencies .trash-dependency-chip) {
@@ -11941,7 +12512,8 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: flex-end;
     gap: 0.45rem;
-    width: 100%;
+    flex: 0 0 auto;
+    width: auto;
     min-width: 0;
     overflow-x: visible;
     padding-bottom: 0.05rem;
@@ -12043,8 +12615,8 @@ onBeforeUnmount(() => {
     gap: 0.5rem 1rem;
   }
 
-  .trash-mobile-info-item--wide {
-    grid-column: span 2;
+  .trash-mobile-info-item--row-start {
+    grid-column: 1;
   }
 
   .trash-mobile-card-actions {
@@ -12069,6 +12641,16 @@ onBeforeUnmount(() => {
     overflow-x: visible;
   }
 
+  .trash-mobile-card-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .trash-mobile-card-footer .trash-mobile-dependencies,
+  .trash-mobile-card-footer .trash-mobile-card-actions {
+    width: 100%;
+  }
+
   :deep(.trash-mobile-card-actions .p-button) {
     width: 100%;
     min-width: 0;
@@ -12077,17 +12659,21 @@ onBeforeUnmount(() => {
   }
 
   :deep(.trash-mobile-card-actions .p-button-label) {
-    display: none;
+    display: inline-flex;
   }
 
   :deep(.trash-mobile-card-actions .pi) {
-    margin: 0;
+    margin-inline-end: 0.35rem;
   }
 }
 
 @media (max-width: 360px) {
   .trash-mobile-info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .trash-mobile-info-item--row-start {
+    grid-column: auto;
   }
 }
 

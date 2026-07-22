@@ -12,13 +12,112 @@ from app.main import app
 from app.models.models import (
     Archive,
     ArchiveSubmission,
+    ArchiveType,
     Course,
     CourseCategory,
+    CourseCategoryConfig,
+    PersonalNotification,
     SubmissionStatus,
     User,
     UserRoles,
 )
 from app.utils.auth import get_current_user
+
+
+def _override_admin(user_id: int):
+    async def _get_current_user():
+        return UserRoles(user_id=user_id, is_admin=True)
+
+    return _get_current_user
+
+
+@pytest.mark.asyncio
+async def test_archive_review_statuses_create_deduplicated_notifications(
+    client: AsyncClient, session_maker, make_user
+):
+    requester = await make_user(name="review-notification-requester")
+    admin = await make_user(name="review-notification-admin", is_admin=True)
+    category_key = f"review-{uuid.uuid4().hex[:8]}"
+    async with session_maker() as session:
+        category = CourseCategoryConfig(
+            key=category_key,
+            name="Review notification category",
+            label="Review notification category",
+            icon="pi pi-book",
+            is_active=True,
+            order_index=999,
+        )
+        course = Course(name="Review Notification Course", category=category_key)
+        session.add_all([category, course])
+        await session.commit()
+        await session.refresh(course)
+        submissions = []
+        for index in range(3):
+            submission = ArchiveSubmission(
+                subject=course.name,
+                category=category_key,
+                name=f"Review Exam {index}",
+                academic_year=2024,
+                archive_type=ArchiveType.FINAL,
+                professor="Prof",
+                object_name=f"review-{index}.pdf",
+                requester_id=requester.id,
+                status=SubmissionStatus.PENDING,
+            )
+            session.add(submission)
+            submissions.append(submission)
+        await session.commit()
+        for submission in submissions:
+            await session.refresh(submission)
+
+    app.dependency_overrides[get_current_user] = _override_admin(admin.id)
+    try:
+        responses = [
+            await client.post(f"/archives/admin/submissions/{submissions[0].id}/approve"),
+            await client.post(f"/archives/admin/submissions/{submissions[1].id}/reject"),
+            await client.post(f"/archives/admin/submissions/{submissions[2].id}/takedown"),
+        ]
+        assert [response.status_code for response in responses] == [200, 200, 200]
+
+        async with session_maker() as session:
+            notifications = list(
+                (
+                    await session.execute(
+                        select(PersonalNotification).where(
+                            PersonalNotification.user_id == requester.id,
+                            PersonalNotification.source_type == "archive_submission",
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert {item.notification_type for item in notifications} == {
+                "archive_submission_approved",
+                "archive_submission_rejected",
+                "archive_submission_takedown",
+            }
+            assert len({item.dedupe_key for item in notifications}) == 3
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(PersonalNotification).where(
+                    PersonalNotification.user_id == requester.id
+                )
+            )
+            created_ids = [submission.id for submission in submissions]
+            await session.execute(
+                delete(ArchiveSubmission).where(ArchiveSubmission.id.in_(created_ids))
+            )
+            await session.execute(
+                delete(Archive).where(Archive.uploader_id == requester.id)
+            )
+            await session.execute(delete(Course).where(Course.id == course.id))
+            await session.execute(
+                delete(CourseCategoryConfig).where(CourseCategoryConfig.key == category_key)
+            )
+            await session.commit()
 
 
 @pytest.mark.asyncio

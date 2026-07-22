@@ -9,6 +9,33 @@ export const notificationService = {
   getAll() {
     return api.get(BASE_PATH)
   },
+  getCenter(params) {
+    return api.get(`${BASE_PATH}/center`, { params })
+  },
+  getCounts() {
+    return api.get(`${BASE_PATH}/counts`)
+  },
+  getUnreadSummary(params) {
+    return api.get(`${BASE_PATH}/unread-summary`, { params })
+  },
+  markAnnouncementRead(id) {
+    return api.put(`${BASE_PATH}/announcements/${id}/read`)
+  },
+  markPersonalRead(id) {
+    return api.put(`${BASE_PATH}/personal/${id}/read`)
+  },
+  markAllPersonalRead() {
+    return api.put(`${BASE_PATH}/personal/read-all`)
+  },
+  deletePersonal(id) {
+    return api.delete(`${BASE_PATH}/personal/${id}`)
+  },
+  deleteAllPersonal() {
+    return api.delete(`${BASE_PATH}/personal`)
+  },
+  markAllRead() {
+    return api.put(`${BASE_PATH}/mark-all-read`)
+  },
   getAllAdmin() {
     return api.get(`${BASE_PATH}/admin/notifications`)
   },

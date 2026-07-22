@@ -111,25 +111,46 @@
             @click="handleToggleTheme"
           />
         </div>
-        <Menu ref="moreActionsMenu" :model="moreActions" :popup="true" />
+        <Menu ref="moreActionsMenu" :model="moreActions" :popup="true">
+          <template #item="{ item, props }">
+            <a v-bind="props.action" class="flex align-items-center gap-2">
+              <span :class="item.icon" />
+              <span class="flex-1">{{ item.label }}</span>
+              <Badge v-if="item.badge" :value="item.badge" severity="danger" />
+            </a>
+          </template>
+        </Menu>
       </template>
     </Menubar>
 
     <NotificationModal
-      v-if="isAuthenticated && pendingNotification"
+      v-if="isAuthenticated"
       :visible="notificationStore.state.modalVisible"
-      :notification="pendingNotification"
+      :summary="notificationStore.state.unreadSummary"
       @update:visible="handleNotificationModalVisible"
-      @dismiss="handleNotificationDismiss"
       @open-center="() => openNotificationCenter('notification-modal')"
+      @mark-all-read="handleMarkAllRead"
+      @view-announcement="handleSummaryAnnouncement"
+      @view-personal="handleSummaryPersonal"
     />
     <NotificationCenterModal
       v-if="isAuthenticated"
       :visible="notificationStore.state.centerVisible"
-      :notifications="notificationStore.state.all"
-      :loading="notificationStore.state.loadingAll"
+      :announcements="notificationStore.state.announcements"
+      :personal-notifications="notificationStore.state.personalNotifications"
+      :counts="notificationStore.state.counts"
+      :loading="notificationStore.state.loadingCenter"
+      :focus-type="notificationFocusType"
+      :focus-id="notificationFocusId"
+      :deleting-personal-id="deletingPersonalNotificationId"
+      :deleting-all-personal="deletingAllPersonalNotifications"
       @update:visible="handleNotificationCenterVisible"
-      @mark-seen="handleNotificationDetailSeen"
+      @mark-announcement-read="notificationStore.markAnnouncementRead"
+      @mark-personal-read="notificationStore.markPersonalRead"
+      @mark-all-personal-read="notificationStore.markAllPersonalRead"
+      @delete-personal="handleDeletePersonalNotification"
+      @delete-all-personal="handleDeleteAllPersonalNotifications"
+      @open-personal-source="handlePersonalNotificationSource"
     />
 
     <Dialog
@@ -190,12 +211,12 @@
       :closeOnEscape="true"
       :style="{ width: '700px', maxWidth: '90vw' }"
       class="issue-report-dialog"
-      :pt="{ root: { 'aria-label': '問題回報', 'aria-labelledby': null } }"
+      :pt="{ root: { 'aria-label': '系統問題回報', 'aria-labelledby': null } }"
     >
       <template #header>
         <div class="flex align-items-center gap-2.5">
           <i class="pi pi-comments text-2xl" />
-          <div class="text-xl leading-tight font-semibold">問題回報</div>
+          <div class="text-xl leading-tight font-semibold">系統問題回報</div>
         </div>
       </template>
       <div class="p-fluid w-full">
@@ -261,18 +282,21 @@
             class="flex-1"
           />
           <Button
-            label="提交到 GitHub"
+            label="建立回報並前往 GitHub"
             icon="pi pi-external-link"
             @click="submitIssueReport"
             :disabled="!canSubmitIssue"
+            :loading="issueSubmitting"
             class="flex-1"
           />
         </div>
 
-        <div class="mt-3 p-3 bg-blue-50 border-round text-sm flex align-items-center">
-          <i class="pi pi-info-circle text-blue-600 mr-2"></i>
-          <span class="text-blue-800">
-            點擊「提交到 GitHub」將會跳轉到 GitHub 頁面，您可以在那裡完成問題提交
+        <div class="mt-3 p-3 bg-blue-50 border-round text-sm flex align-items-start">
+          <i class="pi pi-info-circle text-blue-600 mr-2 mt-1"></i>
+          <span class="text-blue-800 line-height-3" style="overflow-wrap: anywhere">
+            系統會先保存本地回報摘要，再開啟 GitHub 預填 Issue 頁面。<br />
+            請先在目前瀏覽器登入 GitHub，否則登入後可能無法正確返回預填頁面。<br />
+            GitHub Issue 仍需由您在 GitHub 頁面確認送出後才會正式建立。
           </span>
         </div>
       </div>
@@ -283,9 +307,10 @@
 <script>
 import { getCurrentUser, isAuthenticated, setToken } from '../utils/auth.js'
 import { useTheme } from '../utils/useTheme'
-import { authService } from '../api'
+import { authService, reportService } from '../api'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { trackEvent, EVENTS } from '../utils/analytics'
 import { useNotifications } from '../utils/useNotifications'
 import NotificationModal from './NotificationModal.vue'
@@ -315,14 +340,20 @@ export default {
       userData: null,
       loading: false,
       issueReportVisible: false,
+      issueSubmitting: false,
       issueForm: {
         type: '',
         title: '',
         description: '',
         contact: '',
       },
+      viewportWidth: typeof window === 'undefined' ? 1024 : window.innerWidth,
       heartbeatIntervalMs: 60000,
       heartbeatTimer: null,
+      notificationFocusType: null,
+      notificationFocusId: null,
+      deletingPersonalNotificationId: null,
+      deletingAllPersonalNotifications: false,
       issueTypes: [
         { label: 'Bug / 程式錯誤', value: 'bug' },
         { label: '功能建議', value: 'enhancement' },
@@ -336,6 +367,7 @@ export default {
     const { isDarkTheme, toggleTheme } = useTheme()
     const router = useRouter()
     const toast = useToast()
+    const confirm = useConfirm()
     const notificationStore = useNotifications()
 
     return {
@@ -343,10 +375,15 @@ export default {
       toggleTheme,
       router,
       toast,
+      confirm,
       notificationStore,
     }
   },
   mounted() {
+    if (typeof window !== 'undefined') {
+      this.updateViewportWidth()
+      window.addEventListener('resize', this.updateViewportWidth, { passive: true })
+    }
     this.checkAuthentication()
     if (this.isAuthenticated) {
       void this.initializeNotifications()
@@ -378,6 +415,9 @@ export default {
   },
 
   beforeUnmount() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.updateViewportWidth)
+    }
     this.stopHeartbeat()
 
     if (typeof window !== 'undefined' && window.__pastexam) {
@@ -412,10 +452,15 @@ export default {
         this.notificationStore.state.active = []
         this.notificationStore.state.all = []
         this.notificationStore.state.initialized = false
+        this.notificationStore.resetForLogout?.()
       }
     },
   },
   methods: {
+    updateViewportWidth() {
+      if (typeof window !== 'undefined') this.viewportWidth = window.innerWidth
+    },
+
     toggleMoreActions(event) {
       if (!this.moreActions.length) {
         return
@@ -446,11 +491,20 @@ export default {
     },
 
     handleNotificationDismiss(notification) {
-      this.notificationStore.markNotificationAsSeen(notification)
+      this.notificationStore.markNotificationAsSeen?.(notification)
+      this.notificationStore.state.modalVisible = false
+    },
+
+    handleNotificationDetailSeen(notification) {
+      this.notificationStore.markNotificationAsSeen?.(notification)
     },
 
     handleNotificationCenterVisible(value) {
       this.notificationStore.state.centerVisible = value
+      if (!value) {
+        this.notificationFocusType = null
+        this.notificationFocusId = null
+      }
     },
 
     async initializeNotifications() {
@@ -462,19 +516,137 @@ export default {
         this.toast.add({
           severity: 'warn',
           summary: '請先登入',
-          detail: '登入後即可檢視所有公告',
+          detail: '登入後即可檢視公告與個人通知',
           life: 3000,
         })
         return
       }
 
       this.notificationStore.state.modalVisible = false
+      this.notificationFocusType = null
+      this.notificationFocusId = null
       trackEvent(EVENTS.OPEN_NOTIFICATION_CENTER, { from: source })
       await this.notificationStore.openCenter()
     },
 
-    handleNotificationDetailSeen(notification) {
-      this.notificationStore.markNotificationAsSeen(notification)
+    async handleMarkAllRead() {
+      await this.notificationStore.markAllRead()
+    },
+
+    async handleSummaryAnnouncement(id) {
+      await this.notificationStore.markAnnouncementRead(id)
+      this.notificationFocusType = 'announcement'
+      this.notificationFocusId = id
+      this.notificationStore.state.modalVisible = false
+      this.notificationStore.state.centerVisible = true
+      trackEvent(EVENTS.OPEN_NOTIFICATION_CENTER, { from: 'summary-announcement' })
+    },
+
+    async handleSummaryPersonal(id) {
+      await this.notificationStore.markPersonalRead(id)
+      this.notificationFocusType = 'personal'
+      this.notificationFocusId = id
+      this.notificationStore.state.modalVisible = false
+      this.notificationStore.state.centerVisible = true
+      trackEvent(EVENTS.OPEN_NOTIFICATION_CENTER, { from: 'summary-personal' })
+    },
+
+    async handlePersonalNotificationSource(item) {
+      const metadata = item?.metadata || {}
+      this.notificationStore.state.centerVisible = false
+      if (item?.source_type === 'archive_submission') {
+        await this.$router.push({
+          path: '/archive',
+          query: {
+            showSubmissionStatus: '1',
+            submissionId: metadata.submission_id || item.source_id,
+          },
+        })
+        return
+      }
+      if (item?.source_type === 'archive_discussion_thread') {
+        await this.$router.push({
+          path: '/archive',
+          query: {
+            courseId: metadata.course_id,
+            archiveId: metadata.archive_id,
+            threadId: metadata.thread_id || item.source_id,
+            messageId: metadata.message_id || metadata.reply_message_id || item.source_message_id,
+          },
+        })
+      }
+    },
+
+    async deletePersonalNotification(item) {
+      if (!item?.id || this.deletingPersonalNotificationId) return
+      this.deletingPersonalNotificationId = item.id
+      try {
+        await this.notificationStore.deletePersonalNotification(item.id)
+        this.toast.add({
+          severity: 'success',
+          summary: '通知已刪除',
+          detail: '這則個人通知已永久刪除',
+          life: 3000,
+        })
+      } catch (error) {
+        console.error('Delete personal notification error:', error)
+        this.toast.add({
+          severity: 'error',
+          summary: '刪除失敗',
+          detail: '無法刪除通知，請稍後再試',
+          life: 3000,
+        })
+      } finally {
+        this.deletingPersonalNotificationId = null
+      }
+    },
+
+    handleDeletePersonalNotification(item) {
+      this.confirm.require({
+        header: '刪除這則通知？',
+        message: '通知刪除後無法復原，也不會進入垃圾桶。',
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: '取消',
+        acceptLabel: '刪除',
+        acceptClass: 'p-button-danger',
+        accept: () => this.deletePersonalNotification(item),
+      })
+    },
+
+    async deleteAllPersonalNotifications() {
+      if (this.deletingAllPersonalNotifications) return
+      this.deletingAllPersonalNotifications = true
+      try {
+        await this.notificationStore.deleteAllPersonalNotifications()
+        this.toast.add({
+          severity: 'success',
+          summary: '已刪除全部個人通知',
+          detail: '所有個人通知已永久刪除',
+          life: 3000,
+        })
+      } catch (error) {
+        console.error('Delete all personal notifications error:', error)
+        this.toast.add({
+          severity: 'error',
+          summary: '刪除失敗',
+          detail: '無法刪除全部個人通知，請稍後再試',
+          life: 3000,
+        })
+      } finally {
+        this.deletingAllPersonalNotifications = false
+      }
+    },
+
+    handleDeleteAllPersonalNotifications() {
+      this.confirm.require({
+        header: '刪除全部個人通知？',
+        message: '這會永久刪除你的所有個人通知，刪除後無法復原，也不會進入垃圾桶。',
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: '取消',
+        acceptLabel: '全部刪除',
+        acceptClass: 'p-button-danger',
+        accept: () => this.deleteAllPersonalNotifications(),
+      })
     },
 
     handleToggleTheme() {
@@ -504,6 +676,7 @@ export default {
       this.loading = true
       try {
         const response = await authService.localLogin(this.username, this.password)
+        this.notificationStore?.beginLoginSession?.()
         setToken(response.access_token)
         this.loginVisible = false
         this.checkAuthentication()
@@ -555,6 +728,7 @@ export default {
       removeSessionItem(STORAGE_KEYS.session.AUTH_TOKEN)
       removeLocalItem(STORAGE_KEYS.local.SELECTED_SUBJECT)
       removeLocalItem(STORAGE_KEYS.local.ADMIN_CURRENT_TAB)
+      this.notificationStore.resetForLogout?.()
       this.isAuthenticated = false
       this.userData = null
 
@@ -609,9 +783,9 @@ export default {
         return
       }
 
-      await this.sendHeartbeat()
+      await this.sendHeartbeat(false)
       this.heartbeatTimer = setInterval(() => {
-        void this.sendHeartbeat()
+        void this.sendHeartbeat(true)
       }, this.heartbeatIntervalMs)
     },
 
@@ -622,13 +796,16 @@ export default {
       }
     },
 
-    async sendHeartbeat() {
+    async sendHeartbeat(refreshNotificationCounts = false) {
       if (!this.isAuthenticated) {
         return
       }
 
       try {
         await authService.heartbeat()
+        if (refreshNotificationCounts) {
+          await this.notificationStore.refreshCounts?.()
+        }
       } catch (error) {
         if (error?.response?.status !== 401) {
           console.debug('Heartbeat failed:', error?.message || error)
@@ -636,8 +813,9 @@ export default {
       }
     },
 
-    submitIssueReport() {
+    async submitIssueReport() {
       const { type, title, description, contact } = this.issueForm
+      if (!this.canSubmitIssue || this.issueSubmitting) return
 
       trackEvent(EVENTS.SUBMIT_ISSUE_REPORT, {
         type,
@@ -646,24 +824,39 @@ export default {
         descriptionLength: description.length,
       })
 
-      const systemInfo = this.getSystemInfo()
-      const issueBody = this.formatIssueBody(description, contact, systemInfo, type)
-      const repoOwner = 'PingScientist'
-      const repoName = 'PastExamWeb_PHY'
-      const githubUrl =
-        `https://github.com/${repoOwner}/${repoName}/issues/new?` +
-        `title=${encodeURIComponent(title)}&` +
-        `body=${encodeURIComponent(issueBody)}`
-
-      window.open(githubUrl, '_blank')
-
-      this.closeIssueReportDialog()
-      this.toast.add({
-        severity: 'success',
-        summary: '已跳轉到 GitHub',
-        detail: '請在 GitHub 頁面完成問題提交',
-        life: 3000,
-      })
+      this.issueSubmitting = true
+      try {
+        const systemInfo = this.getSystemInfo()
+        await reportService.createSystemIssue({
+          report_type: type,
+          title: title.trim(),
+          description: description.trim(),
+          contact: contact.trim() || null,
+          metadata: systemInfo,
+        })
+        const issueBody = this.formatIssueBody(description, contact, systemInfo, type)
+        const githubUrl =
+          'https://github.com/PingScientist/PastExamWeb_PHY/issues/new?' +
+          `title=${encodeURIComponent(title)}&body=${encodeURIComponent(issueBody)}`
+        window.open(githubUrl, '_blank', 'noopener,noreferrer')
+        this.closeIssueReportDialog()
+        this.toast.add({
+          severity: 'success',
+          summary: '回報摘要已保存',
+          detail: '已開啟 GitHub 預填頁面，請在 GitHub 完成送出',
+          life: 4000,
+        })
+      } catch (error) {
+        console.error('Submit system issue report error:', error)
+        this.toast.add({
+          severity: 'error',
+          summary: '回報建立失敗',
+          detail: '尚未開啟 GitHub，請稍後再試',
+          life: 3500,
+        })
+      } finally {
+        this.issueSubmitting = false
+      }
     },
 
     getSystemInfo() {
@@ -843,10 +1036,7 @@ export default {
 
   computed: {
     isDesktopView() {
-      if (typeof window === 'undefined') {
-        return false
-      }
-      return window.innerWidth >= 768
+      return this.viewportWidth >= 768
     },
 
     menuItems() {
@@ -873,12 +1063,13 @@ export default {
           command: () => this.invokeMenuAction(() => this.handleNavigatePersonalSettings()),
         },
         {
-          label: '公告中心',
+          label: '公告與通知',
           icon: 'pi pi-bell',
+          badge: this.notificationStore?.unreadTotal?.value || null,
           command: () => this.invokeMenuAction(() => this.openNotificationCenter('navbar-menu')),
         },
         {
-          label: '問題回報',
+          label: '系統問題回報',
           icon: 'pi pi-comments',
           command: () => this.invokeMenuAction(() => this.openIssueReportDialog()),
         },

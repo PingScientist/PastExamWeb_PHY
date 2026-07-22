@@ -1,134 +1,99 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import NotificationModal from '@/components/NotificationModal.vue'
 
-vi.mock('@/utils/markdown', () => ({
-  renderMarkdown: vi.fn((text) => `<p>${text}</p>`),
-}))
-
-const notification = {
-  id: 12,
-  title: '系統維護',
-  body: '維護通知',
-  severity: 'danger',
-  created_at: '2025-01-01T00:00:00Z',
+const summary = {
+  announcements: [
+    { id: 1, title: '系統維護', body: '維護通知', updated_at: '2026-01-01T00:00:00Z' },
+  ],
+  personal_notifications: [
+    { id: 2, title: '有人回覆', message: '回覆內容', created_at: '2026-01-02T00:00:00Z' },
+  ],
+  counts: { total: 2 },
 }
-
-const markdownNotification = {
-  id: 13,
-  title: 'Markdown 測試',
-  body: '這是 **粗體** 和 [連結](https://example.com)',
-  severity: 'info',
-  created_at: '2025-01-02T00:00:00Z',
-}
-
-const stubComponent = { template: '<div><slot /></div>' }
+const slotStub = { template: '<div><slot /><slot name="footer" /></div>' }
 
 describe('NotificationModal', () => {
-  it('handles severity, dismiss, and timestamp formatting', () => {
+  it('renders separated unread summaries and clear actions', async () => {
+    const wrapper = mount(NotificationModal, {
+      props: { visible: true, summary },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Button: {
+            template: '<button @click="$emit(\'click\')"><slot />{{ $attrs.label }}</button>',
+          },
+          Badge: true,
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('公告')
+    expect(wrapper.text()).toContain('個人通知')
+    expect(wrapper.text()).toContain('系統維護')
+    expect(wrapper.text()).toContain('有人回覆')
+    expect(wrapper.text()).toContain('2026/01/01 08:00')
+    expect(wrapper.text()).toContain('2026/01/02 08:00')
+    expect(wrapper.text()).not.toMatch(/上午|下午|凌晨|晚上|AM|PM|剛剛|分鐘前/)
+    await wrapper.findAll('button')[0].trigger('click')
+    expect(wrapper.emitted('view-announcement')[0]).toEqual([1])
+  })
+
+  it('adds dividers to complete summary item wrappers after the first message', () => {
+    const announcements = [
+      summary.announcements[0],
+      { ...summary.announcements[0], id: 3, title: '第二則公告' },
+      { ...summary.announcements[0], id: 4, title: '第三則公告' },
+    ]
     const wrapper = mount(NotificationModal, {
       props: {
         visible: true,
-        notification,
+        summary: { announcements, personal_notifications: [], counts: { total: 3 } },
       },
       global: {
         stubs: {
-          Dialog: stubComponent,
-          Button: stubComponent,
-          Tag: stubComponent,
+          Dialog: slotStub,
+          Button: {
+            template: '<button @click="$emit(\'click\')"><slot />{{ $attrs.label }}</button>',
+          },
+          Badge: true,
         },
       },
     })
 
-    const vm = wrapper.vm
-
-    expect(vm.resolveSeverity('danger')).toBe('danger')
-    expect(vm.resolveSeverity('info')).toBe('info')
-    expect(vm.resolveSeverityLabel('danger')).toBe('重要')
-    expect(vm.resolveSeverityLabel('info')).toBe('一般')
-
-    const formatted = vm.formatTimestamp(notification.created_at)
-    expect(formatted).toContain('01')
-
-    vm.handleDismiss()
-    expect(wrapper.emitted('dismiss')).toBeTruthy()
-    expect(wrapper.emitted('update:visible')).toBeTruthy()
-
-    vm.openCenter()
-    expect(wrapper.emitted('open-center')).toBeTruthy()
-
-    vm.handleVisibility(false)
-    expect(wrapper.emitted('update:visible').pop()).toEqual([false])
-
-    wrapper.unmount()
-  })
-
-  it('renders markdown content in notification body', async () => {
-    const { renderMarkdown } = await import('@/utils/markdown')
-
-    const wrapper = mount(NotificationModal, {
-      props: {
-        visible: true,
-        notification: markdownNotification,
-      },
-      global: {
-        stubs: {
-          Dialog: stubComponent,
-          Button: stubComponent,
-          Tag: stubComponent,
-        },
-      },
-    })
-
-    const vm = wrapper.vm
-
-    expect(vm.renderedBody).toBeTruthy()
-    expect(renderMarkdown).toHaveBeenCalledWith(markdownNotification.body)
-
-    // Test computed property with null notification
-    await wrapper.setProps({ notification: null })
-    expect(vm.renderedBody).toBe('')
-
-    // Test with empty body
-    await wrapper.setProps({
-      notification: { ...notification, body: '' },
-    })
-    expect(renderMarkdown).toHaveBeenCalledWith('')
-
-    wrapper.unmount()
-  })
-
-  it('renders list markdown correctly', async () => {
-    vi.resetModules()
-    vi.doUnmock('@/utils/markdown')
-    const { renderMarkdown } = await import('@/utils/markdown')
-
-    const listNotification = {
-      id: 14,
-      title: '列表測試',
-      body: '1. 第一項\n2. 第二項\n3. 第三項',
-      severity: 'info',
-      created_at: '2025-01-01T00:00:00Z',
+    const items = wrapper.findAll('.summary-item')
+    const dividedItems = wrapper.findAll('.summary-item--divided')
+    expect(items).toHaveLength(3)
+    expect(dividedItems).toHaveLength(2)
+    expect(items[0].classes()).not.toContain('summary-item--divided')
+    expect(items[1].classes()).toContain('summary-item--divided')
+    expect(items[2].classes()).toContain('summary-item--divided')
+    for (const item of dividedItems) {
+      expect(item.find('.summary-item__body').exists()).toBe(true)
+      expect(item.get('button').text()).toBe('檢視')
     }
+    expect(wrapper.get('.summary-actions').findAll('button')).toHaveLength(3)
+  })
 
+  it('does not render a divider for a single summary message', () => {
     const wrapper = mount(NotificationModal, {
       props: {
         visible: true,
-        notification: listNotification,
+        summary: {
+          announcements: [],
+          personal_notifications: summary.personal_notifications,
+          counts: { total: 1 },
+        },
       },
       global: {
         stubs: {
-          Dialog: stubComponent,
-          Button: stubComponent,
-          Tag: stubComponent,
+          Dialog: slotStub,
+          Button: true,
+          Badge: true,
         },
       },
     })
 
-    const rendered = renderMarkdown(listNotification.body)
-    expect(rendered).toContain('<ol>')
-    expect(rendered).toContain('<li>')
-
-    wrapper.unmount()
+    expect(wrapper.findAll('.summary-item')).toHaveLength(1)
+    expect(wrapper.find('.summary-item--divided').exists()).toBe(false)
   })
 })

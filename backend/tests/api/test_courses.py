@@ -23,12 +23,14 @@ from app.api.services.courses import (
 from app.main import app
 from app.models.models import (
     Archive,
+    ArchiveSubmission,
     ArchiveType,
     ArchiveUpdateCourse,
     Course,
     CourseCategory,
     CourseCreate,
     CourseUpdate,
+    SubmissionStatus,
     UserRoles,
 )
 from app.utils.auth import get_current_user
@@ -93,6 +95,32 @@ async def _create_archive(
         await session.commit()
         await session.refresh(archive)
         return archive
+
+
+async def _create_linked_submission(
+    session_maker,
+    *,
+    archive: Archive,
+    requester_id: int,
+):
+    async with session_maker() as session:
+        submission = ArchiveSubmission(
+            subject=f"Linked archive {archive.id}",
+            category=CourseCategory.FRESHMAN.value,
+            name=archive.name,
+            academic_year=archive.academic_year,
+            archive_type=archive.archive_type,
+            professor=archive.professor,
+            has_answers=archive.has_answers,
+            object_name=f"submissions/{uuid.uuid4().hex}.pdf",
+            status=SubmissionStatus.APPROVED,
+            requester_id=requester_id,
+            created_archive_id=archive.id,
+        )
+        session.add(submission)
+        await session.commit()
+        await session.refresh(submission)
+        return submission
 
 
 def _override_user(user):
@@ -164,6 +192,64 @@ async def test_get_course_archives_returns_active_archives(
             await session.execute(
                 delete(Course).where(Course.id == course.id)
             )
+            await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_get_course_archives_limits_submission_ids_to_owner_or_admin(
+    client: AsyncClient,
+    session_maker,
+    make_user,
+):
+    owner = await make_user()
+    other_user = await make_user()
+    admin = await make_user(is_admin=True)
+    course = await _create_course(session_maker)
+    owner_archive = await _create_archive(
+        session_maker, course_id=course.id, uploader_id=owner.id, name="Owner archive"
+    )
+    other_archive = await _create_archive(
+        session_maker, course_id=course.id, uploader_id=other_user.id, name="Other archive"
+    )
+    owner_submission = await _create_linked_submission(
+        session_maker, archive=owner_archive, requester_id=owner.id
+    )
+    other_submission = await _create_linked_submission(
+        session_maker, archive=other_archive, requester_id=other_user.id
+    )
+
+    async def fetch_as(user):
+        app.dependency_overrides[get_current_user] = _override_user(user)
+        response = await client.get(f"/courses/{course.id}/archives")
+        assert response.status_code == 200
+        return {item["id"]: item for item in response.json()}
+
+    try:
+        owner_rows = await fetch_as(owner)
+        assert owner_rows[owner_archive.id]["source_submission_ids"] == [owner_submission.id]
+        assert owner_rows[other_archive.id]["source_submission_ids"] == []
+
+        other_rows = await fetch_as(other_user)
+        assert other_rows[owner_archive.id]["source_submission_ids"] == []
+        assert other_rows[other_archive.id]["source_submission_ids"] == [other_submission.id]
+
+        admin_rows = await fetch_as(admin)
+        assert admin_rows[owner_archive.id]["source_submission_ids"] == [owner_submission.id]
+        assert admin_rows[other_archive.id]["source_submission_ids"] == [other_submission.id]
+
+        app.dependency_overrides.pop(get_current_user, None)
+        unauthenticated_response = await client.get(f"/courses/{course.id}/archives")
+        assert unauthenticated_response.status_code in {401, 403}
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(ArchiveSubmission).where(
+                    ArchiveSubmission.id.in_([owner_submission.id, other_submission.id])
+                )
+            )
+            await session.execute(delete(Archive).where(Archive.course_id == course.id))
+            await session.execute(delete(Course).where(Course.id == course.id))
             await session.commit()
 
 

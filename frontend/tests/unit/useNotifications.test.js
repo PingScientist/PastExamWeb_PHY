@@ -1,199 +1,115 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const activeNotifications = vi.hoisted(() => [
-  { id: 2, title: 'Old', created_at: '2025-10-01T10:00:00Z', updated_at: '2025-10-01T10:00:00Z' },
-  { id: 5, title: 'New', created_at: '2025-11-01T10:00:00Z', updated_at: '2025-11-01T10:00:00Z' },
-])
-
-const allNotifications = vi.hoisted(() => [
-  {
-    id: 1,
-    title: 'Archived',
-    created_at: '2025-09-01T10:00:00Z',
-    updated_at: '2025-09-01T10:00:00Z',
-  },
-  {
-    id: 3,
-    title: 'Another',
-    created_at: '2025-10-15T10:00:00Z',
-    updated_at: '2025-10-15T10:00:00Z',
-  },
-])
-
-const getActiveMock = vi.hoisted(() =>
-  vi.fn(async () => ({
-    data: activeNotifications.map((item) => ({ ...item })),
-  }))
-)
-
-const getAllMock = vi.hoisted(() =>
-  vi.fn(async () => ({
-    data: allNotifications.map((item) => ({ ...item })),
-  }))
-)
-
-const isUnauthorizedErrorMock = vi.hoisted(() => vi.fn(() => false))
-
-vi.mock('@/api', () => ({
-  notificationService: {
-    getActive: getActiveMock,
-    getAll: getAllMock,
-  },
-}))
-
-vi.mock('@/utils/http', () => ({
-  isUnauthorizedError: isUnauthorizedErrorMock,
-}))
-
-async function importComposable() {
-  const module = await import('@/utils/useNotifications.js')
-  return module.useNotifications()
+const summary = {
+  announcements: [{ id: 1, title: '公告' }],
+  personal_notifications: [{ id: 2, title: '回覆' }],
+  counts: { announcements: 1, personal_notifications: 1, total: 2 },
 }
+const center = { ...summary }
+const service = vi.hoisted(() => ({
+  getUnreadSummary: vi.fn(),
+  getCenter: vi.fn(),
+  getCounts: vi.fn(),
+  markAnnouncementRead: vi.fn(),
+  markPersonalRead: vi.fn(),
+  markAllPersonalRead: vi.fn(),
+  markAllRead: vi.fn(),
+  deletePersonal: vi.fn(),
+  deleteAllPersonal: vi.fn(),
+}))
+vi.mock('@/api', () => ({ notificationService: service }))
+vi.mock('@/utils/http', () => ({ isUnauthorizedError: () => false }))
 
-describe('useNotifications composable', () => {
-  let consoleErrorSpy
-  let consoleWarnSpy
-
+describe('useNotifications', () => {
   beforeEach(() => {
     vi.resetModules()
-    getActiveMock.mockClear()
-    getAllMock.mockClear()
-    getActiveMock.mockImplementation(async () => ({
-      data: activeNotifications.map((item) => ({ ...item })),
-    }))
-    getAllMock.mockImplementation(async () => ({
-      data: allNotifications.map((item) => ({ ...item })),
-    }))
-    isUnauthorizedErrorMock.mockImplementation(() => false)
-    localStorage.clear()
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    sessionStorage.clear()
+    Object.values(service).forEach((mock) => mock.mockReset())
+    service.getUnreadSummary.mockResolvedValue({ data: structuredClone(summary) })
+    service.getCenter.mockResolvedValue({ data: structuredClone(center) })
+    service.getCounts.mockResolvedValue({ data: structuredClone(summary.counts) })
+    service.markAnnouncementRead.mockResolvedValue({})
+    service.markPersonalRead.mockResolvedValue({})
+    service.markAllPersonalRead.mockResolvedValue({})
+    service.markAllRead.mockResolvedValue({})
+    service.deletePersonal.mockResolvedValue({ data: { success: true } })
+    service.deleteAllPersonal.mockResolvedValue({ data: { deleted_count: 1 } })
   })
 
-  afterEach(() => {
-    consoleErrorSpy.mockRestore()
-    consoleWarnSpy.mockRestore()
-  })
-
-  it('initializes by fetching active notifications and opens modal when unseen exists', async () => {
-    const composable = await importComposable()
-
-    await composable.initNotifications()
-
-    expect(getActiveMock).toHaveBeenCalledTimes(1)
-    // Sort by updated_at descending
-    expect(composable.state.active.map((n) => n.id)).toEqual([5, 2])
-    expect(composable.state.modalVisible).toBe(true)
-    expect(composable.latestUnseenNotification.value?.id).toBe(5)
-  })
-
-  it('marks notification as seen and persists last seen timestamp', async () => {
-    const composable = await importComposable()
-    await composable.initNotifications()
-
-    const notification = {
-      id: 5,
-      created_at: '2025-11-01T10:00:00Z',
-      updated_at: '2025-11-01T10:00:00Z',
-    }
-    composable.markNotificationAsSeen(notification)
-
-    expect(composable.state.modalVisible).toBe(false)
-    const expectedTimestamp = new Date('2025-11-01T10:00:00Z').getTime()
-    expect(composable.lastSeenTimestamp.value).toBe(expectedTimestamp)
-    expect(localStorage.getItem('notification-last-seen')).toBe(String(expectedTimestamp))
-  })
-
-  it('loads all notifications when opening center', async () => {
-    const composable = await importComposable()
-
-    await composable.openCenter()
-
-    expect(getAllMock).toHaveBeenCalledTimes(1)
-    expect(composable.state.centerVisible).toBe(true)
-    // Sort by updated_at descending
-    expect(composable.state.all.map((n) => n.id)).toEqual([3, 1])
-  })
-
-  it('logs warning when reading stored last seen timestamp fails', async () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('read fail')
+  it('removes one notification and refreshes shared unread state after success', async () => {
+    const { useNotifications } = await import('@/utils/useNotifications.js')
+    const store = useNotifications()
+    await store.openCenter()
+    service.getCenter.mockResolvedValueOnce({
+      data: {
+        announcements: summary.announcements,
+        personal_notifications: [],
+        counts: { announcements: 1, personal_notifications: 0, total: 1 },
+      },
+    })
+    service.getUnreadSummary.mockResolvedValueOnce({
+      data: {
+        announcements: summary.announcements,
+        personal_notifications: [],
+        counts: { announcements: 1, personal_notifications: 0, total: 1 },
+      },
     })
 
-    const composable = await importComposable()
+    await store.deletePersonalNotification(2)
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to read notification last seen timestamp:'),
-      expect.any(Error)
-    )
-    expect(composable.lastSeenTimestamp.value).toBe(0)
-
-    getItemSpy.mockRestore()
+    expect(service.deletePersonal).toHaveBeenCalledWith(2)
+    expect(store.state.personalNotifications).toEqual([])
+    expect(store.state.unreadSummary.personal_notifications).toEqual([])
+    expect(store.state.counts).toEqual({ announcements: 1, personal_notifications: 0, total: 1 })
   })
 
-  it('handles refreshActive errors gracefully', async () => {
-    const error = new Error('active fail')
-    getActiveMock.mockRejectedValueOnce(error)
+  it('keeps data on delete failure and clears all personal notification state after bulk success', async () => {
+    const { useNotifications } = await import('@/utils/useNotifications.js')
+    const store = useNotifications()
+    await store.openCenter()
+    service.deletePersonal.mockRejectedValueOnce(new Error('delete failed'))
+    await expect(store.deletePersonalNotification(2)).rejects.toThrow('delete failed')
+    expect(store.state.personalNotifications).toHaveLength(1)
 
-    const composable = await importComposable()
-    consoleErrorSpy.mockClear()
-
-    await composable.refreshActive()
-
-    expect(composable.errors.active).toBe(error)
-    expect(composable.state.modalVisible).toBe(false)
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to load active notifications:', error)
+    await store.deleteAllPersonalNotifications()
+    expect(service.deleteAllPersonal).toHaveBeenCalledOnce()
+    expect(store.state.personalNotifications).toEqual([])
+    expect(store.state.unreadSummary.personal_notifications).toEqual([])
+    expect(store.state.counts).toEqual({ announcements: 1, personal_notifications: 0, total: 1 })
   })
 
-  it('handles refreshAll unauthorized errors without opening center', async () => {
-    const error = new Error('unauthorized')
-    getAllMock.mockRejectedValueOnce(error)
-    isUnauthorizedErrorMock.mockImplementation(() => true)
-
-    const composable = await importComposable()
-    consoleErrorSpy.mockClear()
-
-    await composable.openCenter()
-
-    expect(composable.errors.all).toBe(error)
-    expect(composable.state.centerVisible).toBe(false)
-    expect(consoleErrorSpy).not.toHaveBeenCalled()
-
-    isUnauthorizedErrorMock.mockImplementation(() => false)
+  it('checks unread content once per login session', async () => {
+    const { useNotifications } = await import('@/utils/useNotifications.js')
+    const store = useNotifications()
+    await store.initNotifications()
+    expect(store.state.modalVisible).toBe(true)
+    expect(store.unreadTotal.value).toBe(2)
+    await store.initNotifications()
+    expect(service.getUnreadSummary).toHaveBeenCalledTimes(1)
   })
 
-  it('skips refreshing all notifications when already loading', async () => {
-    const composable = await importComposable()
-    composable.state.loadingAll = true
-
-    await composable.refreshAll()
-
-    expect(getAllMock).not.toHaveBeenCalled()
+  it('does not reopen the login summary after a module remount in the same session', async () => {
+    sessionStorage.setItem('notification-login-checked', '1')
+    const { useNotifications } = await import('@/utils/useNotifications.js')
+    const store = useNotifications()
+    await store.initNotifications()
+    expect(store.state.modalVisible).toBe(false)
+    expect(store.state.counts.total).toBe(2)
   })
 
-  it('logs errors when persisting last seen timestamp fails', async () => {
-    const composable = await importComposable()
-    await composable.initNotifications()
-
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('persist fail')
-    })
-
-    consoleErrorSpy.mockClear()
-    const notification = {
-      id: 10,
-      created_at: '2025-11-02T10:00:00Z',
-      updated_at: '2025-11-02T10:00:00Z',
-    }
-    composable.markNotificationAsSeen(notification)
-
-    const expectedTimestamp = new Date('2025-11-02T10:00:00Z').getTime()
-    expect(composable.lastSeenTimestamp.value).toBe(expectedTimestamp)
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Failed to persist notification last seen timestamp:',
-      expect.any(Error)
-    )
-
-    setItemSpy.mockRestore()
+  it('loads the separated center and updates read state through the API', async () => {
+    const { useNotifications } = await import('@/utils/useNotifications.js')
+    const store = useNotifications()
+    await store.openCenter()
+    expect(store.state.announcements).toHaveLength(1)
+    expect(store.state.personalNotifications).toHaveLength(1)
+    await store.markAnnouncementRead(1)
+    await store.markPersonalRead(2)
+    await store.markAllPersonalRead()
+    await store.markAllRead()
+    expect(service.markAnnouncementRead).toHaveBeenCalledWith(1)
+    expect(service.markPersonalRead).toHaveBeenCalledWith(2)
+    expect(service.markAllPersonalRead).toHaveBeenCalledOnce()
+    expect(service.markAllRead).toHaveBeenCalledOnce()
   })
 })

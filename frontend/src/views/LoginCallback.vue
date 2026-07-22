@@ -32,7 +32,7 @@
 <script>
 import { useTheme } from '../utils/useTheme'
 import { getFieldBgSvg } from '../utils/svgBg'
-import { STORAGE_KEYS, setSessionItem } from '../utils/storage'
+import { STORAGE_KEYS, removeSessionItem, setSessionItem } from '../utils/storage'
 import { api } from '../api/services/client'
 
 export default {
@@ -68,6 +68,7 @@ export default {
         throw new Error('No authentication token received')
       }
 
+      removeSessionItem(STORAGE_KEYS.session.NOTIFICATION_LOGIN_CHECKED)
       setSessionItem(STORAGE_KEYS.session.AUTH_TOKEN, token)
       await api.post('/auth/record-login')
       this.$router.replace('/archive')

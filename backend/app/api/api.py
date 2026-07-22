@@ -6,6 +6,7 @@ from app.api.services import (
     courses,
     meme,
     notifications,
+    reports,
     settings,
     statistics,
     trash,
@@ -25,3 +26,4 @@ api_router.include_router(trash.router, prefix="/trash", tags=["trash"])
 api_router.include_router(
     notifications.router, prefix="/notifications", tags=["notifications"]
 )
+api_router.include_router(reports.router, prefix="/reports", tags=["reports"])

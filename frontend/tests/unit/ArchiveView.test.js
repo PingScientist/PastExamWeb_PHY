@@ -14,6 +14,7 @@ const getCurrentUserMock = vi.hoisted(() =>
 const isAuthenticatedMock = vi.hoisted(() => vi.fn(() => true))
 
 const listCoursesMock = vi.hoisted(() => vi.fn())
+const listCategoriesMock = vi.hoisted(() => vi.fn())
 const getCourseArchivesMock = vi.hoisted(() => vi.fn())
 const getArchiveDownloadUrlMock = vi.hoisted(() => vi.fn())
 const getArchivePreviewUrlMock = vi.hoisted(() => vi.fn())
@@ -32,7 +33,7 @@ let consoleErrorSpy
 
 const sampleCourses = {
   freshman: [
-    { id: 'c1', name: 'Calculus I' },
+    { id: 'c1', name: 'Calculus I', english_name: 'Calculus I (English)' },
     { id: 'c2', name: 'Linear Algebra' },
   ],
   sophomore: [{ id: 'c3', name: 'Data Structures' }],
@@ -52,6 +53,7 @@ const baseArchives = [
     has_answers: true,
     uploader_id: 10,
     download_count: 3,
+    source_submission_ids: [44],
   },
   {
     id: 'a2',
@@ -73,11 +75,13 @@ const updatedArchives = baseArchives.map((archive, index) => ({
 vi.mock('@/api', () => ({
   courseService: {
     listCourses: listCoursesMock,
+    listCategories: listCategoriesMock,
     getCourseArchives: getCourseArchivesMock,
   },
   archiveService: {
     getArchiveDownloadUrl: getArchiveDownloadUrlMock,
     getArchivePreviewUrl: getArchivePreviewUrlMock,
+    getArchivePreviewFile: getArchivePreviewUrlMock,
     deleteArchive: deleteArchiveMock,
     updateArchive: updateArchiveMock,
     updateArchiveCourse: updateArchiveCourseMock,
@@ -136,7 +140,7 @@ const componentStubs = {
   PanelMenu: { template: slotDivTemplate },
   Drawer: { template: slotDivTemplate },
   Tag: { template: slotDivTemplate },
-  Toolbar: { template: slotDivTemplate },
+  Toolbar: { template: '<div><slot name="start" /></div>' },
   Select: { template: slotDivTemplate },
   Checkbox: { template: slotDivTemplate },
   ProgressSpinner: { template: '<div class="spinner"><slot /></div>' },
@@ -163,8 +167,11 @@ describe('ArchiveView', () => {
     globalThis.localStorage?.clear?.()
     sessionStorage.clear()
     trackEventMock.mockReset()
+    getCurrentUserMock.mockReturnValue({ id: 10, is_admin: true })
+    isAuthenticatedMock.mockReturnValue(true)
     isUnauthorizedErrorMock.mockReturnValue(false)
     listCoursesMock.mockResolvedValue({ data: sampleCourses })
+    listCategoriesMock.mockResolvedValue({ data: [] })
     getCourseArchivesMock.mockReset()
     getCourseArchivesMock
       .mockResolvedValueOnce({ data: baseArchives })
@@ -240,6 +247,19 @@ describe('ArchiveView', () => {
     expect(getCourseArchivesMock).toHaveBeenCalled()
     expect(vm.selectedSubject).toBe('Calculus I')
     expect(vm.groupedArchives.length).toBeGreaterThan(0)
+    const subjectHeadingRow = wrapper.get('.subject-heading-row')
+    expect(subjectHeadingRow.find('.subject-tag').text()).toContain('基礎')
+    const subjectTitleStack = subjectHeadingRow.get('.subject-title-stack')
+    expect(subjectTitleStack.text()).toContain('Calculus I')
+    const subjectSummary = subjectHeadingRow.get('.subject-summary')
+    expect(subjectSummary.text()).toContain('共 2 份考古題')
+    expect(subjectSummary.findAll('.subject-summary-item')).toHaveLength(2)
+    expect(subjectSummary.get('.subject-summary-separator').text()).toBe('・')
+    const subjectEnglishName = subjectTitleStack.get('.subject-english-name')
+    expect(subjectEnglishName.text()).toBe('Calculus I (English)')
+    expect(wrapper.findAll('.archive-filter-controls .filter-select')).toHaveLength(3)
+    expect(wrapper.get('.archive-filter-controls .answer-filter').text()).toContain('附解答')
+    expect(wrapper.text()).toContain('投稿編號：#44')
 
     const issueContextAfterSelect = JSON.parse(sessionStorage.getItem('pastexam-issue-context'))
     expect(issueContextAfterSelect.course).toEqual({ id: 'c1', name: 'Calculus I' })
@@ -275,7 +295,7 @@ describe('ArchiveView', () => {
     await vm.previewArchive(archiveItem)
     await flushPromises()
     expect(vm.showPreview).toBe(true)
-    expect(vm.selectedArchive.previewUrl).toContain('preview')
+    expect(vm.selectedArchive.previewUrl).toBe('blob:url')
 
     const issueContextAfterPreview = JSON.parse(sessionStorage.getItem('pastexam-issue-context'))
     expect(issueContextAfterPreview.preview).toEqual(
@@ -423,6 +443,33 @@ describe('ArchiveView', () => {
       expect.objectContaining({ detail: '無法取得下載連結' })
     )
 
+    wrapper.unmount()
+  })
+
+  it('shows a backend-authorized submission number to a regular archive owner', async () => {
+    getCurrentUserMock.mockReturnValue({ id: 10, is_admin: false })
+    getCourseArchivesMock.mockReset()
+    getCourseArchivesMock.mockResolvedValue({
+      data: [{ ...baseArchives[0], source_submission_ids: [45] }],
+    })
+    const sidebarInjected = ref(true)
+    const wrapper = mount(ArchiveView, {
+      global: {
+        provide: {
+          toast: { add: toastAddMock },
+          confirm: { require: confirmRequireMock },
+          sidebarVisible: sidebarInjected,
+        },
+        stubs: componentStubs,
+      },
+    })
+
+    await flushPromises()
+    wrapper.vm.filterBySubject({ label: 'Calculus I', id: 'c1' })
+    await flushPromises()
+
+    expect(wrapper.vm.isAdmin).toBe(false)
+    expect(wrapper.text()).toContain('投稿編號：#45')
     wrapper.unmount()
   })
 

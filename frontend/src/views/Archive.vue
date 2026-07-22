@@ -181,16 +181,20 @@
       <div class="main-content flex-1 h-full overflow-auto">
         <div class="card h-full flex flex-col">
           <div v-if="selectedSubject" class="subject-header">
-            <div class="subject-title-block">
+            <div class="subject-heading-row">
               <Tag severity="secondary" class="subject-tag">
                 {{ currentCategoryLabel }}
               </Tag>
-              <div>
+              <div class="subject-title-stack">
                 <div class="subject-title">{{ selectedSubject }}</div>
-                <div class="subject-subtitle">
-                  <span>共 {{ archiveTotalCount }} 份考古題</span>
-                  <span>最新：{{ latestAcademicTerm }}</span>
+                <div v-if="currentCourseEnglishName" class="subject-english-name">
+                  {{ currentCourseEnglishName }}
                 </div>
+              </div>
+              <div class="subject-summary">
+                <span class="subject-summary-item">共 {{ archiveTotalCount }} 份考古題</span>
+                <span class="subject-summary-separator" aria-hidden="true">・</span>
+                <span class="subject-summary-item">最新：{{ latestAcademicTerm }}</span>
               </div>
             </div>
           </div>
@@ -345,7 +349,7 @@
                             <span>{{ data.professor }}</span>
                             <span>{{ formatAnswerStatus(data) }}</span>
                             <span>{{ formatDownloadCount(data.downloadCount) }} 次下載</span>
-                            <span v-if="isAdmin && formatSourceSubmissionIds(data)">
+                            <span v-if="formatSourceSubmissionIds(data)">
                               投稿編號：{{ formatSourceSubmissionIds(data) }}
                             </span>
                           </div>
@@ -750,6 +754,7 @@ defineOptions({
 })
 
 import { ref, computed, onMounted, watch, inject, onBeforeUnmount } from 'vue'
+import { routeLocationKey } from 'vue-router'
 import { courseService, archiveService } from '../api'
 import PdfPreviewModal from '../components/PdfPreviewModal.vue'
 import UploadArchiveDialog from '../components/UploadArchiveDialog.vue'
@@ -774,6 +779,7 @@ import {
 
 const toast = inject('toast')
 const confirm = inject('confirm')
+const route = inject(routeLocationKey, { fullPath: '/archive', query: {} })
 
 const { isDarkTheme } = useTheme()
 loadContributorLevelSettings()
@@ -858,6 +864,7 @@ const showUploadDialog = ref(false)
 const showSubmissionStatusDialog = ref(false)
 const submissionStatusLoading = ref(false)
 const archiveSubmissions = ref([])
+const deepLinkReady = ref(false)
 const submissionLevel = computed(() => {
   const countedSubmissions = archiveSubmissions.value.filter((submission) =>
     ['approved', 'takedown'].includes(getNormalizedSubmissionStatus(submission?.status))
@@ -1351,6 +1358,26 @@ async function openSubmissionStatus() {
   await loadSubmissionStatus()
 }
 
+async function openRequestedSource() {
+  if (!deepLinkReady.value) return
+  if (String(route.query.showSubmissionStatus || '') === '1') {
+    await openSubmissionStatus()
+    return
+  }
+  const requestedCourseId = Number(route.query.courseId)
+  const requestedArchiveId = Number(route.query.archiveId)
+  if (!requestedCourseId || !requestedArchiveId) return
+  const course = Object.values(coursesList.value)
+    .flat()
+    .find((item) => Number(item.id) === requestedCourseId)
+  if (!course) return
+  selectedCourse.value = requestedCourseId
+  selectedSubject.value = formatCourseDisplayName(course.name)
+  await fetchArchives()
+  const archive = archives.value.find((item) => Number(item.id) === requestedArchiveId)
+  if (archive) await previewArchive(archive)
+}
+
 function openUploadFromMobileMenu() {
   sidebarVisible.value = false
   showUploadDialog.value = true
@@ -1560,8 +1587,8 @@ async function downloadArchive(archive) {
 
     toast.add({
       severity: 'success',
-      summary: '下載成功',
-      detail: `已下載 ${fileName}`,
+      summary: '已開始下載',
+      detail: `已開始下載 ${fileName}`,
       life: 3000,
     })
 
@@ -1950,7 +1977,16 @@ onMounted(async () => {
       removeLocalItem(STORAGE_KEYS.local.SELECTED_SUBJECT)
     }
   }
+  deepLinkReady.value = true
+  await openRequestedSource()
 })
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (deepLinkReady.value) void openRequestedSource()
+  }
+)
 
 watch(isDarkTheme, () => {})
 
@@ -2028,8 +2064,8 @@ async function handlePreviewDownload(onComplete) {
 
     toast.add({
       severity: 'success',
-      summary: '下載成功',
-      detail: `已下載 ${fileName}`,
+      summary: '已開始下載',
+      detail: `已開始下載 ${fileName}`,
       life: 3000,
     })
 
@@ -2062,6 +2098,15 @@ const getCurrentCategory = computed(() => {
 
 const currentCategoryName = computed(() => getCategoryName(getCurrentCategory.value))
 const currentCategoryLabel = computed(() => getCategoryTag(currentCategoryName.value))
+const currentCourseEnglishName = computed(() => {
+  if (!selectedCourse.value) return ''
+
+  for (const courses of Object.values(coursesList.value)) {
+    const course = courses.find((item) => item.id === selectedCourse.value)
+    if (course) return course.english_name || course.englishName || ''
+  }
+  return ''
+})
 
 const searchEditProfessor = (event) => {
   const query = event?.query?.toLowerCase() || ''
@@ -2339,6 +2384,8 @@ const mobileMenuItems = computed(() => {
 }
 
 .subject-header {
+  container-name: course-header;
+  container-type: inline-size;
   border-bottom: 1px solid var(--border-color);
   background: #eef6f2;
   position: relative;
@@ -2350,14 +2397,23 @@ const mobileMenuItems = computed(() => {
   background: #14211d;
 }
 
-.subject-title-block {
+.subject-heading-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) max-content;
+  align-items: stretch;
+  gap: 0.65rem 1rem;
+}
+
+.subject-title-stack {
   display: flex;
-  align-items: center;
-  gap: 0.85rem;
+  flex-direction: column;
+  min-width: 0;
+  justify-content: center;
 }
 
 .subject-tag {
   flex: 0 0 auto;
+  align-self: center;
 }
 
 .subject-title {
@@ -2369,30 +2425,49 @@ const mobileMenuItems = computed(() => {
   );
   font-weight: 800;
   line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
-.subject-subtitle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  margin-top: 0.28rem;
+.subject-summary {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 0.35rem;
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   font-weight: 650;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.subject-subtitle span + span::before {
-  content: '';
-  display: inline-block;
-  width: 0.24rem;
-  height: 0.24rem;
-  margin-right: 0.75rem;
-  border-radius: 50%;
-  vertical-align: middle;
-  background: #8aa49a;
+.subject-summary-item {
+  white-space: nowrap;
+}
+
+.subject-english-name {
+  margin-top: 0.2rem;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-sm);
+  line-height: 1.35;
+}
+
+@container course-header (max-width: 32rem) {
+  .subject-summary {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.12rem;
+  }
+
+  .subject-summary-separator {
+    display: none;
+  }
 }
 
 .archive-filter-bar {
+  container-name: archive-filters;
+  container-type: inline-size;
   border: 1px solid #d7e4df !important;
   border-radius: 8px;
   background: rgba(247, 251, 249, 0.84) !important;
@@ -2405,31 +2480,43 @@ const mobileMenuItems = computed(() => {
 }
 
 .archive-filter-shell {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
   gap: 0.85rem;
 }
 
 .filter-summary {
-  flex: 1 1 16rem;
-  min-width: 12rem;
+  min-width: 0;
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   font-weight: 650;
 }
 
 .archive-filter-controls {
-  display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(8rem, 10rem)) auto;
+  min-width: 0;
+  align-items: center;
   gap: 0.5rem;
 }
 
 .filter-select {
-  width: min(11rem, 100%);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.archive-filter-controls :deep(.p-select),
+.archive-filter-controls :deep(.p-select-label) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.archive-filter-controls :deep(.p-select) {
+  min-height: 2.35rem;
 }
 
 .answer-filter {
@@ -2441,6 +2528,28 @@ const mobileMenuItems = computed(() => {
   color: var(--text-secondary);
   font-size: var(--app-font-size-sm);
   font-weight: 650;
+}
+
+@container archive-filters (max-width: 52rem) {
+  .archive-filter-shell {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .archive-filter-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    width: 100%;
+  }
+}
+
+@container archive-filters (max-width: 34rem) {
+  .archive-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .answer-filter {
+    justify-content: flex-start;
+  }
 }
 
 .ellipsis {
@@ -2705,10 +2814,6 @@ const mobileMenuItems = computed(() => {
     padding: 0.75rem 1rem;
   }
 
-  .subject-title-block {
-    gap: 0.65rem;
-  }
-
   .subject-title {
     font-size: clamp(
       calc(1.12rem * var(--app-font-scale)),
@@ -2717,8 +2822,8 @@ const mobileMenuItems = computed(() => {
     );
   }
 
-  .subject-subtitle {
-    margin-top: 0.22rem;
+  .subject-summary,
+  .subject-english-name {
     font-size: calc(var(--app-font-size-base) * 0.84);
   }
 
@@ -2727,27 +2832,13 @@ const mobileMenuItems = computed(() => {
     padding: 0.55rem 0.65rem !important;
   }
 
-  .archive-filter-shell {
-    gap: 0.55rem;
-  }
-
   .filter-summary {
-    flex: 1 1 100%;
-    min-width: 0;
     font-size: calc(var(--app-font-size-base) * 0.84);
     line-height: 1.35;
   }
 
   .archive-filter-controls {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-    width: 100%;
     gap: 0.45rem;
-  }
-
-  .filter-select {
-    width: 100%;
-    min-width: 0;
   }
 
   .archive-filter-controls :deep(.p-select) {
@@ -2810,19 +2901,6 @@ const mobileMenuItems = computed(() => {
     max-width: 280px;
   }
 
-  .archive-filter-shell {
-    flex-wrap: nowrap;
-  }
-
-  .filter-summary {
-    flex: 0 1 18rem;
-  }
-
-  .archive-filter-controls {
-    flex: 1 1 auto;
-    grid-template-columns: repeat(3, minmax(8.5rem, 1fr)) auto;
-  }
-
   .archive-record-title-group {
     flex-basis: 13rem;
   }
@@ -2840,29 +2918,6 @@ const mobileMenuItems = computed(() => {
     padding-left: 0.75rem !important;
     padding-right: 0.75rem !important;
   }
-
-  .archive-filter-shell {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .archive-filter-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .answer-filter {
-    justify-content: flex-start;
-  }
-}
-
-@media (min-width: 481px) and (max-width: 767px) {
-  .archive-filter-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .answer-filter {
-    justify-content: flex-start;
-  }
 }
 
 @media (max-width: 767px) {
@@ -2870,39 +2925,18 @@ const mobileMenuItems = computed(() => {
     padding: 0.62rem 0.8rem;
   }
 
-  .subject-tag {
-    align-self: flex-start;
-  }
-
-  .subject-title-block {
-    align-items: flex-start;
-  }
-
   .subject-title {
     font-size: calc(1.22rem * var(--app-font-scale));
   }
 
-  .subject-subtitle {
-    gap: 0.22rem 0.55rem;
+  .subject-summary {
     font-size: calc(var(--app-font-size-base) * 0.8);
     line-height: 1.35;
-  }
-
-  .subject-subtitle span + span::before {
-    width: 0.2rem;
-    height: 0.2rem;
-    margin-right: 0.55rem;
   }
 
   .archive-filter-bar {
     margin: 0.55rem 0.55rem 0.45rem !important;
     padding: 0.48rem 0.52rem !important;
-  }
-
-  .archive-filter-shell {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0.42rem;
   }
 
   .filter-summary {
@@ -3013,10 +3047,6 @@ const mobileMenuItems = computed(() => {
 }
 
 @media (max-width: 480px) {
-  .archive-filter-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .answer-filter {
     justify-content: flex-start;
     padding-left: 0.12rem;

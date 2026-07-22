@@ -24,6 +24,21 @@ export const discussionService = {
     )
   },
 
+  likeArchiveMessage(courseId, archiveId, messageId) {
+    return api.put(`/courses/${courseId}/archives/${archiveId}/discussion/${messageId}/like`)
+  },
+
+  unlikeArchiveMessage(courseId, archiveId, messageId) {
+    return api.delete(`/courses/${courseId}/archives/${archiveId}/discussion/${messageId}/like`)
+  },
+
+  reportArchiveMessage(courseId, archiveId, messageId, payload) {
+    return api.post(
+      `/reports/courses/${courseId}/archives/${archiveId}/comments/${messageId}`,
+      payload
+    )
+  },
+
   openArchiveDiscussionWebSocket(courseId, archiveId, { token } = {}) {
     const authToken =
       token ??

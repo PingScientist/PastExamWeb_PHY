@@ -1,167 +1,186 @@
-import { reactive, ref, computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { notificationService } from '../api'
 import { isUnauthorizedError } from './http'
-import { STORAGE_KEYS, getLocalItem, setLocalItem } from './storage'
+import { STORAGE_KEYS, getSessionItem, removeSessionItem, setSessionItem } from './storage'
+
+const emptyCounts = () => ({ announcements: 0, personal_notifications: 0, total: 0 })
 
 const state = reactive({
-  active: [],
-  all: [],
+  announcements: [],
+  personalNotifications: [],
+  counts: emptyCounts(),
+  unreadSummary: { announcements: [], personal_notifications: [], counts: emptyCounts() },
   modalVisible: false,
   centerVisible: false,
-  detailNotification: null,
   initialized: false,
-  loadingActive: false,
-  loadingAll: false,
+  loadingSummary: false,
+  loadingCenter: false,
 })
 
-const errors = reactive({
-  active: null,
-  all: null,
-})
+const errors = reactive({ summary: null, center: null })
+const unreadTotal = computed(() => Number(state.counts.total || 0))
 
-const lastSeenTimestamp = ref(loadLastSeenTimestamp())
-
-const latestUnseenNotification = computed(() => {
-  if (!state.active.length) {
-    return null
-  }
-
-  const unseen = state.active.filter((notification) => {
-    const notificationTime = new Date(notification.updated_at || notification.created_at).getTime()
-    return notificationTime > (lastSeenTimestamp.value || 0)
-  })
-
-  if (!unseen.length) {
-    return null
-  }
-
-  return unseen.reduce((latest, candidate) => {
-    if (!latest) return candidate
-    const latestTime = new Date(latest.updated_at || latest.created_at).getTime()
-    const candidateTime = new Date(candidate.updated_at || candidate.created_at).getTime()
-    return candidateTime > latestTime ? candidate : latest
-  }, unseen[0])
-})
-
-function loadLastSeenTimestamp() {
-  try {
-    const raw = getLocalItem(STORAGE_KEYS.local.NOTIFICATION_LAST_SEEN)
-    if (!raw) return 0
-    const parsed = parseInt(raw, 10)
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
-  } catch (error) {
-    console.warn('Failed to read notification last seen timestamp:', error)
-    return 0
-  }
-}
-
-function persistLastSeenTimestamp(timestamp) {
-  lastSeenTimestamp.value = timestamp
-  try {
-    setLocalItem(STORAGE_KEYS.local.NOTIFICATION_LAST_SEEN, String(timestamp))
-  } catch (error) {
-    console.error('Failed to persist notification last seen timestamp:', error)
-  }
-}
-
-function markNotificationAsSeen(notification) {
-  if (!notification) return
-  const notificationTime = new Date(notification.updated_at || notification.created_at).getTime()
-  if (notificationTime > (lastSeenTimestamp.value || 0)) {
-    persistLastSeenTimestamp(notificationTime)
-  }
-  state.modalVisible = false
-}
-
-async function refreshActive() {
-  state.loadingActive = true
-  errors.active = null
-  try {
-    const { data } = await notificationService.getActive()
-    state.active = Array.isArray(data)
-      ? [...data].sort((a, b) => {
-          const aTime = new Date(a.updated_at || a.created_at).getTime()
-          const bTime = new Date(b.updated_at || b.created_at).getTime()
-          return bTime - aTime
-        })
-      : []
-    const latest = latestUnseenNotification.value
-    state.modalVisible = !!latest
-  } catch (error) {
-    errors.active = error
-    if (!isUnauthorizedError(error)) {
-      console.error('Failed to load active notifications:', error)
-    }
-  } finally {
-    state.loadingActive = false
-  }
-}
-
-async function refreshAll() {
-  if (state.loadingAll) return
-  state.loadingAll = true
-  errors.all = null
-  try {
-    const { data } = await notificationService.getAll()
-    state.all = Array.isArray(data)
-      ? [...data].sort((a, b) => {
-          const aTime = new Date(a.updated_at || a.created_at).getTime()
-          const bTime = new Date(b.updated_at || b.created_at).getTime()
-          return bTime - aTime
-        })
-      : []
-  } catch (error) {
-    errors.all = error
-    if (!isUnauthorizedError(error)) {
-      console.error('Failed to load notifications:', error)
-    }
-  } finally {
-    state.loadingAll = false
-  }
+function updateCounts(counts) {
+  state.counts = { ...emptyCounts(), ...(counts || {}) }
 }
 
 async function initNotifications() {
-  if (state.initialized) return
-  await refreshActive()
-  state.initialized = true
-}
-
-function openModal() {
-  if (!latestUnseenNotification.value) {
-    return
+  if (state.initialized || state.loadingSummary) return
+  state.loadingSummary = true
+  errors.summary = null
+  try {
+    const { data } = await notificationService.getUnreadSummary({ limit: 10 })
+    state.unreadSummary = data
+    updateCounts(data?.counts)
+    const alreadyChecked = getSessionItem(STORAGE_KEYS.session.NOTIFICATION_LOGIN_CHECKED)
+    if (!alreadyChecked) {
+      setSessionItem(STORAGE_KEYS.session.NOTIFICATION_LOGIN_CHECKED, '1')
+      state.modalVisible = unreadTotal.value > 0
+    }
+    state.initialized = true
+  } catch (error) {
+    errors.summary = error
+    if (!isUnauthorizedError(error)) console.error('Failed to load unread notifications:', error)
+  } finally {
+    state.loadingSummary = false
   }
-  state.modalVisible = true
 }
 
-function closeModal() {
+async function refreshCenter() {
+  if (state.loadingCenter) return
+  state.loadingCenter = true
+  errors.center = null
+  try {
+    const { data } = await notificationService.getCenter({ personal_limit: 50 })
+    state.announcements = data?.announcements || []
+    state.personalNotifications = data?.personal_notifications || []
+    updateCounts(data?.counts)
+  } catch (error) {
+    errors.center = error
+    if (!isUnauthorizedError(error)) console.error('Failed to load notification center:', error)
+  } finally {
+    state.loadingCenter = false
+  }
+}
+
+async function refreshSummary() {
+  const { data } = await notificationService.getUnreadSummary({ limit: 10 })
+  state.unreadSummary = data
+  updateCounts(data?.counts)
+}
+
+async function refreshCounts() {
+  const { data } = await notificationService.getCounts()
+  updateCounts(data)
+}
+
+async function markAnnouncementRead(id) {
+  await notificationService.markAnnouncementRead(id)
+  await Promise.all([refreshCenter(), refreshSummary()])
+}
+
+async function markPersonalRead(id) {
+  await notificationService.markPersonalRead(id)
+  await Promise.all([refreshCenter(), refreshSummary()])
+}
+
+async function markAllPersonalRead() {
+  await notificationService.markAllPersonalRead()
+  await Promise.all([refreshCenter(), refreshSummary()])
+}
+
+async function markAllRead() {
+  await notificationService.markAllRead()
+  await Promise.all([refreshCenter(), refreshSummary()])
   state.modalVisible = false
 }
 
-async function openCenter() {
-  await refreshAll()
-  if (errors.all && isUnauthorizedError(errors.all)) {
-    return
+function removePersonalFromLocalState(id) {
+  const item = state.personalNotifications.find((notification) => notification.id === id)
+  state.personalNotifications = state.personalNotifications.filter(
+    (notification) => notification.id !== id
+  )
+  state.unreadSummary = {
+    ...state.unreadSummary,
+    personal_notifications: (state.unreadSummary.personal_notifications || []).filter(
+      (notification) => notification.id !== id
+    ),
   }
-  state.centerVisible = true
+  if (!item?.read_at) {
+    const personal = Math.max(0, Number(state.counts.personal_notifications || 0) - 1)
+    updateCounts({
+      ...state.counts,
+      personal_notifications: personal,
+      total: Number(state.counts.announcements || 0) + personal,
+    })
+    state.unreadSummary.counts = { ...state.counts }
+  }
 }
 
-function closeCenter() {
-  state.centerVisible = false
+async function deletePersonalNotification(id) {
+  const response = await notificationService.deletePersonal(id)
+  removePersonalFromLocalState(id)
+  await Promise.allSettled([refreshCenter(), refreshSummary()])
+  return response?.data
+}
+
+async function deleteAllPersonalNotifications() {
+  const response = await notificationService.deleteAllPersonal()
+  state.personalNotifications = []
+  updateCounts({
+    ...state.counts,
+    personal_notifications: 0,
+    total: Number(state.counts.announcements || 0),
+  })
+  state.unreadSummary = {
+    ...state.unreadSummary,
+    personal_notifications: [],
+    counts: { ...state.counts },
+  }
+  return response?.data
+}
+
+async function openCenter() {
+  state.modalVisible = false
+  await refreshCenter()
+  if (!errors.center) state.centerVisible = true
+}
+
+function resetForLogout() {
+  Object.assign(state, {
+    announcements: [],
+    personalNotifications: [],
+    counts: emptyCounts(),
+    unreadSummary: { announcements: [], personal_notifications: [], counts: emptyCounts() },
+    modalVisible: false,
+    centerVisible: false,
+    initialized: false,
+  })
+  removeSessionItem(STORAGE_KEYS.session.NOTIFICATION_LOGIN_CHECKED)
+}
+
+function beginLoginSession() {
+  removeSessionItem(STORAGE_KEYS.session.NOTIFICATION_LOGIN_CHECKED)
+  state.initialized = false
 }
 
 export function useNotifications() {
   return {
     state,
     errors,
-    latestUnseenNotification,
+    unreadTotal,
     initNotifications,
-    refreshActive,
-    refreshAll,
-    openModal,
-    closeModal,
+    refreshCenter,
+    refreshSummary,
+    refreshCounts,
+    markAnnouncementRead,
+    markPersonalRead,
+    markAllPersonalRead,
+    markAllRead,
+    deletePersonalNotification,
+    deleteAllPersonalNotifications,
     openCenter,
-    closeCenter,
-    markNotificationAsSeen,
-    lastSeenTimestamp,
+    resetForLogout,
+    beginLoginSession,
   }
 }

@@ -13,7 +13,9 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
-from sqlalchemy import and_, exists, func, or_
+from sqlalchemy import and_, delete, exists, func, or_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import aliased
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -25,6 +27,7 @@ from app.api.services.archive_submission_lifecycle import (
 )
 from app.models.models import (
     Archive,
+    ArchiveDiscussionLike,
     ArchiveDiscussionMessage,
     ArchiveDiscussionMessageRead,
     ArchiveRead,
@@ -46,6 +49,7 @@ from app.models.models import (
     CourseSubmissionRead,
     CourseSubmissionUpdate,
     CourseUpdate,
+    PersonalNotificationType,
     SubmissionDecision,
     SubmissionStatus,
     User,
@@ -60,6 +64,8 @@ from app.utils.course_text import (
     normalized_course_text_expr,
 )
 from app.core.config import settings
+from app.services.personal_notifications import enqueue_personal_notification
+from app.services.discussions import soft_delete_discussion_message
 
 router = APIRouter()
 
@@ -610,13 +616,20 @@ async def get_course_archives(
 
     source_submission_ids_by_archive: dict[int, list[int]] = {}
     archive_ids = [archive.id for archive in archives if archive.id is not None]
-    if current_user.is_admin and archive_ids:
+    if archive_ids:
+        submission_visibility_conditions = [
+            ArchiveSubmission.created_archive_id.in_(archive_ids),
+            ArchiveSubmission.deleted_at.is_(None),
+            ArchiveSubmission.status != SubmissionStatus.DELETED,
+        ]
+        if not current_user.is_admin:
+            submission_visibility_conditions.append(
+                ArchiveSubmission.requester_id == current_user.user_id
+            )
         linked_submissions = (
             await db.execute(
                 select(ArchiveSubmission.id, ArchiveSubmission.created_archive_id).where(
-                    ArchiveSubmission.created_archive_id.in_(archive_ids),
-                    ArchiveSubmission.deleted_at.is_(None),
-                    ArchiveSubmission.status != SubmissionStatus.DELETED,
+                    *submission_visibility_conditions
                 )
             )
         ).all()
@@ -772,10 +785,49 @@ async def _fetch_archive_discussion_messages(
     archive_id: int,
     db: AsyncSession,
     *,
+    current_user_id: int,
     limit: int = 50,
     before_id: int | None = None,
 ) -> List[ArchiveDiscussionMessageRead]:
     safe_limit = max(1, min(int(limit or 50), 100))
+    reply_alias = aliased(ArchiveDiscussionMessage)
+    active_reply_exists = exists(
+        select(reply_alias.id).where(
+            reply_alias.parent_id == ArchiveDiscussionMessage.id,
+            reply_alias.deleted_at.is_(None),
+        )
+    )
+    root_like_count = (
+        select(func.count(ArchiveDiscussionLike.id))
+        .where(ArchiveDiscussionLike.message_id == ArchiveDiscussionMessage.id)
+        .correlate(ArchiveDiscussionMessage)
+        .scalar_subquery()
+    )
+    root_stmt = (
+        select(ArchiveDiscussionMessage.id)
+        .where(
+            ArchiveDiscussionMessage.archive_id == archive_id,
+            ArchiveDiscussionMessage.parent_id.is_(None),
+            or_(
+                ArchiveDiscussionMessage.deleted_at.is_(None),
+                active_reply_exists,
+            ),
+        )
+        .order_by(
+            ArchiveDiscussionMessage.is_pinned.desc(),
+            root_like_count.desc(),
+            ArchiveDiscussionMessage.created_at.desc(),
+            ArchiveDiscussionMessage.id.desc(),
+        )
+        .limit(safe_limit)
+    )
+    if before_id is not None:
+        root_stmt = root_stmt.where(ArchiveDiscussionMessage.id < before_id)
+
+    root_ids = list((await db.execute(root_stmt)).scalars().all())
+    if not root_ids:
+        return []
+
     experience_by_author = (
         select(
             ArchiveSubmission.requester_id.label("author_id"),
@@ -789,6 +841,18 @@ async def _fetch_archive_discussion_messages(
         .group_by(ArchiveSubmission.requester_id)
         .subquery()
     )
+    like_count = (
+        select(func.count(ArchiveDiscussionLike.id))
+        .where(ArchiveDiscussionLike.message_id == ArchiveDiscussionMessage.id)
+        .correlate(ArchiveDiscussionMessage)
+        .scalar_subquery()
+    )
+    liked_by_current_user = exists(
+        select(ArchiveDiscussionLike.id).where(
+            ArchiveDiscussionLike.message_id == ArchiveDiscussionMessage.id,
+            ArchiveDiscussionLike.user_id == current_user_id,
+        )
+    )
 
     stmt = (
         select(
@@ -798,6 +862,8 @@ async def _fetch_archive_discussion_messages(
             User.show_level_title,
             User.deleted_at,
             func.coalesce(experience_by_author.c.experience, 0),
+            like_count.label("like_count"),
+            liked_by_current_user.label("liked_by_current_user"),
         )
         .join(User, User.id == ArchiveDiscussionMessage.user_id)
         .outerjoin(
@@ -806,21 +872,56 @@ async def _fetch_archive_discussion_messages(
         )
         .where(
             ArchiveDiscussionMessage.archive_id == archive_id,
-            ArchiveDiscussionMessage.deleted_at.is_(None),
+            or_(
+                ArchiveDiscussionMessage.id.in_(root_ids),
+                and_(
+                    ArchiveDiscussionMessage.parent_id.in_(root_ids),
+                    ArchiveDiscussionMessage.deleted_at.is_(None),
+                ),
+            ),
         )
-        .order_by(
-            ArchiveDiscussionMessage.is_pinned.desc(),
-            ArchiveDiscussionMessage.id.asc(),
-        )
-        .limit(safe_limit)
     )
-    if before_id is not None:
-        stmt = stmt.where(ArchiveDiscussionMessage.id < before_id)
-
     rows = (await db.execute(stmt)).all()
 
-    return [
-        ArchiveDiscussionMessageRead(
+    reply_target_ids = {
+        msg.reply_to_message_id for row in rows if (msg := row[0]).reply_to_message_id
+    }
+    reply_target_names: dict[int, str] = {}
+    if reply_target_ids:
+        target_rows = (
+            await db.execute(
+                select(
+                    ArchiveDiscussionMessage.id,
+                    ArchiveDiscussionMessage.user_id,
+                    User.nickname,
+                    User.name,
+                )
+                .join(User, User.id == ArchiveDiscussionMessage.user_id)
+                .where(ArchiveDiscussionMessage.id.in_(reply_target_ids))
+            )
+        ).all()
+        reply_target_names = {
+            target_id: _discussion_public_display_name(
+                user_id=target_user_id,
+                nickname=nickname,
+                name=user_name,
+            )
+            for target_id, target_user_id, nickname, user_name in target_rows
+        }
+
+    messages_by_id: dict[int, ArchiveDiscussionMessageRead] = {}
+    for (
+        msg,
+        nickname,
+        user_name,
+        show_level_title,
+        deleted_at,
+        experience,
+        message_like_count,
+        message_liked_by_current_user,
+    ) in rows:
+        is_deleted = msg.deleted_at is not None
+        messages_by_id[msg.id] = ArchiveDiscussionMessageRead(
             id=msg.id,
             archive_id=msg.archive_id,
             user_id=msg.user_id,
@@ -829,12 +930,24 @@ async def _fetch_archive_discussion_messages(
             ),
             author_show_level_title=bool(show_level_title and deleted_at is None),
             author_experience=int(experience) if deleted_at is None else None,
-            content=msg.content,
+            content="" if is_deleted else msg.content,
             is_pinned=msg.is_pinned,
+            is_deleted=is_deleted,
+            parent_id=msg.parent_id,
+            reply_to_message_id=msg.reply_to_message_id,
+            reply_to_user_name=reply_target_names.get(msg.reply_to_message_id),
+            like_count=int(message_like_count or 0),
+            liked_by_current_user=bool(message_liked_by_current_user),
             created_at=msg.created_at,
         )
-        for (msg, nickname, user_name, show_level_title, deleted_at, experience) in rows
-    ]
+
+    roots = [messages_by_id[root_id] for root_id in root_ids if root_id in messages_by_id]
+    for message in messages_by_id.values():
+        if message.parent_id in messages_by_id:
+            messages_by_id[message.parent_id].replies.append(message)
+    for root in roots:
+        root.replies.sort(key=lambda reply: (reply.created_at, reply.id))
+    return roots
 
 
 @router.get(
@@ -853,6 +966,7 @@ async def list_archive_discussion_messages(
     return await _fetch_archive_discussion_messages(
         archive_id,
         db,
+        current_user_id=current_user.user_id,
         limit=limit,
         before_id=before_id,
     )
@@ -898,7 +1012,11 @@ async def archive_discussion_ws(
 
     try:
         history = await _fetch_archive_discussion_messages(
-            archive_id, db, limit=50, before_id=None
+            archive_id,
+            db,
+            current_user_id=user.id,
+            limit=50,
+            before_id=None,
         )
         await websocket.send_json(
             jsonable_encoder({"type": "history", "messages": history})
@@ -937,13 +1055,108 @@ async def archive_discussion_ws(
                 )
                 continue
 
+            parent_id = None
+            reply_to_message_id = None
+            reply_to_user_name = None
+            raw_reply_to_message_id = data.get("reply_to_message_id")
+            if raw_reply_to_message_id is not None:
+                try:
+                    reply_to_message_id = int(raw_reply_to_message_id)
+                except (TypeError, ValueError):
+                    reply_to_message_id = None
+                if not reply_to_message_id:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "code": "invalid_reply_target",
+                            "detail": "找不到要回覆的留言",
+                        }
+                    )
+                    continue
+
+                reply_target_row = (
+                    await db.execute(
+                        select(
+                            ArchiveDiscussionMessage,
+                            User.nickname,
+                            User.name,
+                        )
+                        .join(User, User.id == ArchiveDiscussionMessage.user_id)
+                        .where(
+                            ArchiveDiscussionMessage.id == reply_to_message_id,
+                            ArchiveDiscussionMessage.archive_id == archive_id,
+                            ArchiveDiscussionMessage.deleted_at.is_(None),
+                        )
+                    )
+                ).one_or_none()
+                if not reply_target_row:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "code": "invalid_reply_target",
+                            "detail": "找不到要回覆的留言",
+                        }
+                    )
+                    continue
+
+                reply_target, target_nickname, target_name = reply_target_row
+                parent_id = reply_target.parent_id or reply_target.id
+                root_exists = await db.scalar(
+                    select(ArchiveDiscussionMessage.id).where(
+                        ArchiveDiscussionMessage.id == parent_id,
+                        ArchiveDiscussionMessage.archive_id == archive_id,
+                    )
+                )
+                if not root_exists:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "code": "invalid_reply_target",
+                            "detail": "找不到回覆串的原始留言",
+                        }
+                    )
+                    continue
+                reply_to_user_name = _discussion_public_display_name(
+                    user_id=reply_target.user_id,
+                    nickname=target_nickname,
+                    name=target_name,
+                )
+
             message = ArchiveDiscussionMessage(
                 archive_id=archive_id,
                 user_id=user.id,
+                parent_id=parent_id,
+                reply_to_message_id=reply_to_message_id,
                 content=content,
                 created_at=datetime.now(timezone.utc),
             )
             db.add(message)
+            await db.flush()
+            if reply_to_message_id is not None and reply_target.user_id != user.id:
+                actor_name = _discussion_public_display_name(
+                    user_id=user.id,
+                    nickname=user.nickname,
+                    name=user.name,
+                )
+                await enqueue_personal_notification(
+                    db,
+                    user_id=reply_target.user_id,
+                    notification_type=PersonalNotificationType.DISCUSSION_REPLY,
+                    title=f"{actor_name} 回覆了你的留言",
+                    message=content,
+                    source_type="archive_discussion_thread",
+                    source_id=parent_id,
+                    source_message_id=message.id,
+                    metadata={
+                        "archive_id": archive_id,
+                        "course_id": course_id,
+                        "thread_id": parent_id,
+                        "reply_message_id": message.id,
+                        "reply_to_message_id": reply_to_message_id,
+                    },
+                    dedupe_key=f"discussion_reply:{message.id}:{reply_target.user_id}",
+                    created_at=message.created_at,
+                )
             await db.commit()
             await db.refresh(message)
 
@@ -994,6 +1207,11 @@ async def archive_discussion_ws(
                         author_experience=author_experience,
                         content=message.content,
                         is_pinned=message.is_pinned,
+                        parent_id=message.parent_id,
+                        reply_to_message_id=message.reply_to_message_id,
+                        reply_to_user_name=reply_to_user_name,
+                        like_count=0,
+                        liked_by_current_user=False,
                         created_at=message.created_at,
                     ),
                 }
@@ -1009,16 +1227,11 @@ async def archive_discussion_ws(
                 _discussion_connections_by_archive.pop(archive_id, None)
 
 
-@router.delete("/{course_id}/archives/{archive_id}/discussion/{message_id}")
-async def delete_archive_discussion_message(
-    course_id: int,
+async def _get_active_discussion_message(
     archive_id: int,
     message_id: int,
-    current_user: UserRoles = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-):
-    await _ensure_archive_exists_for_discussion(course_id, archive_id, db)
-
+    db: AsyncSession,
+) -> ArchiveDiscussionMessage:
     message = (
         await db.execute(
             select(ArchiveDiscussionMessage).where(
@@ -1030,20 +1243,146 @@ async def delete_archive_discussion_message(
     ).scalar_one_or_none()
     if not message:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Message not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Message not found",
         )
+    return message
+
+
+async def _discussion_like_count(message_id: int, db: AsyncSession) -> int:
+    return int(
+        await db.scalar(
+            select(func.count(ArchiveDiscussionLike.id)).where(
+                ArchiveDiscussionLike.message_id == message_id
+            )
+        )
+        or 0
+    )
+
+
+@router.put("/{course_id}/archives/{archive_id}/discussion/{message_id}/like")
+async def like_archive_discussion_message(
+    course_id: int,
+    archive_id: int,
+    message_id: int,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    archive = await _ensure_archive_exists_for_discussion(course_id, archive_id, db)
+    message = await _get_active_discussion_message(archive_id, message_id, db)
+
+    like_id = await db.scalar(
+        pg_insert(ArchiveDiscussionLike)
+        .values(message_id=message_id, user_id=current_user.user_id)
+        .on_conflict_do_nothing(
+            constraint="uq_archive_discussion_likes_message_user"
+        )
+        .returning(ArchiveDiscussionLike.id)
+    )
+    if like_id is not None and message.user_id != current_user.user_id:
+        actor = await db.get(User, current_user.user_id)
+        course = await db.get(Course, course_id)
+        actor_name = _discussion_public_display_name(
+            user_id=current_user.user_id,
+            nickname=actor.nickname if actor else None,
+            name=actor.name if actor else None,
+        )
+        await enqueue_personal_notification(
+            db,
+            user_id=message.user_id,
+            notification_type=PersonalNotificationType.DISCUSSION_LIKE,
+            title=f"{actor_name} 對你的留言按了愛心",
+            message=(message.content[:80] + "…") if len(message.content) > 80 else message.content,
+            source_type="archive_discussion_thread",
+            source_id=message.parent_id or message.id,
+            source_message_id=message.id,
+            metadata={
+                "archive_id": archive_id,
+                "archive_name": archive.name,
+                "course_id": course_id,
+                "course_name": course.name if course else None,
+                "thread_id": message.parent_id or message.id,
+                "message_id": message.id,
+                "actor_user_id": current_user.user_id,
+            },
+            dedupe_key=f"discussion_like:{message.id}:{current_user.user_id}",
+        )
+    await db.commit()
+    like_count = await _discussion_like_count(message_id, db)
+    await _broadcast_discussion(
+        archive_id,
+        {
+            "type": "like",
+            "message_id": message_id,
+            "user_id": current_user.user_id,
+            "liked": True,
+            "like_count": like_count,
+        },
+    )
+    return {"liked": True, "like_count": like_count}
+
+
+@router.delete("/{course_id}/archives/{archive_id}/discussion/{message_id}/like")
+async def unlike_archive_discussion_message(
+    course_id: int,
+    archive_id: int,
+    message_id: int,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    await _ensure_archive_exists_for_discussion(course_id, archive_id, db)
+    await _get_active_discussion_message(archive_id, message_id, db)
+
+    await db.execute(
+        delete(ArchiveDiscussionLike).where(
+            ArchiveDiscussionLike.message_id == message_id,
+            ArchiveDiscussionLike.user_id == current_user.user_id,
+        )
+    )
+    await db.commit()
+    like_count = await _discussion_like_count(message_id, db)
+    await _broadcast_discussion(
+        archive_id,
+        {
+            "type": "like",
+            "message_id": message_id,
+            "user_id": current_user.user_id,
+            "liked": False,
+            "like_count": like_count,
+        },
+    )
+    return {"liked": False, "like_count": like_count}
+
+
+@router.delete("/{course_id}/archives/{archive_id}/discussion/{message_id}")
+async def delete_archive_discussion_message(
+    course_id: int,
+    archive_id: int,
+    message_id: int,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    await _ensure_archive_exists_for_discussion(course_id, archive_id, db)
+
+    message = await _get_active_discussion_message(archive_id, message_id, db)
 
     if not current_user.is_admin and message.user_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
 
-    message.deleted_at = datetime.now(timezone.utc)
-    db.add(message)
+    preserve_thread = await soft_delete_discussion_message(db, message)
     await db.commit()
 
     await _broadcast_discussion(
-        archive_id, jsonable_encoder({"type": "delete", "message_id": message_id})
+        archive_id,
+        jsonable_encoder(
+            {
+                "type": "delete",
+                "message_id": message_id,
+                "preserve_thread": preserve_thread,
+            }
+        ),
     )
-    return {"success": True}
+    return {"success": True, "preserve_thread": preserve_thread}
 
 
 @router.patch("/{course_id}/archives/{archive_id}/discussion/{message_id}/pin")
@@ -1072,9 +1411,38 @@ async def pin_archive_discussion_message(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Message not found"
         )
+    if message.parent_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Replies cannot be pinned",
+        )
 
+    was_pinned = bool(message.is_pinned)
     message.is_pinned = pinned
     db.add(message)
+    if pinned and not was_pinned and message.user_id != current_user.user_id:
+        archive = await db.get(Archive, archive_id)
+        course = await db.get(Course, course_id)
+        await enqueue_personal_notification(
+            db,
+            user_id=message.user_id,
+            notification_type=PersonalNotificationType.DISCUSSION_PIN,
+            title="你的留言已被管理員置頂",
+            message=(message.content[:80] + "…") if len(message.content) > 80 else message.content,
+            source_type="archive_discussion_thread",
+            source_id=message.id,
+            source_message_id=message.id,
+            metadata={
+                "archive_id": archive_id,
+                "archive_name": archive.name if archive else None,
+                "course_id": course_id,
+                "course_name": course.name if course else None,
+                "thread_id": message.id,
+                "message_id": message.id,
+                "actor_user_id": current_user.user_id,
+            },
+            dedupe_key=f"discussion_pin:{message.id}",
+        )
     await db.commit()
     await db.refresh(message)
 

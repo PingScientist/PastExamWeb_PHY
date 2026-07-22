@@ -3,7 +3,19 @@ from enum import Enum as PyEnum
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -30,11 +42,40 @@ class NotificationSeverity(str, PyEnum):
     DANGER = "danger"
 
 
+class PersonalNotificationType(str, PyEnum):
+    DISCUSSION_REPLY = "discussion_reply"
+    DISCUSSION_LIKE = "discussion_like"
+    DISCUSSION_PIN = "discussion_pin"
+    COMMENT_REPORT_SUBMITTED = "comment_report_submitted"
+    COMMENT_REPORT_RESULT = "comment_report_result"
+    ARCHIVE_SUBMISSION_APPROVED = "archive_submission_approved"
+    ARCHIVE_SUBMISSION_REJECTED = "archive_submission_rejected"
+    ARCHIVE_SUBMISSION_TAKEDOWN = "archive_submission_takedown"
+
+
+class CommentReportReason(str, PyEnum):
+    SPAM_OR_DUPLICATE = "spam_or_duplicate"
+    HARASSMENT_OR_HOSTILITY = "harassment_or_hostility"
+    INAPPROPRIATE_OR_ILLEGAL = "inappropriate_or_illegal"
+    PRIVACY_VIOLATION = "privacy_violation"
+    MISINFORMATION = "misinformation"
+    OTHER = "other"
+
+
+class CommentReportStatus(str, PyEnum):
+    PENDING = "pending"
+    UPHELD = "upheld"
+    DISMISSED = "dismissed"
+
+
 class TrashEntityType(str, PyEnum):
     ARCHIVE = "archive"
     ARCHIVE_SUBMISSION = "archive_submission"
     COURSE_CATEGORY = "course_category"
     COURSE = "course"
+    SYSTEM_ISSUE_REPORT = "system_issue_report"
+    COMMENT_REPORT = "comment_report"
+    ARCHIVE_REPORT = "archive_report"
     NOTIFICATION = "notification"
     USER = "user"
 
@@ -61,6 +102,15 @@ class User(SQLModel, table=True):
     is_local: bool = Field(default=False)
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
     )
     last_login: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
@@ -322,6 +372,24 @@ class ArchiveDiscussionMessage(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     archive_id: int = Field(foreign_key="archives.id", index=True)
     user_id: int = Field(foreign_key="users.id", index=True)
+    parent_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    reply_to_message_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id"),
+            nullable=True,
+            index=True,
+        ),
+    )
     content: str = Field(sa_column=Column(Text, nullable=False))
     is_pinned: bool = Field(default=False, index=True)
     created_at: datetime = Field(
@@ -333,6 +401,42 @@ class ArchiveDiscussionMessage(SQLModel, table=True):
     )
     deleted_at: Optional[datetime] = Field(
         sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+
+class ArchiveDiscussionLike(SQLModel, table=True):
+    __tablename__ = "archive_discussion_likes"
+    __table_args__ = (
+        UniqueConstraint(
+            "message_id",
+            "user_id",
+            name="uq_archive_discussion_likes_message_user",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    message_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
     )
 
 
@@ -372,6 +476,299 @@ class Notification(SQLModel, table=True):
             default=lambda: datetime.now(timezone.utc),
             nullable=False,
         )
+    )
+    updated_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+
+
+class AnnouncementReadReceipt(SQLModel, table=True):
+    __tablename__ = "announcement_read_receipts"
+    __table_args__ = (
+        UniqueConstraint(
+            "notification_id",
+            "user_id",
+            name="uq_announcement_read_receipts_notification_user",
+        ),
+        Index("ix_announcement_read_receipts_user_read", "user_id", "read_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    notification_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("notifications.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    read_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, index=True)
+    )
+
+
+class PersonalNotification(SQLModel, table=True):
+    __tablename__ = "personal_notifications"
+    __table_args__ = (
+        UniqueConstraint(
+            "dedupe_key", name="uq_personal_notifications_dedupe_key"
+        ),
+        Index(
+            "ix_personal_notifications_user_read_created",
+            "user_id",
+            "read_at",
+            "created_at",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+    )
+    notification_type: str = Field(
+        sa_column=Column(String(50), nullable=False, index=True)
+    )
+    title: str = Field(sa_column=Column(String(150), nullable=False))
+    message: str = Field(sa_column=Column(Text, nullable=False))
+    source_type: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String(50), nullable=True, index=True),
+    )
+    source_id: Optional[int] = Field(default=None, index=True)
+    source_message_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    metadata_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column("metadata", JSONB, nullable=False),
+    )
+    dedupe_key: str = Field(sa_column=Column(String(160), nullable=False))
+    read_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+            index=True,
+        )
+    )
+
+
+class CommentReport(SQLModel, table=True):
+    __tablename__ = "comment_reports"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'upheld', 'dismissed')",
+            name="ck_comment_reports_status",
+        ),
+        Index(
+            "uq_comment_reports_active_reporter_comment_reason",
+            "reporter_user_id",
+            "comment_id",
+            "reason",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index("ix_comment_reports_status_created", "status", "created_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_user_id: int = Field(
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        )
+    )
+    comment_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("archive_discussion_messages.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    comment_author_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    archive_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("archives.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    course_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    thread_id: Optional[int] = Field(default=None, index=True)
+    reply_to_message_id: Optional[int] = Field(default=None)
+    reason: str = Field(sa_column=Column(String(50), nullable=False, index=True))
+    custom_message: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    comment_content_snapshot: str = Field(sa_column=Column(Text, nullable=False))
+    comment_author_name_snapshot: str = Field(sa_column=Column(String(100), nullable=False))
+    comment_created_at_snapshot: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    archive_name_snapshot: str = Field(sa_column=Column(String(200), nullable=False))
+    course_name_snapshot: str = Field(sa_column=Column(String(200), nullable=False))
+    status: str = Field(
+        default=CommentReportStatus.PENDING.value,
+        sa_column=Column(String(30), nullable=False, index=True),
+    )
+    admin_response: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    reviewed_by: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    reviewed_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True, index=True)
+    )
+    comment_deleted: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+            index=True,
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+
+
+class SystemIssueReport(SQLModel, table=True):
+    __tablename__ = "system_issue_reports"
+    __table_args__ = (
+        Index("ix_system_issue_reports_status_created", "status", "created_at"),
+        Index("ix_system_issue_reports_read_at_created", "read_at", "created_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_user_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+    )
+    report_type: str = Field(sa_column=Column(String(40), nullable=False, index=True))
+    title: str = Field(sa_column=Column(String(100), nullable=False))
+    description: str = Field(sa_column=Column(Text, nullable=False))
+    contact: Optional[str] = Field(default=None, sa_column=Column(String(200), nullable=True))
+    status: str = Field(
+        default="local_only",
+        sa_column=Column(String(30), nullable=False, index=True),
+    )
+    github_issue_number: Optional[int] = Field(default=None, index=True)
+    github_issue_url: Optional[str] = Field(
+        default=None, sa_column=Column(String(500), nullable=True)
+    )
+    read_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    read_by_user_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )
+    metadata_json: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column("metadata", JSONB, nullable=False),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+            index=True,
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        )
+    )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
     )
 
 
@@ -557,9 +954,126 @@ class NotificationRead(NotificationBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    updated_by_username: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class AnnouncementWithRead(NotificationRead):
+    is_read: bool = False
+    read_at: Optional[datetime] = None
+
+
+class PersonalNotificationRead(BaseModel):
+    id: int
+    notification_type: str
+    title: str
+    message: str
+    source_type: Optional[str] = None
+    source_id: Optional[int] = None
+    source_message_id: Optional[int] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    source_available: bool = True
+    read_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class CommentReportCreate(BaseModel):
+    report_reason: CommentReportReason
+    custom_message: Optional[str] = Field(default=None, max_length=200)
+
+
+class CommentReportAdminUpdate(BaseModel):
+    status: CommentReportStatus
+    admin_response: Optional[str] = Field(default=None, max_length=1000)
+    delete_comment: bool = False
+
+
+class CommentReportRead(BaseModel):
+    id: int
+    reporter_user_id: int
+    reporter_name: str
+    comment_id: Optional[int]
+    comment_author_id: Optional[int]
+    comment_author_name: str
+    archive_id: Optional[int]
+    course_id: Optional[int]
+    thread_id: Optional[int]
+    reply_to_message_id: Optional[int]
+    reason: str
+    custom_message: Optional[str]
+    comment_content_snapshot: str
+    comment_created_at_snapshot: datetime
+    archive_name: str
+    course_name: str
+    status: str
+    admin_response: Optional[str]
+    reviewed_by: Optional[int]
+    reviewer_name: Optional[str]
+    reviewed_at: Optional[datetime]
+    comment_deleted: bool
+    source_exists: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class CommentReportListRead(BaseModel):
+    items: List[CommentReportRead] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 20
+    offset: int = 0
+
+
+class SystemIssueReportCreate(BaseModel):
+    report_type: str = Field(min_length=1, max_length=40)
+    title: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=2000)
+    contact: Optional[str] = Field(default=None, max_length=200)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SystemIssueReportRead(BaseModel):
+    id: int
+    reporter_user_id: Optional[int]
+    reporter_name: str
+    report_type: str
+    title: str
+    description: str
+    contact: Optional[str]
+    status: str
+    github_issue_number: Optional[int]
+    github_issue_url: Optional[str]
+    is_read: bool = False
+    read_at: Optional[datetime]
+    read_by_username: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class SystemIssueReportReadStateUpdate(BaseModel):
+    is_read: bool
+
+
+class SystemIssueReportListRead(BaseModel):
+    items: List[SystemIssueReportRead] = Field(default_factory=list)
+    total: int = 0
+
+
+class NotificationUnreadCounts(BaseModel):
+    announcements: int = 0
+    personal_notifications: int = 0
+    total: int = 0
+
+
+class NotificationCenterRead(BaseModel):
+    announcements: List[AnnouncementWithRead] = Field(default_factory=list)
+    personal_notifications: List[PersonalNotificationRead] = Field(default_factory=list)
+    counts: NotificationUnreadCounts = Field(default_factory=NotificationUnreadCounts)
+
+
+class NotificationUnreadSummary(NotificationCenterRead):
+    pass
 
 
 class CourseInfo(BaseModel):
@@ -603,6 +1117,13 @@ class ArchiveDiscussionMessageRead(BaseModel):
     author_experience: Optional[int] = None
     content: str
     is_pinned: bool = False
+    is_deleted: bool = False
+    parent_id: Optional[int] = None
+    reply_to_message_id: Optional[int] = None
+    reply_to_user_name: Optional[str] = None
+    like_count: int = 0
+    liked_by_current_user: bool = False
+    replies: List["ArchiveDiscussionMessageRead"] = Field(default_factory=list)
     created_at: datetime
 
     class Config:
@@ -771,6 +1292,7 @@ class TrashItem(BaseModel):
     deleted_at: datetime
     deleted_by_id: Optional[int] = None
     deleted_by_name: Optional[str] = None
+    user_email: Optional[str] = None
     status: Optional[str] = None
     parent_type: Optional[str] = None
     parent_id: Optional[int] = None
@@ -780,6 +1302,14 @@ class TrashItem(BaseModel):
     course_id: Optional[int] = None
     course_name: Optional[str] = None
     reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+    reporter_name: Optional[str] = None
+    report_type: Optional[str] = None
+    github_issue_number: Optional[int] = None
+    github_issue_url: Optional[str] = None
+    comment_author_name: Optional[str] = None
+    comment_snapshot: Optional[str] = None
+    archive_name: Optional[str] = None
     canRestore: Optional[bool] = None
     canPermanentDelete: Optional[bool] = None
     dependencies: List[str] = []

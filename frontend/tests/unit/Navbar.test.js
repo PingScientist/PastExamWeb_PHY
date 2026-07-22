@@ -2,15 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
 import { shallowMount } from '@vue/test-utils'
 import Navbar from '@/components/Navbar.vue'
+import navbarSource from '@/components/Navbar.vue?raw'
 
 const localLoginMock = vi.hoisted(() => vi.fn())
 const logoutMock = vi.hoisted(() => vi.fn())
 const loginRedirectMock = vi.hoisted(() => vi.fn())
+const createSystemIssueMock = vi.hoisted(() => vi.fn())
 const trackEventMock = vi.hoisted(() => vi.fn())
 const setTokenMock = vi.hoisted(() => vi.fn())
 const getCurrentUserMock = vi.hoisted(() => vi.fn())
 const isAuthenticatedMock = vi.hoisted(() => vi.fn())
 const toastAddMock = vi.hoisted(() => vi.fn())
+const confirmRequireMock = vi.hoisted(() => vi.fn())
 const notificationStoreMock = vi.hoisted(() => ({
   state: {
     modalVisible: false,
@@ -22,6 +25,8 @@ const notificationStoreMock = vi.hoisted(() => ({
   },
   initNotifications: vi.fn(),
   openCenter: vi.fn(),
+  deletePersonalNotification: vi.fn(),
+  deleteAllPersonalNotifications: vi.fn(),
   markNotificationAsSeen: vi.fn(),
   latestUnseenNotification: null,
 }))
@@ -33,6 +38,9 @@ vi.mock('@/api', () => ({
     localLogin: localLoginMock,
     logout: logoutMock,
     login: loginRedirectMock,
+  },
+  reportService: {
+    createSystemIssue: createSystemIssueMock,
   },
 }))
 
@@ -62,6 +70,10 @@ vi.mock('primevue/usetoast', () => ({
   useToast: () => ({
     add: toastAddMock,
   }),
+}))
+
+vi.mock('primevue/useconfirm', () => ({
+  useConfirm: () => ({ require: confirmRequireMock }),
 }))
 
 vi.mock('@/utils/analytics', () => ({
@@ -106,7 +118,10 @@ describe('Navbar methods', () => {
     localLoginMock.mockReset()
     logoutMock.mockReset()
     loginRedirectMock.mockReset()
+    createSystemIssueMock.mockReset()
+    createSystemIssueMock.mockResolvedValue({ data: { id: 1 } })
     toastAddMock.mockReset()
+    confirmRequireMock.mockReset()
     notificationStoreMock.state.modalVisible = false
     notificationStoreMock.state.centerVisible = false
     notificationStoreMock.state.all = []
@@ -115,6 +130,8 @@ describe('Navbar methods', () => {
     notificationStoreMock.state.loadingAll = false
     notificationStoreMock.initNotifications.mockReset()
     notificationStoreMock.openCenter.mockReset()
+    notificationStoreMock.deletePersonalNotification.mockReset()
+    notificationStoreMock.deleteAllPersonalNotifications.mockReset()
     notificationStoreMock.markNotificationAsSeen.mockReset()
     notificationStoreMock.latestUnseenNotification = null
     getCurrentUserMock.mockReset()
@@ -269,6 +286,71 @@ describe('Navbar methods', () => {
 
     Navbar.methods.handleNotificationDetailSeen.call(ctx, { id: 2 })
     expect(notificationStoreMock.markNotificationAsSeen).toHaveBeenCalledWith({ id: 2 })
+  })
+
+  it('routes persistent notification sources through internal archive queries', async () => {
+    const push = vi.fn().mockResolvedValue()
+    const ctx = {
+      notificationStore: notificationStoreMock,
+      $router: { push },
+    }
+
+    await Navbar.methods.handlePersonalNotificationSource.call(ctx, {
+      source_type: 'archive_submission',
+      source_id: 42,
+      metadata: { submission_id: 42 },
+    })
+    expect(push).toHaveBeenLastCalledWith({
+      path: '/archive',
+      query: { showSubmissionStatus: '1', submissionId: 42 },
+    })
+
+    await Navbar.methods.handlePersonalNotificationSource.call(ctx, {
+      source_type: 'archive_discussion_thread',
+      source_id: 7,
+      metadata: { course_id: 2, archive_id: 3, thread_id: 7, message_id: 9 },
+    })
+    expect(push).toHaveBeenLastCalledWith({
+      path: '/archive',
+      query: { courseId: 2, archiveId: 3, threadId: 7, messageId: 9 },
+    })
+    expect(notificationStoreMock.state.centerVisible).toBe(false)
+  })
+
+  it('confirms personal notification deletion before calling the store', async () => {
+    const item = { id: 7 }
+    const ctx = {
+      confirm: { require: confirmRequireMock },
+      notificationStore: notificationStoreMock,
+      toast: { add: toastAddMock },
+      deletingPersonalNotificationId: null,
+    }
+
+    Navbar.methods.handleDeletePersonalNotification.call(ctx, item)
+    expect(notificationStoreMock.deletePersonalNotification).not.toHaveBeenCalled()
+    const options = confirmRequireMock.mock.calls[0][0]
+    expect(options.message).toContain('不會進入垃圾桶')
+    await Navbar.methods.deletePersonalNotification.call(ctx, item)
+    expect(notificationStoreMock.deletePersonalNotification).toHaveBeenCalledWith(7)
+    expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ summary: '通知已刪除' }))
+  })
+
+  it('confirms and permanently deletes all personal notifications', async () => {
+    const ctx = {
+      confirm: { require: confirmRequireMock },
+      notificationStore: notificationStoreMock,
+      toast: { add: toastAddMock },
+      deletingAllPersonalNotifications: false,
+    }
+
+    Navbar.methods.handleDeleteAllPersonalNotifications.call(ctx)
+    expect(notificationStoreMock.deleteAllPersonalNotifications).not.toHaveBeenCalled()
+    expect(confirmRequireMock.mock.calls[0][0].message).toContain('所有個人通知')
+    await Navbar.methods.deleteAllPersonalNotifications.call(ctx)
+    expect(notificationStoreMock.deleteAllPersonalNotifications).toHaveBeenCalledOnce()
+    expect(toastAddMock).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: '已刪除全部個人通知' })
+    )
   })
 
   it('toggles more actions menu and invokes menu actions', () => {
@@ -494,7 +576,7 @@ describe('Navbar methods', () => {
     expect(formatted).toContain('(UTC+8)')
   })
 
-  it('submits issue report through GitHub redirect', () => {
+  it('stores a local system issue before opening the GitHub prefill page', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
     const ctx = {
       issueForm: {
@@ -503,6 +585,8 @@ describe('Navbar methods', () => {
         description: '詳細描述',
         contact: 'contact@example.com',
       },
+      canSubmitIssue: true,
+      issueSubmitting: false,
       toast: { add: toastAddMock },
       closeIssueReportDialog: vi.fn(),
       getSystemInfo: vi.fn(() => ({
@@ -515,17 +599,23 @@ describe('Navbar methods', () => {
       formatIssueBody: vi.fn(() => 'issue body'),
     }
 
-    Navbar.methods.submitIssueReport.call(ctx)
+    await Navbar.methods.submitIssueReport.call(ctx)
     expect(trackEventMock).toHaveBeenCalledWith(
       'submit-issue-report',
       expect.objectContaining({ type: 'bug', hasContact: true })
     )
     expect(ctx.formatIssueBody).toHaveBeenCalled()
+    expect(createSystemIssueMock).toHaveBeenCalledWith(
+      expect.objectContaining({ report_type: 'bug', title: '系統問題' })
+    )
     expect(ctx.closeIssueReportDialog).toHaveBeenCalled()
     expect(toastAddMock).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success', summary: '已跳轉到 GitHub' })
+      expect.objectContaining({ severity: 'success', summary: '回報摘要已保存' })
     )
     expect(openSpy).toHaveBeenCalled()
+    expect(navbarSource).toContain('請先在目前瀏覽器登入 GitHub')
+    expect(navbarSource).toContain('GitHub Issue 仍需由您在 GitHub 頁面確認送出後才會正式建立')
+    expect(navbarSource).toContain('label="建立回報並前往 GitHub"')
     openSpy.mockRestore()
   })
 
@@ -549,11 +639,12 @@ describe('Navbar methods', () => {
       handleLogout: vi.fn(),
     }
     const actionsDesktop = Navbar.computed.moreActions.call(actionsCtxDesktop)
-    expect(actionsDesktop).toHaveLength(4)
+    expect(actionsDesktop).toHaveLength(3)
     actionsDesktop[0].command()
     expect(actionsCtxDesktop.invokeMenuAction).toHaveBeenCalled()
     expect(actionsCtxDesktop.handleNavigatePersonalSettings).toHaveBeenCalled()
     actionsDesktop[1].command()
+    expect(actionsDesktop[1].label).toBe('公告與通知')
     expect(actionsCtxDesktop.openNotificationCenter).toHaveBeenCalledWith('navbar-menu')
 
     const actionsCtxMobile = {
@@ -568,9 +659,13 @@ describe('Navbar methods', () => {
       handleLogout: vi.fn(),
     }
     const actionsMobile = Navbar.computed.moreActions.call(actionsCtxMobile)
-    expect(actionsMobile).toHaveLength(6)
-    expect(actionsMobile[4]).toHaveProperty('separator')
-    expect(actionsMobile[5].label).toBe('登出')
+    expect(actionsMobile).toHaveLength(5)
+    expect(actionsMobile[3]).toHaveProperty('separator')
+    expect(actionsMobile[4].label).toBe('登出')
+    expect(actionsMobile[4].icon).toBe('pi pi-sign-out')
+    actionsMobile[4].command()
+    expect(actionsCtxMobile.invokeMenuAction).toHaveBeenCalled()
+    expect(actionsCtxMobile.handleLogout).toHaveBeenCalled()
 
     const canSubmitCtx = {
       issueForm: { type: 'bug', title: 'Title', description: 'Desc' },
@@ -586,6 +681,18 @@ describe('Navbar methods', () => {
     }
 
     expect(Navbar.computed.moreActions.call(actionsCtx)).toEqual([])
+  })
+
+  it('updates the responsive menu mode from reactive viewport state', () => {
+    const ctx = { viewportWidth: 1024 }
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 524 })
+
+    Navbar.methods.updateViewportWidth.call(ctx)
+
+    expect(ctx.viewportWidth).toBe(524)
+    expect(Navbar.computed.isDesktopView.call(ctx)).toBe(false)
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
   })
 
   it('reacts to authentication watcher changes', async () => {

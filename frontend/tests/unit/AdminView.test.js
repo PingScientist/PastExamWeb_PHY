@@ -1,7 +1,15 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import AdminView from '@/views/Admin.vue'
 import { applyFontSizePreference } from '@/utils/fontSizePreference'
+
+const adminViewSource = readFileSync(
+  resolve(globalThis.process.cwd(), 'src/views/Admin.vue'),
+  'utf8'
+)
+const adminTemplateSource = adminViewSource.split('<script setup>')[0]
 
 const sampleCourses = [
   { id: 1, name: 'Algorithms', category: 'junior' },
@@ -95,6 +103,7 @@ const sampleNotifications = [
     starts_at: new Date(now.getTime() - 3600_000).toISOString(),
     ends_at: new Date(now.getTime() + 3600_000).toISOString(),
     created_at: now.toISOString(),
+    updated_by_username: 'admin',
   },
   {
     id: 2,
@@ -350,8 +359,260 @@ describe('AdminView', () => {
     expect(wrapper.vm.getNotificationSeverityLabel('info')).toBe('一般')
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[0])).toBe(true)
     expect(wrapper.vm.isNotificationEffective(sampleNotifications[1])).toBe(false)
-    expect(wrapper.vm.formatNotificationDate('invalid')).toBe('—')
-    expect(wrapper.vm.formatNotificationDate(now.toISOString())).not.toBe('—')
+    expect(wrapper.vm.formatAdminActorTime('invalid')).toBe('—')
+    expect(wrapper.vm.formatAdminActorTime(now.toISOString())).not.toBe('—')
+
+    wrapper.unmount()
+  })
+
+  it('keeps desktop actor-time columns while restoring compact mobile metadata', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    expect(adminViewSource).toContain("toggleReviewSort('new', 'submitted_at')")
+    expect(adminViewSource).toContain("toggleReviewSort('existing', 'submitted_at')")
+    expect(adminViewSource).toContain("toggleReviewSort('new', 'reviewed_at')")
+    expect(adminViewSource).toContain("toggleReviewSort('existing', 'reviewed_at')")
+    expect(adminViewSource).toContain("toggleTrashSort('deleted_at')")
+    expect(adminViewSource).not.toContain('header="審核人"')
+    expect(adminViewSource).not.toContain('header="審核時間"')
+    expect(adminViewSource).not.toContain("toggleTrashSort('deleted_by')")
+    expect(adminViewSource).not.toContain('<span class="review-mobile-info-label">申請人</span>')
+    expect(adminViewSource).not.toContain('<span class="review-mobile-info-label">投稿人</span>')
+    expect(adminViewSource.match(/review-mobile-info-label">審核人/g)).toHaveLength(2)
+    expect(adminViewSource.match(/review-mobile-info-label">審核時間/g)).toHaveLength(2)
+    expect(adminViewSource.match(/label: '刪除者'/g)).toHaveLength(1)
+    expect(adminViewSource.match(/label: '刪除時間'/g)).toHaveLength(1)
+    expect(adminViewSource).not.toContain('admin-actor-time--mobile')
+    expect(adminViewSource).toContain('admin-actor-time--notification')
+    expect(adminViewSource).toContain('notification-mobile-update__value')
+    expect(adminViewSource).not.toContain('hasNotificationUpdater')
+    expect(
+      adminTemplateSource.match(/getNotificationUpdaterLabel\((?:data|notification)\)/g)
+    ).toHaveLength(6)
+    expect(adminViewSource.match(/review-desktop-course-cell/g).length).toBeGreaterThanOrEqual(2)
+    expect(
+      adminTemplateSource.match(
+        /review-desktop-course-cell__name[\s\S]*?review-desktop-course-cell__admin-row/g
+      )
+    ).toHaveLength(2)
+    expect(adminViewSource.match(/admin-desktop-status-tag/g).length).toBeGreaterThanOrEqual(3)
+    expect(adminTemplateSource.match(/class="admin-desktop-status-label"/g)).toHaveLength(3)
+    expect(adminTemplateSource.match(/'admin-desktop-status-tag'/g)).toHaveLength(3)
+    expect(adminViewSource).toContain('Array.from(')
+    expect(adminViewSource).not.toContain('writing-mode: vertical-rl')
+    expect(adminViewSource).not.toContain('min-inline-size: 4.75rem')
+    expect(adminViewSource).toContain('inline-size: fit-content')
+    expect(adminViewSource).toContain('@container admin-status-cell (max-width: 3.75rem)')
+    expect(adminViewSource).toMatch(
+      /admin-desktop-status-label[\s\S]*?flex-direction: row[\s\S]*?@container admin-status-cell[\s\S]*?flex-direction: column/
+    )
+    expect(adminTemplateSource.match(/class="review-submission-type-cell"/g)).toHaveLength(1)
+    expect(adminTemplateSource.match(/'review-desktop-submission-type-tag'/g)).toHaveLength(1)
+    expect(adminTemplateSource.match(/class="submission-type-combined-label"/g)).toHaveLength(1)
+    expect(adminTemplateSource).toContain('class="submission-type-combined-label__separator"')
+    expect(adminTemplateSource).toContain('＋')
+    expect(adminViewSource).toContain('@container review-submission-type-cell (max-width: 7.25rem)')
+    expect(adminViewSource).toMatch(
+      /submission-type-combined-label__separator[\s\S]*?display: none/
+    )
+    expect(adminViewSource.match(/'review-mobile-card-status-badge'/g)).toHaveLength(2)
+    expect(adminTemplateSource.match(/trash-name-column/g)).toHaveLength(2)
+    expect(adminViewSource).toContain('width: clamp(14rem, 18vw, 18rem)')
+    expect(adminViewSource).toContain('overflow-wrap: anywhere')
+    expect(adminTemplateSource).toContain("'trash-name-title__text'")
+    expect(adminTemplateSource.match(/class="trash-user-email"/g)).toHaveLength(2)
+    expect(
+      adminTemplateSource.match(/data\.item_type === 'user' && data\.user_email/g)
+    ).toHaveLength(2)
+    expect(adminTemplateSource).toContain(':title="data.user_email"')
+    expect(adminTemplateSource).not.toContain('{{ data.display_name }} ({{ data.user_email }})')
+    expect(adminViewSource).toMatch(
+      /\.trash-user-email[\s\S]*?color: var\(--text-secondary\)[\s\S]*?font-size: var\(--app-font-size-sm\)[\s\S]*?overflow-wrap: anywhere/
+    )
+    expect(adminTemplateSource).toMatch(
+      /trash-mobile-card-title-block[\s\S]*?trash-user-email[\s\S]*?trash-mobile-card-badges/
+    )
+    expect(adminTemplateSource).not.toContain('trash-mobile-card trash-name-column')
+    expect(adminTemplateSource.match(/class="trash-tree-prefix"/g)).toHaveLength(2)
+    expect(adminTemplateSource).toContain('getTrashNameIndent(data)')
+    expect(adminViewSource).toContain('headerClass="trash-dependencies-column"')
+    expect(adminViewSource).toContain('width: clamp(17rem, 22vw, 23rem)')
+    expect(adminViewSource).toContain("{ label: '系統問題回報', value: 'system_issue_report' }")
+    expect(adminViewSource).toContain("{ label: '留言回報', value: 'comment_report' }")
+    expect(adminViewSource).toContain("{ label: '考古題回報', value: 'archive_report' }")
+    expect(wrapper.vm.trashFilterOptions.map((option) => option.value)).toEqual([
+      'archive',
+      'archive_submission',
+      'course_category',
+      'course',
+      'notification',
+      'user',
+      'system_issue_report',
+      'comment_report',
+      'archive_report',
+    ])
+    expect(adminViewSource).toContain('永久刪除後無法復原。')
+    expect(adminTemplateSource).toContain('getTrashReportDetails(data)')
+    expect(
+      wrapper.vm.getTrashReportDetails({
+        item_type: 'system_issue_report',
+        report_type: 'bug',
+        reporter_name: '回報者',
+        github_issue_number: 123,
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        { label: '問題類型', value: '程式錯誤' },
+        { label: '回報者', value: '回報者' },
+        { label: '說明', value: '本地摘要' },
+      ])
+    )
+    expect(
+      wrapper.vm
+        .getTrashReportDetails({ item_type: 'system_issue_report', github_issue_number: 123 })
+        .some((detail) => detail.label === 'GitHub 連結')
+    ).toBe(false)
+    expect(wrapper.vm.getTrashStatusLabel('pending', 'comment_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel('upheld', 'comment_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel('dismissed', 'comment_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel('unread', 'system_issue_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel(null, 'archive_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusSeverity('pending', 'comment_report')).toBe('danger')
+    expect(wrapper.vm.getTrashStatusSeverity('upheld', 'comment_report')).toBe('danger')
+    expect(wrapper.vm.getTrashStatusSeverity('dismissed', 'comment_report')).toBe('danger')
+    expect(wrapper.vm.getTrashStatusSeverity('read', 'system_issue_report')).toBe('danger')
+    expect(wrapper.vm.getTrashStatusClass('pending', 'comment_report')).toBe(
+      'review-status-deleted'
+    )
+    expect(
+      wrapper.vm.getTrashReportDetails({
+        item_type: 'comment_report',
+        reporter_name: '回報者',
+        comment_author_name: '留言者',
+        comment_snapshot: '留言摘要',
+        course_name: '課程',
+        archive_name: '考古題',
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        { label: '回報者', value: '回報者' },
+        { label: '留言者', value: '留言者' },
+        { label: '課程／考古題', value: '課程 · 考古題' },
+      ])
+    )
+    expect(
+      wrapper.vm
+        .getTrashReportDetails({ item_type: 'comment_report', comment_snapshot: '留言摘要' })
+        .some((detail) => detail.label === '留言摘要' || detail.value === '留言摘要')
+    ).toBe(false)
+    expect(adminTemplateSource.match(/class="trash-mobile-card-footer"/g)).toHaveLength(1)
+    expect(adminTemplateSource).toMatch(
+      /trash-mobile-card-footer[\s\S]*?trash-mobile-dependencies[\s\S]*?trash-mobile-card-actions/
+    )
+    expect(adminTemplateSource).not.toContain('trash-mobile-primary-metadata')
+    expect(adminTemplateSource).not.toContain('trash-mobile-deletion-metadata')
+    expect(adminTemplateSource).toMatch(
+      /class="trash-mobile-info-grid"[\s\S]*?v-for="metadata in getTrashMobileMetadata\(data\)"[\s\S]*?trash-mobile-info-item--row-start/
+    )
+    expect(adminViewSource).toMatch(
+      /\.trash-mobile-info-grid\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*width:\s*100%;[^}]*min-width:\s*0;/
+    )
+    expect(adminViewSource).toMatch(
+      /@media \(min-width: 900px\) and \(max-width: 1399px\)[\s\S]*?\.trash-mobile-info-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/
+    )
+    expect(adminViewSource).toMatch(
+      /@media \(min-width: 900px\) and \(max-width: 1399px\)[\s\S]*?\.trash-mobile-info-item--row-start\s*\{[^}]*grid-column:\s*1;/
+    )
+    expect(adminViewSource).toMatch(
+      /@media \(max-width: 360px\)[\s\S]*?\.trash-mobile-info-grid\s*\{[^}]*grid-template-columns:\s*1fr;/
+    )
+    expect(adminTemplateSource).not.toMatch(/trash-mobile-info-(?:item|placeholder)[^>]*hidden/)
+    const archiveSubmissionMetadata = wrapper.vm.getTrashMobileMetadata({
+      item_type: 'archive_submission',
+      id: 64,
+      academic_term: '114上學期',
+      course_name: '毀滅交大',
+      deleted_by_name: 'admin',
+      deleted_at: '2026-07-04T08:07:00Z',
+    })
+    expect(archiveSubmissionMetadata.map((item) => item.label)).toEqual([
+      '投稿編號',
+      '學期',
+      '課程',
+      '刪除者',
+      '刪除時間',
+    ])
+    expect(archiveSubmissionMetadata[2]).toMatchObject({
+      label: '課程',
+      startNewRow: true,
+    })
+    const registeredTrashTypes = wrapper.vm.trashFilterOptions.map((option) => option.value)
+    for (const itemType of registeredTrashTypes) {
+      const labels = wrapper.vm
+        .getTrashMobileMetadata({ item_type: itemType })
+        .map((item) => item.label)
+      expect(labels.slice(-2)).toEqual(['刪除者', '刪除時間'])
+    }
+    expect(adminViewSource).toMatch(
+      /\.trash-mobile-card-footer\s*\{[\s\S]*?border-top:\s*1px solid color-mix/
+    )
+    expect(adminViewSource).toContain('.trash-mobile-card.trash-row--relation-group-even')
+    expect(adminViewSource).toContain('.trash-mobile-card.trash-row--relation-group-odd')
+
+    expect(wrapper.vm.getReviewRequesterLabel({ requester_name: '申請者' })).toBe('申請者')
+    expect(wrapper.vm.getReviewRequesterLabel({})).toBe('—')
+    expect(wrapper.vm.getReviewReviewerDisplay({})).toBe('尚未審核')
+    expect(
+      wrapper.vm.getReviewReviewerDisplay({
+        reviewer_name: '管理員',
+        reviewed_at: '2026-07-20T05:32:00Z',
+      })
+    ).toBe('管理員')
+    expect(wrapper.vm.getNotificationUpdaterLabel({})).toBe('—')
+    expect(wrapper.vm.getNotificationUpdaterLabel({ updated_by_username: 'editor' })).toBe('editor')
+    expect(wrapper.vm.getTrashDeletedByLabel({ deleted_by_name: '刪除管理員 A' })).toBe(
+      '刪除管理員 A'
+    )
+    expect(wrapper.vm.getTrashDeletedByLabel({})).toBe('—')
+    const actorTime = wrapper.vm.formatAdminActorTime('2020-07-20T05:32:00Z')
+    expect(actorTime).toBe('2020/07/20 13:32')
+    expect(actorTime).not.toMatch(/上午|下午/)
+    expect(
+      wrapper.vm.formatAdminActorTime(new Date(now.getTime() - 5 * 60_000).toISOString())
+    ).toBe('5 分鐘前')
+
+    const reviewRows = [
+      {
+        id: 2,
+        created_at: '2026-07-20T02:00:00Z',
+        reviewed_at: '2026-07-20T04:00:00Z',
+      },
+      {
+        id: 1,
+        created_at: '2026-07-20T01:00:00Z',
+        reviewed_at: '2026-07-20T03:00:00Z',
+      },
+      { id: 3, created_at: '2026-07-20T03:00:00Z', reviewed_at: null },
+    ]
+    wrapper.vm.toggleReviewSort('new', 'submitted_at')
+    expect(wrapper.vm.sortArchiveReviewItems(reviewRows, 'new').map(({ id }) => id)).toEqual([
+      1, 2, 3,
+    ])
+    wrapper.vm.toggleReviewSort('new', 'reviewed_at')
+    expect(wrapper.vm.sortArchiveReviewItems(reviewRows, 'new').map(({ id }) => id)).toEqual([
+      1, 2, 3,
+    ])
+
+    wrapper.vm.toggleTrashSort('deleted_at')
+    expect(
+      wrapper.vm
+        .sortTrashItems([
+          { id: 2, deleted_at: '2026-07-20T02:00:00Z' },
+          { id: 1, deleted_at: '2026-07-20T01:00:00Z' },
+        ])
+        .map(({ id }) => id)
+    ).toEqual([1, 2])
 
     wrapper.unmount()
   })
@@ -445,7 +706,7 @@ describe('AdminView', () => {
     await wrapper.vm.loadNotifications()
     expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ detail: '載入公告失敗' }))
 
-    expect(wrapper.vm.formatNotificationDate(null)).toBe('—')
+    expect(wrapper.vm.formatAdminActorTime(null)).toBe('—')
     expect(wrapper.vm.formatDateTime(null)).toBe('從未登入')
     expect(wrapper.vm.formatDateTime(new Date(now.getTime() - 30_000).toISOString())).toBe('剛剛')
     expect(wrapper.vm.formatDateTime(new Date(now.getTime() - 10 * 60_000).toISOString())).toBe(
