@@ -33,11 +33,6 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_PASSWORD: str
     DEFAULT_ADMIN_EMAIL: str
 
-    GITHUB_ISSUES_ENABLED: bool = False
-    GITHUB_TOKEN: str = ""
-    GITHUB_REPOSITORY_OWNER: str = "PingScientist"
-    GITHUB_REPOSITORY_NAME: str = "PastExamWeb_PHY"
-
     class Config:
         env_file = ".env"
         from_attributes = True

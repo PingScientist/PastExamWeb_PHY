@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -29,11 +30,6 @@ from app.models.models import (
     UserRoles,
 )
 from app.services.discussions import soft_delete_discussion_message
-from app.services.github_issues import (
-    GitHubIssueError,
-    get_github_issues_client,
-    is_allowed_github_issue_url,
-)
 from app.services.personal_notifications import enqueue_personal_notification
 from app.utils.auth import get_current_user
 
@@ -52,7 +48,9 @@ REPORT_REASON_LABELS = {
     CommentReportReason.OTHER.value: "其他",
 }
 SYSTEM_ISSUE_TYPES = {"bug", "enhancement", "performance", "ui-ux", "question"}
-GITHUB_SYNC_FALLBACK = "GitHub Issue 尚未建立，管理員可稍後重試。"
+GITHUB_ISSUE_URL_PATTERN = re.compile(
+    r"^https://github\.com/PingScientist/PastExamWeb_PHY/issues/(?P<number>[1-9][0-9]*)$"
+)
 
 
 def _display_name(user_id: int | None, nickname: str | None, name: str | None) -> str:
@@ -146,13 +144,12 @@ async def _read_report(db: AsyncSession, report_id: int) -> CommentReportRead:
 
 
 def _safe_github_issue_url(report: SystemIssueReport) -> str | None:
-    return (
-        report.github_issue_url
-        if is_allowed_github_issue_url(
-            report.github_issue_url, report.github_issue_number
-        )
-        else None
-    )
+    if not report.github_issue_url or report.github_issue_number is None:
+        return None
+    match = GITHUB_ISSUE_URL_PATTERN.fullmatch(report.github_issue_url)
+    if not match or int(match.group("number")) != report.github_issue_number:
+        return None
+    return report.github_issue_url
 
 
 def _serialize_system_issue(report: SystemIssueReport, nickname, name) -> SystemIssueReportRead:
@@ -167,60 +164,9 @@ def _serialize_system_issue(report: SystemIssueReport, nickname, name) -> System
         status=report.status,
         github_issue_number=report.github_issue_number,
         github_issue_url=_safe_github_issue_url(report),
-        github_issue_state=report.github_issue_state,
-        github_linked_at=report.github_linked_at,
-        github_sync_status=report.github_sync_status,
-        github_sync_error=report.github_sync_error,
-        github_linked=bool(_safe_github_issue_url(report)),
         created_at=report.created_at,
         updated_at=report.updated_at,
     )
-
-
-async def _link_system_issue_report(
-    db: AsyncSession,
-    report_id: int,
-) -> tuple[SystemIssueReport, str | None]:
-    report = (
-        await db.execute(
-            select(SystemIssueReport)
-            .where(
-                SystemIssueReport.id == report_id,
-                SystemIssueReport.deleted_at.is_(None),
-            )
-            .with_for_update()
-        )
-    ).scalar_one_or_none()
-    if report is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="System issue report not found",
-        )
-    if _safe_github_issue_url(report):
-        return report, None
-
-    client = get_github_issues_client()
-    try:
-        issue = await client.create_issue(report)
-    except GitHubIssueError as error:
-        report.github_sync_status = "failed" if client.configured else "disabled"
-        report.github_sync_error = GITHUB_SYNC_FALLBACK
-        report.updated_at = datetime.now(timezone.utc)
-        db.add(report)
-        await db.commit()
-        return report, error.public_message
-
-    now = datetime.now(timezone.utc)
-    report.github_issue_number = issue.number
-    report.github_issue_url = issue.url
-    report.github_issue_state = issue.state
-    report.github_linked_at = now
-    report.github_sync_status = "linked"
-    report.github_sync_error = None
-    report.updated_at = now
-    db.add(report)
-    await db.commit()
-    return report, None
 
 
 @router.post(
@@ -258,7 +204,6 @@ async def create_system_issue_report(
     db.add(report)
     await db.commit()
     await db.refresh(report)
-    report, _ = await _link_system_issue_report(db, report.id)
     user = await db.get(User, current_user.user_id)
     return _serialize_system_issue(
         report,
@@ -367,30 +312,6 @@ async def delete_system_issue_report(
     db.add(report)
     await db.commit()
     return {"success": True}
-
-
-@router.post(
-    "/admin/system-issues/{report_id}/github-issue",
-    response_model=SystemIssueReportRead,
-)
-async def retry_system_issue_github_link(
-    report_id: int,
-    current_user: UserRoles = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-):
-    _require_admin(current_user)
-    report, github_error = await _link_system_issue_report(db, report_id)
-    if github_error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=GITHUB_SYNC_FALLBACK,
-        )
-    reporter = await db.get(User, report.reporter_user_id) if report.reporter_user_id else None
-    return _serialize_system_issue(
-        report,
-        reporter.nickname if reporter else None,
-        reporter.name if reporter else None,
-    )
 
 
 @router.post(

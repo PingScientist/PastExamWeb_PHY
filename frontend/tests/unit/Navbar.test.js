@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
 import { shallowMount } from '@vue/test-utils'
 import Navbar from '@/components/Navbar.vue'
-import navbarSource from '@/components/Navbar.vue?raw'
 
 const localLoginMock = vi.hoisted(() => vi.fn())
 const logoutMock = vi.hoisted(() => vi.fn())
@@ -469,7 +468,82 @@ describe('Navbar methods', () => {
     expect(routerPush).not.toHaveBeenCalled()
   })
 
-  it('collects system info for the backend issue formatter', () => {
+  it('formats issue body with system information', () => {
+    const ctx = {
+      getBrowserInfo: vi.fn(() => 'Chrome 120'),
+      getOSInfo: vi.fn(() => 'macOS 14.0'),
+      formatTimestamp: vi.fn(() => '2025/10/30 12:00:00 (UTC+8)'),
+    }
+    const systemInfo = {
+      userAgent: 'chrome ua',
+      platform: 'MacIntel',
+      language: 'zh-TW',
+      url: 'https://example.com',
+      route: { path: '/archive', name: 'ArchiveView', fullPath: '/archive?course=1' },
+      pageContext: {
+        archiveContext: {
+          course: { id: 101, name: '普通物理(一)' },
+          filters: {
+            year: '2024',
+            professor: '王教授',
+            type: 'final',
+            hasAnswers: true,
+            searchQuery: '普通物理',
+          },
+          preview: { open: true, archiveId: 201, name: '期末考' },
+        },
+      },
+      timestamp: '2025-10-30T00:00:00Z',
+    }
+
+    const bodyWithContact = Navbar.methods.formatIssueBody.call(
+      ctx,
+      '描述內容',
+      'contact@example.com',
+      systemInfo,
+      'bug'
+    )
+    expect(ctx.getBrowserInfo).toHaveBeenCalledWith('chrome ua')
+    expect(bodyWithContact).toContain('contact@example.com')
+    expect(bodyWithContact).toContain('## 頁面資訊')
+    expect(bodyWithContact).toContain('普通物理(一)')
+    expect(bodyWithContact).toContain('year=2024')
+    expect(bodyWithContact).toContain('archiveId=201')
+
+    const bodyWithoutContact = Navbar.methods.formatIssueBody.call(
+      ctx,
+      '描述內容',
+      '',
+      systemInfo,
+      'question'
+    )
+    expect(bodyWithoutContact).not.toContain('聯絡方式')
+  })
+
+  it('detects browser and operating system variants', () => {
+    const chrome = Navbar.methods.getBrowserInfo.call({}, 'Chrome/120.0')
+    const firefox = Navbar.methods.getBrowserInfo.call({}, 'Firefox/118.0')
+    const safari = Navbar.methods.getBrowserInfo.call({}, 'Version Safari/16.4')
+    const edge = Navbar.methods.getBrowserInfo.call({}, 'Edge/118.0')
+    const unknown = Navbar.methods.getBrowserInfo.call({}, 'Other UA')
+
+    expect(chrome).toMatch(/Chrome/)
+    expect(firefox).toMatch(/Firefox/)
+    expect(safari).toMatch(/Safari/)
+    expect(edge).toMatch(/Edge/)
+    expect(unknown).toBe('Unknown Browser')
+
+    expect(Navbar.methods.getOSInfo.call({}, 'MacIntel', 'Mac OS X 13_6')).toContain('macOS')
+    expect(Navbar.methods.getOSInfo.call({}, 'Win', 'Windows NT 10.0')).toBe('Windows 10/11')
+    expect(Navbar.methods.getOSInfo.call({}, 'Linux', 'Linux x86_64')).toBe('Linux')
+    expect(Navbar.methods.getOSInfo.call({}, 'Android', 'Android 13.0')).toBe('Android 13.0')
+    expect(Navbar.methods.getOSInfo.call({}, 'iPhone', 'Mozilla/5.0 (iPhone; CPU OS 16_4)')).toBe(
+      'iOS 16.4'
+    )
+    expect(Navbar.methods.getOSInfo.call({}, 'Other', 'Unknown')).toBe('Other')
+  })
+
+  it('collects system info and formats timestamps', () => {
     sessionStorage.setItem(
       'pastexam-issue-context',
       JSON.stringify({
@@ -496,18 +570,13 @@ describe('Navbar methods', () => {
     })
     expect(info).toHaveProperty('pageContext')
     expect(typeof info.timestamp).toBe('string')
+
+    const formatted = Navbar.methods.formatTimestamp.call({}, '2024-01-01T00:00:00Z')
+    expect(formatted).toContain('(UTC+8)')
   })
 
-  it('opens only the validated URL returned by a linked system issue', async () => {
+  it('stores a local system issue before opening the GitHub prefill page', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
-    createSystemIssueMock.mockResolvedValueOnce({
-      data: {
-        id: 1,
-        github_linked: true,
-        github_issue_number: 123,
-        github_issue_url: 'https://github.com/PingScientist/PastExamWeb_PHY/issues/123',
-      },
-    })
     const ctx = {
       issueForm: {
         type: 'bug',
@@ -526,7 +595,7 @@ describe('Navbar methods', () => {
         url: 'https://example.com',
         timestamp: '2025-10-30T00:00:00Z',
       })),
-      getSafeGithubIssueUrl: Navbar.methods.getSafeGithubIssueUrl,
+      formatIssueBody: vi.fn(() => 'issue body'),
     }
 
     await Navbar.methods.submitIssueReport.call(ctx)
@@ -534,44 +603,15 @@ describe('Navbar methods', () => {
       'submit-issue-report',
       expect.objectContaining({ type: 'bug', hasContact: true })
     )
+    expect(ctx.formatIssueBody).toHaveBeenCalled()
     expect(createSystemIssueMock).toHaveBeenCalledWith(
       expect.objectContaining({ report_type: 'bug', title: '系統問題' })
     )
     expect(ctx.closeIssueReportDialog).toHaveBeenCalled()
     expect(toastAddMock).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'success', summary: '回報已建立' })
+      expect.objectContaining({ severity: 'success', summary: '回報摘要已保存' })
     )
-    expect(openSpy).toHaveBeenCalledWith(
-      'https://github.com/PingScientist/PastExamWeb_PHY/issues/123',
-      '_blank',
-      'noopener,noreferrer'
-    )
-    expect(navbarSource).not.toContain('github.com/login?return_to=')
-    expect(navbarSource).not.toContain('/issues/new?')
-    openSpy.mockRestore()
-  })
-
-  it('keeps the local success state when GitHub is not linked', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
-    createSystemIssueMock.mockResolvedValueOnce({
-      data: { id: 2, github_linked: false, github_issue_number: null, github_issue_url: null },
-    })
-    const ctx = {
-      issueForm: { type: 'bug', title: '系統問題', description: '詳細描述', contact: '' },
-      canSubmitIssue: true,
-      issueSubmitting: false,
-      toast: { add: toastAddMock },
-      closeIssueReportDialog: vi.fn(),
-      getSystemInfo: vi.fn(() => ({})),
-      getSafeGithubIssueUrl: Navbar.methods.getSafeGithubIssueUrl,
-    }
-
-    await Navbar.methods.submitIssueReport.call(ctx)
-
-    expect(openSpy).not.toHaveBeenCalled()
-    expect(toastAddMock).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'warn', summary: '回報已保存' })
-    )
+    expect(openSpy).toHaveBeenCalled()
     openSpy.mockRestore()
   })
 

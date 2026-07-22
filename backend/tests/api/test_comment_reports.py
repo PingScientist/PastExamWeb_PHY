@@ -1,8 +1,6 @@
-import asyncio
 import uuid
 from datetime import datetime, timezone
 
-import httpx
 import pytest
 from sqlalchemy import delete, func
 from sqlmodel import select
@@ -20,7 +18,6 @@ from app.models.models import (
     SystemIssueReport,
     UserRoles,
 )
-from app.services.github_issues import GitHubIssuesClient
 from app.utils.auth import get_current_user
 
 
@@ -381,9 +378,7 @@ async def test_system_issue_reports_are_local_admin_only_and_filter_unsafe_githu
             session.add(report)
             await session.commit()
 
-        app.dependency_overrides[get_current_user] = _override_user(
-            admin.id, is_admin=True
-        )
+        app.dependency_overrides[get_current_user] = _override_user(admin.id, is_admin=True)
         listed = await client.get(
             "/reports/admin/system-issues",
             params={"search": "System issue", "sort_by": "title", "sort_order": "asc"},
@@ -403,182 +398,6 @@ async def test_system_issue_reports_are_local_admin_only_and_filter_unsafe_githu
             await session.execute(
                 delete(SystemIssueReport).where(
                     SystemIssueReport.reporter_user_id == reporter.id
-                )
-            )
-            await session.commit()
-
-
-@pytest.mark.asyncio
-async def test_system_issue_reports_link_github_with_retry_and_idempotency(
-    client, session_maker, make_user, monkeypatch
-):
-    reporter = await make_user(name="github-report-reporter")
-    admin = await make_user(name="github-report-admin", is_admin=True)
-    created_report_ids = []
-    github_requests = []
-
-    def success_handler(request: httpx.Request) -> httpx.Response:
-        github_requests.append(request)
-        report_marker = len(github_requests)
-        return httpx.Response(
-            201,
-            json={
-                "number": 500 + report_marker,
-                "html_url": (
-                    "https://github.com/PingScientist/PastExamWeb_PHY/issues/"
-                    f"{500 + report_marker}"
-                ),
-                "state": "open",
-            },
-        )
-
-    success_client = GitHubIssuesClient(
-        enabled=True,
-        token="mock-token",
-        transport=httpx.MockTransport(success_handler),
-    )
-    try:
-        monkeypatch.setattr(
-            reports_service,
-            "get_github_issues_client",
-            lambda: success_client,
-        )
-        app.dependency_overrides[get_current_user] = _override_user(reporter.id)
-        linked = await client.post(
-            "/reports/system-issues",
-            json={
-                "report_type": "bug",
-                "title": "GitHub linked report",
-                "description": "Create through mocked GitHub HTTP",
-                "contact": "private@example.com",
-                "metadata": {"route": {"path": "/archive"}},
-            },
-        )
-        assert linked.status_code == 201
-        linked_body = linked.json()
-        created_report_ids.append(linked_body["id"])
-        assert linked_body["github_linked"] is True
-        assert linked_body["github_issue_number"] == 501
-        assert linked_body["github_issue_state"] == "open"
-
-        app.dependency_overrides[get_current_user] = _override_user(
-            admin.id, is_admin=True
-        )
-        repeated = await client.post(
-            f"/reports/admin/system-issues/{linked_body['id']}/github-issue"
-        )
-        assert repeated.status_code == 200
-        assert repeated.json()["github_issue_number"] == 501
-        assert len(github_requests) == 1
-
-        def failure_handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(500, json={"message": "mock-token internal detail"})
-
-        failure_client = GitHubIssuesClient(
-            enabled=True,
-            token="mock-token",
-            transport=httpx.MockTransport(failure_handler),
-        )
-        monkeypatch.setattr(
-            reports_service,
-            "get_github_issues_client",
-            lambda: failure_client,
-        )
-        app.dependency_overrides[get_current_user] = _override_user(reporter.id)
-        failed_link = await client.post(
-            "/reports/system-issues",
-            json={
-                "report_type": "performance",
-                "title": "GitHub retry report",
-                "description": "Keep the local report when GitHub fails",
-            },
-        )
-        assert failed_link.status_code == 201
-        failed_body = failed_link.json()
-        created_report_ids.append(failed_body["id"])
-        assert failed_body["github_linked"] is False
-        assert failed_body["github_issue_number"] is None
-        assert failed_body["github_issue_url"] is None
-        assert failed_body["github_sync_status"] == "failed"
-        assert "mock-token" not in failed_body["github_sync_error"]
-
-        app.dependency_overrides[get_current_user] = _override_user(
-            admin.id, is_admin=True
-        )
-        failed_retry = await client.post(
-            f"/reports/admin/system-issues/{failed_body['id']}/github-issue"
-        )
-        assert failed_retry.status_code == 502
-        assert "mock-token" not in str(failed_retry.json())
-
-        monkeypatch.setattr(
-            reports_service,
-            "get_github_issues_client",
-            lambda: success_client,
-        )
-        app.dependency_overrides[get_current_user] = _override_user(
-            reporter.id, is_admin=False
-        )
-        assert (
-            await client.post(
-                f"/reports/admin/system-issues/{failed_body['id']}/github-issue"
-            )
-        ).status_code == 403
-
-        app.dependency_overrides[get_current_user] = _override_user(
-            admin.id, is_admin=True
-        )
-        retried, duplicate_retry = await asyncio.gather(
-            client.post(
-                f"/reports/admin/system-issues/{failed_body['id']}/github-issue"
-            ),
-            client.post(
-                f"/reports/admin/system-issues/{failed_body['id']}/github-issue"
-            ),
-        )
-        assert retried.status_code == 200
-        assert duplicate_retry.status_code == 200
-        assert retried.json()["github_issue_number"] == 502
-        assert duplicate_retry.json()["github_issue_number"] == 502
-        assert len(github_requests) == 2
-        assert (
-            await client.post(
-                f"/reports/admin/system-issues/{failed_body['id']}/github-issue"
-            )
-        ).status_code == 200
-        assert len(github_requests) == 2
-
-        disabled_client = GitHubIssuesClient(enabled=False, token="")
-        monkeypatch.setattr(
-            reports_service,
-            "get_github_issues_client",
-            lambda: disabled_client,
-        )
-        app.dependency_overrides[get_current_user] = _override_user(reporter.id)
-        disabled = await client.post(
-            "/reports/system-issues",
-            json={
-                "report_type": "question",
-                "title": "No GitHub credential",
-                "description": "The local report must still exist",
-            },
-        )
-        assert disabled.status_code == 201
-        disabled_body = disabled.json()
-        created_report_ids.append(disabled_body["id"])
-        assert disabled_body["github_linked"] is False
-        assert disabled_body["github_sync_status"] == "disabled"
-        assert disabled_body["github_issue_url"] is None
-
-        async with session_maker() as session:
-            for report_id in created_report_ids:
-                assert await session.get(SystemIssueReport, report_id) is not None
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
-        async with session_maker() as session:
-            await session.execute(
-                delete(SystemIssueReport).where(
-                    SystemIssueReport.id.in_(created_report_ids or [-1])
                 )
             )
             await session.commit()
@@ -649,11 +468,6 @@ async def test_admin_moves_report_records_to_independent_trash_and_restores_them
         assert (
             await client.delete(f"/reports/admin/comments/{comment_id}")
         ).status_code == 200
-        assert (
-            await client.post(
-                f"/reports/admin/system-issues/{system_id}/github-issue"
-            )
-        ).status_code == 404
 
         system_list = await client.get("/reports/admin/system-issues")
         comment_list = await client.get("/reports/admin/comments")
