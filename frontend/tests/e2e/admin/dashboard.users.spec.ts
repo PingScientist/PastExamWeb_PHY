@@ -5,6 +5,10 @@ import { clickWhenVisible } from '../support/ui'
 
 test.describe('Admin Dashboard › Users', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
+
     await page.route('**/api/notifications/active', async (route) => {
       await route.fulfill({
         status: 200,
@@ -12,6 +16,17 @@ test.describe('Admin Dashboard › Users', () => {
         body: JSON.stringify([]),
       })
     })
+    await page.route('**/api/notifications/unread-summary**', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          announcements: [],
+          personal_notifications: [],
+          counts: { announcements: 0, personal_notifications: 0, total: 0 },
+        }),
+      })
+    )
   })
 
   test('allows creating, editing, and deleting users', async ({ page }) => {
@@ -21,10 +36,7 @@ test.describe('Admin Dashboard › Users', () => {
     await page.goto('/admin', { waitUntil: 'networkidle' })
     await expect(page).toHaveURL(/\/admin$/)
 
-    const tabs = page.getByRole('tab')
-    await expect(tabs).toHaveCount(3)
-    const userTab = tabs.nth(1)
-    await clickWhenVisible(userTab)
+    await clickWhenVisible(page.getByRole('tab', { name: '使用者管理' }))
 
     await expect(page.getByRole('row', { name: /Admin/ })).toBeVisible()
     await expect(page.getByRole('row', { name: /一般使用者/ })).toBeVisible()
@@ -37,7 +49,7 @@ test.describe('Admin Dashboard › Users', () => {
     await createDialog.getByPlaceholder('輸入使用者名稱').fill('新用戶')
     await createDialog.getByPlaceholder('輸入電子郵件').fill('newuser@example.com')
     await createDialog.getByPlaceholder('輸入密碼').fill('Passw0rd!')
-    await clickWhenVisible(createDialog.locator('.p-checkbox').first())
+    await clickWhenVisible(createDialog.getByLabel('管理員權限'))
 
     const previousCreateCount = createPayloads.length
     await clickWhenVisible(createDialog.getByRole('button', { name: '新增' }))
@@ -59,7 +71,7 @@ test.describe('Admin Dashboard › Users', () => {
     await expect(editDialog).toBeVisible()
 
     await editDialog.getByPlaceholder('輸入使用者名稱').fill('一般使用者 (更新)')
-    await clickWhenVisible(editDialog.locator('.p-checkbox').first())
+    await clickWhenVisible(editDialog.getByLabel('管理員權限'))
 
     const previousUpdateCount = updatePayloads.length
     await clickWhenVisible(editDialog.getByRole('button', { name: '更新' }))

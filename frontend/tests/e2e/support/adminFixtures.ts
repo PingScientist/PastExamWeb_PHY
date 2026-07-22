@@ -102,6 +102,24 @@ export const mockAdminCourseEndpoints = async (
   const deleteIds: number[] = []
   let createdCourseId = 100
 
+  await page.route('**/api/courses/admin/categories**', (route) =>
+    route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify([]) })
+  )
+  await page.route('**/api/reports/admin/system-issues**', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ items: [], total: 0 }),
+    })
+  )
+  await page.route('**/api/reports/admin/comments**', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ items: [], total: 0 }),
+    })
+  )
+
   await page.route('**/api/courses', async (route) => {
     await route.fulfill({
       status: 200,

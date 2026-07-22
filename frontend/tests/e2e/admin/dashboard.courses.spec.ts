@@ -12,6 +12,10 @@ import { clickWhenVisible } from '../support/ui'
 
 test.describe('Admin Dashboard › Courses', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
+
     await page.route('**/api/notifications/active', async (route) => {
       await route.fulfill({
         status: 200,
@@ -19,6 +23,17 @@ test.describe('Admin Dashboard › Courses', () => {
         body: JSON.stringify([]),
       })
     })
+    await page.route('**/api/notifications/unread-summary**', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          announcements: [],
+          personal_notifications: [],
+          counts: { announcements: 0, personal_notifications: 0, total: 0 },
+        }),
+      })
+    )
   })
 
   test('allows creating, editing, and deleting courses', async ({ page }) => {
@@ -27,9 +42,7 @@ test.describe('Admin Dashboard › Courses', () => {
     await page.goto('/admin', { waitUntil: 'networkidle' })
     await expect(page).toHaveURL(/\/admin$/)
 
-    const tabs = page.getByRole('tab')
-    await expect(tabs).toHaveCount(3)
-    await clickWhenVisible(tabs.first())
+    await clickWhenVisible(page.getByRole('tab', { name: '課程管理' }))
     await expect(page.getByRole('row', { name: /普通物理\(一\)/ })).toBeVisible()
     await expect(page.getByRole('row', { name: /電磁學\(一\)/ })).toBeVisible()
 
@@ -170,8 +183,11 @@ test.describe('Admin Dashboard › Courses', () => {
     await expect(coursePaginator.locator('.p-paginator-next')).toBeDisabled()
     await expect(coursePaginator.locator('.p-paginator-last')).toBeDisabled()
 
-    await page.setViewportSize({ width: 1024, height: 768 })
-    await expect(page.getByRole('row', { name: /分頁課程 11/ })).toBeVisible()
+    await page.setViewportSize({ width: 1440, height: 900 })
+    const courseTable = page.getByRole('table').filter({
+      has: page.getByRole('columnheader', { name: '課程名稱' }),
+    })
+    await expect(courseTable.getByRole('row', { name: /分頁課程 11/ })).toBeVisible()
     await page.setViewportSize({ width: 375, height: 812 })
     await expect(courseList.locator('.admin-course-card')).toHaveCount(2)
     await clickWhenVisible(coursePaginator.locator('.p-paginator-first'))

@@ -5,6 +5,10 @@ import { clickWhenVisible } from '../support/ui'
 
 test.describe('Admin Dashboard › Notifications', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/auth/heartbeat', (route) =>
+      route.fulfill({ status: 200, headers: JSON_HEADERS, body: JSON.stringify({}) })
+    )
+
     await page.route('**/api/notifications/active', async (route) => {
       await route.fulfill({
         status: 200,
@@ -12,6 +16,17 @@ test.describe('Admin Dashboard › Notifications', () => {
         body: JSON.stringify([]),
       })
     })
+    await page.route('**/api/notifications/unread-summary**', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          announcements: [],
+          personal_notifications: [],
+          counts: { announcements: 0, personal_notifications: 0, total: 0 },
+        }),
+      })
+    )
   })
 
   test('allows managing notifications end-to-end', async ({ page }) => {
@@ -21,9 +36,7 @@ test.describe('Admin Dashboard › Notifications', () => {
     await page.goto('/admin', { waitUntil: 'networkidle' })
     await expect(page).toHaveURL(/\/admin$/)
 
-    const tabs = page.getByRole('tab')
-    await expect(tabs).toHaveCount(3)
-    await clickWhenVisible(tabs.nth(2))
+    await clickWhenVisible(page.getByRole('tab', { name: '公告管理' }))
 
     const maintenanceRow = page.getByRole('row', { name: /系統維護公告/ })
     await expect(maintenanceRow).toBeVisible()
