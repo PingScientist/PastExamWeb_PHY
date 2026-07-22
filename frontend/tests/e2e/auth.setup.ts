@@ -47,7 +47,10 @@ setup('authenticate as admin', async ({ page }) => {
   await usernameInput.fill(ADMIN_USERNAME)
   await passwordInput.fill(ADMIN_PASSWORD)
 
-  const submitButton = page.getByRole('button', { name: '登入' })
+  const submitButton = loginDialog.getByRole('button', {
+    name: '登入',
+    exact: true,
+  })
   await clickWhenVisible(submitButton)
 
   await page.waitForURL('**/archive', { timeout: 15000 })
