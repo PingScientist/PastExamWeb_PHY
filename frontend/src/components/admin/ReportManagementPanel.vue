@@ -163,6 +163,7 @@
 
       <Dialog
         v-model:visible="systemDetailVisible"
+        class="report-management-dialog"
         modal
         header="系統問題回報詳情"
         :style="{ width: '680px', maxWidth: '94vw' }"
@@ -440,6 +441,7 @@
 
     <Dialog
       v-model:visible="reviewVisible"
+      class="report-management-dialog"
       modal
       header="留言回報審核"
       :style="{ width: '720px', maxWidth: '94vw' }"
@@ -977,6 +979,41 @@ onMounted(refreshAll)
 <style scoped>
 .report-management {
   min-width: 0;
+  font-size: var(--app-font-size-base);
+}
+.report-management :deep(.p-component) {
+  font-size: var(--app-font-size-base) !important;
+}
+.report-management :deep(.p-inputtext),
+.report-management :deep(.p-inputtext::placeholder),
+.report-management :deep(.p-select),
+.report-management :deep(.p-select-label),
+.report-management :deep(.p-datatable),
+.report-management :deep(.p-datatable-thead > tr > th),
+.report-management :deep(.p-datatable-tbody > tr > td),
+.report-management :deep(.p-paginator),
+.report-management :deep(.p-paginator-page),
+.report-management :deep(.p-paginator-current),
+.report-management :deep(.p-paginator-rpp-dropdown) {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
+}
+.report-management :deep(.p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+.report-management :deep(.p-button-label),
+.report-management :deep(.p-button-icon) {
+  font-size: inherit !important;
+}
+.report-management :deep(.p-tag) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+.report-management > .report-section > .p-message,
+.report-management__empty {
+  font-size: var(--app-font-size-sm);
 }
 .report-section__header,
 .report-review__actions {
@@ -999,7 +1036,7 @@ onMounted(refreshAll)
 .report-section__header h4 {
   margin: 0;
   color: var(--text-color);
-  font-size: 1.05rem;
+  font-size: var(--app-font-size-lg);
 }
 .report-section__header p {
   margin: 0.25rem 0 0;
@@ -1067,7 +1104,7 @@ onMounted(refreshAll)
   max-width: 100%;
   overflow: hidden;
   color: var(--text-color);
-  font-size: 0.9rem;
+  font-size: var(--app-font-size-sm);
   font-weight: 600;
   line-height: 1.4;
   text-overflow: ellipsis;
@@ -1083,7 +1120,7 @@ onMounted(refreshAll)
   overflow: hidden;
   overflow-wrap: anywhere;
   color: var(--text-color-secondary);
-  font-size: 0.82rem;
+  font-size: var(--app-font-size-xs);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: normal;
@@ -1104,7 +1141,7 @@ onMounted(refreshAll)
   max-width: 100%;
   overflow: hidden;
   color: var(--text-color);
-  font-size: 0.88rem;
+  font-size: var(--app-font-size-sm);
   font-weight: 600;
   line-height: 1.4;
   text-overflow: ellipsis;
@@ -1120,7 +1157,7 @@ onMounted(refreshAll)
   overflow: hidden;
   overflow-wrap: anywhere;
   color: var(--text-color-secondary);
-  font-size: 0.82rem;
+  font-size: var(--app-font-size-xs);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: normal;
@@ -1176,7 +1213,7 @@ onMounted(refreshAll)
 }
 .report-person-time__time {
   color: var(--text-color-secondary);
-  font-size: 0.78rem;
+  font-size: var(--app-font-size-xs);
   line-height: 1.3;
 }
 :deep(.report-review-column) {
@@ -1210,7 +1247,7 @@ onMounted(refreshAll)
   text-align: center;
 }
 .report-management__empty i {
-  font-size: 2rem;
+  font-size: calc(var(--app-icon-size) * 2);
 }
 .report-review {
   display: grid;
@@ -1243,7 +1280,7 @@ onMounted(refreshAll)
 }
 .report-review__meta dt {
   color: var(--text-color-secondary);
-  font-size: 0.78rem;
+  font-size: var(--app-font-size-xs);
 }
 .report-review__meta dd {
   display: grid;
@@ -1253,7 +1290,7 @@ onMounted(refreshAll)
 }
 .report-review__meta dd small {
   color: var(--text-color-secondary);
-  font-size: 0.75rem;
+  font-size: var(--app-font-size-xs);
   line-height: 1.35;
 }
 .report-review__thread-content {
@@ -1336,6 +1373,47 @@ onMounted(refreshAll)
 }
 .system-read-state-tag {
   white-space: nowrap;
+}
+:global(.report-management-dialog),
+:global(.report-management-dialog .p-component) {
+  font-size: var(--app-font-size-base) !important;
+}
+:global(.report-management-dialog .p-dialog-title) {
+  font-size: var(--app-font-size-lg) !important;
+  line-height: 1.3;
+}
+:global(.report-management-dialog .p-inputtext),
+:global(.report-management-dialog .p-inputtext::placeholder),
+:global(.report-management-dialog textarea),
+:global(.report-management-dialog .p-textarea),
+:global(.report-management-dialog .p-select),
+:global(.report-management-dialog .p-select-label) {
+  font-size: var(--app-control-font-size) !important;
+}
+:global(.report-management-dialog .p-button) {
+  min-height: calc(2rem * var(--app-font-scale));
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.25;
+}
+:global(.report-management-dialog .p-button-label),
+:global(.report-management-dialog .p-button-icon) {
+  font-size: inherit !important;
+}
+:global(.report-management-dialog .p-tag) {
+  font-size: var(--app-badge-font-size) !important;
+  line-height: 1.25 !important;
+}
+:global(.report-management-dialog .report-review__meta dt),
+:global(.report-management-dialog .report-review__meta dd small),
+:global(.report-management-dialog .system-report-detail__read-state small),
+:global(.report-management-dialog .report-review__field > small) {
+  font-size: var(--app-font-size-xs) !important;
+  line-height: 1.35;
+}
+:global(.report-management-dialog .system-report-detail__note p),
+:global(.report-management-dialog .report-review__quote small) {
+  font-size: var(--app-font-size-sm) !important;
+  line-height: 1.35;
 }
 @media (max-width: 1023px) {
   .report-section__header {

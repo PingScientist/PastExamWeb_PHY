@@ -517,4 +517,21 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toContain("isFinal(data.status) ? '檢視' : '檢視／審核'")
     expect(reportManagementSource).toContain('v-if="!isFinal(selectedReport.status)"')
   })
+
+  it('scopes personalized font tokens across report lists, controls, and dialogs', () => {
+    expect(reportManagementSource.match(/class="report-management-dialog"/g)).toHaveLength(2)
+    expect(reportManagementSource).toMatch(
+      /\.report-management :deep\(\.p-inputtext\)[\s\S]*?font-size:\s*var\(--app-font-size-sm\) !important;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-management :deep\(\.p-button\)[\s\S]*?font-size:\s*var\(--app-font-size-sm\) !important;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-management :deep\(\.p-tag\)[\s\S]*?font-size:\s*var\(--app-badge-font-size\) !important;/
+    )
+    expect(reportManagementSource).toContain(':global(.report-management-dialog .p-dialog-title)')
+    expect(reportManagementSource).toContain('font-size: var(--app-control-font-size) !important;')
+    expect(reportManagementSource).toContain('font-size: var(--app-font-size-xs) !important;')
+    expect(reportManagementSource).not.toMatch(/font-size:\s*(?:0\.\d+|1\.05|2)rem/)
+  })
 })
