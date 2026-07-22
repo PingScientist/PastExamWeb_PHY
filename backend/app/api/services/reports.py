@@ -252,8 +252,8 @@ async def list_system_issue_reports(
     search: str | None = Query(default=None, max_length=100),
     report_type: str | None = Query(default=None, max_length=40),
     read_state: str = Query(default="all", pattern="^(all|unread|read)$"),
-    sort_by: str = Query(default="created_at"),
-    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    sort_by: str = Query(default="read_state"),
+    sort_order: str = Query(default="asc", pattern="^(asc|desc)$"),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     current_user: UserRoles = Depends(get_current_user),
@@ -518,8 +518,8 @@ async def list_comment_reports(
     report_status: CommentReportStatus | None = Query(default=None, alias="status"),
     reason: CommentReportReason | None = None,
     search: str | None = Query(default=None, max_length=100),
-    sort_by: str = Query(default="created_at"),
-    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    sort_by: str = Query(default="status"),
+    sort_order: str = Query(default="asc", pattern="^(asc|desc)$"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     current_user: UserRoles = Depends(get_current_user),
@@ -551,9 +551,15 @@ async def list_comment_reports(
     total = int(
         await db.scalar(select(func.count()).select_from(statement.subquery())) or 0
     )
+    status_rank = case(
+        (CommentReport.status == CommentReportStatus.PENDING.value, 0),
+        (CommentReport.status == CommentReportStatus.UPHELD.value, 1),
+        (CommentReport.status == CommentReportStatus.DISMISSED.value, 2),
+        else_=3,
+    )
     sort_fields = {
         "created_at": CommentReport.created_at,
-        "status": CommentReport.status,
+        "status": status_rank,
         "reason": CommentReport.reason,
         "reporter": func.coalesce(reporter.nickname, reporter.name, ""),
         "comment_author": func.coalesce(author.nickname, author.name, ""),
@@ -568,9 +574,14 @@ async def list_comment_reports(
             detail="Invalid comment report sort field",
         )
     ordering = sort_column.asc() if sort_order == "asc" else sort_column.desc()
+    secondary_ordering = (
+        (CommentReport.created_at.desc(), CommentReport.id.desc())
+        if sort_by == "status"
+        else (CommentReport.id.desc(),)
+    )
     rows = (
         await db.execute(
-            statement.order_by(ordering, CommentReport.id.desc())
+            statement.order_by(ordering, *secondary_ordering)
             .offset(offset)
             .limit(limit)
         )

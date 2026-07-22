@@ -611,6 +611,9 @@ async def test_system_issue_read_state_sorting_is_grouped_stable_and_paginated(
             "/reports/admin/system-issues",
             params={"sort_by": "read_state", "sort_order": "asc", "limit": 100},
         )
+        default_order = await client.get(
+            "/reports/admin/system-issues", params={"limit": 100}
+        )
         descending = await client.get(
             "/reports/admin/system-issues",
             params={"sort_by": "read_state", "sort_order": "desc", "limit": 100},
@@ -626,9 +629,17 @@ async def test_system_issue_read_state_sorting_is_grouped_stable_and_paginated(
         )
 
         assert ascending.status_code == 200
+        assert default_order.status_code == 200
         assert descending.status_code == 200
         assert page.status_code == 200
         assert [item["title"] for item in ascending.json()["items"]] == [
+            "Unread tie B",
+            "Unread tie A",
+            "Unread old",
+            "Read new",
+            "Read old",
+        ]
+        assert [item["title"] for item in default_order.json()["items"]] == [
             "Unread tie B",
             "Unread tie A",
             "Unread old",
@@ -652,6 +663,90 @@ async def test_system_issue_read_state_sorting_is_grouped_stable_and_paginated(
             await session.execute(
                 delete(SystemIssueReport).where(
                     SystemIssueReport.reporter_user_id == reporter.id
+                )
+            )
+            await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_comment_report_default_sorting_is_status_ranked_stable_and_paginated(
+    client, session_maker, make_user
+):
+    reporter = await make_user(name="comment-sort-reporter")
+    admin = await make_user(name="comment-sort-admin", is_admin=True)
+    base_time = datetime(2026, 7, 22, tzinfo=timezone.utc)
+    try:
+        async with session_maker() as session:
+            reports = [
+                CommentReport(
+                    reporter_user_id=reporter.id,
+                    reason="other",
+                    comment_content_snapshot=f"default-order {status} {label}",
+                    comment_author_name_snapshot="Original author",
+                    comment_created_at_snapshot=created_at,
+                    archive_name_snapshot="Sorted archive",
+                    course_name_snapshot="Sorted course",
+                    status=status,
+                    created_at=created_at,
+                    updated_at=created_at,
+                )
+                for status, label, created_at in [
+                    ("pending", "old", base_time.replace(hour=8)),
+                    ("pending", "new", base_time.replace(hour=14)),
+                    ("upheld", "old", base_time.replace(hour=9)),
+                    ("upheld", "new", base_time.replace(hour=13)),
+                    ("dismissed", "old", base_time.replace(hour=10)),
+                    ("dismissed", "new", base_time.replace(hour=12)),
+                ]
+            ]
+            session.add_all(reports)
+            await session.commit()
+
+        app.dependency_overrides[get_current_user] = _override_user(
+            admin.id, is_admin=True
+        )
+        default_order = await client.get(
+            "/reports/admin/comments",
+            params={"search": "default-order", "limit": 100},
+        )
+        page = await client.get(
+            "/reports/admin/comments",
+            params={
+                "search": "default-order",
+                "limit": 2,
+                "offset": 1,
+            },
+        )
+        upheld = await client.get(
+            "/reports/admin/comments",
+            params={"search": "default-order", "status": "upheld", "limit": 100},
+        )
+
+        assert default_order.status_code == 200
+        assert page.status_code == 200
+        assert upheld.status_code == 200
+        assert [item["comment_content_snapshot"] for item in default_order.json()["items"]] == [
+            "default-order pending new",
+            "default-order pending old",
+            "default-order upheld new",
+            "default-order upheld old",
+            "default-order dismissed new",
+            "default-order dismissed old",
+        ]
+        assert [item["comment_content_snapshot"] for item in page.json()["items"]] == [
+            "default-order pending old",
+            "default-order upheld new",
+        ]
+        assert [item["comment_content_snapshot"] for item in upheld.json()["items"]] == [
+            "default-order upheld new",
+            "default-order upheld old",
+        ]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(CommentReport).where(
+                    CommentReport.reporter_user_id == reporter.id
                 )
             )
             await session.commit()

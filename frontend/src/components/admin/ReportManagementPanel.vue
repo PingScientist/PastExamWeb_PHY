@@ -787,8 +787,8 @@ const selectedReport = ref(null)
 const selectedSystemReport = ref(null)
 const systemFilters = ref({ search: '', type: null, readState: 'all' })
 const commentFilters = ref({ search: '', status: null, reason: null })
-const systemPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
-const commentPage = ref({ first: 0, rows: 10, sortField: 'created_at', sortOrder: -1 })
+const systemPage = ref({ first: 0, rows: 10, sortField: 'read_state', sortOrder: 1 })
+const commentPage = ref({ first: 0, rows: 10, sortField: 'status', sortOrder: 1 })
 const archiveListState = ref({
   first: 0,
   rows: 10,
@@ -916,17 +916,19 @@ function onCommentPage(event) {
 }
 function onSystemSort(event) {
   systemPage.value.first = 0
-  systemPage.value.sortField = event.sortField || 'created_at'
-  systemPage.value.sortOrder = event.sortOrder || -1
+  systemPage.value.sortField = event.sortField || 'read_state'
+  systemPage.value.sortOrder = event.sortOrder || 1
   return loadSystemIssues()
 }
 function onCommentSort(event) {
   commentPage.value.first = 0
-  commentPage.value.sortField = event.sortField || 'created_at'
-  commentPage.value.sortOrder = event.sortOrder || -1
+  commentPage.value.sortField = event.sortField || 'status'
+  commentPage.value.sortOrder = event.sortOrder || 1
   return loadCommentReports()
 }
 function refreshAll() {
+  Object.assign(systemPage.value, { first: 0, sortField: 'read_state', sortOrder: 1 })
+  Object.assign(commentPage.value, { first: 0, sortField: 'status', sortOrder: 1 })
   return Promise.allSettled([loadSystemIssues(), loadCommentReports()])
 }
 function clampReportPageAfterDelete(page, total) {

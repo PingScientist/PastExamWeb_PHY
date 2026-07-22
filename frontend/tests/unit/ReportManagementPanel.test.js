@@ -297,6 +297,16 @@ describe('ReportManagementPanel', () => {
   it('keeps pagination and server sorting independent for each report list', async () => {
     const wrapper = mountPanel()
     await flushPromises()
+
+    expect(wrapper.vm.systemPage).toMatchObject({ sortField: 'read_state', sortOrder: 1 })
+    expect(wrapper.vm.commentPage).toMatchObject({ sortField: 'status', sortOrder: 1 })
+    expect(mocks.listSystem).toHaveBeenCalledWith(
+      expect.objectContaining({ sort_by: 'read_state', sort_order: 'asc' })
+    )
+    expect(mocks.listComments).toHaveBeenCalledWith(
+      expect.objectContaining({ sort_by: 'status', sort_order: 'asc' })
+    )
+
     mocks.listSystem.mockClear()
     mocks.listComments.mockClear()
 
@@ -322,6 +332,16 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.vm.commentPage.first).toBe(0)
     expect(reportManagementSource).toMatch(
       /field="read_state"[\s\S]*?sortField="read_state"[\s\S]*?header="狀態"[\s\S]*?sortable/
+    )
+
+    await wrapper.vm.refreshAll()
+    expect(wrapper.vm.systemPage).toMatchObject({ first: 0, sortField: 'read_state', sortOrder: 1 })
+    expect(wrapper.vm.commentPage).toMatchObject({ first: 0, sortField: 'status', sortOrder: 1 })
+    expect(mocks.listSystem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0, sort_by: 'read_state', sort_order: 'asc' })
+    )
+    expect(mocks.listComments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0, sort_by: 'status', sort_order: 'asc' })
     )
   })
 
