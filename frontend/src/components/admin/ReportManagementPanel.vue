@@ -477,11 +477,13 @@
             <dt>所屬考古題</dt>
             <dd>{{ selectedReport.course_name }} · {{ selectedReport.archive_name }}</dd>
           </div>
-          <div>
+          <div class="report-review__thread">
             <dt>Thread</dt>
-            <dd>
-              <span>{{ selectedReport.thread_id ? `#${selectedReport.thread_id}` : '—' }}</span>
-              <small class="report-review__thread-help"
+            <dd class="report-review__thread-content">
+              <span class="report-review__thread-id">{{
+                selectedReport.thread_id ? `#${selectedReport.thread_id}` : '—'
+              }}</span>
+              <small class="report-review__thread-hint"
                 >此識別碼代表該回覆串的第一則留言，用於定位討論串。</small
               >
             </dd>
@@ -1249,10 +1251,25 @@ onMounted(refreshAll)
   margin: 0.15rem 0 0;
   overflow-wrap: anywhere;
 }
-.report-review__meta dd small,
-.report-review__thread-help {
+.report-review__meta dd small {
   color: var(--text-color-secondary);
   font-size: 0.75rem;
+  line-height: 1.35;
+}
+.report-review__thread-content {
+  gap: 0.1rem;
+}
+.report-review__thread-id {
+  color: var(--text-primary);
+  font-size: var(--app-font-size-base);
+  line-height: 1.4;
+}
+.report-review__thread .report-review__thread-hint {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--text-secondary);
+  font-size: var(--app-font-size-xs);
+  font-weight: 400;
   line-height: 1.35;
 }
 .report-review__quote {

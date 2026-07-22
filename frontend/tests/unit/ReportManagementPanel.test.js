@@ -353,7 +353,7 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.text()).toContain('來源留言已不存在')
     expect(reportManagementSource).not.toContain('討論串起始留言')
     expect(reportManagementSource).not.toContain('留言 #${selectedReport.thread_id}')
-    expect(reportManagementSource).toContain('class="report-review__thread-help"')
+    expect(reportManagementSource).toContain('class="report-review__thread-hint"')
     expect(reportManagementSource).toContain('threadId: item.thread_id')
     expect(reportManagementSource).toContain('messageId: item.comment_id')
     expect(wrapper.get('textarea-stub').attributes('placeholder')).toBe(
@@ -378,6 +378,51 @@ describe('ReportManagementPanel', () => {
     expect(wrapper.vm.statusSeverity('dismissed')).toBe('danger')
     expect(reportManagementSource).not.toContain('in_review')
     expect(reportManagementSource).toContain("selectedReport.admin_response || '未提供答覆'")
+  })
+
+  it('keeps one secondary Thread hint structure across review and source states', async () => {
+    const wrapper = mountPanel()
+    await flushPromises()
+    const scenarios = [
+      { id: 81, status: 'pending', source_exists: false },
+      { id: 82, status: 'upheld', source_exists: true },
+      { id: 83, status: 'dismissed', source_exists: false },
+    ]
+
+    for (const scenario of scenarios) {
+      mocks.getComment.mockResolvedValueOnce({
+        data: {
+          ...scenario,
+          thread_id: 31,
+          reporter_name: 'Reporter',
+          comment_author_name: 'Author',
+          reason: 'misinformation',
+          course_name: 'Course',
+          archive_name: 'Exam',
+          comment_content_snapshot: 'content',
+        },
+      })
+      await wrapper.vm.openCommentReport(scenario.id)
+      await flushPromises()
+
+      const thread = wrapper.get('.report-review__thread')
+      const threadId = thread.get('.report-review__thread-id')
+      const hint = thread.get('.report-review__thread-hint')
+      expect(thread.get('dt').text()).toBe('Thread')
+      expect(threadId.text()).toBe('#31')
+      expect(hint.text()).toBe('此識別碼代表該回覆串的第一則留言，用於定位討論串。')
+      expect(threadId.classes()).not.toContain('report-review__thread-hint')
+      expect(hint.classes()).not.toContain('report-review__thread-id')
+    }
+
+    expect(reportManagementSource.match(/class="report-review__thread-hint"/g)).toHaveLength(1)
+    expect(reportManagementSource).toMatch(
+      /\.report-review__thread \.report-review__thread-hint\s*\{[^}]*color:\s*var\(--text-secondary\);[^}]*font-size:\s*var\(--app-font-size-xs\);[^}]*font-weight:\s*400;[^}]*line-height:\s*1\.35;/
+    )
+    expect(reportManagementSource).not.toMatch(
+      /\.report-review__thread \.report-review__thread-hint\s*\{[^}]*var\(--text-color-secondary\)/
+    )
+    expect(reportManagementSource).not.toContain('討論串起始留言')
   })
 
   it('uses a localized final-review confirmation and sends at most one request', async () => {
