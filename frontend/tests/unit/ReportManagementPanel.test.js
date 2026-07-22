@@ -245,11 +245,10 @@ describe('ReportManagementPanel', () => {
       /\.report-row-actions :deep\(\.p-button\)\s*\{[\s\S]*?white-space:\s*nowrap;/
     )
     expect(reportManagementSource).toContain(
-      ':deep(.report-actions-column:not(.report-actions-column--system))'
+      ':deep(.report-management__table .p-datatable-tbody > tr > td:last-child)'
     )
     expect(reportManagementSource).not.toContain('justify-content: flex-end;\n  flex-wrap: nowrap')
-    expect(reportManagementSource).toContain('breakpoint="1023px"')
-    expect(reportManagementSource).toContain('breakpoint="1199px"')
+    expect(reportManagementSource.match(/breakpoint="1399px"/g)).toHaveLength(2)
   })
 
   it('keeps pagination and server sorting independent for each report list', async () => {
@@ -533,5 +532,26 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toContain('font-size: var(--app-control-font-size) !important;')
     expect(reportManagementSource).toContain('font-size: var(--app-font-size-xs) !important;')
     expect(reportManagementSource).not.toMatch(/font-size:\s*(?:0\.\d+|1\.05|2)rem/)
+  })
+
+  it('uses the review-center card breakpoint and dedicated mobile report summaries', () => {
+    expect(reportManagementSource.match(/breakpoint="1399px"/g)).toHaveLength(2)
+    expect(reportManagementSource).toContain('@media (max-width: 1399px)')
+    expect(reportManagementSource.match(/class="report-mobile-card-content"/g)).toHaveLength(2)
+    expect(reportManagementSource.match(/class="report-mobile-card-header"/g)).toHaveLength(2)
+    expect(reportManagementSource).toContain('class="report-mobile-card-badges"')
+    expect(reportManagementSource).toContain(
+      'class="report-mobile-info-grid report-mobile-info-grid--comment"'
+    )
+    expect(reportManagementSource).toContain('<dt>回報者</dt>')
+    expect(reportManagementSource).toContain('<dt>留言者</dt>')
+    expect(reportManagementSource).toContain('<dt>審核時間</dt>')
+    expect(reportManagementSource).toMatch(
+      /\.report-management__table \.p-datatable-tbody > tr > td:last-child[\s\S]*?border-top:\s*1px solid/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-row-actions\s*\{[\s\S]*?justify-content:\s*flex-end;/
+    )
+    expect(reportManagementSource).not.toContain('GitHub Issue</')
   })
 })

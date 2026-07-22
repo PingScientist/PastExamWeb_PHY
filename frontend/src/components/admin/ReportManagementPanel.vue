@@ -67,7 +67,7 @@
         :sortField="systemPage.sortField"
         :sortOrder="systemPage.sortOrder"
         responsiveLayout="stack"
-        breakpoint="1023px"
+        breakpoint="1399px"
         class="report-management__table report-management__system-table admin-data-table"
         tableStyle="table-layout: fixed; min-width: 60rem"
         @page="onSystemPage"
@@ -102,12 +102,43 @@
           bodyClass="system-report-column"
           style="width: clamp(15rem, 22vw, 21.25rem)"
           ><template #body="{ data }"
-            ><div class="system-report-summary">
+            ><div class="system-report-summary report-desktop-content">
               <strong class="system-report-summary__title" :title="data.title || '未命名回報'">
                 {{ data.title || '未命名回報' }}
               </strong>
               <span class="system-report-summary__body">{{ data.description || '—' }}</span>
-            </div></template
+            </div>
+            <article class="report-mobile-card-content">
+              <header class="report-mobile-card-header">
+                <strong class="report-mobile-card-title" :title="data.title || '未命名回報'">
+                  {{ data.title || '未命名回報' }}
+                </strong>
+                <Tag
+                  class="system-read-state-tag report-mobile-card-status"
+                  :severity="data.is_read ? 'secondary' : 'warn'"
+                  :value="data.is_read ? '已讀' : '未讀'"
+                />
+              </header>
+              <p class="report-mobile-card-summary">{{ data.description || '—' }}</p>
+              <div class="report-mobile-card-badges">
+                <Tag :value="issueTypeLabel(data.report_type)" />
+                <Tag severity="secondary" value="本地摘要" />
+              </div>
+              <dl class="report-mobile-info-grid">
+                <div class="report-mobile-info-item">
+                  <dt>回報者</dt>
+                  <dd>{{ data.reporter_name }}</dd>
+                </div>
+                <div class="report-mobile-info-item">
+                  <dt>回報時間</dt>
+                  <dd>
+                    <time :datetime="data.created_at">{{
+                      formatDateTime(data.created_at, true)
+                    }}</time>
+                  </dd>
+                </div>
+              </dl>
+            </article></template
           ></Column
         >
         <Column
@@ -290,7 +321,7 @@
         :sortField="commentPage.sortField"
         :sortOrder="commentPage.sortOrder"
         responsiveLayout="stack"
-        breakpoint="1199px"
+        breakpoint="1399px"
         class="report-management__table report-management__comment-table admin-data-table"
         tableStyle="table-layout: fixed; min-width: 75rem"
         @page="onCommentPage"
@@ -325,7 +356,10 @@
           bodyClass="comment-report-content-column"
           style="width: clamp(16rem, 24vw, 20rem)"
           ><template #body="{ data }"
-            ><div class="comment-report-content" :title="data.comment_content_snapshot">
+            ><div
+              class="comment-report-content report-desktop-content"
+              :title="data.comment_content_snapshot"
+            >
               <strong class="comment-report-content__reason" :title="reasonLabel(data.reason)">
                 {{ reasonLabel(data.reason) }}
               </strong>
@@ -333,6 +367,51 @@
                 data.comment_content_snapshot || '—'
               }}</span>
             </div>
+            <article class="report-mobile-card-content">
+              <header class="report-mobile-card-header">
+                <strong class="report-mobile-card-title" :title="reasonLabel(data.reason)">
+                  {{ reasonLabel(data.reason) }}
+                </strong>
+                <Tag
+                  class="report-mobile-card-status"
+                  :severity="statusSeverity(data.status)"
+                  :value="statusLabel(data.status)"
+                />
+              </header>
+              <p class="report-mobile-card-summary">
+                {{ data.comment_content_snapshot || '—' }}
+              </p>
+              <dl class="report-mobile-info-grid report-mobile-info-grid--comment">
+                <div class="report-mobile-info-item">
+                  <dt>回報者</dt>
+                  <dd>{{ data.reporter_name }}</dd>
+                </div>
+                <div class="report-mobile-info-item">
+                  <dt>回報時間</dt>
+                  <dd>
+                    <time :datetime="data.created_at">{{
+                      formatDateTime(data.created_at, true)
+                    }}</time>
+                  </dd>
+                </div>
+                <div class="report-mobile-info-item">
+                  <dt>留言者</dt>
+                  <dd>{{ data.comment_author_name }}</dd>
+                </div>
+                <div class="report-mobile-info-item report-mobile-info-item--wide">
+                  <dt>課程／考古題</dt>
+                  <dd>{{ data.course_name }} · {{ data.archive_name }}</dd>
+                </div>
+                <div class="report-mobile-info-item">
+                  <dt>審核</dt>
+                  <dd>{{ data.reviewer_name || '尚未審核' }}</dd>
+                </div>
+                <div class="report-mobile-info-item">
+                  <dt>審核時間</dt>
+                  <dd>{{ formatDateTime(data.reviewed_at, true) }}</dd>
+                </div>
+              </dl>
+            </article>
           </template>
         </Column>
         <Column
@@ -1073,6 +1152,9 @@ onMounted(refreshAll)
 .report-management__table {
   width: 100%;
 }
+.report-mobile-card-content {
+  display: none;
+}
 .report-management__summary {
   display: flex;
   min-width: 10rem;
@@ -1415,7 +1497,7 @@ onMounted(refreshAll)
   font-size: var(--app-font-size-sm) !important;
   line-height: 1.35;
 }
-@media (max-width: 1023px) {
+@media (max-width: 1399px) {
   .report-section__header {
     align-items: flex-start;
     flex-direction: column;
@@ -1423,30 +1505,160 @@ onMounted(refreshAll)
   .report-management__filters {
     grid-template-columns: minmax(0, 1fr);
   }
-  .system-report-summary {
+
+  :deep(.report-management__table) {
+    overflow: visible;
+  }
+  :deep(.report-management__table .p-datatable-table-container) {
+    overflow: visible;
+  }
+  :deep(.report-management__table .p-datatable-table) {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  :deep(.report-management__table .p-datatable-thead) {
+    display: none !important;
+  }
+  :deep(.report-management__table .p-datatable-tbody) {
+    display: block;
     width: 100%;
   }
-  :deep(.system-report-column) {
-    width: 100%;
-    max-width: none;
-  }
-  :deep(.report-actions-column--system) {
+  :deep(.report-management__table .p-datatable-tbody > tr) {
+    display: flex;
+    flex-direction: column;
     width: 100%;
     min-width: 0;
-    max-width: none;
-    padding-inline: var(--p-datatable-body-cell-padding, 0.75rem);
+    box-sizing: border-box;
+    gap: 0.75rem;
+    padding: 0.95rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-primary) 94%, var(--bg-secondary) 6%);
   }
-}
-@media (max-width: 1199px) {
-  :deep(.comment-report-content-column),
-  :deep(.report-person-time-column),
-  :deep(.report-user-column),
-  :deep(.report-review-column),
-  :deep(.report-actions-column:not(.report-actions-column--system)) {
+  :deep(.report-management__table .p-datatable-tbody > tr > td) {
+    display: none;
     width: 100%;
     min-width: 0;
-    max-width: none;
-    padding-inline: var(--p-datatable-body-cell-padding, 0.75rem);
+    padding: 0 !important;
+    border: 0 !important;
+    white-space: normal !important;
+  }
+  :deep(.report-management__table .p-column-title) {
+    display: none !important;
+  }
+  :deep(.report-management__system-table .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(.report-management__comment-table .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(.report-management__table .p-datatable-tbody > tr > td:last-child) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  :deep(.report-management__system-table .p-datatable-tbody > tr > td:nth-child(2)),
+  :deep(.report-management__comment-table .p-datatable-tbody > tr > td:nth-child(2)) {
+    order: 1;
+  }
+  :deep(.report-management__table .p-datatable-tbody > tr > td:last-child) {
+    order: 2;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent) !important;
+  }
+  :deep(.report-management__table .p-datatable-empty-message > td) {
+    display: block !important;
+    order: 1;
+    padding: 0.75rem !important;
+    border-top: 0 !important;
+    color: var(--text-color-secondary);
+    text-align: center;
+  }
+  :deep(.report-management__table .p-datatable-tbody > tr + tr) {
+    margin-top: 0.75rem;
+  }
+  .report-desktop-content {
+    display: none;
+  }
+  .report-mobile-card-content {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .report-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+  }
+  .report-mobile-card-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text-color);
+    font-size: var(--app-font-size-base);
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  .report-mobile-card-status {
+    flex: 0 0 auto;
+    max-width: 42%;
+    white-space: nowrap;
+  }
+  .report-mobile-card-summary {
+    display: -webkit-box;
+    max-height: calc(1.35em * 3);
+    margin: 0.45rem 0 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    color: var(--text-color-secondary);
+    font-size: var(--app-font-size-sm);
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  .report-mobile-card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+  }
+  .report-mobile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.42rem 0.65rem;
+    margin: 0.65rem 0 0;
+  }
+  .report-mobile-info-item {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.12rem 0.35rem;
+    min-width: 0;
+  }
+  .report-mobile-info-item dt {
+    flex: 0 0 auto;
+    color: var(--text-color-secondary);
+    font-size: var(--app-font-size-xs);
+    font-weight: 650;
+    line-height: 1.2;
+  }
+  .report-mobile-info-item dd {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    color: var(--text-color);
+    font-size: var(--app-font-size-sm);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  .report-mobile-info-item--wide {
+    grid-column: span 2;
+  }
+  .report-row-actions {
+    justify-content: flex-end;
+    width: 100%;
+    gap: 0.45rem;
   }
 }
 @media (max-width: 760px) {
@@ -1455,6 +1667,27 @@ onMounted(refreshAll)
   }
   .report-review__actions {
     flex-wrap: wrap;
+  }
+}
+@media (max-width: 640px) {
+  :deep(.report-management__table .p-datatable-tbody > tr) {
+    gap: 0.5rem;
+    padding: 0.8rem;
+  }
+  .report-mobile-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .report-mobile-info-item--wide {
+    grid-column: auto;
+  }
+  .report-row-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report-row-actions :deep(.p-button) {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 0.45rem;
   }
 }
 </style>

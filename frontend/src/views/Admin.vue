@@ -2731,6 +2731,21 @@
                       <span class="trash-mobile-info-label">學期</span>
                       <span class="trash-mobile-info-value">{{ getTrashSemesterValue(data) }}</span>
                     </div>
+                    <div
+                      v-if="getTrashContextLine(data)"
+                      class="trash-mobile-info-item trash-mobile-info-item--wide"
+                    >
+                      <span class="trash-mobile-info-label">{{ getTrashContextLabel(data) }}</span>
+                      <span class="trash-mobile-info-value">{{ getTrashContextValue(data) }}</span>
+                    </div>
+                    <div
+                      v-for="detail in getTrashReportDetails(data)"
+                      :key="detail.label"
+                      class="trash-mobile-info-item"
+                    >
+                      <span class="trash-mobile-info-label">{{ detail.label }}</span>
+                      <span class="trash-mobile-info-value">{{ detail.value }}</span>
+                    </div>
                     <div class="trash-mobile-info-item">
                       <span class="trash-mobile-info-label">刪除者</span>
                       <span class="trash-mobile-info-value">{{
@@ -2743,74 +2758,61 @@
                         formatTrashDeletedAt(data.deleted_at)
                       }}</span>
                     </div>
-                    <div
-                      v-if="getTrashContextLine(data)"
-                      class="trash-mobile-info-item trash-mobile-info-item--wide"
-                    >
-                      <span class="trash-mobile-info-label">{{ getTrashContextLabel(data) }}</span>
-                      <span class="trash-mobile-info-value">{{ getTrashContextValue(data) }}</span>
-                    </div>
-                    <div
-                      v-for="detail in getTrashReportDetails(data)"
-                      :key="detail.label"
-                      class="trash-mobile-info-item trash-mobile-info-item--wide"
-                    >
-                      <span class="trash-mobile-info-label">{{ detail.label }}</span>
-                      <span class="trash-mobile-info-value">{{ detail.value }}</span>
-                    </div>
                   </div>
 
-                  <div class="trash-mobile-dependencies">
-                    <Tag
-                      v-for="dependency in getTrashDependencies(data)"
-                      :key="dependency.key"
-                      :severity="getTrashDependencySeverity(dependency)"
-                      :class="[
-                        'soft-badge',
-                        'trash-dependency-chip',
-                        getTrashDependencyChipClass(dependency),
-                      ]"
-                    >
-                      {{ dependency.label }}
-                    </Tag>
-                    <span
-                      v-if="!getTrashDependencies(data).length"
-                      class="soft-badge trash-dependency-chip trash-dependency-chip--clear"
-                      >無阻擋</span
-                    >
-                  </div>
+                  <footer class="trash-mobile-card-footer">
+                    <div class="trash-mobile-dependencies">
+                      <Tag
+                        v-for="dependency in getTrashDependencies(data)"
+                        :key="dependency.key"
+                        :severity="getTrashDependencySeverity(dependency)"
+                        :class="[
+                          'soft-badge',
+                          'trash-dependency-chip',
+                          getTrashDependencyChipClass(dependency),
+                        ]"
+                      >
+                        {{ dependency.label }}
+                      </Tag>
+                      <span
+                        v-if="!getTrashDependencies(data).length"
+                        class="soft-badge trash-dependency-chip trash-dependency-chip--clear"
+                        >無阻擋</span
+                      >
+                    </div>
 
-                  <section class="trash-mobile-card-actions">
-                    <Button
-                      v-if="canRestoreTrashItem(data)"
-                      icon="pi pi-undo"
-                      label="還原"
-                      aria-label="還原"
-                      title="還原"
-                      size="small"
-                      severity="success"
-                      outlined
-                      @click="confirmRestoreTrashItem(data)"
-                    />
-                    <Button
-                      v-if="canPermanentDeleteTrashItem(data)"
-                      class="trash-action-button trash-action-button--delete trash-action-permanent-delete admin-danger-outline-button"
-                      icon="pi pi-trash"
-                      label="永久刪除"
-                      aria-label="永久刪除"
-                      title="永久刪除"
-                      size="small"
-                      severity="danger"
-                      outlined
-                      @click="confirmPermanentDeleteTrashItem(data)"
-                    />
-                    <span
-                      v-if="!canRestoreTrashItem(data) && !canPermanentDeleteTrashItem(data)"
-                      class="text-xs text-500"
-                    >
-                      目前無可用操作
-                    </span>
-                  </section>
+                    <section class="trash-mobile-card-actions">
+                      <Button
+                        v-if="canRestoreTrashItem(data)"
+                        icon="pi pi-undo"
+                        label="還原"
+                        aria-label="還原"
+                        title="還原"
+                        size="small"
+                        severity="success"
+                        outlined
+                        @click="confirmRestoreTrashItem(data)"
+                      />
+                      <Button
+                        v-if="canPermanentDeleteTrashItem(data)"
+                        class="trash-action-button trash-action-button--delete trash-action-permanent-delete admin-danger-outline-button"
+                        icon="pi pi-trash"
+                        label="永久刪除"
+                        aria-label="永久刪除"
+                        title="永久刪除"
+                        size="small"
+                        severity="danger"
+                        outlined
+                        @click="confirmPermanentDeleteTrashItem(data)"
+                      />
+                      <span
+                        v-if="!canRestoreTrashItem(data) && !canPermanentDeleteTrashItem(data)"
+                        class="text-xs text-500"
+                      >
+                        目前無可用操作
+                      </span>
+                    </section>
+                  </footer>
                 </article>
               </div>
               <Paginator
@@ -5131,10 +5133,21 @@ const getTrashContextLine = (item) => {
   return ''
 }
 
+const getSystemIssueReportTypeLabel = (value) =>
+  ({
+    bug: '程式錯誤',
+    enhancement: '功能建議',
+    performance: '效能問題',
+    'ui-ux': 'UI/UX',
+    question: '其他',
+  })[value] ||
+  value ||
+  '—'
+
 const getTrashReportDetails = (item) => {
   if (item?.item_type === 'system_issue_report') {
     return [
-      { label: '回報類型', value: item.report_type || '—' },
+      { label: '問題類型', value: getSystemIssueReportTypeLabel(item.report_type) },
       { label: '回報者', value: item.reporter_name || '—' },
       { label: '回報時間', value: item.created_at ? formatAdminActorTime(item.created_at) : '—' },
       { label: '說明', value: '本地摘要' },
@@ -12453,6 +12466,23 @@ onBeforeUnmount(() => {
     min-width: 0;
   }
 
+  .trash-mobile-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.55rem 0.75rem;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0.05rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  }
+
+  .trash-mobile-card-footer .trash-mobile-dependencies {
+    flex: 1 1 12rem;
+  }
+
   :deep(.trash-mobile-dependencies .trash-dependency-chip) {
     min-height: 1.55rem !important;
     padding: 0.18rem 0.52rem !important;
@@ -12498,7 +12528,8 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: flex-end;
     gap: 0.45rem;
-    width: 100%;
+    flex: 0 0 auto;
+    width: auto;
     min-width: 0;
     overflow-x: visible;
     padding-bottom: 0.05rem;
@@ -12626,6 +12657,16 @@ onBeforeUnmount(() => {
     overflow-x: visible;
   }
 
+  .trash-mobile-card-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .trash-mobile-card-footer .trash-mobile-dependencies,
+  .trash-mobile-card-footer .trash-mobile-card-actions {
+    width: 100%;
+  }
+
   :deep(.trash-mobile-card-actions .p-button) {
     width: 100%;
     min-width: 0;
@@ -12634,11 +12675,11 @@ onBeforeUnmount(() => {
   }
 
   :deep(.trash-mobile-card-actions .p-button-label) {
-    display: none;
+    display: inline-flex;
   }
 
   :deep(.trash-mobile-card-actions .pi) {
-    margin: 0;
+    margin-inline-end: 0.35rem;
   }
 }
 

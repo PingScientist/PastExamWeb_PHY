@@ -460,7 +460,7 @@ describe('AdminView', () => {
       })
     ).toEqual(
       expect.arrayContaining([
-        { label: '回報類型', value: 'bug' },
+        { label: '問題類型', value: '程式錯誤' },
         { label: '回報者', value: '回報者' },
         { label: '說明', value: '本地摘要' },
       ])
@@ -503,6 +503,18 @@ describe('AdminView', () => {
         .getTrashReportDetails({ item_type: 'comment_report', comment_snapshot: '留言摘要' })
         .some((detail) => detail.label === '留言摘要' || detail.value === '留言摘要')
     ).toBe(false)
+    expect(adminTemplateSource.match(/class="trash-mobile-card-footer"/g)).toHaveLength(1)
+    expect(adminTemplateSource).toMatch(
+      /trash-mobile-card-footer[\s\S]*?trash-mobile-dependencies[\s\S]*?trash-mobile-card-actions/
+    )
+    expect(adminTemplateSource).toMatch(
+      /getTrashReportDetails\(data\)[\s\S]*?trash-mobile-info-label">刪除者/
+    )
+    expect(adminViewSource).toMatch(
+      /\.trash-mobile-card-footer\s*\{[\s\S]*?border-top:\s*1px solid color-mix/
+    )
+    expect(adminViewSource).toContain('.trash-mobile-card.trash-row--relation-group-even')
+    expect(adminViewSource).toContain('.trash-mobile-card.trash-row--relation-group-odd')
 
     expect(wrapper.vm.getReviewRequesterLabel({ requester_name: '申請者' })).toBe('申請者')
     expect(wrapper.vm.getReviewRequesterLabel({})).toBe('—')
