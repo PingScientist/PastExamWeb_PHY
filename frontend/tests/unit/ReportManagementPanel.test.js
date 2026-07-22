@@ -267,7 +267,11 @@ describe('ReportManagementPanel', () => {
   })
 
   it('keeps both report action groups aligned without wrapping button labels', () => {
-    expect(reportManagementSource.match(/class="report-row-actions"/g)).toHaveLength(2)
+    expect(reportManagementSource.match(/class="report-row-actions"/g)).toHaveLength(4)
+    expect(
+      reportManagementSource.match(/v-if="!isCardLayout" class="report-desktop-actions"/g)
+    ).toHaveLength(2)
+    expect(reportManagementSource.match(/class="report-mobile-card__footer"/g)).toHaveLength(2)
     expect(reportManagementSource).toContain(
       'headerClass="report-actions-column report-actions-column--system"'
     )
@@ -279,7 +283,7 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toMatch(
       /\.report-row-actions :deep\(\.p-button\)\s*\{[\s\S]*?white-space:\s*nowrap;/
     )
-    expect(reportManagementSource).toContain(
+    expect(reportManagementSource).not.toContain(
       ':deep(.report-management__table .p-datatable-tbody > tr > td:last-child)'
     )
     expect(reportManagementSource).not.toContain('justify-content: flex-end;\n  flex-wrap: nowrap')
@@ -596,7 +600,11 @@ describe('ReportManagementPanel', () => {
     ).toHaveLength(2)
     expect(reportManagementSource.match(/class="report-mobile-card-header"/g)).toHaveLength(2)
     expect(reportManagementSource).toContain('class="report-mobile-card-badges"')
-    expect(reportManagementSource.match(/class="report-mobile-summary-preview"/g)).toHaveLength(2)
+    expect(
+      reportManagementSource.match(
+        /class="report-mobile-card__summary report-mobile-summary-preview"/g
+      )
+    ).toHaveLength(2)
     expect(reportManagementSource).toContain('class="report-mobile-summary-preview__label"')
     expect(reportManagementSource).toContain("data.description || '未提供詳細描述'")
     expect(reportManagementSource).toContain("data.comment_content_snapshot || '無留言摘要'")
@@ -606,17 +614,33 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).toMatch(
       /\.report-mobile-summary-preview__text\s*\{[\s\S]*?max-height:\s*calc\(1\.4em \* 3\);[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?-webkit-line-clamp:\s*3;/
     )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card\s*\{[^}]*container-name:\s*report-card;[^}]*container-type:\s*inline-size;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card__body\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*width:\s*100%;[^}]*min-width:\s*0;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-card__summary,[\s\S]*?\.report-mobile-card__metadata\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/
+    )
+    expect(reportManagementSource).toMatch(
+      /@container report-card \(min-width: 46rem\)\s*\{[\s\S]*?grid-template-columns:\s*minmax\(18rem, 0\.85fr\) minmax\(0, 1\.15fr\);/
+    )
+    expect(reportManagementSource).toContain('@container report-card (max-width: 25rem)')
+    expect(reportManagementSource).not.toMatch(
+      /\.report-mobile-summary-preview\s*\{[^}]*max-width:/
+    )
     expect(reportManagementSource).not.toContain('class="report-mobile-card-summary"')
     expect(reportManagementSource).toContain(
-      'class="report-mobile-info-grid report-mobile-info-grid--comment"'
+      'class="report-mobile-card__metadata report-mobile-info-grid report-mobile-info-grid--comment"'
     )
-    expect(reportManagementSource).toContain('@container report-section (min-width: 56rem)')
+    expect(reportManagementSource).not.toContain('@container report-section (min-width: 56rem)')
     expect(reportManagementSource).toContain('@container report-section (max-width: 25rem)')
     expect(reportManagementSource).toContain('<dt>回報者</dt>')
     expect(reportManagementSource).toContain('<dt>留言者</dt>')
     expect(reportManagementSource).toContain('<dt>審核時間</dt>')
     expect(reportManagementSource).toMatch(
-      /\.report-management__table \.p-datatable-tbody > tr > td:last-child[\s\S]*?border-top:\s*1px solid/
+      /\.report-mobile-card__footer\s*\{[\s\S]*?border-top:\s*1px solid/
     )
     expect(reportManagementSource).toMatch(
       /\.report-row-actions\s*\{[\s\S]*?justify-content:\s*flex-end;/
@@ -666,10 +690,25 @@ describe('ReportManagementPanel', () => {
     await flushPromises()
 
     const systemRow = wrapper.get('.report-management__system-table .test-report-row')
+    const systemCard = systemRow.get('.report-mobile-card')
+    const systemHeader = systemCard.get('.report-mobile-card__header')
+    const systemBody = systemCard.get('.report-mobile-card__body')
+    const systemSummary = systemBody.get('.report-mobile-card__summary')
+    const systemMetadata = systemBody.get('.report-mobile-card__metadata')
+    const systemFooter = systemCard.get('.report-mobile-card__footer')
     expect(systemRow.findAll('.report-mobile-card')).toHaveLength(1)
     expect(systemRow.findAll('.report-mobile-card-title')).toHaveLength(1)
     expect(systemRow.findAll('.report-mobile-summary-preview')).toHaveLength(1)
     expect(systemRow.findAll('.report-mobile-card__footer')).toHaveLength(1)
+    expect(systemHeader.element.parentElement).toBe(systemCard.element)
+    expect(systemBody.element.parentElement).toBe(systemCard.element)
+    expect(systemSummary.element.parentElement).toBe(systemBody.element)
+    expect(systemMetadata.element.parentElement).toBe(systemBody.element)
+    expect(systemFooter.element.parentElement).toBe(systemCard.element)
+    expect(Array.from(systemBody.element.children)).toEqual([
+      systemSummary.element,
+      systemMetadata.element,
+    ])
     expect(systemRow.findAll('.report-person-time')).toHaveLength(0)
     expect(systemRow.text().match(/唯一系統問題標題/g)).toHaveLength(1)
     expect(systemRow.text().match(/未讀/g)).toHaveLength(1)
@@ -680,10 +719,25 @@ describe('ReportManagementPanel', () => {
     expect(systemRow.findAll('button').map((item) => item.text())).toEqual(['檢視', '刪除'])
 
     const commentRow = wrapper.get('.report-management__comment-table .test-report-row')
+    const commentCard = commentRow.get('.report-mobile-card')
+    const commentHeader = commentCard.get('.report-mobile-card__header')
+    const commentBody = commentCard.get('.report-mobile-card__body')
+    const commentSummary = commentBody.get('.report-mobile-card__summary')
+    const commentMetadata = commentBody.get('.report-mobile-card__metadata')
+    const commentFooter = commentCard.get('.report-mobile-card__footer')
     expect(commentRow.findAll('.report-mobile-card')).toHaveLength(1)
     expect(commentRow.findAll('.report-mobile-card-title')).toHaveLength(1)
     expect(commentRow.findAll('.report-mobile-summary-preview')).toHaveLength(1)
     expect(commentRow.findAll('.report-mobile-card__footer')).toHaveLength(1)
+    expect(commentHeader.element.parentElement).toBe(commentCard.element)
+    expect(commentBody.element.parentElement).toBe(commentCard.element)
+    expect(commentSummary.element.parentElement).toBe(commentBody.element)
+    expect(commentMetadata.element.parentElement).toBe(commentBody.element)
+    expect(commentFooter.element.parentElement).toBe(commentCard.element)
+    expect(Array.from(commentBody.element.children)).toEqual([
+      commentSummary.element,
+      commentMetadata.element,
+    ])
     expect(commentRow.findAll('.report-person-time')).toHaveLength(0)
     expect(commentRow.findAll('.comment-report-content')).toHaveLength(0)
     expect(commentRow.findAll('.report-user-cell__text')).toHaveLength(0)

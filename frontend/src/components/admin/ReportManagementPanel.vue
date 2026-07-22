@@ -118,43 +118,75 @@
               <span class="system-report-summary__body">{{ data.description || '—' }}</span>
             </div>
             <article v-else class="report-mobile-card report-mobile-card-content">
-              <header class="report-mobile-card-header">
-                <strong class="report-mobile-card-title" :title="data.title || '未命名回報'">
-                  {{ data.title || '未命名回報' }}
-                </strong>
-                <Tag
-                  class="system-read-state-tag report-mobile-card-status"
-                  :severity="data.is_read ? 'secondary' : 'warn'"
-                  :value="data.is_read ? '已讀' : '未讀'"
-                />
+              <header class="report-mobile-card__header">
+                <div class="report-mobile-card-header">
+                  <strong class="report-mobile-card-title" :title="data.title || '未命名回報'">
+                    {{ data.title || '未命名回報' }}
+                  </strong>
+                  <Tag
+                    class="system-read-state-tag report-mobile-card-status"
+                    :severity="data.is_read ? 'secondary' : 'warn'"
+                    :value="data.is_read ? '已讀' : '未讀'"
+                  />
+                </div>
+                <div class="report-mobile-card-badges">
+                  <Tag :value="issueTypeLabel(data.report_type)" />
+                  <Tag severity="secondary" value="本地摘要" />
+                </div>
               </header>
-              <div class="report-mobile-card-badges">
-                <Tag :value="issueTypeLabel(data.report_type)" />
-                <Tag severity="secondary" value="本地摘要" />
+              <div class="report-mobile-card__body">
+                <section
+                  class="report-mobile-card__summary report-mobile-summary-preview"
+                  aria-label="內容摘要"
+                >
+                  <span class="report-mobile-summary-preview__label">內容摘要</span>
+                  <p class="report-mobile-summary-preview__text">
+                    {{ data.description || '未提供詳細描述' }}
+                  </p>
+                </section>
+                <dl class="report-mobile-card__metadata report-mobile-info-grid">
+                  <div class="report-mobile-info-item">
+                    <dt>回報者</dt>
+                    <dd>{{ data.reporter_name }}</dd>
+                  </div>
+                  <div class="report-mobile-info-item">
+                    <dt>回報時間</dt>
+                    <dd>
+                      <time :datetime="data.created_at">{{
+                        formatDateTime(data.created_at, true)
+                      }}</time>
+                    </dd>
+                  </div>
+                </dl>
               </div>
-              <section class="report-mobile-summary-preview" aria-label="內容摘要">
-                <span class="report-mobile-summary-preview__label">內容摘要</span>
-                <p class="report-mobile-summary-preview__text">
-                  {{ data.description || '未提供詳細描述' }}
-                </p>
-              </section>
-              <dl class="report-mobile-info-grid">
-                <div class="report-mobile-info-item">
-                  <dt>回報者</dt>
-                  <dd>{{ data.reporter_name }}</dd>
+              <footer class="report-mobile-card__footer">
+                <div class="report-row-actions">
+                  <Button
+                    label="檢視"
+                    icon="pi pi-search"
+                    aria-label="檢視系統問題回報"
+                    title="檢視系統問題回報"
+                    size="small"
+                    outlined
+                    :loading="loadingSystemDetailId === data.id"
+                    :disabled="loadingSystemDetailId !== null"
+                    @click="openSystemReport(data)"
+                  />
+                  <Button
+                    label="刪除"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    aria-label="刪除系統問題回報"
+                    title="刪除系統問題回報"
+                    size="small"
+                    outlined
+                    :loading="deletingSystemId === data.id"
+                    :disabled="deletingSystemId !== null"
+                    @click="confirmDeleteSystemIssue(data)"
+                  />
                 </div>
-                <div class="report-mobile-info-item">
-                  <dt>回報時間</dt>
-                  <dd>
-                    <time :datetime="data.created_at">{{
-                      formatDateTime(data.created_at, true)
-                    }}</time>
-                  </dd>
-                </div>
-              </dl>
-            </article></template
-          ></Column
-        >
+              </footer></article></template
+        ></Column>
         <Column
           field="report_type"
           sortField="report_type"
@@ -182,7 +214,7 @@
           bodyClass="report-actions-column report-actions-column--system"
           style="width: 12rem; min-width: 12rem"
           ><template #body="{ data }"
-            ><footer class="report-mobile-card__footer">
+            ><footer v-if="!isCardLayout" class="report-desktop-actions">
               <div class="report-row-actions">
                 <Button
                   label="檢視"
@@ -397,52 +429,86 @@
               }}</span>
             </div>
             <article v-else class="report-mobile-card report-mobile-card-content">
-              <header class="report-mobile-card-header">
-                <strong class="report-mobile-card-title" :title="reasonLabel(data.reason)">
-                  {{ reasonLabel(data.reason) }}
-                </strong>
-                <Tag
-                  class="report-mobile-card-status"
-                  :severity="statusSeverity(data.status)"
-                  :value="statusLabel(data.status)"
-                />
+              <header class="report-mobile-card__header">
+                <div class="report-mobile-card-header">
+                  <strong class="report-mobile-card-title" :title="reasonLabel(data.reason)">
+                    {{ reasonLabel(data.reason) }}
+                  </strong>
+                  <Tag
+                    class="report-mobile-card-status"
+                    :severity="statusSeverity(data.status)"
+                    :value="statusLabel(data.status)"
+                  />
+                </div>
               </header>
-              <section class="report-mobile-summary-preview" aria-label="留言摘要">
-                <span class="report-mobile-summary-preview__label">留言摘要</span>
-                <p class="report-mobile-summary-preview__text">
-                  {{ data.comment_content_snapshot || '無留言摘要' }}
-                </p>
-              </section>
-              <dl class="report-mobile-info-grid report-mobile-info-grid--comment">
-                <div class="report-mobile-info-item">
-                  <dt>回報者</dt>
-                  <dd>{{ data.reporter_name }}</dd>
+              <div class="report-mobile-card__body">
+                <section
+                  class="report-mobile-card__summary report-mobile-summary-preview"
+                  aria-label="留言摘要"
+                >
+                  <span class="report-mobile-summary-preview__label">留言摘要</span>
+                  <p class="report-mobile-summary-preview__text">
+                    {{ data.comment_content_snapshot || '無留言摘要' }}
+                  </p>
+                </section>
+                <dl
+                  class="report-mobile-card__metadata report-mobile-info-grid report-mobile-info-grid--comment"
+                >
+                  <div class="report-mobile-info-item">
+                    <dt>回報者</dt>
+                    <dd>{{ data.reporter_name }}</dd>
+                  </div>
+                  <div class="report-mobile-info-item">
+                    <dt>回報時間</dt>
+                    <dd>
+                      <time :datetime="data.created_at">{{
+                        formatDateTime(data.created_at, true)
+                      }}</time>
+                    </dd>
+                  </div>
+                  <div class="report-mobile-info-item">
+                    <dt>留言者</dt>
+                    <dd>{{ data.comment_author_name }}</dd>
+                  </div>
+                  <div class="report-mobile-info-item report-mobile-info-item--wide">
+                    <dt>課程／考古題</dt>
+                    <dd>{{ data.course_name }} · {{ data.archive_name }}</dd>
+                  </div>
+                  <div class="report-mobile-info-item">
+                    <dt>審核</dt>
+                    <dd>{{ data.reviewer_name || '尚未審核' }}</dd>
+                  </div>
+                  <div class="report-mobile-info-item">
+                    <dt>審核時間</dt>
+                    <dd>{{ formatDateTime(data.reviewed_at, true) }}</dd>
+                  </div>
+                </dl>
+              </div>
+              <footer class="report-mobile-card__footer">
+                <div class="report-row-actions">
+                  <Button
+                    :label="isFinal(data.status) ? '檢視' : '檢視／審核'"
+                    icon="pi pi-search"
+                    aria-label="檢視或審核留言回報"
+                    title="檢視或審核留言回報"
+                    size="small"
+                    outlined
+                    @click="openCommentReport(data.id)"
+                  />
+                  <Button
+                    label="刪除"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    aria-label="刪除留言回報"
+                    title="刪除留言回報"
+                    size="small"
+                    outlined
+                    :loading="deletingCommentId === data.id"
+                    :disabled="deletingCommentId !== null"
+                    @click="confirmDeleteCommentReport(data)"
+                  />
                 </div>
-                <div class="report-mobile-info-item">
-                  <dt>回報時間</dt>
-                  <dd>
-                    <time :datetime="data.created_at">{{
-                      formatDateTime(data.created_at, true)
-                    }}</time>
-                  </dd>
-                </div>
-                <div class="report-mobile-info-item">
-                  <dt>留言者</dt>
-                  <dd>{{ data.comment_author_name }}</dd>
-                </div>
-                <div class="report-mobile-info-item report-mobile-info-item--wide">
-                  <dt>課程／考古題</dt>
-                  <dd>{{ data.course_name }} · {{ data.archive_name }}</dd>
-                </div>
-                <div class="report-mobile-info-item">
-                  <dt>審核</dt>
-                  <dd>{{ data.reviewer_name || '尚未審核' }}</dd>
-                </div>
-                <div class="report-mobile-info-item">
-                  <dt>審核時間</dt>
-                  <dd>{{ formatDateTime(data.reviewed_at, true) }}</dd>
-                </div>
-              </dl>
+              </footer>
             </article>
           </template>
         </Column>
@@ -513,7 +579,7 @@
           bodyClass="report-actions-column"
           style="width: 17rem; min-width: 17rem"
           ><template #body="{ data }"
-            ><footer class="report-mobile-card__footer">
+            ><footer v-if="!isCardLayout" class="report-desktop-actions">
               <div class="report-row-actions">
                 <Button
                   :label="isFinal(data.status) ? '檢視' : '檢視／審核'"
@@ -1287,6 +1353,8 @@ onBeforeUnmount(teardownCardLayout)
   flex-direction: column;
   width: 100%;
   min-width: 0;
+  container-name: report-card;
+  container-type: inline-size;
 }
 .report-mobile-card-content {
   width: 100%;
@@ -1297,6 +1365,9 @@ onBeforeUnmount(teardownCardLayout)
   width: 100%;
   align-items: center;
   justify-content: flex-end;
+}
+.report-desktop-actions {
+  width: 100%;
 }
 .report-management__summary {
   display: flex;
@@ -1687,8 +1758,7 @@ onBeforeUnmount(teardownCardLayout)
     display: none !important;
   }
   :deep(.report-management__system-table .p-datatable-tbody > tr > td:nth-child(2)),
-  :deep(.report-management__comment-table .p-datatable-tbody > tr > td:nth-child(2)),
-  :deep(.report-management__table .p-datatable-tbody > tr > td:last-child) {
+  :deep(.report-management__comment-table .p-datatable-tbody > tr > td:nth-child(2)) {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -1696,11 +1766,6 @@ onBeforeUnmount(teardownCardLayout)
   :deep(.report-management__system-table .p-datatable-tbody > tr > td:nth-child(2)),
   :deep(.report-management__comment-table .p-datatable-tbody > tr > td:nth-child(2)) {
     order: 1;
-  }
-  :deep(.report-management__table .p-datatable-tbody > tr > td:last-child) {
-    order: 2;
-    padding-top: 0.75rem !important;
-    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent) !important;
   }
   :deep(.report-management__table .p-datatable-empty-message > td) {
     display: block !important;
@@ -1715,6 +1780,10 @@ onBeforeUnmount(teardownCardLayout)
   }
   .report-mobile-card-content {
     display: flex;
+  }
+  .report-mobile-card__header {
+    width: 100%;
+    min-width: 0;
   }
   .report-mobile-card-header {
     display: grid;
@@ -1751,12 +1820,24 @@ onBeforeUnmount(teardownCardLayout)
     gap: 0.35rem;
     margin-top: 0.55rem;
   }
+  .report-mobile-card__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0.65rem;
+  }
+  .report-mobile-card__summary,
+  .report-mobile-card__metadata {
+    width: 100%;
+    min-width: 0;
+  }
   .report-mobile-summary-preview {
-    grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    margin-top: 0.65rem;
+    margin: 0;
     padding: 0.55rem 0.65rem;
     border: 1px solid color-mix(in srgb, var(--border-color) 76%, transparent);
     border-radius: var(--content-border-radius);
@@ -1789,7 +1870,8 @@ onBeforeUnmount(teardownCardLayout)
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.42rem 0.65rem;
-    margin: 0.65rem 0 0;
+    align-content: start;
+    margin: 0;
   }
   .report-mobile-info-item {
     display: inline-flex;
@@ -1817,15 +1899,21 @@ onBeforeUnmount(teardownCardLayout)
   .report-mobile-info-item--wide {
     grid-column: span 2;
   }
+  .report-mobile-card__footer {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  }
   .report-row-actions {
     justify-content: flex-end;
     width: 100%;
     gap: 0.45rem;
   }
 }
-@container report-section (min-width: 56rem) {
-  .report-mobile-info-grid--comment {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+@container report-card (min-width: 46rem) {
+  .report-mobile-card__body {
+    grid-template-columns: minmax(18rem, 0.85fr) minmax(0, 1.15fr);
+    gap: 1rem;
   }
 }
 @container report-section (max-width: 25rem) {
@@ -1833,6 +1921,8 @@ onBeforeUnmount(teardownCardLayout)
     gap: 0.5rem;
     padding: 0.8rem;
   }
+}
+@container report-card (max-width: 25rem) {
   .report-mobile-info-grid {
     grid-template-columns: minmax(0, 1fr);
   }
