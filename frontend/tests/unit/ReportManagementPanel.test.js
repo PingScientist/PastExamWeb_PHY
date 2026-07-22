@@ -534,15 +534,47 @@ describe('ReportManagementPanel', () => {
     expect(reportManagementSource).not.toMatch(/font-size:\s*(?:0\.\d+|1\.05|2)rem/)
   })
 
-  it('uses the review-center card breakpoint and dedicated mobile report summaries', () => {
+  it('uses responsive filter grids and dedicated full-width mobile summaries', () => {
     expect(reportManagementSource.match(/breakpoint="1399px"/g)).toHaveLength(2)
     expect(reportManagementSource).toContain('@media (max-width: 1399px)')
+    expect(reportManagementSource).not.toContain('@media (max-width: 899px)')
+    expect(reportManagementSource.match(/class="report-filter-search"/g)).toHaveLength(2)
+    expect(
+      reportManagementSource.match(/class="report-filter-select report-filter-select--primary"/g)
+    ).toHaveLength(2)
+    expect(
+      reportManagementSource.match(/class="report-filter-select report-filter-select--secondary"/g)
+    ).toHaveLength(2)
+    expect(reportManagementSource.match(/class="report-filter-submit"/g)).toHaveLength(2)
+    expect(reportManagementSource).toContain('container-name: report-section;')
+    expect(reportManagementSource).toContain(
+      "grid-template-areas: 'search primary secondary submit';"
+    )
+    expect(reportManagementSource).toContain('@container report-section (max-width: 62rem)')
+    expect(reportManagementSource).toContain('@container report-section (max-width: 34rem)')
+    expect(reportManagementSource).toContain('@container report-section (max-width: 20rem)')
+    expect(reportManagementSource).toMatch(
+      /\.report-filter-submit\.p-button\)[\s\S]*?justify-self:\s*end;[\s\S]*?width:\s*auto;/
+    )
     expect(reportManagementSource.match(/class="report-mobile-card-content"/g)).toHaveLength(2)
     expect(reportManagementSource.match(/class="report-mobile-card-header"/g)).toHaveLength(2)
     expect(reportManagementSource).toContain('class="report-mobile-card-badges"')
+    expect(reportManagementSource.match(/class="report-mobile-summary-preview"/g)).toHaveLength(2)
+    expect(reportManagementSource).toContain('class="report-mobile-summary-preview__label"')
+    expect(reportManagementSource).toContain("data.description || '未提供詳細描述'")
+    expect(reportManagementSource).toContain("data.comment_content_snapshot || '無留言摘要'")
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-summary-preview\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?background:/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-mobile-summary-preview__text\s*\{[\s\S]*?max-height:\s*calc\(1\.4em \* 3\);[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?-webkit-line-clamp:\s*3;/
+    )
+    expect(reportManagementSource).not.toContain('class="report-mobile-card-summary"')
     expect(reportManagementSource).toContain(
       'class="report-mobile-info-grid report-mobile-info-grid--comment"'
     )
+    expect(reportManagementSource).toContain('@container report-section (min-width: 56rem)')
+    expect(reportManagementSource).toContain('@container report-section (max-width: 25rem)')
     expect(reportManagementSource).toContain('<dt>回報者</dt>')
     expect(reportManagementSource).toContain('<dt>留言者</dt>')
     expect(reportManagementSource).toContain('<dt>審核時間</dt>')

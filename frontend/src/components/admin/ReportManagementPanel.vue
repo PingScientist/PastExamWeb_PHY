@@ -29,11 +29,13 @@
       <div class="report-management__filters report-management__filters--system">
         <InputText
           v-model="systemFilters.search"
+          class="report-filter-search"
           placeholder="搜尋標題、回報者或內容摘要"
           @keyup.enter="applySystemFilters"
         />
         <Select
           v-model="systemFilters.type"
+          class="report-filter-select report-filter-select--primary"
           :options="systemTypeOptions"
           optionLabel="label"
           optionValue="value"
@@ -43,13 +45,20 @@
         />
         <Select
           v-model="systemFilters.readState"
+          class="report-filter-select report-filter-select--secondary"
           :options="systemReadStateOptions"
           optionLabel="label"
           optionValue="value"
           aria-label="系統問題回報閱讀狀態"
           @change="applySystemFilters"
         />
-        <Button label="搜尋" icon="pi pi-search" outlined @click="applySystemFilters" />
+        <Button
+          class="report-filter-submit"
+          label="搜尋"
+          icon="pi pi-search"
+          outlined
+          @click="applySystemFilters"
+        />
       </div>
       <Message v-if="systemError" severity="error" :closable="false">{{ systemError }}</Message>
       <DataTable
@@ -119,11 +128,16 @@
                   :value="data.is_read ? '已讀' : '未讀'"
                 />
               </header>
-              <p class="report-mobile-card-summary">{{ data.description || '—' }}</p>
               <div class="report-mobile-card-badges">
                 <Tag :value="issueTypeLabel(data.report_type)" />
                 <Tag severity="secondary" value="本地摘要" />
               </div>
+              <section class="report-mobile-summary-preview" aria-label="內容摘要">
+                <span class="report-mobile-summary-preview__label">內容摘要</span>
+                <p class="report-mobile-summary-preview__text">
+                  {{ data.description || '未提供詳細描述' }}
+                </p>
+              </section>
               <dl class="report-mobile-info-grid">
                 <div class="report-mobile-info-item">
                   <dt>回報者</dt>
@@ -282,11 +296,13 @@
       <div class="report-management__filters">
         <InputText
           v-model="commentFilters.search"
+          class="report-filter-search"
           placeholder="搜尋留言、課程或使用者"
           @keyup.enter="applyCommentFilters"
         />
         <Select
           v-model="commentFilters.status"
+          class="report-filter-select report-filter-select--primary"
           :options="statusOptions"
           optionLabel="label"
           optionValue="value"
@@ -296,6 +312,7 @@
         />
         <Select
           v-model="commentFilters.reason"
+          class="report-filter-select report-filter-select--secondary"
           :options="reasonOptions"
           optionLabel="label"
           optionValue="value"
@@ -303,7 +320,13 @@
           showClear
           @change="applyCommentFilters"
         />
-        <Button label="搜尋" icon="pi pi-search" outlined @click="applyCommentFilters" />
+        <Button
+          class="report-filter-submit"
+          label="搜尋"
+          icon="pi pi-search"
+          outlined
+          @click="applyCommentFilters"
+        />
       </div>
       <Message v-if="commentError" severity="error" :closable="false">{{ commentError }}</Message>
       <DataTable
@@ -378,9 +401,12 @@
                   :value="statusLabel(data.status)"
                 />
               </header>
-              <p class="report-mobile-card-summary">
-                {{ data.comment_content_snapshot || '—' }}
-              </p>
+              <section class="report-mobile-summary-preview" aria-label="留言摘要">
+                <span class="report-mobile-summary-preview__label">留言摘要</span>
+                <p class="report-mobile-summary-preview__text">
+                  {{ data.comment_content_snapshot || '無留言摘要' }}
+                </p>
+              </section>
               <dl class="report-mobile-info-grid report-mobile-info-grid--comment">
                 <div class="report-mobile-info-item">
                   <dt>回報者</dt>
@@ -1102,6 +1128,8 @@ onMounted(refreshAll)
   gap: 0.75rem;
 }
 .report-section {
+  container-name: report-section;
+  container-type: inline-size;
   min-width: 0;
   padding-block: 1.25rem;
   border-bottom: 1px solid var(--surface-border);
@@ -1128,6 +1156,11 @@ onMounted(refreshAll)
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+.report-section__actions :deep(.p-button) {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+}
 .report-row-actions {
   display: inline-flex;
   width: 100%;
@@ -1142,12 +1175,71 @@ onMounted(refreshAll)
 }
 .report-management__filters {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) repeat(2, minmax(10rem, auto)) auto;
+  grid-template-areas: 'search primary secondary submit';
+  grid-template-columns: minmax(0, 1fr) repeat(2, minmax(9rem, 11rem)) auto;
+  align-items: center;
   gap: 0.6rem;
+  width: 100%;
+  min-width: 0;
   margin-block: 1rem;
 }
-.report-management__filters--system {
-  grid-template-columns: minmax(12rem, 1fr) repeat(2, minmax(10rem, auto)) auto;
+.report-filter-search {
+  grid-area: search;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+:deep(.report-filter-select) {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+:deep(.report-filter-select--primary) {
+  grid-area: primary;
+}
+:deep(.report-filter-select--secondary) {
+  grid-area: secondary;
+}
+:deep(.report-filter-submit.p-button) {
+  grid-area: submit;
+  justify-self: end;
+  width: auto;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-inline: 0.8rem;
+  white-space: nowrap;
+}
+.report-management__filters :deep(.p-inputtext),
+.report-management__filters :deep(.p-select),
+.report-management__filters :deep(.p-button) {
+  min-height: max(2.35rem, calc(2.35rem * var(--app-font-scale)));
+}
+@container report-section (max-width: 62rem) {
+  .report-management__filters {
+    grid-template-areas:
+      'search search search'
+      'primary secondary submit';
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
+}
+@container report-section (max-width: 34rem) {
+  .report-management__filters {
+    grid-template-areas:
+      'search search'
+      'primary secondary'
+      '. submit';
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container report-section (max-width: 20rem) {
+  .report-management__filters {
+    grid-template-areas:
+      'search'
+      'primary'
+      'secondary'
+      'submit';
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .report-management__table {
   width: 100%;
@@ -1502,10 +1594,6 @@ onMounted(refreshAll)
     align-items: flex-start;
     flex-direction: column;
   }
-  .report-management__filters {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   :deep(.report-management__table) {
     overflow: visible;
   }
@@ -1591,30 +1679,24 @@ onMounted(refreshAll)
     min-width: 0;
   }
   .report-mobile-card-title {
+    display: -webkit-box;
     flex: 1 1 auto;
     min-width: 0;
+    max-height: calc(1.3em * 2);
+    overflow: hidden;
     color: var(--text-color);
     font-size: var(--app-font-size-base);
     font-weight: 800;
     line-height: 1.3;
     overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
   .report-mobile-card-status {
     flex: 0 0 auto;
     max-width: 42%;
     white-space: nowrap;
-  }
-  .report-mobile-card-summary {
-    display: -webkit-box;
-    max-height: calc(1.35em * 3);
-    margin: 0.45rem 0 0;
-    overflow: hidden;
-    overflow-wrap: anywhere;
-    color: var(--text-color-secondary);
-    font-size: var(--app-font-size-sm);
-    line-height: 1.35;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
   }
   .report-mobile-card-badges {
     display: flex;
@@ -1622,6 +1704,39 @@ onMounted(refreshAll)
     align-items: center;
     gap: 0.35rem;
     margin-top: 0.55rem;
+  }
+  .report-mobile-summary-preview {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin-top: 0.65rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 76%, transparent);
+    border-radius: var(--content-border-radius);
+    background: color-mix(in srgb, var(--bg-secondary) 78%, transparent);
+  }
+  .report-mobile-summary-preview__label {
+    display: block;
+    margin-bottom: 0.22rem;
+    color: var(--text-color-secondary);
+    font-size: var(--app-font-size-xs);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .report-mobile-summary-preview__text {
+    display: -webkit-box;
+    width: 100%;
+    min-width: 0;
+    max-height: calc(1.4em * 3);
+    margin: 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    color: var(--text-color);
+    font-size: var(--app-font-size-sm);
+    line-height: 1.4;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
   }
   .report-mobile-info-grid {
     display: grid;
@@ -1661,15 +1776,12 @@ onMounted(refreshAll)
     gap: 0.45rem;
   }
 }
-@media (max-width: 760px) {
-  .report-review__meta {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .report-review__actions {
-    flex-wrap: wrap;
+@container report-section (min-width: 56rem) {
+  .report-mobile-info-grid--comment {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-@media (max-width: 640px) {
+@container report-section (max-width: 25rem) {
   :deep(.report-management__table .p-datatable-tbody > tr) {
     gap: 0.5rem;
     padding: 0.8rem;
@@ -1680,14 +1792,13 @@ onMounted(refreshAll)
   .report-mobile-info-item--wide {
     grid-column: auto;
   }
-  .report-row-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 760px) {
+  .report-review__meta {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .report-row-actions :deep(.p-button) {
-    width: 100%;
-    min-width: 0;
-    padding-inline: 0.45rem;
+  .report-review__actions {
+    flex-wrap: wrap;
   }
 }
 </style>
