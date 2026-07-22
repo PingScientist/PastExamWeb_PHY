@@ -478,12 +478,12 @@
             <dd>{{ selectedReport.course_name }} · {{ selectedReport.archive_name }}</dd>
           </div>
           <div>
-            <dt>討論串起始留言</dt>
+            <dt>Thread</dt>
             <dd>
-              <span>{{
-                selectedReport.thread_id ? `留言 #${selectedReport.thread_id}` : '—'
-              }}</span>
-              <small>此識別碼代表該回覆串的第一則留言，用於定位討論串。</small>
+              <span>{{ selectedReport.thread_id ? `#${selectedReport.thread_id}` : '—' }}</span>
+              <small class="report-review__thread-help"
+                >此識別碼代表該回覆串的第一則留言，用於定位討論串。</small
+              >
             </dd>
           </div>
         </dl>
@@ -1249,7 +1249,8 @@ onMounted(refreshAll)
   margin: 0.15rem 0 0;
   overflow-wrap: anywhere;
 }
-.report-review__meta dd small {
+.report-review__meta dd small,
+.report-review__thread-help {
   color: var(--text-color-secondary);
   font-size: 0.75rem;
   line-height: 1.35;

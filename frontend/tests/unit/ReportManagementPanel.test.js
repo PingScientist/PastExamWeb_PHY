@@ -347,11 +347,13 @@ describe('ReportManagementPanel', () => {
     await flushPromises()
 
     await wrapper.vm.openCommentReport(8)
-    expect(wrapper.text()).toContain('討論串起始留言')
-    expect(wrapper.text()).toContain('留言 #31')
+    expect(wrapper.text()).toContain('Thread')
+    expect(wrapper.text()).toContain('#31')
     expect(wrapper.text()).toContain('此識別碼代表該回覆串的第一則留言，用於定位討論串。')
     expect(wrapper.text()).toContain('來源留言已不存在')
-    expect(reportManagementSource).not.toContain('<dt>Thread</dt>')
+    expect(reportManagementSource).not.toContain('討論串起始留言')
+    expect(reportManagementSource).not.toContain('留言 #${selectedReport.thread_id}')
+    expect(reportManagementSource).toContain('class="report-review__thread-help"')
     expect(reportManagementSource).toContain('threadId: item.thread_id')
     expect(reportManagementSource).toContain('messageId: item.comment_id')
     expect(wrapper.get('textarea-stub').attributes('placeholder')).toBe(
