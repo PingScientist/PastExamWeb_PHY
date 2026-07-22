@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   listComments: vi.fn(),
   getComment: vi.fn(),
   reviewComment: vi.fn(),
+  deleteSystem: vi.fn(),
+  deleteComment: vi.fn(),
   toast: vi.fn(),
   push: vi.fn(),
 }))
@@ -18,6 +20,8 @@ vi.mock('@/api', () => ({
     listCommentReports: mocks.listComments,
     getCommentReport: mocks.getComment,
     reviewCommentReport: mocks.reviewComment,
+    deleteSystemIssue: mocks.deleteSystem,
+    deleteCommentReport: mocks.deleteComment,
   },
 }))
 vi.mock('@/utils/auth', () => ({ getCurrentUser: () => ({ id: 1, is_admin: true }) }))
@@ -58,6 +62,8 @@ describe('ReportManagementPanel', () => {
     vi.clearAllMocks()
     mocks.listSystem.mockResolvedValue({ data: { items: [], total: 0 } })
     mocks.listComments.mockResolvedValue({ data: { items: [], total: 0 } })
+    mocks.deleteSystem.mockResolvedValue({ data: { success: true } })
+    mocks.deleteComment.mockResolvedValue({ data: { success: true } })
   })
 
   it('keeps the three report sources separated and rejects untrusted GitHub links', async () => {
@@ -161,6 +167,38 @@ describe('ReportManagementPanel', () => {
     )
     expect(wrapper.vm.systemPage.first).toBe(0)
     expect(wrapper.vm.commentPage.first).toBe(0)
+  })
+
+  it('moves each report type to trash once and clamps an emptied last page', async () => {
+    const wrapper = mountPanel()
+    await flushPromises()
+    wrapper.vm.systemIssues = [{ id: 11, title: 'System' }]
+    wrapper.vm.systemTotal = 11
+    wrapper.vm.systemPage = { ...wrapper.vm.systemPage, first: 10, rows: 10 }
+    wrapper.vm.commentReports = [{ id: 22, reason: 'misinformation' }]
+    wrapper.vm.commentTotal = 11
+    wrapper.vm.commentPage = { ...wrapper.vm.commentPage, first: 10, rows: 10 }
+
+    wrapper.vm.confirmDeleteSystemIssue({ id: 11, title: 'System' })
+    wrapper.vm.confirmDeleteSystemIssue({ id: 11, title: 'System' })
+    wrapper.vm.confirmDeleteCommentReport({ id: 22, reason: 'misinformation' })
+    wrapper.vm.confirmDeleteCommentReport({ id: 22, reason: 'misinformation' })
+    await flushPromises()
+
+    expect(mocks.deleteSystem).toHaveBeenCalledTimes(1)
+    expect(mocks.deleteSystem).toHaveBeenCalledWith(11)
+    expect(mocks.deleteComment).toHaveBeenCalledTimes(1)
+    expect(mocks.deleteComment).toHaveBeenCalledWith(22)
+    expect(wrapper.vm.systemPage.first).toBe(0)
+    expect(wrapper.vm.commentPage.first).toBe(0)
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: '回報已移至垃圾桶' })
+    )
+    expect(reportManagementSource).toContain('aria-label="刪除系統問題回報"')
+    expect(reportManagementSource).toContain('aria-label="刪除留言回報"')
+    expect(reportManagementSource).toContain(
+      '回報會移至垃圾桶，可由管理員在垃圾桶中還原或永久刪除。'
+    )
   })
 
   it('keeps the available section usable when another report request fails', async () => {

@@ -2533,6 +2533,13 @@
                       <small v-if="getTrashContextLine(data)" class="text-secondary">
                         {{ getTrashContextLine(data) }}
                       </small>
+                      <small
+                        v-for="detail in getTrashReportDetails(data)"
+                        :key="detail.label"
+                        class="text-secondary"
+                      >
+                        {{ detail.label }}：{{ detail.value }}
+                      </small>
                     </span>
                   </template>
                 </Column>
@@ -2716,6 +2723,14 @@
                     >
                       <span class="trash-mobile-info-label">{{ getTrashContextLabel(data) }}</span>
                       <span class="trash-mobile-info-value">{{ getTrashContextValue(data) }}</span>
+                    </div>
+                    <div
+                      v-for="detail in getTrashReportDetails(data)"
+                      :key="detail.label"
+                      class="trash-mobile-info-item trash-mobile-info-item--wide"
+                    >
+                      <span class="trash-mobile-info-label">{{ detail.label }}</span>
+                      <span class="trash-mobile-info-value">{{ detail.value }}</span>
                     </div>
                   </div>
 
@@ -4480,6 +4495,9 @@ const trashFilterOptions = [
   { label: '考古題投稿', value: 'archive_submission' },
   { label: '課程分類', value: 'course_category' },
   { label: '課程', value: 'course' },
+  { label: '系統問題回報', value: 'system_issue_report' },
+  { label: '留言回報', value: 'comment_report' },
+  { label: '考古題回報', value: 'archive_report' },
   { label: '公告', value: 'notification' },
   { label: '使用者', value: 'user' },
 ]
@@ -5085,6 +5103,33 @@ const getTrashContextLine = (item) => {
     if (item.course_name) return `課程：${item.course_name}`
   }
   return ''
+}
+
+const getTrashReportDetails = (item) => {
+  if (item?.item_type === 'system_issue_report') {
+    return [
+      { label: '回報類型', value: item.report_type || '—' },
+      { label: '回報者', value: item.reporter_name || '—' },
+      { label: '回報時間', value: item.created_at ? formatAdminActorTime(item.created_at) : '—' },
+      {
+        label: 'GitHub 連結',
+        value: item.github_issue_number ? `已連結 #${item.github_issue_number}` : '尚未連結',
+      },
+    ]
+  }
+  if (item?.item_type === 'comment_report') {
+    return [
+      { label: '留言摘要', value: item.comment_snapshot || '—' },
+      { label: '回報者', value: item.reporter_name || '—' },
+      { label: '留言者', value: item.comment_author_name || '—' },
+      {
+        label: '課程／考古題',
+        value: [item.course_name, item.archive_name].filter(Boolean).join(' · ') || '—',
+      },
+      { label: '回報時間', value: item.created_at ? formatAdminActorTime(item.created_at) : '—' },
+    ]
+  }
+  return []
 }
 
 const TAB_STORAGE_KEY = STORAGE_KEYS.local.ADMIN_CURRENT_TAB

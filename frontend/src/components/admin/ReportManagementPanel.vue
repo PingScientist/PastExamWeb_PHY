@@ -127,18 +127,34 @@
         <Column field="status" sortField="status" header="狀態" sortable style="width: 8rem"
           ><template #body><Tag severity="secondary" value="本地摘要" /></template
         ></Column>
-        <Column header="操作" style="width: 10rem"
+        <Column header="操作" style="width: 17rem"
           ><template #body="{ data }"
-            ><Button
-              as="a"
-              :href="safeGithubIssueUrl(data) || undefined"
-              target="_blank"
-              rel="noopener noreferrer"
-              label="前往 GitHub"
-              icon="pi pi-external-link"
-              size="small"
-              outlined
-              :disabled="!safeGithubIssueUrl(data)" /></template
+            ><div class="report-row-actions">
+              <Button
+                as="a"
+                :href="safeGithubIssueUrl(data) || undefined"
+                target="_blank"
+                rel="noopener noreferrer"
+                label="前往 GitHub"
+                icon="pi pi-external-link"
+                aria-label="前往 GitHub"
+                title="前往 GitHub"
+                size="small"
+                outlined
+                :disabled="!safeGithubIssueUrl(data)"
+              />
+              <Button
+                label="刪除"
+                icon="pi pi-trash"
+                severity="danger"
+                aria-label="刪除系統問題回報"
+                title="刪除系統問題回報"
+                size="small"
+                outlined
+                :loading="deletingSystemId === data.id"
+                :disabled="deletingSystemId !== null"
+                @click="confirmDeleteSystemIssue(data)"
+              /></div></template
         ></Column>
       </DataTable>
     </section>
@@ -296,14 +312,30 @@
           header="操作"
           headerClass="report-actions-column"
           bodyClass="report-actions-column"
-          style="width: 9.5rem; min-width: 9.5rem"
+          style="width: 17rem; min-width: 17rem"
           ><template #body="{ data }"
-            ><Button
-              label="檢視／審核"
-              icon="pi pi-search"
-              size="small"
-              outlined
-              @click="openCommentReport(data.id)" /></template
+            ><div class="report-row-actions">
+              <Button
+                label="檢視／審核"
+                icon="pi pi-search"
+                aria-label="檢視或審核留言回報"
+                title="檢視或審核留言回報"
+                size="small"
+                outlined
+                @click="openCommentReport(data.id)"
+              />
+              <Button
+                label="刪除"
+                icon="pi pi-trash"
+                severity="danger"
+                aria-label="刪除留言回報"
+                title="刪除留言回報"
+                size="small"
+                outlined
+                :loading="deletingCommentId === data.id"
+                :disabled="deletingCommentId !== null"
+                @click="confirmDeleteCommentReport(data)"
+              /></div></template
         ></Column>
       </DataTable>
     </section>
@@ -456,6 +488,8 @@ const commentTotal = ref(0)
 const commentError = ref('')
 const reviewVisible = ref(false)
 const reviewSaving = ref(false)
+const deletingSystemId = ref(null)
+const deletingCommentId = ref(null)
 const selectedReport = ref(null)
 const systemFilters = ref({ search: '', type: null, status: null })
 const commentFilters = ref({ search: '', status: null, reason: null })
@@ -594,6 +628,81 @@ function onCommentSort(event) {
 }
 function refreshAll() {
   return Promise.allSettled([loadSystemIssues(), loadCommentReports()])
+}
+function clampReportPageAfterDelete(page, total) {
+  const nextTotal = Math.max(0, total - 1)
+  const maxFirst = nextTotal
+    ? Math.floor((nextTotal - 1) / Math.max(1, page.rows)) * Math.max(1, page.rows)
+    : 0
+  page.first = Math.min(page.first, maxFirst)
+  return nextTotal
+}
+function confirmDeleteSystemIssue(item) {
+  if (!item?.id || deletingSystemId.value !== null) return
+  confirm.require({
+    header: '刪除這筆回報？',
+    message: '回報會移至垃圾桶，可由管理員在垃圾桶中還原或永久刪除。',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: '取消',
+    acceptLabel: '刪除',
+    acceptClass: 'p-button-danger',
+    accept: () => deleteSystemIssue(item),
+  })
+}
+async function deleteSystemIssue(item) {
+  if (!item?.id || deletingSystemId.value !== null) return
+  deletingSystemId.value = item.id
+  try {
+    await reportService.deleteSystemIssue(item.id)
+    systemIssues.value = systemIssues.value.filter((candidate) => candidate.id !== item.id)
+    systemTotal.value = clampReportPageAfterDelete(systemPage.value, systemTotal.value)
+    toast.add({
+      severity: 'success',
+      summary: '回報已移至垃圾桶',
+      detail: '系統問題回報可在垃圾桶中還原或永久刪除',
+      life: 3000,
+    })
+    await loadSystemIssues()
+  } catch (error) {
+    console.error('Delete system issue report error:', error)
+    toast.add({ severity: 'error', summary: '刪除失敗', detail: '系統問題回報未變更', life: 3000 })
+  } finally {
+    deletingSystemId.value = null
+  }
+}
+function confirmDeleteCommentReport(item) {
+  if (!item?.id || deletingCommentId.value !== null) return
+  confirm.require({
+    header: '刪除這筆回報？',
+    message: '回報會移至垃圾桶，可由管理員在垃圾桶中還原或永久刪除。',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: '取消',
+    acceptLabel: '刪除',
+    acceptClass: 'p-button-danger',
+    accept: () => deleteCommentReport(item),
+  })
+}
+async function deleteCommentReport(item) {
+  if (!item?.id || deletingCommentId.value !== null) return
+  deletingCommentId.value = item.id
+  try {
+    await reportService.deleteCommentReport(item.id)
+    commentReports.value = commentReports.value.filter((candidate) => candidate.id !== item.id)
+    commentTotal.value = clampReportPageAfterDelete(commentPage.value, commentTotal.value)
+    if (selectedReport.value?.id === item.id) reviewVisible.value = false
+    toast.add({
+      severity: 'success',
+      summary: '回報已移至垃圾桶',
+      detail: '留言回報可在垃圾桶中還原或永久刪除',
+      life: 3000,
+    })
+    await loadCommentReports()
+  } catch (error) {
+    console.error('Delete comment report error:', error)
+    toast.add({ severity: 'error', summary: '刪除失敗', detail: '留言回報未變更', life: 3000 })
+  } finally {
+    deletingCommentId.value = null
+  }
 }
 async function openCommentReport(id) {
   try {
@@ -747,6 +856,13 @@ onMounted(refreshAll)
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+.report-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 .report-management__filters {
   display: grid;
@@ -908,8 +1024,8 @@ onMounted(refreshAll)
   white-space: normal;
 }
 :deep(.report-actions-column) {
-  width: 9.5rem;
-  min-width: 9.5rem;
+  width: 17rem;
+  min-width: 17rem;
   padding-inline-start: 0.75rem;
 }
 :deep(.report-actions-column .p-button) {

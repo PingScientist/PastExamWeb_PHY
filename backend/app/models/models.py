@@ -73,6 +73,9 @@ class TrashEntityType(str, PyEnum):
     ARCHIVE_SUBMISSION = "archive_submission"
     COURSE_CATEGORY = "course_category"
     COURSE = "course"
+    SYSTEM_ISSUE_REPORT = "system_issue_report"
+    COMMENT_REPORT = "comment_report"
+    ARCHIVE_REPORT = "archive_report"
     NOTIFICATION = "notification"
     USER = "user"
 
@@ -670,6 +673,19 @@ class CommentReport(SQLModel, table=True):
             nullable=False,
         )
     )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
 
 
 class SystemIssueReport(SQLModel, table=True):
@@ -715,6 +731,19 @@ class SystemIssueReport(SQLModel, table=True):
             default=lambda: datetime.now(timezone.utc),
             nullable=False,
         )
+    )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
+    deleted_by_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
     )
 
 
@@ -1240,6 +1269,14 @@ class TrashItem(BaseModel):
     course_id: Optional[int] = None
     course_name: Optional[str] = None
     reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+    reporter_name: Optional[str] = None
+    report_type: Optional[str] = None
+    github_issue_number: Optional[int] = None
+    github_issue_url: Optional[str] = None
+    comment_author_name: Optional[str] = None
+    comment_snapshot: Optional[str] = None
+    archive_name: Optional[str] = None
     canRestore: Optional[bool] = None
     canPermanentDelete: Optional[bool] = None
     dependencies: List[str] = []

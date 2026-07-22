@@ -423,6 +423,27 @@ describe('AdminView', () => {
     expect(adminTemplateSource).toContain('getTrashNameIndent(data)')
     expect(adminViewSource).toContain('headerClass="trash-dependencies-column"')
     expect(adminViewSource).toContain('width: clamp(17rem, 22vw, 23rem)')
+    expect(adminViewSource).toContain("{ label: '系統問題回報', value: 'system_issue_report' }")
+    expect(adminViewSource).toContain("{ label: '留言回報', value: 'comment_report' }")
+    expect(adminViewSource).toContain("{ label: '考古題回報', value: 'archive_report' }")
+    expect(adminTemplateSource).toContain('getTrashReportDetails(data)')
+    expect(
+      wrapper.vm.getTrashReportDetails({
+        item_type: 'comment_report',
+        reporter_name: '回報者',
+        comment_author_name: '留言者',
+        comment_snapshot: '留言摘要',
+        course_name: '課程',
+        archive_name: '考古題',
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        { label: '留言摘要', value: '留言摘要' },
+        { label: '回報者', value: '回報者' },
+        { label: '留言者', value: '留言者' },
+        { label: '課程／考古題', value: '課程 · 考古題' },
+      ])
+    )
 
     expect(wrapper.vm.getReviewRequesterLabel({ requester_name: '申請者' })).toBe('申請者')
     expect(wrapper.vm.getReviewRequesterLabel({})).toBe('—')

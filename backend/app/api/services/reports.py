@@ -89,6 +89,7 @@ def _report_select():
             source,
             (source.id == CommentReport.comment_id) & (source.deleted_at.is_(None)),
         )
+        .where(CommentReport.deleted_at.is_(None))
     )
     return statement, reporter, author, reviewer
 
@@ -225,8 +226,10 @@ async def list_system_issue_reports(
 ):
     _require_admin(current_user)
     reporter = aliased(User)
-    statement = select(SystemIssueReport, reporter.nickname, reporter.name).outerjoin(
-        reporter, reporter.id == SystemIssueReport.reporter_user_id
+    statement = (
+        select(SystemIssueReport, reporter.nickname, reporter.name)
+        .outerjoin(reporter, reporter.id == SystemIssueReport.reporter_user_id)
+        .where(SystemIssueReport.deleted_at.is_(None))
     )
     filters = []
     normalized_search = (search or "").strip()
@@ -282,6 +285,35 @@ async def list_system_issue_reports(
     )
 
 
+@router.delete("/admin/system-issues/{report_id}")
+async def delete_system_issue_report(
+    report_id: int,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    _require_admin(current_user)
+    report = (
+        await db.execute(
+            select(SystemIssueReport)
+            .where(
+                SystemIssueReport.id == report_id,
+                SystemIssueReport.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="System issue report not found",
+        )
+    report.deleted_at = datetime.now(timezone.utc)
+    report.deleted_by_id = current_user.user_id
+    db.add(report)
+    await db.commit()
+    return {"success": True}
+
+
 @router.post(
     "/courses/{course_id}/archives/{archive_id}/comments/{comment_id}",
     response_model=CommentReportRead,
@@ -331,6 +363,7 @@ async def create_comment_report(
             CommentReport.reporter_user_id == current_user.user_id,
             CommentReport.comment_id == comment_id,
             CommentReport.reason == reason,
+            CommentReport.deleted_at.is_(None),
             CommentReport.status.in_(
                 [CommentReportStatus.PENDING.value, CommentReportStatus.IN_REVIEW.value]
             ),
@@ -463,6 +496,35 @@ async def get_comment_report(
     return await _read_report(db, report_id)
 
 
+@router.delete("/admin/comments/{report_id}")
+async def delete_comment_report(
+    report_id: int,
+    current_user: UserRoles = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    _require_admin(current_user)
+    report = (
+        await db.execute(
+            select(CommentReport)
+            .where(
+                CommentReport.id == report_id,
+                CommentReport.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment report not found",
+        )
+    report.deleted_at = datetime.now(timezone.utc)
+    report.deleted_by_id = current_user.user_id
+    db.add(report)
+    await db.commit()
+    return {"success": True}
+
+
 @router.patch("/admin/comments/{report_id}", response_model=CommentReportRead)
 async def review_comment_report(
     report_id: int,
@@ -474,7 +536,10 @@ async def review_comment_report(
     report = (
         await db.execute(
             select(CommentReport)
-            .where(CommentReport.id == report_id)
+            .where(
+                CommentReport.id == report_id,
+                CommentReport.deleted_at.is_(None),
+            )
             .with_for_update()
         )
     ).scalar_one_or_none()

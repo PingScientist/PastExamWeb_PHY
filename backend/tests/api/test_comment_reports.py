@@ -307,3 +307,171 @@ async def test_system_issue_reports_are_local_admin_only_and_filter_unsafe_githu
                 )
             )
             await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_admin_moves_report_records_to_independent_trash_and_restores_them(
+    client, session_maker, make_user
+):
+    reporter = await make_user(name="trash-report-reporter")
+    author = await make_user(name="trash-report-author")
+    admin = await make_user(name="trash-report-admin", is_admin=True)
+    course, archive, messages = await _create_report_context(session_maker, author.id)
+    system_payload = {
+        "report_type": "bug",
+        "title": "Trashable system issue",
+        "description": "Local report only",
+        "metadata": {},
+    }
+    try:
+        app.dependency_overrides[get_current_user] = _override_user(reporter.id)
+        system_response = await client.post("/reports/system-issues", json=system_payload)
+        comment_response = await client.post(
+            f"/reports/courses/{course.id}/archives/{archive.id}/comments/{messages[0].id}",
+            json={"report_reason": "misinformation"},
+        )
+        assert system_response.status_code == 201
+        assert comment_response.status_code == 201
+        system_id = system_response.json()["id"]
+        comment_id = comment_response.json()["id"]
+
+        assert (
+            await client.delete(f"/reports/admin/system-issues/{system_id}")
+        ).status_code == 403
+        assert (
+            await client.delete(f"/reports/admin/comments/{comment_id}")
+        ).status_code == 403
+
+        async with session_maker() as session:
+            system_report = await session.get(SystemIssueReport, system_id)
+            system_report.github_issue_number = 321
+            system_report.github_issue_url = (
+                "https://github.com/PingScientist/PastExamWeb_PHY/issues/321"
+            )
+            session.add(system_report)
+            await session.commit()
+
+        app.dependency_overrides[get_current_user] = _override_user(admin.id, is_admin=True)
+        reviewed = await client.patch(
+            f"/reports/admin/comments/{comment_id}",
+            json={"status": "dismissed", "admin_response": "不成立"},
+        )
+        assert reviewed.status_code == 200
+
+        async with session_maker() as session:
+            notification_count_before = int(
+                await session.scalar(
+                    select(func.count(PersonalNotification.id)).where(
+                        PersonalNotification.user_id == reporter.id
+                    )
+                )
+                or 0
+            )
+
+        assert (
+            await client.delete(f"/reports/admin/system-issues/{system_id}")
+        ).status_code == 200
+        assert (
+            await client.delete(f"/reports/admin/comments/{comment_id}")
+        ).status_code == 200
+
+        system_list = await client.get("/reports/admin/system-issues")
+        comment_list = await client.get("/reports/admin/comments")
+        assert all(item["id"] != system_id for item in system_list.json()["items"])
+        assert all(item["id"] != comment_id for item in comment_list.json()["items"])
+
+        system_trash = await client.get(
+            "/trash", params={"item_type": "system_issue_report"}
+        )
+        comment_trash = await client.get(
+            "/trash", params={"item_type": "comment_report"}
+        )
+        archive_report_trash = await client.get(
+            "/trash", params={"item_type": "archive_report"}
+        )
+        assert system_trash.status_code == 200
+        assert comment_trash.status_code == 200
+        assert archive_report_trash.json() == []
+        trashed_system = next(item for item in system_trash.json() if item["id"] == system_id)
+        trashed_comment = next(item for item in comment_trash.json() if item["id"] == comment_id)
+        assert trashed_system["deleted_by_id"] == admin.id
+        assert trashed_system["github_issue_number"] == 321
+        assert trashed_system["dependencies"] == []
+        assert trashed_comment["deleted_by_id"] == admin.id
+        assert trashed_comment["comment_snapshot"] == messages[0].content
+        assert trashed_comment["dependencies"] == []
+
+        async with session_maker() as session:
+            source = await session.get(ArchiveDiscussionMessage, messages[0].id)
+            system_report = await session.get(SystemIssueReport, system_id)
+            comment_report = await session.get(CommentReport, comment_id)
+            notification_count_after_delete = int(
+                await session.scalar(
+                    select(func.count(PersonalNotification.id)).where(
+                        PersonalNotification.user_id == reporter.id
+                    )
+                )
+                or 0
+            )
+            assert source is not None and source.deleted_at is None
+            assert system_report.github_issue_number == 321
+            assert comment_report.status == "dismissed"
+            assert notification_count_after_delete == notification_count_before
+
+        assert (
+            await client.post(
+                "/trash/restore",
+                json={"item_type": "system_issue_report", "item_id": system_id},
+            )
+        ).status_code == 200
+        assert (
+            await client.post(
+                "/trash/restore",
+                json={"item_type": "comment_report", "item_id": comment_id},
+            )
+        ).status_code == 200
+
+        async with session_maker() as session:
+            system_report = await session.get(SystemIssueReport, system_id)
+            comment_report = await session.get(CommentReport, comment_id)
+            notification_count_after_restore = int(
+                await session.scalar(
+                    select(func.count(PersonalNotification.id)).where(
+                        PersonalNotification.user_id == reporter.id
+                    )
+                )
+                or 0
+            )
+            assert system_report.deleted_at is None
+            assert system_report.deleted_by_id is None
+            assert system_report.github_issue_number == 321
+            assert comment_report.deleted_at is None
+            assert comment_report.deleted_by_id is None
+            assert comment_report.status == "dismissed"
+            assert comment_report.reviewed_by == admin.id
+            assert comment_report.admin_response == "不成立"
+            assert notification_count_after_restore == notification_count_before
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        async with session_maker() as session:
+            await session.execute(
+                delete(PersonalNotification).where(
+                    PersonalNotification.user_id == reporter.id
+                )
+            )
+            await session.execute(
+                delete(CommentReport).where(CommentReport.archive_id == archive.id)
+            )
+            await session.execute(
+                delete(SystemIssueReport).where(
+                    SystemIssueReport.reporter_user_id == reporter.id
+                )
+            )
+            await session.execute(
+                delete(ArchiveDiscussionMessage).where(
+                    ArchiveDiscussionMessage.archive_id == archive.id
+                )
+            )
+            await session.execute(delete(Archive).where(Archive.id == archive.id))
+            await session.execute(delete(Course).where(Course.id == course.id))
+            await session.commit()
