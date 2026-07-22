@@ -231,6 +231,27 @@ describe('ReportManagementPanel', () => {
     )
   })
 
+  it('keeps both report action groups aligned without wrapping button labels', () => {
+    expect(reportManagementSource.match(/class="report-row-actions"/g)).toHaveLength(2)
+    expect(reportManagementSource).toContain(
+      'headerClass="report-actions-column report-actions-column--system"'
+    )
+    expect(reportManagementSource).toContain('style="width: 12rem; min-width: 12rem"')
+    expect(reportManagementSource).toContain('style="width: 17rem; min-width: 17rem"')
+    expect(reportManagementSource).toMatch(
+      /\.report-row-actions\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?align-items:\s*center;[\s\S]*?justify-content:\s*flex-end;[\s\S]*?flex-wrap:\s*nowrap;/
+    )
+    expect(reportManagementSource).toMatch(
+      /\.report-row-actions :deep\(\.p-button\)\s*\{[\s\S]*?white-space:\s*nowrap;/
+    )
+    expect(reportManagementSource).toContain(
+      ':deep(.report-actions-column:not(.report-actions-column--system))'
+    )
+    expect(reportManagementSource).toMatch(
+      /@media \(max-width: 1199px\)[\s\S]*?\.report-row-actions\s*\{\s*justify-content:\s*flex-start;\s*padding-inline-end:\s*0;\s*\}/
+    )
+  })
+
   it('keeps pagination and server sorting independent for each report list', async () => {
     const wrapper = mountPanel()
     await flushPromises()

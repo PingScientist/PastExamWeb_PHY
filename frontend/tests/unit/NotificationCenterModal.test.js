@@ -31,6 +31,48 @@ const personal = [
 ]
 
 describe('NotificationCenterModal', () => {
+  it('uses the report warning severity for unread tags and keeps read tags secondary', () => {
+    const wrapper = mount(NotificationCenterModal, {
+      props: {
+        visible: true,
+        announcements: [
+          announcements[0],
+          { ...announcements[0], id: 3, title: '已讀公告', is_read: true },
+        ],
+        personalNotifications: [
+          personal[0],
+          { ...personal[0], id: 4, title: '已讀通知', read_at: '2026-01-03T00:00:00Z' },
+        ],
+      },
+      global: {
+        stubs: {
+          Dialog: slotStub,
+          Tabs: tabsStub,
+          TabList: tabsStub,
+          Tab: tabsStub,
+          TabPanels: tabsStub,
+          TabPanel: tabsStub,
+          Button: buttonStub,
+          Tag: true,
+          Badge: true,
+        },
+      },
+    })
+
+    const assertionGroups = [
+      ['.notification-announcement-groups', '公告一', '已讀公告'],
+      ['.notification-personal-groups', '回覆通知', '已讀通知'],
+    ]
+    for (const [selector, unreadTitle, readTitle] of assertionGroups) {
+      const cards = wrapper.find(selector).findAll('.notification-card')
+      const unreadCard = cards.find((card) => card.text().includes(unreadTitle))
+      const readCard = cards.find((card) => card.text().includes(readTitle))
+
+      expect(unreadCard.get('tag-stub').attributes('severity')).toBe('warn')
+      expect(readCard.get('tag-stub').attributes('severity')).toBe('secondary')
+    }
+  })
+
   it('separates announcements and personal notifications and marks detail read', async () => {
     const wrapper = mount(NotificationCenterModal, {
       props: {

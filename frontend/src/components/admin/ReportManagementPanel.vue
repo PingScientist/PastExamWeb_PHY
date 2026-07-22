@@ -128,7 +128,11 @@
               :severity="data.is_read ? 'secondary' : 'warn'"
               :value="data.is_read ? '已讀' : '未讀'" /></template
         ></Column>
-        <Column header="操作" style="width: 12rem"
+        <Column
+          header="操作"
+          headerClass="report-actions-column report-actions-column--system"
+          bodyClass="report-actions-column report-actions-column--system"
+          style="width: 12rem; min-width: 12rem"
           ><template #body="{ data }"
             ><div class="report-row-actions">
               <Button
@@ -1001,11 +1005,17 @@ onMounted(refreshAll)
   gap: 0.5rem;
 }
 .report-row-actions {
-  display: flex;
+  display: inline-flex;
+  width: 100%;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  padding-inline-end: 0.35rem;
+}
+.report-row-actions :deep(.p-button) {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .report-management__filters {
   display: grid;
@@ -1172,7 +1182,12 @@ onMounted(refreshAll)
 :deep(.report-actions-column) {
   width: 17rem;
   min-width: 17rem;
-  padding-inline-start: 0.75rem;
+  padding-inline: 0.75rem 1rem;
+  vertical-align: middle;
+}
+:deep(.report-actions-column--system) {
+  width: 12rem;
+  min-width: 12rem;
 }
 :deep(.report-actions-column .p-button) {
   white-space: nowrap;
@@ -1307,17 +1322,27 @@ onMounted(refreshAll)
     width: 100%;
     max-width: none;
   }
+  :deep(.report-actions-column--system) {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding-inline: var(--p-datatable-body-cell-padding, 0.75rem);
+  }
 }
 @media (max-width: 1199px) {
   :deep(.comment-report-content-column),
   :deep(.report-person-time-column),
   :deep(.report-user-column),
   :deep(.report-review-column),
-  :deep(.report-actions-column) {
+  :deep(.report-actions-column:not(.report-actions-column--system)) {
     width: 100%;
     min-width: 0;
     max-width: none;
     padding-inline: var(--p-datatable-body-cell-padding, 0.75rem);
+  }
+  .report-row-actions {
+    justify-content: flex-start;
+    padding-inline-end: 0;
   }
 }
 @media (max-width: 760px) {

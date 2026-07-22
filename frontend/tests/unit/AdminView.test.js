@@ -439,12 +439,37 @@ describe('AdminView', () => {
     ])
     expect(adminViewSource).toContain('永久刪除後無法復原。')
     expect(adminTemplateSource).toContain('getTrashReportDetails(data)')
-    expect(wrapper.vm.getTrashStatusLabel('pending', 'comment_report')).toBe('待審核')
-    expect(wrapper.vm.getTrashStatusLabel('upheld', 'comment_report')).toBe('回報成立')
-    expect(wrapper.vm.getTrashStatusLabel('dismissed', 'comment_report')).toBe('回報不成立')
-    expect(wrapper.vm.getTrashStatusSeverity('pending', 'comment_report')).toBe('warn')
-    expect(wrapper.vm.getTrashStatusSeverity('upheld', 'comment_report')).toBe('success')
+    expect(
+      wrapper.vm.getTrashReportDetails({
+        item_type: 'system_issue_report',
+        report_type: 'bug',
+        reporter_name: '回報者',
+        github_issue_number: 123,
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        { label: '回報類型', value: 'bug' },
+        { label: '回報者', value: '回報者' },
+        { label: '說明', value: '本地摘要' },
+      ])
+    )
+    expect(
+      wrapper.vm
+        .getTrashReportDetails({ item_type: 'system_issue_report', github_issue_number: 123 })
+        .some((detail) => detail.label === 'GitHub 連結')
+    ).toBe(false)
+    expect(wrapper.vm.getTrashStatusLabel('pending', 'comment_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel('upheld', 'comment_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel('dismissed', 'comment_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel('unread', 'system_issue_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusLabel(null, 'archive_report')).toBe('已刪除')
+    expect(wrapper.vm.getTrashStatusSeverity('pending', 'comment_report')).toBe('danger')
+    expect(wrapper.vm.getTrashStatusSeverity('upheld', 'comment_report')).toBe('danger')
     expect(wrapper.vm.getTrashStatusSeverity('dismissed', 'comment_report')).toBe('danger')
+    expect(wrapper.vm.getTrashStatusSeverity('read', 'system_issue_report')).toBe('danger')
+    expect(wrapper.vm.getTrashStatusClass('pending', 'comment_report')).toBe(
+      'review-status-deleted'
+    )
     expect(
       wrapper.vm.getTrashReportDetails({
         item_type: 'comment_report',
@@ -456,12 +481,16 @@ describe('AdminView', () => {
       })
     ).toEqual(
       expect.arrayContaining([
-        { label: '留言摘要', value: '留言摘要' },
         { label: '回報者', value: '回報者' },
         { label: '留言者', value: '留言者' },
         { label: '課程／考古題', value: '課程 · 考古題' },
       ])
     )
+    expect(
+      wrapper.vm
+        .getTrashReportDetails({ item_type: 'comment_report', comment_snapshot: '留言摘要' })
+        .some((detail) => detail.label === '留言摘要' || detail.value === '留言摘要')
+    ).toBe(false)
 
     expect(wrapper.vm.getReviewRequesterLabel({ requester_name: '申請者' })).toBe('申請者')
     expect(wrapper.vm.getReviewRequesterLabel({})).toBe('—')

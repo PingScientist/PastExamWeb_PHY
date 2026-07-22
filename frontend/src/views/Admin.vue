@@ -2570,7 +2570,7 @@
                           'soft-badge',
                           'review-status-chip',
                           'admin-desktop-status-tag',
-                          getSubmissionStatusClass(data.status),
+                          getTrashStatusClass(data.status, data.item_type),
                         ]"
                         :severity="getTrashStatusSeverity(data.status, data.item_type)"
                       >
@@ -2685,7 +2685,7 @@
                           'soft-badge',
                           'review-status-chip',
                           'trash-mobile-status',
-                          getSubmissionStatusClass(data.status),
+                          getTrashStatusClass(data.status, data.item_type),
                         ]"
                         :severity="getTrashStatusSeverity(data.status, data.item_type)"
                       >
@@ -5111,15 +5111,11 @@ const getTrashReportDetails = (item) => {
       { label: '回報類型', value: item.report_type || '—' },
       { label: '回報者', value: item.reporter_name || '—' },
       { label: '回報時間', value: item.created_at ? formatAdminActorTime(item.created_at) : '—' },
-      {
-        label: 'GitHub 連結',
-        value: item.github_issue_number ? `已連結 #${item.github_issue_number}` : '尚未連結',
-      },
+      { label: '說明', value: '本地摘要' },
     ]
   }
   if (item?.item_type === 'comment_report') {
     return [
-      { label: '留言摘要', value: item.comment_snapshot || '—' },
       { label: '回報者', value: item.reporter_name || '—' },
       { label: '留言者', value: item.comment_author_name || '—' },
       {
@@ -6484,14 +6480,8 @@ const getTrashSemesterValue = (item) => {
 }
 
 const getTrashStatusLabel = (statusValue, itemType = null) => {
-  if (itemType === 'comment_report') {
-    return (
-      {
-        pending: '待審核',
-        upheld: '回報成立',
-        dismissed: '回報不成立',
-      }[statusValue] || '待審核'
-    )
+  if (['system_issue_report', 'comment_report', 'archive_report'].includes(itemType)) {
+    return '已刪除'
   }
   const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
   const labels = {
@@ -6505,14 +6495,20 @@ const getTrashStatusLabel = (statusValue, itemType = null) => {
 }
 
 const getTrashStatusSeverity = (statusValue, itemType = null) => {
-  if (itemType === 'comment_report') {
-    return { pending: 'warn', upheld: 'success', dismissed: 'danger' }[statusValue] || 'warn'
-  }
+  if (['system_issue_report', 'comment_report', 'archive_report'].includes(itemType))
+    return 'danger'
   const normalized = normalizeSubmissionStatus(statusValue || 'deleted')
   if (normalized === 'approved') return 'success'
   if (normalized === 'pending') return 'warning'
   if (normalized === 'takedown') return 'secondary'
   return 'danger'
+}
+
+const getTrashStatusClass = (statusValue, itemType = null) => {
+  if (['system_issue_report', 'comment_report', 'archive_report'].includes(itemType)) {
+    return 'review-status-deleted'
+  }
+  return getSubmissionStatusClass(statusValue)
 }
 
 const getTrashDeletedByLabel = (item) => {

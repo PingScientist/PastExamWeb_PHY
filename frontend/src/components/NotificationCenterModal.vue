@@ -61,7 +61,7 @@
                         <i class="pi pi-megaphone notification-card__icon" aria-hidden="true" />
                         <span>公告</span>
                       </span>
-                      <Tag :severity="item.is_read ? 'secondary' : 'info'">{{
+                      <Tag :severity="item.is_read ? 'secondary' : 'warn'">{{
                         item.is_read ? '已讀' : '未讀'
                       }}</Tag>
                     </div>
@@ -138,7 +138,7 @@
                         <i :class="notificationIcon(item.notification_type)" aria-hidden="true" />
                         <span>個人通知</span>
                       </span>
-                      <Tag :severity="item.read_at ? 'secondary' : 'info'">{{
+                      <Tag :severity="item.read_at ? 'secondary' : 'warn'">{{
                         item.read_at ? '已讀' : '未讀'
                       }}</Tag>
                     </div>

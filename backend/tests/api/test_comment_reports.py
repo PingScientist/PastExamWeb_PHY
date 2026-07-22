@@ -651,6 +651,8 @@ async def test_admin_moves_report_records_to_independent_trash_and_restores_them
             assert source is not None and source.deleted_at is None
             assert system_report.github_issue_number == 321
             assert comment_report.status == "dismissed"
+            reviewed_at_before_restore = comment_report.reviewed_at
+            comment_deleted_before_restore = comment_report.comment_deleted
             assert notification_count_after_delete == notification_count_before
 
         assert (
@@ -684,7 +686,9 @@ async def test_admin_moves_report_records_to_independent_trash_and_restores_them
             assert comment_report.deleted_by_id is None
             assert comment_report.status == "dismissed"
             assert comment_report.reviewed_by == admin.id
+            assert comment_report.reviewed_at == reviewed_at_before_restore
             assert comment_report.admin_response == "不成立"
+            assert comment_report.comment_deleted == comment_deleted_before_restore
             assert notification_count_after_restore == notification_count_before
 
         assert (
