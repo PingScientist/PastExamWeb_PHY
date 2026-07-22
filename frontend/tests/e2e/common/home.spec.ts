@@ -38,12 +38,12 @@ test.describe('Home page', () => {
 
     const textCenter = (locator: typeof heading) =>
       locator.evaluate((element) => {
-      const textCenter = (element: Element) => {
-        const range = document.createRange()
-        range.selectNodeContents(element)
-        const { left, right } = range.getBoundingClientRect()
-        return (left + right) / 2
-      }
+        const textCenter = (element: Element) => {
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          const { left, right } = range.getBoundingClientRect()
+          return (left + right) / 2
+        }
         return textCenter(element)
       })
     const actionBoxes = await Promise.all([loginAction.boundingBox(), statusAction.boundingBox()])
