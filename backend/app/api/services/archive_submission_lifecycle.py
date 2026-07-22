@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from minio.error import S3Error
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 
 from app.core.config import settings
