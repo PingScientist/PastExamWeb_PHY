@@ -47,17 +47,13 @@ jobs:
         env:
           FRONTEND_API_BASE_URL: ${{ secrets.FRONTEND_API_BASE_URL }}
           FRONTEND_SITE_HOSTNAME: ${{ secrets.FRONTEND_SITE_HOSTNAME }}
-          FRONTEND_UMAMI_SCRIPT_URL: ${{ secrets.FRONTEND_UMAMI_SCRIPT_URL }}
-          FRONTEND_UMAMI_WEBSITE_ID: ${{ secrets.FRONTEND_UMAMI_WEBSITE_ID }}
         run: |
           set -euo pipefail
 
           missing=()
           for name in \
             FRONTEND_API_BASE_URL \
-            FRONTEND_SITE_HOSTNAME \
-            FRONTEND_UMAMI_SCRIPT_URL \
-            FRONTEND_UMAMI_WEBSITE_ID
+            FRONTEND_SITE_HOSTNAME
           do
             if [ -z "${!name:-}" ]; then
               missing+=("$name")
