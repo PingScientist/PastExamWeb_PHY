@@ -31,4 +31,6 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       release_sha: ${{ github.sha }}
+      frontend_image_digest: ${{ needs.build.outputs.frontend_digest }}
+      backend_image_digest: ${{ needs.build.outputs.backend_digest }}
     secrets: inherit

@@ -7,9 +7,21 @@ on:
         description: Commit SHA to prepare as an isolated production candidate
         required: true
         type: string
+      frontend_image_digest:
+        description: Immutable digest published for the frontend release image
+        required: true
+        type: string
+      backend_image_digest:
+        description: Immutable digest published for the backend release image
+        required: true
+        type: string
 
 permissions:
   contents: read
+
+concurrency:
+  group: production-candidate
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -27,6 +39,8 @@ jobs:
         shell: bash
         env:
           RELEASE_SHA: ${{ inputs.release_sha }}
+          FRONTEND_IMAGE_DIGEST: ${{ inputs.frontend_image_digest }}
+          BACKEND_IMAGE_DIGEST: ${{ inputs.backend_image_digest }}
         run: |
           set -euo pipefail
 
@@ -36,17 +50,45 @@ jobs:
             exit 1
           fi
 
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release SHA is not a full lowercase commit SHA." >&2
+            exit 1
+          fi
+
+          for digest in "$FRONTEND_IMAGE_DIGEST" "$BACKEND_IMAGE_DIGEST"; do
+            if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Build did not provide an immutable image digest." >&2
+              exit 1
+            fi
+          done
+
       - name: Package candidate checkout
+        id: package
         shell: bash
         env:
           RELEASE_SHA: ${{ inputs.release_sha }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
 
-          tar \
-            --exclude=.git \
-            -czf "$RUNNER_TEMP/pastexam-$RELEASE_SHA.tar.gz" \
-            .
+          output_archive="$RUNNER_TEMP/pastexam-$RELEASE_SHA-$RUN_ID.tar.gz"
+          OUTPUT_ARCHIVE="$output_archive" \
+            ./scripts/package-production-candidate.sh
+
+          source_archive_sha256="$(
+            sha256sum "$output_archive" |
+              cut -d ' ' -f 1
+          )"
+          release_files_sha256="$(
+            tar -xOzf "$output_archive" .release-files.sha256 |
+              sha256sum |
+              cut -d ' ' -f 1
+          )"
+
+          echo "source_archive_sha256=$source_archive_sha256" \
+            >>"$GITHUB_OUTPUT"
+          echo "release_files_sha256=$release_files_sha256" \
+            >>"$GITHUB_OUTPUT"
 
       - name: Configure strict SSH host verification
         shell: bash
@@ -83,8 +125,8 @@ jobs:
             -o IdentitiesOnly=yes \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
-            "$RUNNER_TEMP/pastexam-$RELEASE_SHA.tar.gz" \
-            "$DO_USER@$DO_HOST:/tmp/pastexam-$RELEASE_SHA.tar.gz"
+            "$RUNNER_TEMP/pastexam-$RELEASE_SHA-$RUN_ID.tar.gz" \
+            "$DO_USER@$DO_HOST:/tmp/pastexam-$RELEASE_SHA-$RUN_ID.tar.gz"
 
       - name: Prepare and validate isolated candidate
         shell: bash
@@ -93,6 +135,10 @@ jobs:
           DO_USER: ${{ secrets.DO_USER }}
           RELEASE_SHA: ${{ inputs.release_sha }}
           RUN_ID: ${{ github.run_id }}
+          FRONTEND_IMAGE_DIGEST: ${{ inputs.frontend_image_digest }}
+          BACKEND_IMAGE_DIGEST: ${{ inputs.backend_image_digest }}
+          SOURCE_ARCHIVE_SHA256: ${{ steps.package.outputs.source_archive_sha256 }}
+          RELEASE_FILES_SHA256: ${{ steps.package.outputs.release_files_sha256 }}
         run: |
           set -euo pipefail
 
@@ -102,48 +148,41 @@ jobs:
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             "$DO_USER@$DO_HOST" \
-            "RELEASE_SHA='$RELEASE_SHA' RUN_ID='$RUN_ID' bash -s" <<'REMOTE'
+            "RELEASE_SHA='$RELEASE_SHA' \
+            RUN_ID='$RUN_ID' \
+            FRONTEND_IMAGE_DIGEST='$FRONTEND_IMAGE_DIGEST' \
+            BACKEND_IMAGE_DIGEST='$BACKEND_IMAGE_DIGEST' \
+            SOURCE_ARCHIVE_SHA256='$SOURCE_ARCHIVE_SHA256' \
+            RELEASE_FILES_SHA256='$RELEASE_FILES_SHA256' \
+            ARCHIVE_PATH='/tmp/pastexam-$RELEASE_SHA-$RUN_ID.tar.gz' \
+            bash -s" \
+            <scripts/prepare-production-candidate.sh
+
+      - name: Clean up run-specific remote files
+        if: always()
+        shell: bash
+        env:
+          DO_HOST: ${{ secrets.DO_HOST }}
+          DO_USER: ${{ secrets.DO_USER }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
           set -euo pipefail
-          umask 077
 
-          active_root=/opt/PastExamWeb_PHY
-          release_root="/opt/pastexam-releases/$RELEASE_SHA"
-          staging_root="$release_root.staging-$RUN_ID"
-          archive="/tmp/pastexam-$RELEASE_SHA.tar.gz"
+          test -n "$DO_HOST"
+          test -n "$DO_USER"
 
-          if [ -e "$release_root" ] || [ -e "$staging_root" ]; then
-            echo "Candidate or staging path already exists." >&2
-            exit 1
-          fi
-
-          install -d -m 700 "$staging_root"
-          trap 'rm -rf "$staging_root"' EXIT
-
-          tar -xzf "$archive" -C "$staging_root"
-          rm -f "$archive"
-
-          install -m 600 "$active_root/backend/.env" "$staging_root/backend/.env"
-          install -m 600 "$active_root/.env" "$staging_root/.env"
-
-          docker compose \
-            --env-file "$staging_root/.env" \
-            -f "$staging_root/docker/docker-compose.yml" \
-            config --quiet
-
-          configured_images="$(
-            docker compose \
-              --env-file "$staging_root/.env" \
-              -f "$staging_root/docker/docker-compose.yml" \
-              config --images
-          )"
-
-          printf '%s\n' "$configured_images" |
-            grep -Fxq "ghcr.io/pingscientist/pastexam:frontend"
-          printf '%s\n' "$configured_images" |
-            grep -Fxq "ghcr.io/pingscientist/pastexam:backend"
-
-          mv "$staging_root" "$release_root"
-          trap - EXIT
-
-          echo "Candidate prepared without switching production: $release_root"
-          REMOTE
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$DO_USER@$DO_HOST" \
+            "rm -f -- \
+              '/tmp/pastexam-$RELEASE_SHA-$RUN_ID.tar.gz'; \
+            if [ -e \
+              '/opt/pastexam-releases/$RELEASE_SHA.staging-$RUN_ID' \
+            ]; then \
+              rm -rf -- \
+                '/opt/pastexam-releases/$RELEASE_SHA.staging-$RUN_ID'; \
+            fi"

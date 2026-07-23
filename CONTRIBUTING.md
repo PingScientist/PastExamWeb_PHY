@@ -17,4 +17,6 @@ Candidate preparation creates a new checkout under `/opt/pastexam-releases`
 and validates its Compose configuration. It does not update the active dirty
 checkout under `/opt/PastExamWeb_PHY`, start a new production stack, or switch
 traffic. Production activation requires a separate, explicitly approved
-operation after acceptance evidence has been reviewed.
+operation after acceptance evidence has been reviewed. See
+[`docs/production-deployment.md`](docs/production-deployment.md) for the
+candidate manifest, configuration boundary, and activation blockers.
