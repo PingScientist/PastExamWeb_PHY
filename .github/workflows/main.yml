@@ -18,8 +18,9 @@ jobs:
 
   build:
     needs: test
-    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/build.yml
+    with:
+      push_images: ${{ github.ref == 'refs/heads/main' }}
     secrets: inherit
 
   deploy:
