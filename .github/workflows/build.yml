@@ -8,6 +8,13 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      frontend_digest:
+        description: Immutable digest for the frontend image
+        value: ${{ jobs.frontend.outputs.digest }}
+      backend_digest:
+        description: Immutable digest for the backend image
+        value: ${{ jobs.backend.outputs.digest }}
 
 permissions:
   contents: read
@@ -16,6 +23,8 @@ permissions:
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout repository
@@ -33,6 +42,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Frontend Docker image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: ./frontend
@@ -52,6 +62,8 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout repository
@@ -69,6 +81,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Backend Docker image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: ./backend

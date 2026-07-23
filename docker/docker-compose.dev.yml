@@ -47,22 +47,6 @@ services:
         aliases:
           - backend
 
-  worker:
-    image: pastexam-backend-dev:latest
-    container_name: pastexam-dev-worker
-    command: arq app.worker.WorkerSettings
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      minio:
-        condition: service_started
-    env_file:
-      - ../backend/.env
-    networks:
-      - app_network
-
   db:
     image: postgres:15.14-alpine3.22
     container_name: pastexam-dev-postgres
