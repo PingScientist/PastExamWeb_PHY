@@ -19,6 +19,17 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_DIRECTORY }}
+            expected_frontend_image="ghcr.io/pingscientist/pastexam:frontend"
+            expected_backend_image="ghcr.io/pingscientist/pastexam:backend"
+            configured_images="$(docker compose config --images)"
+
+            if ! printf '%s\n' "$configured_images" | grep -Fxq "$expected_frontend_image" ||
+               ! printf '%s\n' "$configured_images" | grep -Fxq "$expected_backend_image"; then
+              echo "Production Compose does not reference the current PastExamWeb images." >&2
+              echo "Sync docker/docker-compose.yml to ${{ secrets.DEPLOY_DIRECTORY }} before deploying." >&2
+              exit 1
+            fi
+
             if [ -n "${{ secrets.GHCR_TOKEN }}" ]; then
               echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             fi
