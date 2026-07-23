@@ -92,6 +92,7 @@ jobs:
           DO_HOST: ${{ secrets.DO_HOST }}
           DO_USER: ${{ secrets.DO_USER }}
           RELEASE_SHA: ${{ inputs.release_sha }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
 
