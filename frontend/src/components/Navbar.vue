@@ -841,7 +841,7 @@ export default {
         })
         const issueBody = this.formatIssueBody(description, contact, systemInfo, type)
         const githubUrl =
-          'https://github.com/PingScientist/PastExamWeb_PHY/issues/new?' +
+          'https://github.com/NTHU-Physics-SA-IT/PastExamWeb_PHY/issues/new?' +
           `title=${encodeURIComponent(title)}&body=${encodeURIComponent(issueBody)}`
         window.open(githubUrl, '_blank', 'noopener,noreferrer')
         this.closeIssueReportDialog()

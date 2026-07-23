@@ -18,9 +18,10 @@ jobs:
         run: |
           cp backend/.env.example backend/.env
           cat <<'EOF' >> backend/.env
-          SECRET_KEY=${{ secrets.BACKEND_SECRET_KEY }}
-          OAUTH_CLIENT_ID=${{ secrets.BACKEND_OAUTH_CLIENT_ID }}
-          OAUTH_CLIENT_SECRET=${{ secrets.BACKEND_OAUTH_CLIENT_SECRET }}
+          # CI-only isolated test credentials. Never use these values for deployment.
+          SECRET_KEY=ci-only-secret-key-not-for-production-use
+          OAUTH_CLIENT_ID=ci-test-client
+          OAUTH_CLIENT_SECRET=ci-test-secret
           EOF
 
       - name: Prepare frontend env
@@ -170,9 +171,10 @@ jobs:
         run: |
           cp backend/.env.example backend/.env
           cat <<'EOF' >> backend/.env
-          SECRET_KEY=${{ secrets.BACKEND_SECRET_KEY }}
-          OAUTH_CLIENT_ID=${{ secrets.BACKEND_OAUTH_CLIENT_ID }}
-          OAUTH_CLIENT_SECRET=${{ secrets.BACKEND_OAUTH_CLIENT_SECRET }}
+          # CI-only isolated test credentials. Never use these values for deployment.
+          SECRET_KEY=ci-only-secret-key-not-for-production-use
+          OAUTH_CLIENT_ID=ci-test-client
+          OAUTH_CLIENT_SECRET=ci-test-secret
           EOF
 
       - name: Prepare frontend env

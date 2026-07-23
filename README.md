@@ -7,7 +7,7 @@
   />
   </picture>
   <h3>物理系考古題系統</h3>
-  <a href="https://github.com/PingScientist/PastExamWeb_PHY/actions/workflows/main.yml"><img alt="CI/CD Pipeline" src="https://img.shields.io/github/actions/workflow/status/PingScientist/PastExamWeb_PHY/main.yml?label=CI%2FCD%20Pipeline"></a>
+  <a href="https://github.com/NTHU-Physics-SA-IT/PastExamWeb_PHY/actions/workflows/main.yml"><img alt="CI/CD Pipeline" src="https://img.shields.io/github/actions/workflow/status/NTHU-Physics-SA-IT/PastExamWeb_PHY/main.yml?label=CI%2FCD%20Pipeline"></a>
   <img alt="Prototype" src="https://img.shields.io/badge/status-PHY%20prototype-1f7a8c">
 </div>
 
