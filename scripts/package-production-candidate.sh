@@ -7,9 +7,9 @@ release_sha="${RELEASE_SHA:?Set RELEASE_SHA}"
 output_archive="${OUTPUT_ARCHIVE:?Set OUTPUT_ARCHIVE}"
 
 if command -v sha256sum >/dev/null 2>&1; then
-  checksum_command=(sha256sum)
+  checksum_command=(env LC_ALL=C LANG=C sha256sum)
 elif command -v shasum >/dev/null 2>&1; then
-  checksum_command=(shasum -a 256)
+  checksum_command=(env LC_ALL=C LANG=C shasum -a 256)
 else
   echo "A SHA-256 checksum utility is required." >&2
   exit 1
@@ -50,12 +50,33 @@ git -C "$repository_root" archive \
   --output="$temporary_root/candidate.tar" \
   "$release_sha"
 
-tar \
-  --append \
-  --file="$temporary_root/candidate.tar" \
-  --directory="$metadata_root" \
-  .release-source-sha \
-  .release-files.sha256
+candidate_mtime="$(git -C "$repository_root" show -s --format=%ct "$release_sha")"
+python3 - \
+  "$temporary_root/candidate.tar" \
+  "$metadata_root" \
+  "$candidate_mtime" <<'PY'
+import pathlib
+import sys
+import tarfile
+
+archive_path = pathlib.Path(sys.argv[1])
+metadata_root = pathlib.Path(sys.argv[2])
+mtime = int(sys.argv[3])
+
+with tarfile.open(archive_path, mode="a") as archive:
+    for name in (".release-source-sha", ".release-files.sha256"):
+        path = metadata_root / name
+        info = tarfile.TarInfo(name)
+        info.size = path.stat().st_size
+        info.mode = 0o600
+        info.mtime = mtime
+        info.uid = 0
+        info.gid = 0
+        info.uname = "root"
+        info.gname = "root"
+        with path.open("rb") as metadata:
+            archive.addfile(info, metadata)
+PY
 
 install -d -m 700 "$(dirname "$output_archive")"
 gzip -n -9 -c "$temporary_root/candidate.tar" >"$output_archive"

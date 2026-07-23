@@ -17,11 +17,11 @@ frontend_repository="${FRONTEND_IMAGE_REPOSITORY:-ghcr.io/pingscientist/pastexam
 backend_repository="${BACKEND_IMAGE_REPOSITORY:-ghcr.io/pingscientist/pastexam}"
 
 if command -v sha256sum >/dev/null 2>&1; then
-  checksum_command=(sha256sum)
-  checksum_check_command=(sha256sum --check --quiet)
+  checksum_command=(env LC_ALL=C LANG=C sha256sum)
+  checksum_check_command=(env LC_ALL=C LANG=C sha256sum --check --quiet)
 elif command -v shasum >/dev/null 2>&1; then
-  checksum_command=(shasum -a 256)
-  checksum_check_command=(shasum -a 256 --check --status)
+  checksum_command=(env LC_ALL=C LANG=C shasum -a 256)
+  checksum_check_command=(env LC_ALL=C LANG=C shasum -a 256 --check --status)
 else
   echo "A SHA-256 checksum utility is required." >&2
   exit 1
