@@ -15,104 +15,58 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: "20"
 
+      - name: Check Umami share URL
+        id: preflight
+        env:
+          UMAMI_SHARE_URL: ${{ secrets.UMAMI_SHARE_URL }}
+        run: node .github/scripts/umami-preflight.mjs
+
+      - name: Cache Playwright
+        if: steps.preflight.outputs.enabled == 'true'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-umami-playwright-1.61.1
+
       - name: Install Playwright
+        if: steps.preflight.outputs.enabled == 'true'
         run: |
-          npm init -y
-          npm i -D @playwright/test
+          npm install --no-save --no-package-lock @playwright/test@1.61.1
           npx playwright install --with-deps chromium
 
       - name: Run screenshot script
+        id: screenshot
+        if: steps.preflight.outputs.enabled == 'true'
         env:
           UMAMI_SHARE_URL: ${{ secrets.UMAMI_SHARE_URL }}
-        run: |
-          mkdir -p dist
-          node <<'NODE'
-          import { chromium } from '@playwright/test'
+        run: node .github/scripts/capture-umami.mjs
 
-          const SHARE_URL = process.env.UMAMI_SHARE_URL
-          if (!SHARE_URL) {
-            console.error('UMAMI_SHARE_URL not set')
-            process.exit(1)
-          }
-
-          function with90Days(urlStr) {
-            const url = new URL(urlStr)
-            url.searchParams.set('date', '90day')
-            return url.toString()
-          }
-
-          async function capture({ theme, output }) {
-            const browser = await chromium.launch()
-            try {
-              const context = await browser.newContext({
-                viewport: { width: 1600, height: 1400 },
-                deviceScaleFactor: 2,
-              })
-
-              await context.addInitScript(
-                ({ theme }) => {
-                  localStorage.setItem('zen.theme', theme) // 'light' | 'dark'
-                },
-                { theme }
-              )
-
-              const page = await context.newPage()
-
-              const target = with90Days(SHARE_URL)
-              await page.goto(target, { waitUntil: 'networkidle' })
-              await page.waitForTimeout(2000)
-
-              const kpiGrid = page.locator('div[style*="grid-template-columns"][style*="minmax"]').first()
-
-              const chart = page
-                .locator('div[style*="min-height: 520px"]')
-                .filter({ has: page.locator('canvas') })
-                .first()
-
-              await kpiGrid.waitFor({ state: 'visible', timeout: 15000 })
-              await chart.waitFor({ state: 'visible', timeout: 15000 })
-
-              const kpiBox = await kpiGrid.boundingBox()
-              const chartBox = await chart.boundingBox()
-              if (!kpiBox || !chartBox) throw new Error('Bounding box failed')
-
-              const padding = 12
-              const x1 = Math.min(kpiBox.x, chartBox.x) - padding
-              const y1 = Math.min(kpiBox.y, chartBox.y) - padding
-              const x2 = Math.max(kpiBox.x + kpiBox.width, chartBox.x + chartBox.width) + padding
-              const y2 = Math.max(kpiBox.y + kpiBox.height, chartBox.y + chartBox.height) + padding
-
-              const vp = page.viewportSize()
-              const clip = {
-                x: Math.max(0, x1),
-                y: Math.max(0, y1),
-                width: Math.min(vp.width, x2) - Math.max(0, x1),
-                height: Math.min(vp.height, y2) - Math.max(0, y1),
-              }
-
-              await page.screenshot({
-                path: output,
-                clip,
-              })
-              console.log(`Saved ${output}`)
-            } finally {
-              await browser.close()
-            }
-          }
-
-          await capture({ theme: 'light', output: 'dist/umami.png' })
-          await capture({ theme: 'dark', output: 'dist/umami-dark.png' })
-          NODE
+      - name: Upload screenshot diagnostics
+        if: failure() && steps.preflight.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: umami-screenshot-diagnostics
+          path: dist/diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Push png to output branch
+        if: steps.preflight.outputs.enabled == 'true'
         uses: crazy-max/ghaction-github-pages@v5.0.0
         with:
           target_branch: umami
           build_dir: dist
+          keep_history: true
+          allow_empty_commit: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
