@@ -31,6 +31,16 @@ compose=(
   --file "$compose_file"
 )
 
+build_args=()
+case "${ACCEPTANCE_BUILD:-true}" in
+  true) build_args=(--build) ;;
+  false) ;;
+  *)
+    echo "ACCEPTANCE_BUILD must be true or false." >&2
+    exit 1
+    ;;
+esac
+
 postgres_user="$(
   sed -n 's/^POSTGRES_USER=//p' "$env_file" |
     tail -n 1
@@ -66,7 +76,7 @@ do
 done
 
 "${compose[@]}" config --quiet
-"${compose[@]}" up -d --build --wait db redis minio
+"${compose[@]}" up -d "${build_args[@]}" --wait db redis minio
 
 echo "Validating empty database migration to head..."
 "${compose[@]}" run --rm migrate
@@ -117,7 +127,7 @@ echo "Running backend tests against a third isolated database..."
   migrate python -m app.scripts.seed_db
 "${compose[@]}" --profile tests run --rm backend-tests
 
-"${compose[@]}" up -d --build --wait backend frontend nginx
+"${compose[@]}" up -d "${build_args[@]}" --wait backend frontend nginx
 
 curl --fail --silent --show-error \
   "http://127.0.0.1:$http_port/api/health"
