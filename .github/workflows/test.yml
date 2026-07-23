@@ -7,6 +7,56 @@ permissions:
   contents: read
 
 jobs:
+  migration-safety:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15.14-alpine3.22
+        env:
+          POSTGRES_USER: migration_test
+          POSTGRES_PASSWORD: migration_test_password
+          POSTGRES_DB: migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U migration_test -d migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USER: migration_test
+      DB_PASSWORD: migration_test_password
+      DB_NAME: migration_test
+      SECRET_KEY: migration-test-secret
+      FRONTEND_URL: http://localhost
+      MINIO_ENDPOINT: localhost:9000
+      MINIO_ROOT_USER: test
+      MINIO_ROOT_PASSWORD: test-password
+      MINIO_BUCKET_NAME: test
+      EXTERNAL_ENDPOINT: http://localhost:9000
+      REDIS_URL: redis://localhost:6379/0
+      DEFAULT_ADMIN_NAME: admin
+      DEFAULT_ADMIN_PASSWORD: test-password
+      DEFAULT_ADMIN_EMAIL: admin@example.invalid
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --locked
+
+      - name: Run isolated migration safety scenarios
+        working-directory: backend
+        run: uv run pytest -q tests/integration/test_migration_safety.py
+
   backend:
     runs-on: ubuntu-latest
 
@@ -80,7 +130,7 @@ jobs:
         run: |
           docker compose -f docker/docker-compose.dev.yml run --rm \
             -e DB_NAME=test_archive_db \
-            backend uv run alembic upgrade head
+            backend uv run python migrate.py upgrade
 
       - name: Seed database
         run: |
