@@ -25,6 +25,12 @@ app.add_middleware(
 app.include_router(api_router)
 
 
+@app.get("/health", include_in_schema=False)
+async def health():
+    """Report that the API process is ready to serve requests."""
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 async def on_startup():
     await init_db()
