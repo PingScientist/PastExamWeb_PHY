@@ -41,6 +41,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Validate production frontend configuration
+        if: inputs.push_images
+        shell: bash
+        env:
+          FRONTEND_API_BASE_URL: ${{ secrets.FRONTEND_API_BASE_URL }}
+          FRONTEND_SITE_HOSTNAME: ${{ secrets.FRONTEND_SITE_HOSTNAME }}
+          FRONTEND_UMAMI_SCRIPT_URL: ${{ secrets.FRONTEND_UMAMI_SCRIPT_URL }}
+          FRONTEND_UMAMI_WEBSITE_ID: ${{ secrets.FRONTEND_UMAMI_WEBSITE_ID }}
+        run: |
+          set -euo pipefail
+
+          missing=()
+          for name in \
+            FRONTEND_API_BASE_URL \
+            FRONTEND_SITE_HOSTNAME \
+            FRONTEND_UMAMI_SCRIPT_URL \
+            FRONTEND_UMAMI_WEBSITE_ID
+          do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required Secret: %s\n' "${missing[@]}" >&2
+            exit 1
+          fi
+
       - name: Build Frontend Docker image
         id: build
         uses: docker/build-push-action@v7
