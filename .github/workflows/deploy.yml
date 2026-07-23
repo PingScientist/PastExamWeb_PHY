@@ -1,7 +1,12 @@
-name: Deploy
+name: Prepare Production Candidate
 
 on:
   workflow_call:
+    inputs:
+      release_sha:
+        description: Commit SHA to prepare as an isolated production candidate
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -9,30 +14,135 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production-acceptance
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.5
+      - name: Checkout release commit
+        uses: actions/checkout@v5
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_DIRECTORY }}
-            expected_frontend_image="ghcr.io/pingscientist/pastexam:frontend"
-            expected_backend_image="ghcr.io/pingscientist/pastexam:backend"
-            configured_images="$(docker compose config --images)"
+          ref: ${{ inputs.release_sha }}
 
-            if ! printf '%s\n' "$configured_images" | grep -Fxq "$expected_frontend_image" ||
-               ! printf '%s\n' "$configured_images" | grep -Fxq "$expected_backend_image"; then
-              echo "Production Compose does not reference the current PastExamWeb images." >&2
-              echo "Sync docker/docker-compose.yml to ${{ secrets.DEPLOY_DIRECTORY }} before deploying." >&2
-              exit 1
-            fi
+      - name: Validate release commit
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
 
-            if [ -n "${{ secrets.GHCR_TOKEN }}" ]; then
-              echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
-            fi
-            docker compose pull
-            docker compose up -d
-            docker compose restart nginx
+          checked_out_sha="$(git rev-parse HEAD)"
+          if [ "$checked_out_sha" != "$RELEASE_SHA" ]; then
+            echo "Checked out $checked_out_sha instead of $RELEASE_SHA" >&2
+            exit 1
+          fi
+
+      - name: Package candidate checkout
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+
+          tar \
+            --exclude=.git \
+            -czf "$RUNNER_TEMP/pastexam-$RELEASE_SHA.tar.gz" \
+            .
+
+      - name: Configure strict SSH host verification
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DO_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$KNOWN_HOSTS"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload isolated candidate archive
+        shell: bash
+        env:
+          DO_HOST: ${{ secrets.DO_HOST }}
+          DO_USER: ${{ secrets.DO_USER }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          test -n "$DO_HOST"
+          test -n "$DO_USER"
+
+          scp \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$RUNNER_TEMP/pastexam-$RELEASE_SHA.tar.gz" \
+            "$DO_USER@$DO_HOST:/tmp/pastexam-$RELEASE_SHA.tar.gz"
+
+      - name: Prepare and validate isolated candidate
+        shell: bash
+        env:
+          DO_HOST: ${{ secrets.DO_HOST }}
+          DO_USER: ${{ secrets.DO_USER }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$DO_USER@$DO_HOST" \
+            "RELEASE_SHA='$RELEASE_SHA' RUN_ID='$RUN_ID' bash -s" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+
+          active_root=/opt/PastExamWeb_PHY
+          release_root="/opt/pastexam-releases/$RELEASE_SHA"
+          staging_root="$release_root.staging-$RUN_ID"
+          archive="/tmp/pastexam-$RELEASE_SHA.tar.gz"
+
+          if [ -e "$release_root" ] || [ -e "$staging_root" ]; then
+            echo "Candidate or staging path already exists." >&2
+            exit 1
+          fi
+
+          install -d -m 700 "$staging_root"
+          trap 'rm -rf "$staging_root"' EXIT
+
+          tar -xzf "$archive" -C "$staging_root"
+          rm -f "$archive"
+
+          install -m 600 "$active_root/backend/.env" "$staging_root/backend/.env"
+          install -m 600 "$active_root/.env" "$staging_root/.env"
+
+          docker compose \
+            --env-file "$staging_root/.env" \
+            -f "$staging_root/docker/docker-compose.yml" \
+            config --quiet
+
+          configured_images="$(
+            docker compose \
+              --env-file "$staging_root/.env" \
+              -f "$staging_root/docker/docker-compose.yml" \
+              config --images
+          )"
+
+          printf '%s\n' "$configured_images" |
+            grep -Fxq "ghcr.io/pingscientist/pastexam:frontend"
+          printf '%s\n' "$configured_images" |
+            grep -Fxq "ghcr.io/pingscientist/pastexam:backend"
+
+          mv "$staging_root" "$release_root"
+          trap - EXIT
+
+          echo "Candidate prepared without switching production: $release_root"
+          REMOTE

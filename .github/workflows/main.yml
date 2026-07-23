@@ -25,6 +25,10 @@ jobs:
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      vars.PRODUCTION_DEPLOY_ENABLED == 'true'
     uses: ./.github/workflows/deploy.yml
+    with:
+      release_sha: ${{ github.sha }}
     secrets: inherit
