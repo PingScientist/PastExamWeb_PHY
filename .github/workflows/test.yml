@@ -292,6 +292,35 @@ jobs:
       - name: Start application stack
         run: docker compose -f docker/docker-compose.dev.yml up -d
 
+      - name: Proxy Vite HMR through nginx
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          hmr_config="$RUNNER_TEMP/playwright-hmr.conf"
+          printf '%s\n' \
+            'events {}' \
+            'http {' \
+            '  server {' \
+            '    listen 24678;' \
+            '    location / {' \
+            '      proxy_pass http://frontend:24678;' \
+            '      proxy_http_version 1.1;' \
+            '      proxy_set_header Upgrade $http_upgrade;' \
+            '      proxy_set_header Connection "upgrade";' \
+            '    }' \
+            '  }' \
+            '}' > "$hmr_config"
+
+          docker cp \
+            "$hmr_config" \
+            pastexam-dev-nginx:/tmp/playwright-hmr.conf
+          docker exec \
+            pastexam-dev-nginx \
+            nginx \
+            -c /tmp/playwright-hmr.conf \
+            -g "pid /tmp/playwright-hmr.pid;"
+
       - name: Wait for API readiness
         run: |
           for i in {1..40}; do
