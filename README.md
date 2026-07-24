@@ -26,7 +26,7 @@
 
 ## 使用狀況
 
-下列統計圖片由 GitHub Actions 每日自動更新，資料來自 Umami 只讀分享頁面；公開文件不揭露分享網址。維護方式請參考 [Umami 截圖自動化](docs/umami-screenshot-automation.md)。
+下列統計圖片由 GitHub Actions 每日自動更新，資料來自 Umami，請參考 [Umami 截圖自動化](docs/umami-screenshot-automation.md)。
 
 <p align="center">
   <picture>
@@ -126,4 +126,5 @@ docker compose -f docker/docker-compose.dev.yml down
 
 ## 授權
 
-本專案依 [MIT License](LICENSE) 授權，並保留上游專案的著作權聲明；目前的修改與維護由清大物理系系學會資訊組持續進行。
+本專案依 [MIT License](LICENSE) 授權，並保留上游專案的著作權聲明。
+目前的更新與維護由清大物理系系學會資訊組持續進行。
