@@ -26,7 +26,25 @@
 
 ## 使用狀況
 
-本專案可透過前端環境變數設定 Umami 進行流量觀測。目前尚未放入可公開使用的統計截圖；待公開 Share URL 完成設定並成功產生第一組去識別化圖片後，再補入本節。維護者設定方式請參考 [Umami 截圖自動化](docs/umami-screenshot-automation.md)。
+下列統計圖片由 GitHub Actions 每日自動更新，資料來自 Umami 只讀分享頁面；公開文件不揭露分享網址。維護方式請參考 [Umami 截圖自動化](docs/umami-screenshot-automation.md)。
+
+<p align="center">
+  <picture>
+    <source
+      media="(prefers-color-scheme: dark)"
+      srcset="https://raw.githubusercontent.com/NTHU-Physics-SA-IT/PastExamWeb_PHY/analytics-assets/umami-overview-dark.png"
+    />
+    <source
+      media="(prefers-color-scheme: light)"
+      srcset="https://raw.githubusercontent.com/NTHU-Physics-SA-IT/PastExamWeb_PHY/analytics-assets/umami-overview-light.png"
+    />
+    <img
+      src="https://raw.githubusercontent.com/NTHU-Physics-SA-IT/PastExamWeb_PHY/analytics-assets/umami-overview-light.png"
+      alt="清大物理考古系統的 Umami 網站使用統計"
+      width="820"
+    />
+  </picture>
+</p>
 
 ## 介面預覽
 
