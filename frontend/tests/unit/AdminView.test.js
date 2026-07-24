@@ -532,7 +532,7 @@ describe('AdminView', () => {
       item_type: 'archive_submission',
       id: 64,
       academic_term: '114上學期',
-      course_name: '毀滅交大',
+      course_name: '量子力學測試課程',
       deleted_by_name: 'admin',
       deleted_at: '2026-07-04T08:07:00Z',
     })
