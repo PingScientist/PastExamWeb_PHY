@@ -104,7 +104,7 @@ docker compose -f docker/docker-compose.dev.yml down
 
 本專案基於 [`NCTUCSUnion/pastexam`](https://github.com/NCTUCSUnion/pastexam) 修改與延伸，原專案依 MIT License 授權。現由清大物理系系學會資訊組依物理系需求持續開發與維護。
 
-感謝 `gainsborouo（周廷威）` 參與早期資料整理、資料引用與開發協作；相關實際貢獻仍完整保留於 Git commit 歷史中。
+特別感謝 `gainsborouo（周廷威）`，相關實際貢獻仍完整保留於 Git commit 歷史中。
 
 ## 授權
 
