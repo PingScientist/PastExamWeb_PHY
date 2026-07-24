@@ -3,6 +3,11 @@ name: Build Images
 on:
   workflow_call:
     inputs:
+      run_checks:
+        description: Run the expensive CI jobs
+        required: false
+        type: boolean
+        default: true
       push_images:
         description: Push images to GHCR after a successful build
         required: false
@@ -22,6 +27,7 @@ permissions:
 
 jobs:
   frontend:
+    if: ${{ inputs.run_checks }}
     runs-on: ubuntu-latest
     outputs:
       digest: ${{ steps.build.outputs.digest }}
@@ -85,6 +91,7 @@ jobs:
           cache-to: type=gha,scope=frontend,mode=max
 
   backend:
+    if: ${{ inputs.run_checks }}
     runs-on: ubuntu-latest
     outputs:
       digest: ${{ steps.build.outputs.digest }}
