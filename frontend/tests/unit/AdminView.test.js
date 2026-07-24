@@ -12,8 +12,8 @@ const adminViewSource = readFileSync(
 const adminTemplateSource = adminViewSource.split('<script setup>')[0]
 
 const sampleCourses = [
-  { id: 1, name: 'Algorithms', category: 'junior' },
-  { id: 2, name: 'Calculus', category: 'freshman' },
+  { id: 1, name: '普通物理', category: 'junior' },
+  { id: 2, name: '電磁學', category: 'freshman' },
 ]
 
 const sampleUsers = [
@@ -288,18 +288,18 @@ describe('AdminView', () => {
     expect(wrapper.vm.filteredUsers.length).toBe(2)
 
     wrapper.vm.openCreateDialog()
-    wrapper.vm.courseForm.name = 'Discrete Math'
+    wrapper.vm.courseForm.name = '量子物理'
     wrapper.vm.courseForm.category = 'freshman'
     await wrapper.vm.saveCourse()
 
     expect(createCourseMock).toHaveBeenCalledWith({
-      name: 'Discrete Math',
+      name: '量子物理',
       category: 'freshman',
     })
     expect(trackEventMock).toHaveBeenCalledWith('create-course', expect.any(Object))
 
     wrapper.vm.openEditDialog(sampleCourses[0])
-    wrapper.vm.courseForm.name = 'Algorithms Advanced'
+    wrapper.vm.courseForm.name = '普通物理進階'
     await wrapper.vm.saveCourse()
     expect(updateCourseMock).toHaveBeenCalled()
 
@@ -989,7 +989,7 @@ describe('AdminView', () => {
     await wrapper.vm.handleTabChange('1')
     await flushPromises()
 
-    wrapper.vm.searchQuery = 'alg'
+    wrapper.vm.searchQuery = '普通'
     await wrapper.vm.$nextTick()
     expect(wrapper.vm.filteredCourses).toEqual([sampleCourses[0]])
 
