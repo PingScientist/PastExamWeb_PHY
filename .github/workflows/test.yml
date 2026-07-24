@@ -279,7 +279,9 @@ jobs:
           EOF
 
       - name: Prepare frontend env
-        run: cp frontend/.env.example frontend/.env
+        run: |
+          cp frontend/.env.example frontend/.env
+          echo "__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=nginx" >> frontend/.env
 
       - name: Prepare docker env
         run: cp docker/.env.example docker/.env
