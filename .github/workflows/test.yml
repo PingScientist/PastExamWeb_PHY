@@ -238,9 +238,35 @@ jobs:
         working-directory: ./frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright browsers
+      - name: Resolve Playwright Docker image
+        id: playwright-image
         working-directory: ./frontend
-        run: pnpm exec playwright install --with-deps
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(
+            node -p \
+              "require('./node_modules/@playwright/test/package.json').version"
+          )"
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid Playwright version: $version" >&2
+            exit 1
+          fi
+
+          image="mcr.microsoft.com/playwright:v${version}-noble"
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Using Playwright image: $image"
+
+      - name: Pull Playwright image
+        env:
+          PLAYWRIGHT_IMAGE: ${{ steps.playwright-image.outputs.image }}
+        run: |
+          set -euo pipefail
+          docker pull "$PLAYWRIGHT_IMAGE"
 
       - name: Prepare backend env
         run: |
@@ -253,7 +279,12 @@ jobs:
           EOF
 
       - name: Prepare frontend env
-        run: cp frontend/.env.example frontend/.env
+        run: |
+          cp frontend/.env.example frontend/.env
+          sed -i \
+            "s#^VITE_API_BASE_URL=.*#VITE_API_BASE_URL=http://nginx:8080/api#" \
+            frontend/.env
+          echo "__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=nginx" >> frontend/.env
 
       - name: Prepare docker env
         run: cp docker/.env.example docker/.env
@@ -261,10 +292,41 @@ jobs:
       - name: Start application stack
         run: docker compose -f docker/docker-compose.dev.yml up -d
 
+      - name: Proxy Vite HMR through nginx
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          hmr_config="$RUNNER_TEMP/playwright-hmr.conf"
+          printf '%s\n' \
+            'events {}' \
+            'http {' \
+            '  server {' \
+            '    listen 24678;' \
+            '    location / {' \
+            '      proxy_pass http://frontend:24678;' \
+            '      proxy_http_version 1.1;' \
+            '      proxy_set_header Host $host;' \
+            '      proxy_set_header Upgrade $http_upgrade;' \
+            '      proxy_set_header Connection "upgrade";' \
+            '    }' \
+            '  }' \
+            '}' > "$hmr_config"
+
+          docker cp \
+            "$hmr_config" \
+            pastexam-dev-nginx:/tmp/playwright-hmr.conf
+          docker exec \
+            pastexam-dev-nginx \
+            nginx \
+            -c /tmp/playwright-hmr.conf \
+            -g "pid /tmp/playwright-hmr.pid;"
+
       - name: Wait for API readiness
         run: |
           for i in {1..40}; do
-            if curl -fsS http://127.0.0.1:8080/api/statistics > /dev/null; then
+            if curl -fsS http://127.0.0.1:8080/api/statistics > /dev/null &&
+              curl -fsS http://127.0.0.1:8080/ > /dev/null; then
               exit 0
             fi
             sleep 3
@@ -275,10 +337,30 @@ jobs:
           exit 1
 
       - name: Run frontend E2E tests
-        working-directory: ./frontend
         env:
-          PLAYWRIGHT_START_SERVER: "false"
-        run: pnpm exec playwright test
+          PLAYWRIGHT_IMAGE: ${{ steps.playwright-image.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          docker network inspect pastexam-dev-network >/dev/null
+
+          docker run \
+            --rm \
+            --init \
+            --ipc=host \
+            --user "$(id -u):$(id -g)" \
+            --network pastexam-dev-network \
+            -e HOME=/tmp/playwright-home \
+            -e CI=true \
+            -e PLAYWRIGHT_START_SERVER=false \
+            -e PLAYWRIGHT_BASE_URL=http://nginx:8080 \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work/frontend \
+            "$PLAYWRIGHT_IMAGE" \
+            bash -lc '
+              mkdir -p "$HOME"
+              ./node_modules/.bin/playwright test
+            '
 
       - name: Upload Playwright HTML report
         if: always()
