@@ -281,6 +281,9 @@ jobs:
       - name: Prepare frontend env
         run: |
           cp frontend/.env.example frontend/.env
+          sed -i \
+            "s#^VITE_API_BASE_URL=.*#VITE_API_BASE_URL=http://nginx:8080/api#" \
+            frontend/.env
           echo "__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=nginx" >> frontend/.env
 
       - name: Prepare docker env
@@ -292,7 +295,8 @@ jobs:
       - name: Wait for API readiness
         run: |
           for i in {1..40}; do
-            if curl -fsS http://127.0.0.1:8080/api/statistics > /dev/null; then
+            if curl -fsS http://127.0.0.1:8080/api/statistics > /dev/null &&
+              curl -fsS http://127.0.0.1:8080/ > /dev/null; then
               exit 0
             fi
             sleep 3
