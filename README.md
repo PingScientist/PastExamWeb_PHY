@@ -26,17 +26,7 @@
 
 ## 使用狀況
 
-Umami 統計截圖將使用 repository 內的 `docs/assets/umami-overview.png`，且只保留必要的統計卡片與圖表。待取得清大物理考古系統的去識別化原始截圖後，可啟用下列圖片區塊：
-
-<!--
-<p align="center">
-  <img
-    src="docs/assets/umami-overview.png"
-    alt="清大物理考古系統 Umami 使用狀況概覽"
-    width="820"
-  />
-</p>
--->
+本專案可透過前端環境變數設定 Umami 進行流量觀測。目前尚未放入可公開使用的統計截圖；待清大物理考古系統的 Overview 統計畫面完成去識別化處理後，再補入本節。
 
 ## 介面預覽
 
